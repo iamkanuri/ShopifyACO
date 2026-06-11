@@ -25,6 +25,7 @@ async function main(): Promise<void> {
   const client = new pg.Client({
     connectionString: ENV.databaseUrl,
     ssl: { rejectUnauthorized: false }, // Supabase requires SSL
+    connectionTimeoutMillis: 15_000, // fail fast instead of hanging the boot
   });
 
   try {
