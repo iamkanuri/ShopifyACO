@@ -1,0 +1,19 @@
+{
+  "name": "shopify-aco",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ShopifyACO — AI-visibility measurement engine: does ChatGPT/Gemini/Perplexity recommend your store vs competitors?",
+  "scripts": {
+    "scan": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

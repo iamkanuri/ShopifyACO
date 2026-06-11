@@ -1,0 +1,32 @@
+{
+  "brand": {
+    "name": "Stridoe",
+    "storeUrl": "https://stridoe.com",
+    "aliases": ["Stridoe Running", "Stridoe"],
+    "products": ["Stridoe Cloudstep", "Strioe Trailblazer"]
+  },
+  "category": "running shoes",
+  "competitors": [
+    { "name": "Acme Athletics", "storeUrl": "https://acme-athletics.com", "aliases": ["Acme"] },
+    { "name": "Globex Run", "storeUrl": "https://globexrun.com", "aliases": ["Globex"] },
+    { "name": "Initech Sport", "storeUrl": "https://initechsport.com", "aliases": ["Initech"] },
+    { "name": "Umbrella Active", "storeUrl": "https://umbrella-active.com", "aliases": ["Umbrella"] }
+  ],
+  "buyerPersona": "a beginner runner training for a first 5K",
+  "priceRange": "under $120",
+  "placeholderValues": {
+    "use_case": ["road running", "trail running", "marathon training"],
+    "feature": ["cushioning", "lightweight design"]
+  },
+  "promptTemplates": [
+    "What are the best {category} {priceRange}?",
+    "Recommend {category} for {use_case}.",
+    "I'm {buyerPersona}. Which {category} should I buy?",
+    "Best {category} with great {feature}?",
+    "Which {category} brands do people recommend right now?",
+    "What's a good value pair of {category} {priceRange}?",
+    "Top {category} for {use_case} on a budget?"
+  ],
+  "engines": ["openai", "gemini", "perplexity"],
+  "concurrency": 4
+}

@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# secrets — NEVER commit
+.env
+.env.*
+!.env.example
+imp keys.txt
+
+# build output
+dist/
+
+# scan output
+results/
+
+# logs / os
+*.log
+.DS_Store
+Thumbs.db
