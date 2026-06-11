@@ -53,7 +53,40 @@ export const ENV = {
   // Free-scan abuse limits.
   freeScansPerEmailPerDay: Number(process.env.FREE_SCANS_PER_EMAIL ?? 2),
   freeScansPerIpPerDay: Number(process.env.FREE_SCANS_PER_IP ?? 2),
+
+  // Admin cockpit.
+  adminPassword: str(process.env.ADMIN_PASSWORD),
+  // Salt for hashing IPs before storage (privacy). Stable default so hashes match
+  // across restarts; override in prod for unlinkability.
+  ipHashSalt: str(process.env.IP_HASH_SALT) ?? "shopifyaco-ip-salt-v1",
+
+  // Public branding (NEVER ship "Shopify" in the public-facing name — trademark).
+  // Set the real name + domain before launch; repo/internal names stay as-is.
+  publicBrandName: str(process.env.PUBLIC_BRAND_NAME) ?? "AI Visibility",
+  // Absolute base URL for OG tags / share links. Empty => derive from the request,
+  // so it works behind any custom domain with no hardcoded railway.app URLs.
+  publicBaseUrl: str(process.env.PUBLIC_BASE_URL),
+  contactEmail: str(process.env.CONTACT_EMAIL) ?? "",
+
+  // Stripe Payment Links (URLs only — no Stripe SDK this build). Missing => the
+  // CTA falls back to the email-capture modal.
+  stripe: {
+    full_report: str(process.env.STRIPE_FULL_REPORT_URL),
+    monitoring: str(process.env.STRIPE_WEEKLY_MONITORING_URL),
+    founder_beta: str(process.env.STRIPE_FOUNDER_BETA_URL),
+  } as Record<string, string | undefined>,
+
+  // Deployed commit (Railway injects this) for /healthz version checks.
+  commit: str(process.env.RAILWAY_GIT_COMMIT_SHA) ?? "dev",
 };
+
+/** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */
+export const SCAN_MODES = {
+  mini: { label: "Mini", prompts: 5, maxCostUsd: 0.5, public: true },
+  standard: { label: "Standard", prompts: 15, maxCostUsd: 2, public: false },
+  deep: { label: "Deep", prompts: 30, maxCostUsd: 5, public: false },
+} as const;
+export type ScanMode = keyof typeof SCAN_MODES;
 
 /** True when Supabase persistence is configured. */
 export const hasSupabase = () => Boolean(ENV.supabaseUrl && ENV.supabaseServiceRoleKey);

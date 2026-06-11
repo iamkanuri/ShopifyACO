@@ -120,6 +120,7 @@ export function ScanPage() {
         engines: enabledEngines,
         email: email.trim(),
         hp,
+        sourcePage: window.location.pathname,
       });
       setPhase("running");
       poll(runId);

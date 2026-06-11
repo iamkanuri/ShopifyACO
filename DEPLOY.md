@@ -35,9 +35,17 @@ Browser ──> Railway service (Express, 0.0.0.0:$PORT)
 | `SUPABASE_URL` | persistence | `https://xxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | persistence (server-only) | `eyJ…` |
 | `DATABASE_URL` | migrations (session pooler, **port 5432**) | `postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres` |
-| `DAILY_SPEND_CAP_USD` | global daily spend ceiling | `10` |
+| `DAILY_SPEND_CAP_USD` | global daily spend ceiling | `25` |
 | `NODE_ENV` | production posture | `production` |
 | `DATA_DIR` | volume mount path for result files | `/data` |
+| `ADMIN_PASSWORD` | gates `/admin` (unset ⇒ admin disabled) | `a-long-random-string` |
+| `IP_HASH_SALT` | salts the one-way IP hash stored for limits | `random-string` |
+| `PUBLIC_BRAND_NAME` | public name (UI/titles/OG) — **never "Shopify"** | `AI Visibility` |
+| `PUBLIC_BASE_URL` | absolute URL for OG/share links (blank ⇒ from request) | `https://yourbrand.com` |
+| `CONTACT_EMAIL` | shown on `/privacy` + footer | `hi@yourbrand.com` |
+| `STRIPE_FULL_REPORT_URL` | Stripe Payment Link (missing ⇒ email modal) | `https://buy.stripe.com/...` |
+| `STRIPE_WEEKLY_MONITORING_URL` | Stripe Payment Link | `https://buy.stripe.com/...` |
+| `STRIPE_FOUNDER_BETA_URL` | Stripe Payment Link | `https://buy.stripe.com/...` |
 
 `PORT` is set by Railway automatically — do not hardcode it.
 **`SUPABASE_SERVICE_ROLE_KEY` is server-only.** It is never imported by the viewer
@@ -86,6 +94,32 @@ npm run migrate          # applies pending migrations, then prints the verified 
   analytics, leads, and rate-limit counters.
 - **Volume (`/data`):** per-run files `config.json`, `results.json`, `report.md`,
   `progress.log`, `status.json`. Survives redeploys; lost only if the volume is deleted.
+
+## Custom domain (Railway)
+
+The app reads its public URL from `PUBLIC_BASE_URL` (or the request host) — there are
+**no hardcoded `*.up.railway.app` URLs**, so it works behind any domain.
+
+1. **Railway:** service → **Settings → Networking → Custom Domain** → enter your domain
+   (e.g. `app.yourbrand.com` or apex `yourbrand.com`). Railway shows a target value.
+2. **DNS (at your registrar):**
+   - Subdomain → add a **CNAME** record from the subdomain to the Railway-provided
+     target (e.g. `app` → `xxxx.up.railway.app`).
+   - Apex/root → use an **ALIAS/ANAME** (or your registrar's flattened CNAME) to the
+     target, since CNAME on a root is usually disallowed.
+3. Wait for DNS + Railway to provision the TLS cert (minutes to ~an hour).
+4. Set **`PUBLIC_BASE_URL=https://yourdomain`** in Variables so OG tags + share links
+   use the real domain. Also set **`PUBLIC_BRAND_NAME`** to your final public name.
+5. (Stripe) Point each Payment Link's success URL at `https://yourdomain/thanks?plan=<id>`
+   and set the `STRIPE_*_URL` vars; the CTAs open them, the `/thanks` page logs
+   `payment_completed`.
+
+## Admin cockpit
+
+`/admin` is gated by `ADMIN_PASSWORD` (cookie session, constant-time check,
+rate-limited login). It shows today's metrics, the funnel, runs, leads, errors, and
+launch-target progress, and can launch standard/deep scans for paid-beta customers.
+If `ADMIN_PASSWORD` is unset, `/admin` is disabled.
 
 ## Rollback
 

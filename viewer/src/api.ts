@@ -23,6 +23,7 @@ export const startScan = (body: {
   engines?: string[];
   email: string;
   hp?: string;
+  sourcePage?: string;
 }) => postJson<{ runId: string; estimateMaxUsd: number; totalCalls: number }>("/api/scan", body);
 
 export async function getStatus(runId: string) {
@@ -33,6 +34,23 @@ export async function getStatus(runId: string) {
 
 export const submitLead = (body: { email: string; plan: string; runId?: string }) =>
   postJson<{ ok: boolean }>("/api/leads", body);
+
+// ---- admin ----
+export async function adminMe(): Promise<{ authed: boolean; configured: boolean }> {
+  const r = await fetch("/api/admin/me");
+  return r.json();
+}
+export const adminLogin = (password: string) => postJson<{ ok: boolean }>("/api/admin/login", { password });
+export async function adminLogout() {
+  await fetch("/api/admin/logout", { method: "POST" });
+}
+export async function adminData<T = unknown>(): Promise<T> {
+  const r = await fetch("/api/admin/data");
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "Failed");
+  return r.json();
+}
+export const adminScan = (body: { form: unknown; mode: string; email?: string }) =>
+  postJson<{ runId: string; mode: string; estimateMaxUsd: number; prompts: number }>("/api/admin/scan", body);
 
 /** Fire-and-forget funnel analytics. Never throws / blocks the UI. */
 export function trackEvent(name: string, runId?: string, metadata?: unknown): void {

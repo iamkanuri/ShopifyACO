@@ -94,8 +94,14 @@ cd viewer && npm run dev      # http://localhost:5173
 > `DEPLOYMENT TODOs` in [`src/server/index.ts`](src/server/index.ts) (auth, per-IP
 > rate limiting, daily spend caps, abuse protection) — all required before deploying.
 >
-> Scan outputs and captured emails live in `runs/` and `runs/leads.jsonl`, which are
-> **gitignored**. Don't commit them.
+> Scan outputs live under `DATA_DIR` (gitignored) and in Supabase; never commit `.env`.
+>
+> ⚠️ **Rotate the Shopify secret before any Shopify work.** `imp keys.txt` holds a
+> live Shopify API secret exposed in plaintext. No code reads it, but rotate it in the
+> Shopify dashboard before starting Shopify OAuth / App Store work.
+>
+> 🏷️ **Public branding must never contain "Shopify"** (trademark). The public name
+> comes from `PUBLIC_BRAND_NAME`; the repo/internal name stays `ShopifyACO`.
 
 ## Web report viewer
 

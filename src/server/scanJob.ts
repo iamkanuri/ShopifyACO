@@ -12,6 +12,7 @@ export interface ScanJobOpts {
   maxCostUsd: number;
   keys: ApiKeys;
   concurrency?: number;
+  mode?: string;
 }
 
 /**
@@ -76,9 +77,10 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
     });
     await appendProgress(runId, `Done. Visibility score ${analysis.visibilityScore.score}/100, $${analysis.totalCostUsd.toFixed(4)}.`);
   } catch (err) {
-    await setStatus(runId, { status: "failed", error: (err as Error).message });
-    await updateRun(runId, { status: "failed" });
-    await appendProgress(runId, `FAILED: ${(err as Error).message}`);
+    const message = (err as Error).message;
+    await setStatus(runId, { status: "failed", error: message });
+    await updateRun(runId, { status: "failed", error: message });
+    await appendProgress(runId, `FAILED: ${message}`);
   } finally {
     releaseLock(runId);
   }

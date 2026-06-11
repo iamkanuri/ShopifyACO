@@ -45,6 +45,8 @@ export interface LeadRow {
   plan: string;
   source?: string;
   run_id?: string;
+  source_page?: string;
+  ip_hash?: string;
 }
 
 export const insertLead = (lead: LeadRow) =>
@@ -61,7 +63,9 @@ export interface RunRow {
   status?: string;
   cost_usd?: number;
   email?: string;
-  ip?: string;
+  ip_hash?: string;
+  mode?: string;
+  error?: string;
 }
 
 export const insertRun = (run: RunRow) =>
@@ -97,12 +101,12 @@ export const countRunsByEmailToday = (email: string) =>
     return count ?? 0;
   }, 0);
 
-export const countRunsByIpToday = (ip: string) =>
+export const countRunsByIpToday = (ipHash: string) =>
   safe("countRunsByIpToday", async (c) => {
     const { count, error } = await c
       .from("runs")
       .select("id", { count: "exact", head: true })
-      .eq("ip", ip)
+      .eq("ip_hash", ipHash)
       .gte("created_at", startOfUtcDay());
     if (error) throw error;
     return count ?? 0;
@@ -114,4 +118,65 @@ export const sumSpendTodayUsd = () =>
     const { data, error } = await c.from("runs").select("cost_usd").gte("created_at", startOfUtcDay());
     if (error) throw error;
     return (data ?? []).reduce((s, r) => s + Number((r as { cost_usd: number }).cost_usd ?? 0), 0);
+  }, 0);
+
+// ---- admin queries ---------------------------------------------------------
+
+export const utcDayStart = startOfUtcDay;
+
+export const runsSince = (iso: string) =>
+  safe<Record<string, unknown>[]>("runsSince", async (c) => {
+    const { data, error } = await c.from("runs").select("*").gte("created_at", iso).order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }, []);
+
+export const eventsSince = (iso: string) =>
+  safe<{ name: string; run_id: string | null; metadata: unknown }[]>("eventsSince", async (c) => {
+    const { data, error } = await c.from("events").select("name,run_id,metadata").gte("created_at", iso);
+    if (error) throw error;
+    return (data ?? []) as { name: string; run_id: string | null; metadata: unknown }[];
+  }, []);
+
+export const leadsSince = (iso: string) =>
+  safe<Record<string, unknown>[]>("leadsSince", async (c) => {
+    const { data, error } = await c.from("leads").select("*").gte("created_at", iso).order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }, []);
+
+export const listRuns = (limit = 100) =>
+  safe<Record<string, unknown>[]>("listRuns", async (c) => {
+    const { data, error } = await c.from("runs").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data ?? [];
+  }, []);
+
+export const listLeads = (limit = 100) =>
+  safe<Record<string, unknown>[]>("listLeads", async (c) => {
+    const { data, error } = await c.from("leads").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data ?? [];
+  }, []);
+
+/** All-time count of a single event name (for launch metrics). */
+export const eventCountAll = (name: string) =>
+  safe("eventCountAll", async (c) => {
+    const { count, error } = await c.from("events").select("id", { count: "exact", head: true }).eq("name", name);
+    if (error) throw error;
+    return count ?? 0;
+  }, 0);
+
+export const runCountAll = () =>
+  safe("runCountAll", async (c) => {
+    const { count, error } = await c.from("runs").select("id", { count: "exact", head: true });
+    if (error) throw error;
+    return count ?? 0;
+  }, 0);
+
+export const leadCountAll = () =>
+  safe("leadCountAll", async (c) => {
+    const { count, error } = await c.from("leads").select("id", { count: "exact", head: true });
+    if (error) throw error;
+    return count ?? 0;
   }, 0);

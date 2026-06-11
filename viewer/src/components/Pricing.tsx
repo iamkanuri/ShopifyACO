@@ -1,18 +1,33 @@
 import { useState } from "react";
-import { PLANS } from "../pricing";
 import { submitLead, trackEvent } from "../api";
-
-const CTA_EVENT: Record<string, string> = { full_report: "cta_full_report", monitoring: "cta_monitoring" };
+import { useConfig, type Plan } from "../config";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CTA_EVENT: Record<string, string> = {
+  full_report: "cta_full_report",
+  monitoring: "cta_monitoring",
+  founder_beta: "cta_founder_beta",
+};
 
-export function Pricing({ runId }: { runId?: string }) {
+export function Pricing({ runId, currentPlanId }: { runId?: string; currentPlanId?: string }) {
+  const { plans } = useConfig();
   const [modalPlan, setModalPlan] = useState<{ id: string; name: string } | null>(null);
+
+  function onCta(p: Plan) {
+    if (CTA_EVENT[p.id]) trackEvent(CTA_EVENT[p.id], runId, { plan: p.id });
+    if (p.stripeUrl) {
+      // Real payment signal: log the click, then open the Stripe Payment Link.
+      trackEvent("payment_link_clicked", runId, { plan: p.id });
+      window.open(p.stripeUrl, "_blank", "noopener");
+      return;
+    }
+    setModalPlan({ id: p.id, name: p.name }); // fallback: email capture
+  }
 
   return (
     <div className="no-print">
       <div className="pricing">
-        {PLANS.map((p) => (
+        {plans.map((p) => (
           <div className={`card plan ${p.cta ? "" : "plan-free"}`} key={p.id}>
             <div className="plan-name">{p.name}</div>
             <div className="plan-price">
@@ -26,17 +41,13 @@ export function Pricing({ runId }: { runId?: string }) {
               ))}
             </ul>
             {p.cta ? (
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  if (CTA_EVENT[p.id]) trackEvent(CTA_EVENT[p.id], runId, { plan: p.id });
-                  setModalPlan({ id: p.id, name: p.name });
-                }}
-              >
+              <button className="btn btn-primary" onClick={() => onCta(p)}>
                 {p.cta}
               </button>
-            ) : (
+            ) : currentPlanId === p.id ? (
               <div className="plan-current">You're on this</div>
+            ) : (
+              <div className="plan-current">Free</div>
             )}
           </div>
         ))}
@@ -58,14 +69,10 @@ function LeadModal({
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [err, setErr] = useState("");
-
   const valid = EMAIL_RE.test(email);
 
   async function submit() {
-    if (!valid) {
-      setErr("Please enter a valid email.");
-      return;
-    }
+    if (!valid) return setErr("Please enter a valid email.");
     setState("sending");
     try {
       await submitLead({ email, plan: plan.id, runId });
@@ -86,8 +93,8 @@ function LeadModal({
           <>
             <h3>You're on the list ✓</h3>
             <p className="muted">
-              Payments aren't live yet. I'll email <b>{email}</b> your {plan.name.toLowerCase()} as
-              soon as it's ready. Thanks for the interest — it genuinely helps me prioritize.
+              Payments aren't live yet. We'll email <b>{email}</b> your {plan.name.toLowerCase()} as
+              soon as it's ready.
             </p>
             <button className="btn btn-primary" onClick={onClose}>
               Done
@@ -97,8 +104,8 @@ function LeadModal({
           <>
             <h3>{plan.name}</h3>
             <p className="muted">
-              <b>Payments aren't live yet.</b> Leave your email and I'll send your full report when
-              it's ready — no charge today.
+              <b>Payments aren't live yet.</b> Leave your email and we'll send it when it's ready —
+              no charge today.
             </p>
             <input
               className="modal-input"

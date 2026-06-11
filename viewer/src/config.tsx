@@ -1,0 +1,49 @@
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+
+export interface Plan {
+  id: string;
+  name: string;
+  price: string;
+  cadence: string;
+  blurb: string;
+  features: string[];
+  cta?: string;
+  stripeUrl?: string | null;
+}
+
+export interface AppConfig {
+  brandName: string;
+  baseUrl: string;
+  contactEmail: string;
+  tagline: string;
+  demoNote: string;
+  plans: Plan[];
+  miniPrompts: number;
+  fullReportPrompts: number;
+}
+
+const DEFAULTS: AppConfig = {
+  brandName: "AI Visibility",
+  baseUrl: "",
+  contactEmail: "",
+  tagline: "See if AI shoppers recommend your store — or your competitors.",
+  demoNote: "Demo data shown for illustration.",
+  plans: [],
+  miniPrompts: 5,
+  fullReportPrompts: 30,
+};
+
+const Ctx = createContext<AppConfig>(DEFAULTS);
+
+export function ConfigProvider({ children }: { children: ReactNode }) {
+  const [cfg, setCfg] = useState<AppConfig>(DEFAULTS);
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setCfg({ ...DEFAULTS, ...d }))
+      .catch(() => {});
+  }, []);
+  return <Ctx.Provider value={cfg}>{children}</Ctx.Provider>;
+}
+
+export const useConfig = () => useContext(Ctx);

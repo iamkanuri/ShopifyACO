@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Request } from "express";
 import { ENV } from "./env.js";
 import { countRunsByEmailToday, countRunsByIpToday, sumSpendTodayUsd } from "../db/supabase.js";
@@ -8,6 +9,11 @@ import { countRunsByEmailToday, countRunsByIpToday, sumSpendTodayUsd } from "../
 export function clientIp(req: Request): string {
   const xff = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
   return xff || req.ip || req.socket.remoteAddress || "unknown";
+}
+
+/** Privacy-preserving IP fingerprint for storage + per-IP daily counts. */
+export function ipHash(ip: string): string {
+  return createHash("sha256").update(ip + ENV.ipHashSalt).digest("hex").slice(0, 32);
 }
 
 // ---- in-memory sliding-window IP rate limiter ------------------------------
@@ -80,8 +86,8 @@ export interface FreeScanCheck {
   perIp: number;
 }
 
-export async function freeScanAllowed(email: string, ip: string): Promise<FreeScanCheck> {
-  const [emailCount, ipCount] = await Promise.all([countRunsByEmailToday(email), countRunsByIpToday(ip)]);
+export async function freeScanAllowed(email: string, ipHashValue: string): Promise<FreeScanCheck> {
+  const [emailCount, ipCount] = await Promise.all([countRunsByEmailToday(email), countRunsByIpToday(ipHashValue)]);
   return {
     ok: emailCount < ENV.freeScansPerEmailPerDay && ipCount < ENV.freeScansPerIpPerDay,
     emailCount,

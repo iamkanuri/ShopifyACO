@@ -144,6 +144,37 @@ process. No Vercel, no CORS.
 
 `leads.jsonl` is retired (replaced by the `leads` table).
 
+## Beta funnel layer (admin · payments signal · landing · rebrand)
+
+- **⚠️ PUBLIC REBRAND RULE:** never ship "Shopify" in the public-facing name/domain
+  (trademark). The public name comes from `PUBLIC_BRAND_NAME` (env), surfaced via
+  `GET /api/config` + server-side `index.html` placeholder substitution
+  (`__BRAND_NAME__`/`__DESC__`/`__BASE_URL__`). Repo/internal names stay `ShopifyACO`.
+  The future App Store listing must use the new public name, not "Shopify…".
+- **Landing page** at `/` (hero, how-it-works, what-you-learn, sample, pricing, trust,
+  FAQ). Routes: `/` `/demo` `/scan` `/report/:id` `/admin` `/thanks` `/privacy`. A tiny
+  history router; all branding/plans/contact come from `/api/config` (nothing hardcoded,
+  works behind a custom domain via `PUBLIC_BASE_URL` or request host).
+- **Admin cockpit** `/admin` (`src/server/admin.ts`): `ADMIN_PASSWORD` cookie session
+  (constant-time compare, rate-limited login, `no-store`). Shows today's metrics,
+  funnel, runs, leads, errors, launch targets; can run standard/deep scans for paid
+  beta. Data via `buildAdminData()` over the `events`/`runs`/`leads` tables.
+- **Payments signal (links only, NO Stripe SDK):** CTAs open `STRIPE_FULL_REPORT_URL` /
+  `STRIPE_WEEKLY_MONITORING_URL` / `STRIPE_FOUNDER_BETA_URL` when set, else fall back to
+  the email-capture modal. Click → `payment_link_clicked` event; success URL →
+  `/thanks?plan=…` → `payment_completed` event. Full report is sold honestly as
+  "manually reviewed during beta, delivered by email within 24h".
+- **Scan modes** (`SCAN_MODES` in `env.ts`): mini (5/$0.50, public self-serve),
+  standard (15/$2, admin), deep (30/$5, admin).
+- **Privacy/safety:** raw IPs are never stored — only `sha256(ip+IP_HASH_SALT)`;
+  `/api/runs/:id` strips raw payloads and redacts any email in answer text; `/privacy`
+  page + footer disclaimer; `/healthz` reports the deployed commit (`RAILWAY_GIT_COMMIT_SHA`).
+
+## ⚠️ Rotate the Shopify secret before any Shopify work
+`imp keys.txt` holds a live **Shopify API secret** that was exposed in plaintext. No
+code reads it (verified), but it MUST be rotated in the Shopify dashboard before any
+Shopify OAuth / App Store work begins.
+
 ## Architecture & conventions
 
 - **Runtime:** Node 22 + TypeScript run directly via `tsx` (no build step). ESM
