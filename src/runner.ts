@@ -83,6 +83,7 @@ export async function runScan(
           engine: res.engine,
           model: res.model,
           groundingMode: res.groundingMode,
+          text: res.text,
           usage: res.usage,
           detections,
           ...(opts.saveRaw ? { raw: res.raw } : {}),
@@ -109,6 +110,7 @@ export async function runScan(
           engine: adapter.name,
           model: adapter.model,
           groundingMode: "unknown",
+          text: "",
           error: message,
           detections: [],
         });
@@ -129,6 +131,7 @@ function skipped(prompt: ExpandedPrompt, adapter: EngineAdapter, reason: string)
     engine: adapter.name,
     model: adapter.model,
     groundingMode: "unknown",
+    text: "",
     error: reason,
     detections: [],
   };

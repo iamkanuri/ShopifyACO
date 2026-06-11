@@ -10,8 +10,11 @@ import type {
   RunResults,
 } from "./types.js";
 import { aggregate } from "./aggregate.js";
+import { analyzeRun } from "./analysis/index.js";
+import type { FixCard, MerchantAnalysis, RateStat } from "./analysis/types.js";
 
 const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
+const fmtRateStat = (r: RateStat) => `${Math.round(r.rate * 100)}% (${r.count}/${r.total})`;
 const usd = (x: number) => `$${x.toFixed(4)}`;
 /** Collapse whitespace/newlines and escape pipes so text is safe inside a table cell. */
 const clean = (s: string) => s.replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
@@ -35,18 +38,21 @@ export async function writeReports(
   results: PromptEngineResult[],
   cfg: Config,
   opts: WriteOptions,
-): Promise<{ jsonPath: string; mdPath: string; agg: Aggregate }> {
+): Promise<{ jsonPath: string; mdPath: string; agg: Aggregate; analysis: MerchantAnalysis }> {
   const agg = aggregate(results, cfg);
   await mkdir(opts.outDir, { recursive: true });
 
   const runResults: RunResults = { meta: opts.meta, config: cfg, results, aggregate: agg };
+  const analysis = analyzeRun(runResults);
+  runResults.analysis = analysis;
+
   const jsonPath = join(opts.outDir, "results.json");
   await writeFile(jsonPath, JSON.stringify(runResults, null, 2), "utf8");
 
   const mdPath = join(opts.outDir, "report.md");
-  await writeFile(mdPath, buildMarkdown(results, cfg, agg, opts.meta), "utf8");
+  await writeFile(mdPath, buildMarkdown(results, cfg, agg, opts.meta, analysis), "utf8");
 
-  return { jsonPath, mdPath, agg };
+  return { jsonPath, mdPath, agg, analysis };
 }
 
 function buildMarkdown(
@@ -54,6 +60,7 @@ function buildMarkdown(
   cfg: Config,
   agg: Aggregate,
   meta: RunMeta,
+  analysis: MerchantAnalysis,
 ): string {
   const brandName = cfg.brand.name;
   const own = agg.overall.find((b) => b.isOwn)!;
@@ -69,6 +76,27 @@ function buildMarkdown(
       `${meta.promptCount} prompts × ${meta.engines.length} engines = ${meta.totalCalls} calls`,
   );
   L.push(`**Generated:** ${meta.finishedAt}`);
+  L.push("");
+
+  // ---- AI Visibility Score + executive insight (analysis-driven) -----------
+  const vs = analysis.visibilityScore;
+  L.push(`## AI Visibility Score: ${vs.score}/100`);
+  L.push("");
+  L.push(`_Based on ${vs.basedOnResponses} grounded responses. ${analysis.caveat}_`);
+  L.push("");
+  L.push("| Component | Weight | Value | Points | Detail |");
+  L.push("|---|---|---|---|---|");
+  for (const c of vs.components) {
+    L.push(
+      `| ${c.label} | ${pct(c.weight)} | ${pct(c.value)} | ${c.contribution.toFixed(1)} | ${clean(c.detail)} |`,
+    );
+  }
+  L.push("");
+  L.push(`> Formula: \`${vs.formula}\``);
+  L.push("");
+  L.push("## Executive insight");
+  L.push("");
+  L.push(analysis.executiveInsight);
   L.push("");
 
   // ---- Executive summary ---------------------------------------------------
@@ -229,16 +257,85 @@ function buildMarkdown(
   L.push("_Costs are estimates from per-model pricing constants, not billing data._");
   L.push("");
 
-  // ---- Fixes (stub) --------------------------------------------------------
-  L.push("## Suggested fixes");
+  // ---- Gap analysis --------------------------------------------------------
+  L.push("## Gap analysis");
   L.push("");
-  L.push(
-    "_Fixes engine — week 2, requires store crawling. Out of scope for this build. " +
-      "See CLAUDE.md._",
-  );
+  if (analysis.threat) {
+    L.push(`**Direct competitor threat:** ${analysis.threat.summary}`);
+    L.push("");
+  }
+  L.push(`**Mention → recommendation gap:** ${analysis.mentionGap.summary}`);
   L.push("");
+  if (analysis.weakestEngine) {
+    L.push(`**Weakest engine:** ${analysis.weakestEngine}.`);
+    L.push("");
+    L.push("| Engine | Mentions you | Recommends you | Avg rank |");
+    L.push("|---|---|---|---|");
+    for (const e of analysis.engineWeakness) {
+      const rank = e.avgRankWhenMentioned != null ? e.avgRankWhenMentioned.toFixed(1) : "—";
+      const tag = e.isWeakest ? " ⚠️" : "";
+      L.push(`| ${e.engine}${tag} | ${fmtRateStat(e.mention)} | ${fmtRateStat(e.recommendation)} | ${rank} |`);
+    }
+    L.push("");
+  }
+
+  const transactional = analysis.clusters.filter((c) => c.transactional);
+  if (transactional.length) {
+    L.push("**Query categories lost** (high-intent buying queries):");
+    L.push("");
+    L.push("| Category | Responses | You mentioned | You recommended | Status |");
+    L.push("|---|---|---|---|---|");
+    for (const c of transactional) {
+      const status = c.absent ? "❌ absent" : c.brandRecommendation.count > 0 ? "partial" : "mention-only";
+      L.push(
+        `| ${c.label} | ${c.responses} | ${fmtRateStat(c.brandMention)} | ${fmtRateStat(c.brandRecommendation)} | ${status} |`,
+      );
+    }
+    L.push("");
+  }
+
+  if (analysis.proofPoints.length) {
+    L.push("**Competitor proof points** (reasons competitors win, by frequency in winning answers):");
+    L.push("");
+    for (const p of analysis.proofPoints.slice(0, 8)) {
+      L.push(`- **${p.label}** — ${p.hits} answer(s), e.g. ${p.competitors.join(", ")}`);
+    }
+    L.push("");
+  }
+
+  // ---- Recommended fixes ---------------------------------------------------
+  L.push("## Recommended fixes");
+  L.push("");
+  const evidence = analysis.fixCards.filter((c) => c.tier === "evidence_backed");
+  const hygiene = analysis.fixCards.filter((c) => c.tier === "general_hygiene");
+
+  L.push("### Evidence-backed (cite this scan's lost prompts)");
+  L.push("");
+  if (evidence.length === 0) L.push("_No evidence-backed fixes triggered._");
+  for (const card of evidence) L.push(...renderFixCard(card));
+
+  L.push("### General hygiene — site not yet audited (week-2 crawler will verify)");
+  L.push("");
+  for (const card of hygiene) L.push(...renderFixCard(card));
 
   return L.join("\n");
+}
+
+function renderFixCard(card: FixCard): string[] {
+  const out: string[] = [];
+  out.push(`#### [${card.impact.toUpperCase()}] ${card.title}`);
+  out.push("");
+  out.push(`- **Why:** ${card.why}`);
+  out.push(`- **Fix:** ${card.suggestedFix}`);
+  if (card.relatedPrompts.length) {
+    out.push(`- **Triggered by prompts:** ${card.relatedPrompts.map((p) => `_${trunc(p, 60)}_`).join("; ")}`);
+  }
+  if (card.relatedSnippets.length) {
+    out.push(`- **Evidence:** ${card.relatedSnippets.map((s) => `"${trunc(s, 120)}"`).join(" / ")}`);
+  }
+  if (card.verifyNote) out.push(`- ⚠️ **Verify before publishing:** ${card.verifyNote}`);
+  out.push("");
+  return out;
 }
 
 function brandTable(stats: BrandStats[]): string {

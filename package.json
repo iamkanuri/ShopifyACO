@@ -6,6 +6,7 @@
   "description": "ShopifyACO — AI-visibility measurement engine: does ChatGPT/Gemini/Perplexity recommend your store vs competitors?",
   "scripts": {
     "scan": "tsx src/index.ts",
+    "analyze": "tsx src/analyze.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

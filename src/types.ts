@@ -89,6 +89,8 @@ export interface PromptEngineResult {
   model: string;
   groundingMode: GroundingMode;
   error?: string;
+  /** The engine's full answer text ("" on error). Used by the analysis layer. */
+  text: string;
   usage?: EngineUsage;
   /** Detection for the brand, then each competitor. */
   detections: BrandDetection[];
@@ -155,4 +157,6 @@ export interface RunResults {
   config: Config;
   results: PromptEngineResult[];
   aggregate: Aggregate;
+  /** Merchant-facing analysis (added by the analysis layer). Optional for back-compat. */
+  analysis?: import("./analysis/types.js").MerchantAnalysis;
 }
