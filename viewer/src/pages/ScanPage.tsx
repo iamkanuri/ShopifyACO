@@ -25,6 +25,8 @@ export function ScanPage() {
   const [competitors, setCompetitors] = useState<ScanBrand[]>([{ name: "", storeUrl: "" }]);
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [engines, setEngines] = useState({ openai: true, gemini: true, perplexity: true });
+  const [email, setEmail] = useState("");
+  const [hp, setHp] = useState(""); // honeypot — must stay empty
   const [newPrompt, setNewPrompt] = useState("");
   const [suggestMsg, setSuggestMsg] = useState("");
   const [busy, setBusy] = useState<"" | "generating" | "suggesting" | "starting">("");
@@ -116,6 +118,8 @@ export function ScanPage() {
         form: buildForm(),
         prompts: selected.map((p) => p.text),
         engines: enabledEngines,
+        email: email.trim(),
+        hp,
       });
       setPhase("running");
       poll(runId);
@@ -126,6 +130,8 @@ export function ScanPage() {
       setBusy("");
     }
   }
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   function poll(runId: string) {
     const tick = async () => {
@@ -294,14 +300,36 @@ export function ScanPage() {
             </div>
           )}
 
+          <div className="email-gate">
+            <label className="field">
+              <span>Your email * — we'll send results and notify you if capacity is reached</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@store.com"
+              />
+            </label>
+            {/* honeypot: hidden from real users; bots fill it and get rejected */}
+            <input
+              className="hp-field"
+              tabIndex={-1}
+              autoComplete="off"
+              value={hp}
+              onChange={(e) => setHp(e.target.value)}
+              aria-hidden="true"
+            />
+          </div>
+
           <div className="scan-actions">
             <button
               className="btn btn-primary lg"
-              disabled={selected.length === 0 || enabledEngines.length === 0 || overCap}
+              disabled={selected.length === 0 || enabledEngines.length === 0 || overCap || !emailValid}
               onClick={() => setPhase("confirm")}
             >
               Run mini scan →
             </button>
+            {!emailValid && email.length > 0 && <span className="muted" style={{ alignSelf: "center" }}>Enter a valid email to run.</span>}
           </div>
         </div>
       )}

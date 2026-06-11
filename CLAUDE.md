@@ -106,13 +106,41 @@ future public product but **bound to localhost** tonight.
   (not a thin slice) and shows its basis n; the category leader is computed separately
   so the report can distinguish "overall leader" from "in-niche threat".
 
-### ⚠️ DEPLOYMENT TODOs (before this goes on Railway / public — in `src/server/index.ts`)
-- **Auth** on `/api/scan` + `/api/leads` (no public anonymous scans with my keys).
-- **Per-IP rate limiting** on `/api/scan` and `/api/prompts/suggest`.
-- **Per-IP + global per-DAY USD spend cap**; reject when exceeded.
-- **Abuse protection**: payload limits (done), captcha/Turnstile on submit, origin allowlist.
-- **Real job queue** replacing the single in-process lock (per-user concurrency).
-Until ALL of the above exist, the server MUST stay localhost-bound.
+## Production deployment (Railway, single service) — see `DEPLOY.md`
+
+The funnel is now **public-ready** and deploys as **one Railway service**: the Express
+server serves BOTH the API and the built viewer (`viewer/dist` static) from one
+process. No Vercel, no CORS.
+
+- **Secrets:** every secret comes ONLY from env vars, centralized in `src/server/env.ts`
+  (`ENV`). Same names for local `.env` and Railway. `SUPABASE_SERVICE_ROLE_KEY` and API
+  keys are server-only — the viewer bundle imports nothing from `src/` and uses no
+  `VITE_`/`import.meta.env` secret (verified by grepping `viewer/dist`).
+- **Persistence (Supabase):** `src/db/supabase.ts` — runtime reads/writes via the
+  Supabase client + service-role key, all graceful (DB down → log + safe default,
+  scans still run on file storage). Tables: `leads`, `runs`, `events`. Result files
+  live on a **Railway volume** at `DATA_DIR` (e.g. `/data`); `runStore` writes there.
+- **Migration workflow (own the lifecycle — never hand-run SQL):** version-controlled
+  `migrations/NNNN_*.sql` applied by `src/db/migrate.ts` (`npm run migrate`), tracked in
+  `schema_migrations`, idempotent. Runs locally against `DATABASE_URL` (Supabase session
+  pooler, port 5432) AND in the Railway build step (`railway.json`) on every deploy.
+  First connection failure ⇒ almost always the `[YOUR-PASSWORD]` placeholder in
+  `DATABASE_URL`.
+- **Abuse / spend protection (`src/server/guards.ts`, enforced in `src/server/index.ts`):**
+  email-gated scans (stored as a `scan_gate` lead); per-email + per-IP daily free-scan
+  limits; per-IP sliding-window rate limits; 256kb payload cap; honeypot field; per-scan
+  cost cap + **global daily spend cap** (`DAILY_SPEND_CAP_USD`, default 10) enforced
+  BEFORE any live API call (max of in-memory accumulator and DB sum) — when hit, scans
+  pause with an honest message and capture a `spend_cap` lead; per-scan wall-clock timeout.
+- **Production posture:** binds `0.0.0.0` in prod (auto-detected via `NODE_ENV` or
+  Railway env), `127.0.0.1` + warning in dev; `/healthz`; structured JSON error logs;
+  graceful volume-missing / DB-unreachable handling.
+- **Funnel analytics:** `events` table — `scan_started`/`scan_completed` (server),
+  `report_viewed`/`cta_full_report`/`cta_monitoring` (client via `/api/events`),
+  `lead_submitted` (on lead capture).
+- **Kill switch:** set `DAILY_SPEND_CAP_USD=0` to halt all live scans without a redeploy.
+
+`leads.jsonl` is retired (replaced by the `leads` table).
 
 ## Architecture & conventions
 

@@ -2,8 +2,11 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Config } from "../types.js";
+import { ENV } from "./env.js";
 
-export const RUNS_DIR = "runs";
+// Result files live under DATA_DIR — on Railway this is the attached volume mount
+// (e.g. /data) so runs survive redeploys.
+export const RUNS_DIR = ENV.dataDir;
 
 export type RunStatus = "pending" | "running" | "complete" | "failed";
 

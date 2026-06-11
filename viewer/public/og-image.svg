@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef0fe"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(80,86)">
+    <rect width="56" height="56" rx="15" fill="#4f46e5"/>
+    <text x="28" y="40" font-size="34" fill="#fff" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">A</text>
+    <text x="76" y="26" font-size="22" fill="#4a5063" font-family="Arial, sans-serif" font-weight="bold">ShopifyACO</text>
+    <text x="76" y="50" font-size="16" fill="#868ca0" font-family="Arial, sans-serif">AI Visibility for e-commerce</text>
+  </g>
+  <text x="80" y="300" font-size="62" fill="#14161f" font-family="Arial, sans-serif" font-weight="bold">AI assistants know your brand —</text>
+  <text x="80" y="372" font-size="62" fill="#4f46e5" font-family="Arial, sans-serif" font-weight="bold">but do they recommend it?</text>
+  <text x="80" y="448" font-size="28" fill="#4a5063" font-family="Arial, sans-serif">Measure your share of voice in ChatGPT, Gemini &amp; Perplexity</text>
+  <text x="80" y="488" font-size="28" fill="#4a5063" font-family="Arial, sans-serif">vs competitors — then close the gap.</text>
+  <g transform="translate(80,536)">
+    <rect width="232" height="58" rx="12" fill="#4f46e5"/>
+    <text x="116" y="37" font-size="22" fill="#fff" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">Run a free scan</text>
+  </g>
+</svg>

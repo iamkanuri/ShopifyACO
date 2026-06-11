@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import type { MerchantAnalysis, RunResults } from "../types";
 import { fmtUsd } from "../types";
+import { trackEvent } from "../api";
 import { ScorePanel } from "../components/ScorePanel";
 import { StatTiles } from "../components/StatTiles";
 import { Insight } from "../components/Insight";
@@ -24,6 +26,10 @@ export function Report({
   reportMdUrl?: string;
 }) {
   const a = run.analysis as MerchantAnalysis;
+
+  useEffect(() => {
+    trackEvent("report_viewed", runId, { brand: a.brand, score: a.visibilityScore.score });
+  }, [runId, a.brand]);
 
   return (
     <>

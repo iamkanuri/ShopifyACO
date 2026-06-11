@@ -5,6 +5,8 @@ import { buildAdapters } from "../engines/index.js";
 import { runScan } from "../runner.js";
 import { writeReports } from "../report.js";
 import { appendProgress, releaseLock, runDir, setStatus } from "./runStore.js";
+import { recordSpend } from "./guards.js";
+import { insertEvent, updateRun } from "../db/supabase.js";
 
 export interface ScanJobOpts {
   maxCostUsd: number;
@@ -40,6 +42,7 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
     const results = await runScan(prompts, adapters, config, {
       concurrency: opts.concurrency ?? config.concurrency ?? 3,
       maxCostUsd: opts.maxCostUsd,
+      maxDurationMs: 120_000, // hard wall-clock budget per scan
       saveRaw: true,
       onProgress: (m) => void appendProgress(runId, m),
     });
@@ -63,9 +66,18 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       costUsd: analysis.totalCostUsd,
       engineErrors,
     });
+    // Count this spend against the global daily cap + persist the run + event.
+    recordSpend(analysis.totalCostUsd);
+    await updateRun(runId, { status: "complete", cost_usd: analysis.totalCostUsd });
+    await insertEvent("scan_completed", runId, {
+      score: analysis.visibilityScore.score,
+      costUsd: analysis.totalCostUsd,
+      engineErrors,
+    });
     await appendProgress(runId, `Done. Visibility score ${analysis.visibilityScore.score}/100, $${analysis.totalCostUsd.toFixed(4)}.`);
   } catch (err) {
     await setStatus(runId, { status: "failed", error: (err as Error).message });
+    await updateRun(runId, { status: "failed" });
     await appendProgress(runId, `FAILED: ${(err as Error).message}`);
   } finally {
     releaseLock(runId);

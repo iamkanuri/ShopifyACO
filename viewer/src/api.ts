@@ -17,8 +17,13 @@ export const generatePrompts = (form: ScanForm) =>
 export const suggestPrompts = (form: ScanForm) =>
   postJson<{ prompts: string[]; costUsd: number; error?: string }>("/api/prompts/suggest", form);
 
-export const startScan = (body: { form: ScanForm; prompts: string[]; engines?: string[] }) =>
-  postJson<{ runId: string; estimateMaxUsd: number; totalCalls: number }>("/api/scan", body);
+export const startScan = (body: {
+  form: ScanForm;
+  prompts: string[];
+  engines?: string[];
+  email: string;
+  hp?: string;
+}) => postJson<{ runId: string; estimateMaxUsd: number; totalCalls: number }>("/api/scan", body);
 
 export async function getStatus(runId: string) {
   const res = await fetch(`/api/scan/${runId}/status`);
@@ -28,3 +33,12 @@ export async function getStatus(runId: string) {
 
 export const submitLead = (body: { email: string; plan: string; runId?: string }) =>
   postJson<{ ok: boolean }>("/api/leads", body);
+
+/** Fire-and-forget funnel analytics. Never throws / blocks the UI. */
+export function trackEvent(name: string, runId?: string, metadata?: unknown): void {
+  fetch("/api/events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, run_id: runId, metadata }),
+  }).catch(() => {});
+}

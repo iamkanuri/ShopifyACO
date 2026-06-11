@@ -269,6 +269,38 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .progress-log { text-align: left; background: #14161f; color: #c8e6d4; font-size: 11.5px; padding: 14px; border-radius: 10px; margin-top: 20px; max-height: 240px; overflow: auto; white-space: pre-wrap; font-family: ui-monospace, monospace; }
 
+/* ============ email gate + honeypot ============ */
+.email-gate { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); max-width: 460px; }
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* ============ mobile pass (launch traffic is heavily mobile) ============ */
+@media (max-width: 560px) {
+  .app { padding: 16px 14px 64px; }
+  .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .brandmark h1 { font-size: 17px; }
+  .report-headline { font-size: 21px; }
+  .runmeta { gap: 6px; }
+  .chip, .pill { font-size: 10.5px; padding: 4px 9px; }
+  .hero { grid-template-columns: 1fr; }
+  .tiles { grid-template-columns: repeat(2, 1fr) !important; }
+  .tile .v { font-size: 20px; }
+  .scoredial { flex-direction: column; align-items: flex-start; text-align: left; }
+  .threat-grid { grid-template-columns: 1fr; }
+  .threat-divider { display: none; }
+  .wtm-grid, .pricing, .fixgrid, .enginecards { grid-template-columns: 1fr !important; }
+  .form-grid { grid-template-columns: 1fr; }
+  .comp-row { grid-template-columns: 1fr; gap: 6px; }
+  .run-bar { flex-direction: column; align-items: stretch; }
+  .estimate { text-align: left; }
+  .engine-toggles { flex-wrap: wrap; }
+  /* horizontal-scroll wide tables instead of overflowing */
+  .card.cardpad { overflow-x: auto; }
+  table { min-width: 540px; }
+  .exportbar .btn { flex: 1; }
+  .scan-actions { flex-direction: column; }
+  .scan-actions .btn { width: 100%; }
+}
+
 /* ============ print ============ */
 @media print {
   body { background: #fff; }

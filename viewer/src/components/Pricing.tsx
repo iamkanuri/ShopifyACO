@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { PLANS } from "../pricing";
-import { submitLead } from "../api";
+import { submitLead, trackEvent } from "../api";
+
+const CTA_EVENT: Record<string, string> = { full_report: "cta_full_report", monitoring: "cta_monitoring" };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,7 +26,13 @@ export function Pricing({ runId }: { runId?: string }) {
               ))}
             </ul>
             {p.cta ? (
-              <button className="btn btn-primary" onClick={() => setModalPlan({ id: p.id, name: p.name })}>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  if (CTA_EVENT[p.id]) trackEvent(CTA_EVENT[p.id], runId, { plan: p.id });
+                  setModalPlan({ id: p.id, name: p.name });
+                }}
+              >
                 {p.cta}
               </button>
             ) : (

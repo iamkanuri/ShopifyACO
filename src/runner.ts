@@ -7,6 +7,8 @@ import { detectMentions } from "./detection/index.js";
 export interface RunOptions {
   concurrency: number;
   maxCostUsd?: number;
+  /** Overall wall-clock budget; remaining calls are skipped once exceeded. */
+  maxDurationMs?: number;
   saveRaw: boolean;
   retries?: number;
   onProgress?: (msg: string) => void;
@@ -54,8 +56,9 @@ export async function runScan(
 
   const results: PromptEngineResult[] = [];
   const controller = new AbortController();
+  const startedAt = Date.now();
   let runningCost = 0;
-  let costStopped = false;
+  let stopped: string | null = null; // reason once we stop scheduling new calls
   let next = 0;
 
   const attempts = opts.retries ?? 3;
@@ -66,8 +69,15 @@ export async function runScan(
       if (i >= tasks.length) return;
       const { prompt, adapter } = tasks[i]!;
 
-      if (costStopped) {
-        results.push(skipped(prompt, adapter, "skipped: cost cap reached"));
+      // Wall-clock budget.
+      if (!stopped && opts.maxDurationMs && Date.now() - startedAt > opts.maxDurationMs) {
+        stopped = "skipped: scan time budget reached";
+        controller.abort();
+        opts.onProgress?.(`! time budget ${opts.maxDurationMs}ms reached — stopping remaining calls`);
+      }
+
+      if (stopped) {
+        results.push(skipped(prompt, adapter, stopped));
         continue;
       }
 
@@ -95,8 +105,8 @@ export async function runScan(
             `$${runningCost.toFixed(4)}  «${prompt.prompt.slice(0, 48)}»`,
         );
 
-        if (opts.maxCostUsd !== undefined && runningCost >= opts.maxCostUsd && !costStopped) {
-          costStopped = true;
+        if (opts.maxCostUsd !== undefined && runningCost >= opts.maxCostUsd && !stopped) {
+          stopped = "skipped: cost cap reached";
           controller.abort();
           opts.onProgress?.(
             `! cost cap $${opts.maxCostUsd} reached at $${runningCost.toFixed(4)} — stopping remaining calls`,
