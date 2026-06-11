@@ -15,10 +15,15 @@ Browser ──> Railway service (Express, 0.0.0.0:$PORT)
   Railway Volume (/data) ← result files (results.json, report.md, progress.log)
 ```
 
-- **Build:** `npm run build` (installs + builds the viewer to `viewer/dist`) then
-  `npm run migrate` (applies `migrations/*.sql`). Configured in `railway.json`.
-- **Start:** `npm start` → `tsx src/server/index.ts`. Binds `0.0.0.0` in production
-  (auto-detected via `NODE_ENV=production` or Railway's own env vars).
+- **Build:** `npm run build` (installs + builds the viewer to `viewer/dist`). No
+  secrets needed at build time.
+- **Start:** `npm run migrate; npm start` (railway.json). Migrations run at startup
+  where Railway reliably injects the service's runtime variables, then the server
+  boots (`tsx src/server/index.ts`, binds `0.0.0.0` in production). The `;` makes
+  boot resilient: a migrate hiccup degrades persistence gracefully rather than
+  crash-looping the container (check `/healthz` → `supabase`).
+- **Variables must be set on the SERVICE**, not project "Shared Variables" (those
+  are not auto-injected). The build-step approach failed for exactly this reason.
 
 ## Environment variables (set ALL of these in Railway → Variables)
 
@@ -49,8 +54,9 @@ npm run migrate          # applies pending migrations, then prints the verified 
 ```
 
 - The runner tracks applied files in a `schema_migrations` table and is idempotent.
-- On Railway the same command runs automatically in the build step (`railway.json`),
-  so production schema stays in sync on every deploy.
+- On Railway the same command runs automatically at startup (`railway.json` start
+  command), so production schema stays in sync on every deploy. It needs
+  `DATABASE_URL` as a **service** variable (build time is too early / unreliable).
 - Adding a migration = drop a new `migrations/NNNN_name.sql` and redeploy (or run
   `npm run migrate`). Never hand-run SQL in the dashboard.
 
