@@ -44,10 +44,42 @@ npm run scan -- ./config/example.config.json
 ## Output
 
 Written to `./results/` (gitignored):
-- **`report.md`** — human-readable: executive summary, grounding status, mention vs
-  recommendation rates (overall + per engine), per-prompt breakdown, where competitors
-  beat you, prompts where you're absent, snippets, and a cost summary.
-- **`results.json`** — full machine-readable run.
+- **`report.md`** — human-readable: AI Visibility Score, executive insight, grounding
+  status, mention vs recommendation rates (overall + per engine), per-prompt breakdown,
+  where competitors beat you, prompts where you're absent, snippets, cost summary, the
+  **gap analysis**, and **evidence-backed + general-hygiene fix cards**.
+- **`results.json`** — full machine-readable run, with the merchant analysis embedded
+  under `analysis`.
+
+## Gap analysis (offline, deterministic)
+
+The `src/analysis/` layer reads `results.json` and produces merchant insights — main
+competitor threat, mention→recommendation gap, weakest engine, transactional whiteout,
+competitor proof points, and prioritized fix cards. It makes **no API calls**, so you
+can re-run it for free after tweaking the logic:
+
+```bash
+npm run analyze -- results/results.json   # regenerates report.md + analysis, $0
+```
+
+The **AI Visibility Score** is a documented, deterministic formula (see
+`src/analysis/score.ts`); every component is shown so the number is never a black box.
+All rates carry their raw counts (`n=`) and are framed as single-scan signal, not fact.
+
+## Web report viewer
+
+A polished **Vite + React** dashboard in `viewer/` renders a `results.json` the way a
+merchant would read it — visibility score, executive insight, competitor leaderboard,
+per-engine breakdown, lost-prompts table, gap analysis, and two-tier fix cards.
+
+```bash
+cd viewer
+npm install
+npm run dev        # opens http://localhost:5173 with the bundled Caraway demo
+```
+
+Use **Load results.json** in the header to drop in any run. Components are pure and
+prop-driven so they lift cleanly into the future Shopify embedded app.
 
 ## Config
 
