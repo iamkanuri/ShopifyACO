@@ -1,0 +1,36 @@
+{
+  "brand": {
+    "name": "Caraway",
+    "storeUrl": "https://www.carawayhome.com",
+    "aliases": ["Caraway Home"],
+    "products": ["Mini Duo"]
+  },
+  "category": "nonstick cookware",
+  "competitors": [
+    { "name": "Our Place", "storeUrl": "https://fromourplace.com", "aliases": ["From Our Place"], "products": ["Always Pan"] },
+    { "name": "HexClad", "storeUrl": "https://hexclad.com", "aliases": ["Hex Clad"] },
+    { "name": "Made In", "storeUrl": "https://madeincookware.com", "aliases": ["Made In Cookware"] },
+    { "name": "GreenPan", "storeUrl": "https://greenpan.us", "aliases": ["Green Pan"] },
+    { "name": "All-Clad", "storeUrl": "https://www.all-clad.com", "aliases": ["All Clad"] }
+  ],
+  "buyerPersona": "a health-conscious US home cook",
+  "priceRange": "$100–$500",
+  "placeholderValues": {
+    "use_case": ["everyday home cooking", "an induction stove", "a beginner cook"],
+    "price_point": ["$200", "$400"]
+  },
+  "promptTemplates": [
+    "what is the best {category} set for {use_case}",
+    "recommend a {category} brand under {price_point}",
+    "best non-toxic cookware brands right now",
+    "I'm replacing my Teflon pans — what cookware should I buy instead?",
+    "best ceramic nonstick cookware for everyday cooking",
+    "good alternatives to All-Clad for home cooks",
+    "good alternatives to HexClad",
+    "what cookware set should I buy for a first apartment under $300",
+    "best cookware set to give as a wedding gift",
+    "which direct-to-consumer cookware brand is highest quality"
+  ],
+  "engines": ["openai", "gemini", "perplexity"],
+  "concurrency": 3
+}

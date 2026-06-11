@@ -13,7 +13,12 @@ import { aggregate } from "./aggregate.js";
 
 const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
 const usd = (x: number) => `$${x.toFixed(4)}`;
-const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+/** Collapse whitespace/newlines and escape pipes so text is safe inside a table cell. */
+const clean = (s: string) => s.replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
+const trunc = (s: string, n: number) => {
+  const c = clean(s);
+  return c.length > n ? c.slice(0, n - 1) + "…" : c;
+};
 
 /** Recommended=2, mentioned=1, absent=0 — used to decide "who won" a prompt. */
 function score(d: BrandDetection | undefined): number {
