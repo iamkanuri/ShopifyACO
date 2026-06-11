@@ -12,6 +12,14 @@ import process from "node:process";
 
 const str = (v: string | undefined) => (v && v.trim() ? v.trim() : undefined);
 
+// Supabase client wants the bare project URL. Tolerate a pasted REST path or
+// trailing slash (e.g. "https://x.supabase.co/rest/v1/").
+function normalizeSupabaseUrl(v: string | undefined): string | undefined {
+  const s = str(v);
+  if (!s) return undefined;
+  return s.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
+}
+
 export const ENV = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   // Production when NODE_ENV says so OR when running on Railway (safety net so we
@@ -33,7 +41,7 @@ export const ENV = {
   },
 
   // Supabase (runtime data) + direct Postgres (migrations).
-  supabaseUrl: str(process.env.SUPABASE_URL),
+  supabaseUrl: normalizeSupabaseUrl(process.env.SUPABASE_URL),
   supabaseServiceRoleKey: str(process.env.SUPABASE_SERVICE_ROLE_KEY),
   databaseUrl: str(process.env.DATABASE_URL),
 
