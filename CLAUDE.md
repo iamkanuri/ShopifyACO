@@ -74,6 +74,46 @@ schema/llms.txt — are labeled "site not yet audited, week-2 crawler verifies")
   future Shopify embedded app. Loads the bundled Caraway fixture or any uploaded
   `results.json`. Run with `cd viewer && npm install && npm run dev`.
 
+## Self-service scan flow (`src/server/` + viewer routes)
+
+Local-only funnel from "enter your brand" to "polished report", architected as the
+future public product but **bound to localhost** tonight.
+
+- **Backend:** small Express server (`src/server/index.ts`), `npm run server`, binds
+  `127.0.0.1:8787` ONLY, prints a startup warning. Reuses the exact CLI pipeline
+  (`expandPrompts → buildAdapters → runScan → writeReports`) per run into
+  `runs/{runId}/` (config.json, results.json, report.md, progress.log, status.json).
+  - Routes: `POST /api/prompts/generate` (deterministic, no API cost),
+    `POST /api/prompts/suggest` (ONE cost-capped LLM call ≤ $0.02, never loops),
+    `POST /api/scan`, `GET /api/scan/:id/status`, `GET /api/runs/:id`(+`/report.md`),
+    `GET /api/demo`, `GET /api/pricing`, `POST /api/leads`.
+  - **Guardrails:** one scan at a time (in-process lock → 409 on concurrent);
+    refuses any run whose worst-case estimate exceeds the cap; mini-scan defaults =
+    5 prompts × 3 engines, $0.50 cap; engine isolation surfaces per-engine failures.
+- **Prompt library:** `src/prompts/library.ts` — deterministic buyer-intent templates
+  (buyer_intent, comparison, budget, use_case, alternatives) auto-filled from the form.
+- **Viewer routes** (tiny custom history router, no dep): `/demo` (bundled Caraway),
+  `/scan` (form → generate/suggest/edit prompts → confirm → live run w/ progress →
+  redirect), `/report/:runId`. Report components are shared/pure.
+- **Pricing test (fake-door, NOT real payments):** `src/pricing.ts` constants; report
+  CTAs ("Full Report — $29", "Weekly Monitoring — $49/mo") open an honest
+  email-capture modal → `{email, plan, runId, ts}` appended to **`runs/leads.jsonl`
+  (gitignored)**. We will test higher prices; comps charge $50–$99 one-time.
+- **Confidence guardrails** (`src/analysis/confidence.ts`): every insight is LABELED,
+  never removed — High `n≥30` "Strong signal" / Medium `n≥12` "Moderate signal" /
+  Directional `n<12`. Run-size badge Mini/Standard/Deep. Threat selection is
+  **sample-weighted**: the niche threat is anchored to the brand's most-occupied niche
+  (not a thin slice) and shows its basis n; the category leader is computed separately
+  so the report can distinguish "overall leader" from "in-niche threat".
+
+### ⚠️ DEPLOYMENT TODOs (before this goes on Railway / public — in `src/server/index.ts`)
+- **Auth** on `/api/scan` + `/api/leads` (no public anonymous scans with my keys).
+- **Per-IP rate limiting** on `/api/scan` and `/api/prompts/suggest`.
+- **Per-IP + global per-DAY USD spend cap**; reject when exceeded.
+- **Abuse protection**: payload limits (done), captcha/Turnstile on submit, origin allowlist.
+- **Real job queue** replacing the single in-process lock (per-user concurrency).
+Until ALL of the above exist, the server MUST stay localhost-bound.
+
 ## Architecture & conventions
 
 - **Runtime:** Node 22 + TypeScript run directly via `tsx` (no build step). ESM

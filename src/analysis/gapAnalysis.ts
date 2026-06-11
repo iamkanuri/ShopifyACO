@@ -1,5 +1,6 @@
 import type { Config, PromptEngineResult } from "../types.js";
 import type {
+  CategoryLeader,
   CompetitorThreat,
   EngineWeakness,
   LeaderboardRow,
@@ -8,6 +9,7 @@ import type {
   QueryClusterResult,
 } from "./types.js";
 import { avg, detOf, detScore, fmtRate, grounded, rate, uniq } from "./util.js";
+import { confidenceFor } from "./confidence.js";
 
 // ---------------------------------------------------------------------------
 // Brand-vs-competitor gap analysis. All scan-scoped + relative-framed: numbers
@@ -40,9 +42,25 @@ export function computeMentionGap(results: PromptEngineResult[], cfg: Config): M
 
 /** Brand's "home niche": non-transactional clusters where it actually shows up. */
 function homeNicheClusters(clusters: QueryClusterResult[]): QueryClusterResult[] {
-  return clusters
-    .filter((c) => !c.transactional && c.brandMention.rate > 0)
-    .sort((a, b) => b.brandMention.rate - a.brandMention.rate);
+  return clusters.filter((c) => !c.transactional && c.brandMention.rate > 0);
+}
+
+/** The category-wide recommendation leader (whole run), regardless of niche. */
+export function computeCategoryLeader(
+  results: PromptEngineResult[],
+  cfg: Config,
+): CategoryLeader | null {
+  const ok = grounded(results);
+  if (ok.length === 0) return null;
+  let best: { name: string; rec: number; men: number } | null = null;
+  for (const c of cfg.competitors) {
+    const rec = countStatus(ok, c.name, "recommended");
+    const men = countMentioned(ok, c.name);
+    if (men === 0) continue;
+    if (!best || rec > best.rec || (rec === best.rec && men > best.men)) best = { name: c.name, rec, men };
+  }
+  if (!best) return null;
+  return { competitor: best.name, recommendation: rate(best.rec, ok.length), mention: rate(best.men, ok.length) };
 }
 
 export function computeThreat(
@@ -53,57 +71,50 @@ export function computeThreat(
   const ok = grounded(results);
   if (ok.length === 0) return null;
 
-  // Focus on the brand's SINGLE strongest niche (the territory it actually owns),
-  // not the union of all non-transactional clusters — otherwise a category-wide
-  // leader drowns out the real in-niche rival. Falls back to the whole run.
-  const niche = homeNicheClusters(clusters).slice(0, 1);
-  const nicheIds = new Set(niche.map((c) => c.cluster));
-  const inNiche = niche.length
-    ? ok.filter((r) => r.detections.length && matchesAnyCluster(r, clusters, nicheIds))
-    : ok;
-  const scope = inNiche.length ? inNiche : ok;
+  // The niche threat is the rival inside the brand's OWN territory — distinct from
+  // the category-wide leader (computed separately). We anchor to the niche the brand
+  // most OCCUPIES (most brand mentions = its identity territory, and the least-thin
+  // slice), then name whoever out-recommends it there. We walk niches in that order
+  // so a tiny high-gap slice can't crown a threat the brand's main niche disagrees
+  // with. Falls back to the whole run only if no niche shows a real threat.
+  const niches = homeNicheClusters(clusters).sort(
+    (a, b) => b.brandMention.count - a.brandMention.count || b.brandMention.rate - a.brandMention.rate,
+  );
 
-  // Own + each competitor rec/mention within scope.
-  const ownRec = countStatus(scope, cfg.brand.name, "recommended");
-  const ownMen = countMentioned(scope, cfg.brand.name);
-
-  let best: { name: string; rec: number; men: number } | null = null;
-  for (const c of cfg.competitors) {
-    const rec = countStatus(scope, c.name, "recommended");
-    const men = countMentioned(scope, c.name);
-    if (men === 0) continue;
-    if (!best || rec > best.rec || (rec === best.rec && men > best.men)) {
-      best = { name: c.name, rec, men };
-    }
+  let best: ThreatCand | null = null;
+  for (const c of niches) {
+    best = pickThreat([{ label: c.label, rows: ok.filter((r) => c.prompts.includes(r.prompt)) }], cfg);
+    if (best) break;
   }
+  if (!best) best = pickThreat([{ label: "all queries", rows: ok }], cfg);
   if (!best) return null;
 
-  const ownRecRate = rate(ownRec, scope.length);
-  const compRecRate = rate(best.rec, scope.length);
-  const ownMenRate = rate(ownMen, scope.length);
-  const compMenRate = rate(best.men, scope.length);
+  const ownRecRate = rate(best.ownRec, best.n);
+  const compRecRate = rate(best.rec, best.n);
   const multiplier = ownRecRate.rate > 0 ? compRecRate.rate / ownRecRate.rate : null;
-  const nicheLabels = niche.map((c) => c.label);
-
-  const where = nicheLabels.length ? `${nicheLabels.join(" / ")} queries` : "this scan";
+  const basisLabel = `${best.n} ${best.label === "all queries" ? "" : best.label.toLowerCase() + " "}prompts`.replace(/\s+/g, " ");
+  const confidence = confidenceFor(best.n);
+  const where = best.label === "all queries" ? "across this scan" : `in ${best.label.toLowerCase()} queries`;
   const multiText =
     multiplier != null
       ? `recommended ${multiplier.toFixed(1)}× more often than ${cfg.brand.name}`
-      : best.rec > 0
-        ? `recommended ${best.rec} time(s) vs ${cfg.brand.name}'s ${ownRec}`
-        : `mentioned more consistently than ${cfg.brand.name}`;
+      : `recommended ${best.rec} time(s) vs ${cfg.brand.name}'s ${best.ownRec}`;
 
   return {
     competitor: best.name,
     ownRecommendation: ownRecRate,
     competitorRecommendation: compRecRate,
-    ownMention: ownMenRate,
-    competitorMention: compMenRate,
+    ownMention: rate(best.ownMen, best.n),
+    competitorMention: rate(best.men, best.n),
     recommendationMultiplier: multiplier,
-    sharedNiche: nicheLabels,
+    sharedNiche: best.label === "all queries" ? [] : [best.label],
+    basisLabel,
+    basisResponses: best.n,
+    confidence,
     summary:
-      `${best.name} is ${cfg.brand.name}'s most direct competitor in ${where}: ` +
-      `${multiText} (${fmtRate(compRecRate)} vs ${fmtRate(ownRecRate)} in this scan).`,
+      `${best.name} is ${cfg.brand.name}'s most direct competitor ${where}: ` +
+      `${multiText} (${fmtRate(compRecRate)} vs ${fmtRate(ownRecRate)}, based on ${basisLabel} in this scan). ` +
+      `${confidence.label}`,
   };
 }
 
@@ -241,10 +252,33 @@ function countMentioned(results: PromptEngineResult[], brand: string): number {
 function countStatus(results: PromptEngineResult[], brand: string, status: string): number {
   return results.filter((r) => detOf(r, brand)?.status === status).length;
 }
-function matchesAnyCluster(
-  r: PromptEngineResult,
-  clusters: QueryClusterResult[],
-  ids: Set<string>,
-): boolean {
-  return clusters.some((c) => ids.has(c.cluster) && c.prompts.includes(r.prompt));
+
+interface ThreatCand {
+  name: string; rec: number; men: number; ownRec: number; ownMen: number;
+  n: number; label: string; score: number;
+}
+
+/** Pick the sample-weighted strongest competitor-out-recommends-brand signal across scopes. */
+function pickThreat(
+  scopes: { label: string; rows: PromptEngineResult[] }[],
+  cfg: Config,
+): ThreatCand | null {
+  let best: ThreatCand | null = null;
+  for (const scope of scopes) {
+    const n = scope.rows.length;
+    if (n === 0) continue;
+    const ownRec = countStatus(scope.rows, cfg.brand.name, "recommended");
+    const ownMen = countMentioned(scope.rows, cfg.brand.name);
+    for (const c of cfg.competitors) {
+      const rec = countStatus(scope.rows, c.name, "recommended");
+      const men = countMentioned(scope.rows, c.name);
+      if (men === 0) continue;
+      const gap = rec / n - ownRec / n;
+      if (gap <= 0) continue;
+      // effect size × sqrt(n): rewards both a real gap and enough data to trust it.
+      const score = gap * Math.sqrt(n);
+      if (!best || score > best.score) best = { name: c.name, rec, men, ownRec, ownMen, n, label: scope.label, score };
+    }
+  }
+  return best;
 }

@@ -13,6 +13,11 @@ dist/
 # scan output
 results/
 
+# self-service scan runs + captured leads (contain user data / emails)
+runs/
+runs/leads.jsonl
+leads.jsonl
+
 # logs / os
 *.log
 .DS_Store

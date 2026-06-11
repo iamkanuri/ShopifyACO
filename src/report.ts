@@ -80,9 +80,17 @@ function buildMarkdown(
 
   // ---- AI Visibility Score + executive insight (analysis-driven) -----------
   const vs = analysis.visibilityScore;
+  const runSizeLabel = { mini: "Mini scan", standard: "Standard scan", deep: "Deep scan" }[analysis.runSize];
   L.push(`## AI Visibility Score: ${vs.score}/100`);
   L.push("");
-  L.push(`_Based on ${vs.basedOnResponses} grounded responses. ${analysis.caveat}_`);
+  L.push(`> **${analysis.headline}**`);
+  L.push("");
+  L.push(
+    `\`${runSizeLabel}\` · **${analysis.confidence.label}** ` +
+      `(based on ${vs.basedOnResponses} grounded responses)`,
+  );
+  L.push("");
+  L.push(`_${analysis.caveat}_`);
   L.push("");
   L.push("| Component | Weight | Value | Points | Detail |");
   L.push("|---|---|---|---|---|");
@@ -260,8 +268,16 @@ function buildMarkdown(
   // ---- Gap analysis --------------------------------------------------------
   L.push("## Gap analysis");
   L.push("");
+  if (analysis.categoryLeader) {
+    L.push(
+      `**Category leader (overall):** ${analysis.categoryLeader.competitor} — ` +
+        `recommended ${fmtRateStat(analysis.categoryLeader.recommendation)} across the whole scan.`,
+    );
+    L.push("");
+  }
   if (analysis.threat) {
-    L.push(`**Direct competitor threat:** ${analysis.threat.summary}`);
+    L.push(`**Direct niche threat:** ${analysis.threat.summary}`);
+    L.push(`_Basis: ${analysis.threat.basisLabel}. ${analysis.threat.confidence.label}_`);
     L.push("");
   }
   L.push(`**Mention → recommendation gap:** ${analysis.mentionGap.summary}`);

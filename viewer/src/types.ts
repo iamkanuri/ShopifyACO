@@ -23,6 +23,14 @@ export interface VisibilityScore {
   basedOnResponses: number;
 }
 
+export type ConfidenceTier = "high" | "medium" | "directional";
+export interface Confidence {
+  tier: ConfidenceTier;
+  label: string;
+  basedOnResponses: number;
+}
+export type RunSize = "mini" | "standard" | "deep";
+
 export interface CompetitorThreat {
   competitor: string;
   ownRecommendation: RateStat;
@@ -31,7 +39,16 @@ export interface CompetitorThreat {
   competitorMention: RateStat;
   recommendationMultiplier: number | null;
   sharedNiche: string[];
+  basisLabel: string;
+  basisResponses: number;
+  confidence: Confidence;
   summary: string;
+}
+
+export interface CategoryLeader {
+  competitor: string;
+  recommendation: RateStat;
+  mention: RateStat;
 }
 
 export interface MentionGap {
@@ -119,9 +136,14 @@ export interface MerchantAnalysis {
   ungroundedEngines: string[];
   totalCostUsd: number;
   caveat: string;
+  runSize: RunSize;
+  confidence: Confidence;
   visibilityScore: VisibilityScore;
   executiveInsight: string;
+  headline: string;
+  whatThisMeans: string[];
   threat: CompetitorThreat | null;
+  categoryLeader: CategoryLeader | null;
   mentionGap: MentionGap;
   engineWeakness: EngineWeakness[];
   weakestEngine: string | null;

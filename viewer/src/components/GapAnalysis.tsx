@@ -5,13 +5,6 @@ export function GapAnalysis({ a }: { a: MerchantAnalysis }) {
   const transactional = a.clusters.filter((c) => c.transactional);
   return (
     <div className="grid" style={{ gap: 16 }}>
-      {a.threat && (
-        <div className="card callout" style={{ borderLeftColor: "var(--bad)", background: "linear-gradient(90deg, var(--bad-soft), var(--surface) 60%)" }}>
-          <h3 style={{ color: "var(--bad)" }}>Direct competitor threat — {a.threat.competitor}</h3>
-          <p style={{ fontSize: 15 }}>{a.threat.summary}</p>
-        </div>
-      )}
-
       <div className="card" style={{ padding: 18 }}>
         <div className="k" style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--ink-3)", fontWeight: 700, marginBottom: 12 }}>
           Buyer-intent categories you're losing

@@ -26,6 +26,16 @@ export interface VisibilityScore {
   basedOnResponses: number;
 }
 
+export type ConfidenceTier = "high" | "medium" | "directional";
+
+export interface Confidence {
+  tier: ConfidenceTier;
+  label: string;
+  basedOnResponses: number;
+}
+
+export type RunSize = "mini" | "standard" | "deep";
+
 export interface CompetitorThreat {
   competitor: string;
   ownRecommendation: RateStat;
@@ -35,7 +45,18 @@ export interface CompetitorThreat {
   /** competitorRecRate / ownRecRate, null if own rate is 0 (avoid div-by-zero). */
   recommendationMultiplier: number | null;
   sharedNiche: string[]; // cluster labels where they compete
+  /** The slice the niche-threat verdict rests on, e.g. "13 ceramic/non-toxic prompts". */
+  basisLabel: string;
+  basisResponses: number;
+  confidence: Confidence;
   summary: string; // relative-framed, scan-scoped
+}
+
+/** The category-wide recommendation leader — distinct from the in-niche threat. */
+export interface CategoryLeader {
+  competitor: string;
+  recommendation: RateStat;
+  mention: RateStat;
 }
 
 export interface MentionGap {
@@ -125,9 +146,16 @@ export interface MerchantAnalysis {
   ungroundedEngines: string[];
   totalCostUsd: number;
   caveat: string;
+  /** Overall run-size badge + confidence derived from the grounded-answer count. */
+  runSize: RunSize;
+  confidence: Confidence;
   visibilityScore: VisibilityScore;
   executiveInsight: string;
+  /** Plain-English "what this means" framing for the merchant. */
+  headline: string;
+  whatThisMeans: string[];
   threat: CompetitorThreat | null;
+  categoryLeader: CategoryLeader | null;
   mentionGap: MentionGap;
   engineWeakness: EngineWeakness[];
   weakestEngine: string | null;

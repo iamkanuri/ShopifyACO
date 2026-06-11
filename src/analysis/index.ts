@@ -4,6 +4,7 @@ import { computeVisibilityScore } from "./score.js";
 import { analyzeClusters } from "./queryClusters.js";
 import { extractProofPoints } from "./proofPoints.js";
 import {
+  computeCategoryLeader,
   computeEngineWeakness,
   computeLeaderboard,
   computeLostPrompts,
@@ -11,6 +12,7 @@ import {
   computeThreat,
 } from "./gapAnalysis.js";
 import { buildFixCards } from "./fixSuggestions.js";
+import { confidenceFor, runSizeFor } from "./confidence.js";
 import { fmtRate, grounded } from "./util.js";
 
 export * from "./types.js";
@@ -28,6 +30,7 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
   const visibilityScore = computeVisibilityScore(results, cfg);
   const mentionGap = computeMentionGap(results, cfg);
   const threat = computeThreat(results, cfg, clusters);
+  const categoryLeader = computeCategoryLeader(results, cfg);
   const { engines: engineWeakness, weakest } = computeEngineWeakness(results, cfg);
   const leaderboard = computeLeaderboard(results, cfg);
   const proofPoints = extractProofPoints(results, cfg);
@@ -55,6 +58,23 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     n: ok.length,
   });
 
+  // Plain-English "what this means" framing (Part 7).
+  const headline =
+    mentionGap.mention.rate > mentionGap.recommendation.rate * 1.4
+      ? `AI assistants know ${cfg.brand.name} — but rarely choose it.`
+      : mentionGap.mention.rate === 0
+        ? `AI assistants don't surface ${cfg.brand.name} yet.`
+        : `${cfg.brand.name} has room to win more AI recommendations.`;
+  const whatThisMeans: string[] = [
+    `Discoverability: ${cfg.brand.name} is mentioned in ${fmtRate(mentionGap.mention)} of answers — assistants do know it exists.`,
+    `Persuasion: it's recommended in only ${fmtRate(mentionGap.recommendation)} — when listed, it isn't the pick.`,
+  ];
+  if (transactionalLost.length) {
+    whatThisMeans.push(
+      `Missing where it counts: absent from high-intent buying queries (${transactionalLost.map((c) => c.label).join(", ")}).`,
+    );
+  }
+
   return {
     brand: cfg.brand.name,
     category: cfg.category,
@@ -65,9 +85,14 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     ungroundedEngines,
     totalCostUsd: agg.totalCost.costUsd,
     caveat: CAVEAT,
+    runSize: runSizeFor(ok.length),
+    confidence: confidenceFor(ok.length),
     visibilityScore,
     executiveInsight,
+    headline,
+    whatThisMeans,
     threat,
+    categoryLeader,
     mentionGap,
     engineWeakness,
     weakestEngine: weakest,

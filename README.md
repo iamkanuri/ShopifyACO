@@ -66,6 +66,37 @@ The **AI Visibility Score** is a documented, deterministic formula (see
 `src/analysis/score.ts`); every component is shown so the number is never a black box.
 All rates carry their raw counts (`n=`) and are framed as single-scan signal, not fact.
 
+## Self-service scan flow (local web app)
+
+Run the local funnel: a `/scan` form that anyone can fill in to get a polished report,
+plus `/demo` and `/report/:runId`. Two processes:
+
+```bash
+# terminal 1 — the scan API (binds 127.0.0.1:8787 ONLY)
+npm run server
+
+# terminal 2 — the web UI (proxies /api to the server)
+cd viewer && npm run dev      # http://localhost:5173
+```
+
+- `/demo` — the bundled Caraway report.
+- `/scan` — enter brand + competitors → **Generate prompts** (deterministic, free) →
+  optionally **Suggest more with AI** (one call, ≤ $0.02) → edit prompts → **Run mini
+  scan** (5 prompts × 3 engines, $0.50 cap). You confirm the estimated cost before any
+  live call. Progress streams; it redirects to the report when done.
+- Report CTAs ("Full Report — $29" / "Weekly Monitoring — $49/mo") are a **pricing
+  test** — clicking opens an honest "payments aren't live yet, leave your email" modal.
+
+> ### 🔒 SECURITY — localhost only
+> The server runs with **your live API keys** and has **no auth, no rate limits, and
+> no per-day spend cap** (only the per-scan cost cap). It binds to `127.0.0.1` and
+> prints a warning on startup. **Never expose it publicly as-is.** See the
+> `DEPLOYMENT TODOs` in [`src/server/index.ts`](src/server/index.ts) (auth, per-IP
+> rate limiting, daily spend caps, abuse protection) — all required before deploying.
+>
+> Scan outputs and captured emails live in `runs/` and `runs/leads.jsonl`, which are
+> **gitignored**. Don't commit them.
+
 ## Web report viewer
 
 A polished **Vite + React** dashboard in `viewer/` renders a `results.json` the way a
