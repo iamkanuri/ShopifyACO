@@ -119,18 +119,34 @@ const LABELS: Record<string, string> = {
   dailyLimitBlocks: "Daily-limit blocks",
   spendCapBlocks: "Spend-cap blocks",
 };
+// Tiles that deep-link to a detail section below.
+const TILE_JUMP: Record<string, string> = { paidOrders: "paid-orders", paymentClicks: "paid-orders" };
 function Summary({ s }: { s: Record<string, number> }) {
   const money = new Set(["spendUsd", "remainingUsd"]);
+  const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   return (
     <section className="section">
       <h2>Today</h2>
       <div className="admin-tiles">
-        {Object.keys(LABELS).map((k) => (
-          <div className="card tile" key={k}>
-            <div className="k">{LABELS[k]}</div>
-            <div className="v">{money.has(k) ? `$${Number(s[k] ?? 0).toFixed(2)}` : (s[k] ?? 0)}</div>
-          </div>
-        ))}
+        {Object.keys(LABELS).map((k) => {
+          const target = TILE_JUMP[k];
+          return (
+            <div
+              className={`card tile ${target ? "tile-link" : ""}`}
+              key={k}
+              onClick={target ? () => jump(target) : undefined}
+              role={target ? "button" : undefined}
+              tabIndex={target ? 0 : undefined}
+              onKeyDown={target ? (e) => (e.key === "Enter" || e.key === " ") && jump(target) : undefined}
+            >
+              <div className="k">
+                {LABELS[k]}
+                {target && <span className="tile-go"> ↓</span>}
+              </div>
+              <div className="v">{money.has(k) ? `$${Number(s[k] ?? 0).toFixed(2)}` : s[k] ?? 0}</div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -260,7 +276,7 @@ function OrdersTable({ orders, onDone }: { orders: AdminData["orders"]; onDone: 
   }
 
   return (
-    <section className="section">
+    <section className="section" id="paid-orders">
       <h2>Paid orders (webhook-confirmed)</h2>
       <div className="card cardpad" style={{ overflowX: "auto" }}>
         {orders.length === 0 ? (

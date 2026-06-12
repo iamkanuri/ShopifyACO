@@ -7,7 +7,17 @@ export function ThanksPage() {
   const { contactEmail } = useConfig();
   const params = new URLSearchParams(window.location.search);
   const plan = params.get("plan") ?? "full_report";
-  const runId = params.get("runId") ?? undefined;
+  // Prefer the runId on the URL; otherwise the one we stored when the buyer
+  // clicked the paid CTA — so we can send them back to THEIR report (not the demo).
+  const runId =
+    params.get("runId") ??
+    (() => {
+      try {
+        return localStorage.getItem("al_last_run") ?? undefined;
+      } catch {
+        return undefined;
+      }
+    })();
 
   useEffect(() => {
     trackEvent("payment_completed", runId, { plan });
@@ -28,9 +38,20 @@ export function ThanksPage() {
           Questions? <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
         </p>
       )}
-      <Link to="/demo" className="btn btn-primary">
-        See the demo report meanwhile
-      </Link>
+      {runId ? (
+        <>
+          <Link to={`/report/${runId}`} className="btn btn-primary">
+            View your scan report
+          </Link>
+          <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+            Your full report builds on this scan — we'll email the deep version shortly.
+          </div>
+        </>
+      ) : (
+        <Link to="/demo" className="btn btn-primary">
+          See a sample report meanwhile
+        </Link>
+      )}
     </div>
   );
 }

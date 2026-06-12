@@ -14,6 +14,9 @@ export function App() {
   const path = usePath();
   const { brandName } = useConfig();
   const isAdmin = path === "/admin";
+  // On result/confirmation pages the acquisition CTAs are redundant — keep the
+  // header minimal (brand only) so the page's own content carries the next step.
+  const minimalHeader = path.startsWith("/report/") || path === "/thanks" || path === "/privacy";
 
   let page: React.ReactNode;
   if (path.startsWith("/report/")) page = <ReportPage runId={decodeURIComponent(path.split("/")[2] ?? "")} />;
@@ -29,7 +32,7 @@ export function App() {
   return (
     <div className="app">
       {!isAdmin && (
-        <header className="topbar no-print">
+        <header className={`topbar no-print ${minimalHeader ? "topbar-min" : ""}`}>
           <Link to="/" className="brandmark">
             <div className="logo"><Mark /></div>
             <div>
@@ -37,14 +40,16 @@ export function App() {
               <div className="sub">Are AI assistants recommending your store?</div>
             </div>
           </Link>
-          <nav className="nav">
-            <Link to="/demo" className={`navlink ${active("/demo")}`}>
-              Demo
-            </Link>
-            <Link to="/scan" className={`navlink btn btn-primary ${active("/scan")}`}>
-              Run free scan
-            </Link>
-          </nav>
+          {!minimalHeader && (
+            <nav className="nav">
+              <Link to="/demo" className={`navlink ${active("/demo")}`}>
+                Demo
+              </Link>
+              <Link to="/scan" className={`navlink btn btn-primary ${active("/scan")}`}>
+                Run free scan
+              </Link>
+            </nav>
+          )}
         </header>
       )}
       {page}

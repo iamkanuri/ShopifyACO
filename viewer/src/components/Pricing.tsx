@@ -23,6 +23,15 @@ export function Pricing({ runId, currentPlanId, email }: { runId?: string; curre
       // Stripe Payment Link — tagging it with the source run so the webhook can
       // tie the resulting paid order back to the report.
       trackEvent("payment_link_clicked", runId, { plan: p.id, email, ts: new Date().toISOString() });
+      // Remember the source run so the post-checkout /thanks page can link the
+      // buyer straight back to their own report (the Stripe success URL is static).
+      if (runId) {
+        try {
+          localStorage.setItem("al_last_run", runId);
+        } catch {
+          /* private mode / storage disabled — fine */
+        }
+      }
       let url = p.stripeUrl;
       try {
         const u = new URL(p.stripeUrl);
