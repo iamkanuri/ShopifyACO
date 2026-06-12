@@ -8,6 +8,7 @@ import { AdminPage } from "./pages/AdminPage";
 import { ThanksPage } from "./pages/ThanksPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { Footer } from "./components/Footer";
+import { Mark } from "./components/Mark";
 
 export function App() {
   const path = usePath();
@@ -30,7 +31,7 @@ export function App() {
       {!isAdmin && (
         <header className="topbar no-print">
           <Link to="/" className="brandmark">
-            <div className="logo">{brandName.charAt(0).toUpperCase()}</div>
+            <div className="logo"><Mark /></div>
             <div>
               <h1>{brandName}</h1>
               <div className="sub">Are AI assistants recommending your store?</div>

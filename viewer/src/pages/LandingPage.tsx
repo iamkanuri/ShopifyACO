@@ -9,10 +9,10 @@ export function LandingPage() {
       {/* Hero */}
       <section className="hero-land">
         <div className="hero-badge">Free mini scan · no store login required</div>
-        <h1>See if AI shoppers recommend your store — or your competitors.</h1>
+        <h1>AI shoppers may already be choosing your competitor.</h1>
         <p className="hero-sub">
-          Run a free mini scan across ChatGPT, Gemini, and Perplexity. Find the prompts you win, the
-          prompts you lose, and the content gaps that make AI choose someone else.
+          Run a free mini scan across ChatGPT, Gemini, and Perplexity. See where your brand is
+          recommended, where competitors win, and which buying prompts you disappear from.
         </p>
         <div className="hero-cta">
           <Link to="/scan" className="btn btn-primary lg">
@@ -23,6 +23,34 @@ export function LandingPage() {
           </Link>
         </div>
         <div className="hero-engines">ChatGPT · Gemini · Perplexity</div>
+
+        {/* Proof / example — make the value obvious before scrolling */}
+        <div className="hero-proof card">
+          <div className="hero-proof-head">
+            <span className="dotpulse" /> Example scan
+          </div>
+          <div className="hero-proof-grid">
+            <div className="hp-metric">
+              <span className="hp-v">31%</span>
+              <span className="hp-k">Mentioned</span>
+            </div>
+            <div className="hp-metric">
+              <span className="hp-v hp-good">8%</span>
+              <span className="hp-k">Recommended</span>
+            </div>
+            <div className="hp-metric">
+              <span className="hp-v hp-name">All-Clad</span>
+              <span className="hp-k">Strongest competitor</span>
+            </div>
+            <div className="hp-metric">
+              <span className="hp-v hp-name">ChatGPT</span>
+              <span className="hp-k">Weakest engine</span>
+            </div>
+          </div>
+          <div className="hero-proof-insight">
+            Insight: <b>Known, but rarely chosen.</b>
+          </div>
+        </div>
       </section>
 
       {/* How it works */}

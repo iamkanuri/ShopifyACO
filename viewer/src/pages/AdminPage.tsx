@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminData, adminLogin, adminLogout, adminMe, adminScan } from "../api";
+import { adminData, adminFulfillOrder, adminLogin, adminLogout, adminMe, adminScan, adminScanOrder } from "../api";
 import { useConfig } from "../config";
 
 interface AdminData {
@@ -7,6 +7,7 @@ interface AdminData {
   funnel: { step: string; count: number }[];
   runs: Record<string, any>[];
   leads: Record<string, any>[];
+  orders: Record<string, any>[];
   errors: { runId: string; brand?: string; error: string; createdAt: string }[];
   launch: { label: string; value: number; target: number }[];
   generatedAt: string;
@@ -54,6 +55,7 @@ export function AdminPage() {
           <Summary s={data.summary} />
           <Launch launch={data.launch} />
           <Funnel funnel={data.funnel} />
+          <OrdersTable orders={data.orders} onDone={load} />
           <ManualScan onDone={load} />
           <RunsTable runs={data.runs} />
           <LeadsTable leads={data.leads} />
@@ -110,6 +112,8 @@ const LABELS: Record<string, string> = {
   remainingUsd: "Cap remaining",
   leads: "Leads",
   ctaClicks: "CTA clicks",
+  paymentClicks: "Payment clicks",
+  paidOrders: "Paid orders",
   scanGateSubmissions: "Email gates",
   rateLimitBlocks: "Rate-limit blocks",
   dailyLimitBlocks: "Daily-limit blocks",
@@ -217,6 +221,97 @@ function ManualScan({ onDone }: { onDone: () => void }) {
             {busy ? "Starting…" : "Run scan"}
           </button>
         </div>
+        {msg && <div className="suggest-msg" style={{ wordBreak: "break-all" }}>{msg}</div>}
+      </div>
+    </section>
+  );
+}
+
+function OrdersTable({ orders, onDone }: { orders: AdminData["orders"]; onDone: () => void }) {
+  const { baseUrl } = useConfig();
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [msg, setMsg] = useState("");
+
+  async function fulfill(id: number) {
+    setBusyId(id);
+    setMsg("");
+    try {
+      await adminFulfillOrder(id);
+      onDone();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function scan(id: number) {
+    setBusyId(id);
+    setMsg("");
+    try {
+      const r = await adminScanOrder(id);
+      setMsg(`Started deep scan (${r.prompts} prompts, ~$${r.estimateMaxUsd.toFixed(3)}). Report: ${baseUrl}/report/${r.runId}`);
+      setTimeout(onDone, 1500);
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <section className="section">
+      <h2>Paid orders (webhook-confirmed)</h2>
+      <div className="card cardpad" style={{ overflowX: "auto" }}>
+        {orders.length === 0 ? (
+          <div className="muted" style={{ padding: 12 }}>No paid orders yet. A verified Stripe checkout lands here.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>created</th><th>email</th><th>product</th><th>amount</th><th>status</th><th>source run</th><th>actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => {
+                const id = Number(o.id);
+                const fulfilled = o.status === "fulfilled";
+                return (
+                  <tr key={id}>
+                    <td>{new Date(o.created_at).toLocaleString()}</td>
+                    <td>{o.email ?? "—"}</td>
+                    <td>{o.plan ?? "—"}</td>
+                    <td>${Number(o.amount_usd ?? 0).toFixed(2)} {String(o.currency ?? "").toUpperCase()}</td>
+                    <td><span className={`badge ${fulfilled ? "rec" : o.status === "scanning" ? "men" : "medium"}`}>{o.status}</span></td>
+                    <td style={{ fontFamily: "monospace", fontSize: 11 }}>
+                      {o.source_run_id ? (
+                        <a href={`/report/${o.source_run_id}`} target="_blank" rel="noreferrer">{o.source_run_id}</a>
+                      ) : "—"}
+                      {o.scan_run_id && (
+                        <div style={{ marginTop: 2 }}>
+                          deep: <a href={`/report/${o.scan_run_id}`} target="_blank" rel="noreferrer">{o.scan_run_id}</a>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button
+                        className="btn"
+                        disabled={busyId === id || !o.source_run_id}
+                        title={o.source_run_id ? "Run a deep scan from this order's source run" : "No source run — use the manual scan form"}
+                        onClick={() => scan(id)}
+                      >
+                        Deep scan
+                      </button>{" "}
+                      <button className="btn" disabled={busyId === id || fulfilled} onClick={() => fulfill(id)}>
+                        {fulfilled ? "Fulfilled ✓" : "Mark fulfilled"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
         {msg && <div className="suggest-msg" style={{ wordBreak: "break-all" }}>{msg}</div>}
       </div>
     </section>

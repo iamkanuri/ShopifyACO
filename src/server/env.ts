@@ -76,6 +76,12 @@ export const ENV = {
     founder_beta: str(process.env.STRIPE_FOUNDER_BETA_URL),
   } as Record<string, string | undefined>,
 
+  // Stripe webhook (proof of payment). Signature is verified manually with the
+  // webhook secret (no SDK). The secret API key is optional defense-in-depth: when
+  // set, the webhook re-confirms the session is paid via the Stripe REST API.
+  stripeWebhookSecret: str(process.env.STRIPE_WEBHOOK_SECRET),
+  stripeSecretKey: str(process.env.STRIPE_SECRET_KEY),
+
   // Deployed commit (Railway injects this) for /healthz version checks.
   commit: str(process.env.RAILWAY_GIT_COMMIT_SHA) ?? "dev",
 };

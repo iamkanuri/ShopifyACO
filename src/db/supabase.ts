@@ -120,6 +120,63 @@ export const sumSpendTodayUsd = () =>
     return (data ?? []).reduce((s, r) => s + Number((r as { cost_usd: number }).cost_usd ?? 0), 0);
   }, 0);
 
+// ---- orders (paid, webhook-confirmed) --------------------------------------
+
+export interface OrderRow {
+  session_id: string;
+  event_id?: string;
+  email?: string | null;
+  plan?: string;
+  amount_usd?: number;
+  currency?: string;
+  status?: string;
+  source_run_id?: string | null;
+  scan_run_id?: string;
+}
+
+/**
+ * Insert a paid order. Idempotent on session_id (Stripe re-delivers webhooks):
+ * a duplicate is ignored and returns false, so callers never double-process.
+ * Returns true only when this call inserted a new row.
+ */
+export const upsertOrder = (order: OrderRow) =>
+  safe("upsertOrder", async (c) => {
+    const { data, error } = await c
+      .from("orders")
+      .upsert(order, { onConflict: "session_id", ignoreDuplicates: true })
+      .select("id");
+    if (error) throw error;
+    return (data?.length ?? 0) > 0;
+  }, false);
+
+export const getOrder = (id: number) =>
+  safe<Record<string, unknown> | null>("getOrder", async (c) => {
+    const { data, error } = await c.from("orders").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ?? null;
+  }, null);
+
+export const updateOrder = (id: number, patch: Partial<OrderRow> & { fulfilled_at?: string }) =>
+  safe("updateOrder", async (c) => {
+    const { error } = await c.from("orders").update(patch).eq("id", id);
+    if (error) throw error;
+    return true;
+  }, false);
+
+export const listOrders = (limit = 100) =>
+  safe<Record<string, unknown>[]>("listOrders", async (c) => {
+    const { data, error } = await c.from("orders").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data ?? [];
+  }, []);
+
+export const orderCountAll = () =>
+  safe("orderCountAll", async (c) => {
+    const { count, error } = await c.from("orders").select("id", { count: "exact", head: true });
+    if (error) throw error;
+    return count ?? 0;
+  }, 0);
+
 // ---- admin queries ---------------------------------------------------------
 
 export const utcDayStart = startOfUtcDay;

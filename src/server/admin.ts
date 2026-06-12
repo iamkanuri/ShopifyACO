@@ -7,7 +7,9 @@ import {
   leadCountAll,
   leadsSince,
   listLeads,
+  listOrders,
   listRuns,
+  orderCountAll,
   runCountAll,
   runsSince,
   sumSpendTodayUsd,
@@ -76,13 +78,14 @@ const count = (rows: { name: string }[], name: string) => rows.filter((r) => r.n
 /** Everything the admin cockpit renders, composed from Supabase. */
 export async function buildAdminData() {
   const today = utcDayStart();
-  const [runsToday, eventsToday, leadsTodayRows, spendToday, runs, leads] = await Promise.all([
+  const [runsToday, eventsToday, leadsTodayRows, spendToday, runs, leads, orders] = await Promise.all([
     runsSince(today),
     eventsSince(today),
     leadsSince(today),
     sumSpendTodayUsd(),
     listRuns(100),
     listLeads(100),
+    listOrders(100),
   ]);
 
   const byStatus = (s: string) => runsToday.filter((r) => r.status === s).length;
@@ -98,6 +101,8 @@ export async function buildAdminData() {
     remainingUsd: Number(Math.max(0, ENV.dailySpendCapUsd - spendToday).toFixed(4)),
     leads: leadsTodayRows.length,
     ctaClicks: ctaToday,
+    paymentClicks: count(eventsToday, "payment_link_clicked"),
+    paidOrders: count(eventsToday, "payment_confirmed"),
     scanGateSubmissions: leadsBySource("scan_gate"),
     rateLimitBlocks: count(eventsToday, "rate_limit_block"),
     dailyLimitBlocks: count(eventsToday, "daily_limit_block"),
@@ -112,6 +117,7 @@ export async function buildAdminData() {
     { step: "Pricing CTA clicked", count: ctaToday },
     { step: "Lead submitted", count: count(eventsToday, "lead_submitted") },
     { step: "Payment link clicked", count: count(eventsToday, "payment_link_clicked") },
+    { step: "Payment confirmed (paid)", count: count(eventsToday, "payment_confirmed") },
   ];
 
   const errors = runs
@@ -120,18 +126,18 @@ export async function buildAdminData() {
     .map((r) => ({ runId: r.id, brand: r.brand, error: r.error ?? "(no detail)", createdAt: r.created_at }));
 
   // Launch metrics (all-time progress toward beta targets).
-  const [totalRuns, totalLeads, payClicks, paidReports] = await Promise.all([
+  const [totalRuns, totalLeads, payClicks, paidOrders] = await Promise.all([
     runCountAll(),
     leadCountAll(),
     eventCountAll("payment_link_clicked"),
-    eventCountAll("payment_completed"),
+    orderCountAll(),
   ]);
   const launch = [
     { label: "Real store scans", value: totalRuns, target: 25 },
     { label: "Leads captured", value: totalLeads, target: 5 },
     { label: "Payment-link clicks", value: payClicks, target: 3 },
-    { label: "Paid reports", value: paidReports, target: 1 },
+    { label: "Paid orders", value: paidOrders, target: 1 },
   ];
 
-  return { summary, funnel, runs, leads, errors, launch, generatedAt: new Date().toISOString() };
+  return { summary, funnel, runs, leads, orders, errors, launch, generatedAt: new Date().toISOString() };
 }

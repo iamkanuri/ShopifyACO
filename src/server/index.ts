@@ -1,6 +1,7 @@
 import "dotenv/config";
 import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Config } from "../types.js";
@@ -20,7 +21,8 @@ import {
   rateLimit,
   spendAllows,
 } from "./guards.js";
-import { insertEvent, insertLead, insertRun } from "../db/supabase.js";
+import { getOrder, insertEvent, insertLead, insertRun, updateOrder } from "../db/supabase.js";
+import { handleStripeWebhook } from "./stripe.js";
 import { ADMIN_COOKIE, buildAdminData, checkPassword, isAdmin, makeToken, requireAdmin } from "./admin.js";
 import {
   acquireLock,
@@ -58,6 +60,17 @@ const STRIPE_BY_PLAN: Record<string, string | undefined> = ENV.stripe;
 const keys = ENV.keys;
 const app = express();
 if (ENV.isProd) app.set("trust proxy", 1);
+
+// Stripe webhook needs the RAW body for signature verification, so it must be
+// registered BEFORE express.json() (and before the /api rate limiter — Stripe
+// can burst retries). The handler sends its own response and never calls next().
+app.post("/api/stripe/webhook", express.raw({ type: () => true, limit: "1mb" }), (req, res) => {
+  handleStripeWebhook(req, res).catch((err) => {
+    console.error(`[stripe] unhandled webhook error: ${(err as Error).message}`);
+    if (!res.headersSent) res.status(500).send("Webhook handler error.");
+  });
+});
+
 app.use(express.json({ limit: "256kb" }));
 
 app.use("/api", (req: Request, res: Response, next: NextFunction) => {
@@ -351,6 +364,72 @@ app.post(
     try {
       const runId = await createAndStart(config, mode, cap, adapters, estimateMaxUsd, body.email, undefined);
       res.json({ runId, mode, estimateMaxUsd, prompts: prompts.length });
+    } catch (e) {
+      return res.status(409).json({ error: (e as Error).message });
+    }
+  }),
+);
+
+// Mark a paid order fulfilled (manual beta fulfillment).
+app.post(
+  "/api/admin/orders/:id/fulfill",
+  requireAdmin,
+  wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad order id." });
+    const ok = await updateOrder(id, { status: "fulfilled", fulfilled_at: new Date().toISOString() });
+    if (!ok) return res.status(502).json({ error: "Could not update order (DB unavailable?)." });
+    res.json({ ok: true });
+  }),
+);
+
+// Admin-triggered deep scan for a paid order (we never auto-run on payment).
+// Reuses the source run's config (brand/category/competitors) and runs a fresh
+// deep prompt set.
+app.post(
+  "/api/admin/orders/:id/scan",
+  requireAdmin,
+  wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad order id." });
+    const order = await getOrder(id);
+    if (!order) return res.status(404).json({ error: "Order not found." });
+    const sourceRunId = order.source_run_id as string | null;
+    if (!sourceRunId) {
+      return res.status(400).json({ error: "Order has no source run — use the manual scan form instead." });
+    }
+    const cfgPath = join(runDir(sourceRunId), "config.json");
+    if (!existsSync(cfgPath)) {
+      return res.status(400).json({ error: "Source run config not found — use the manual scan form instead." });
+    }
+    if (isBusy()) return res.status(409).json({ error: `A scan is already running (${activeRun()}).` });
+
+    const sourceConfig = JSON.parse(await readFile(cfgPath, "utf8")) as Config;
+    const form: ScanForm = {
+      brand: sourceConfig.brand,
+      category: sourceConfig.category,
+      competitors: sourceConfig.competitors,
+      persona: sourceConfig.buyerPersona,
+      location: sourceConfig.location,
+      priceRange: sourceConfig.priceRange,
+    };
+    const prompts = generatePrompts(form).slice(0, SCAN_MODES.deep.prompts).map((p) => p.text);
+    let config: Config;
+    try {
+      config = buildConfig(form, prompts, DEFAULT_ENGINES);
+    } catch (e) {
+      return res.status(400).json({ error: (e as Error).message });
+    }
+    const { adapters } = buildAdapters(config, keys, false);
+    if (!adapters.length) return res.status(400).json({ error: "No engines available." });
+    const estimateMaxUsd = estimateMaxCost(prompts.length, adapters);
+    const spend = await spendAllows(estimateMaxUsd);
+    if (!spend.ok) return res.status(429).json({ error: `Daily spend cap reached ($${spend.capUsd}).` });
+
+    try {
+      const runId = await createAndStart(config, "deep", SCAN_MODES.deep.maxCostUsd, adapters, estimateMaxUsd, (order.email as string) ?? undefined, undefined);
+      await updateOrder(id, { status: "scanning", scan_run_id: runId });
+      res.json({ runId, mode: "deep", estimateMaxUsd, prompts: prompts.length });
     } catch (e) {
       return res.status(409).json({ error: (e as Error).message });
     }

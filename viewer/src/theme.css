@@ -218,6 +218,15 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .plan-features li::before { content: "✓"; position: absolute; left: 0; color: var(--good); font-weight: 800; }
 .plan-current { font-size: 12px; color: var(--ink-3); text-align: center; padding: 9px; background: var(--surface-2); border-radius: 10px; }
 .plan-free { outline: 1px solid var(--accent-soft); }
+.plan { position: relative; }
+.plan-soon { opacity: 0.92; }
+.plan-soon .plan-price, .plan-soon .plan-name { color: var(--ink-3); }
+.plan-badge {
+  position: absolute; top: 14px; right: 14px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--warn); background: var(--warn-soft); border: 1px solid #f3dcb8;
+  padding: 3px 9px; border-radius: 999px;
+}
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(20, 22, 31, 0.45); display: grid; place-items: center; z-index: 50; padding: 20px; }
 .modal { background: var(--surface); border-radius: var(--radius); padding: 26px; max-width: 420px; width: 100%; box-shadow: var(--shadow); position: relative; }
@@ -305,14 +314,50 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .landing { }
 .hero-land { text-align: center; padding: 44px 16px 28px; }
 .hero-badge { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
-.hero-land h1 { font-size: 40px; line-height: 1.12; letter-spacing: -0.025em; max-width: 760px; margin: 0 auto 16px; }
-.hero-sub { font-size: 17px; color: var(--ink-2); max-width: 620px; margin: 0 auto 26px; line-height: 1.6; }
+.hero-land h1 { font-size: 42px; font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; max-width: 740px; margin: 0 auto 18px; }
+.hero-sub { font-size: 17px; color: var(--ink-2); max-width: 600px; margin: 0 auto 26px; line-height: 1.6; }
 .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .hero-engines { margin-top: 18px; font-size: 12.5px; color: var(--ink-3); font-weight: 600; letter-spacing: 0.02em; }
-@media (max-width: 560px) { .hero-land h1 { font-size: 29px; } .hero-sub { font-size: 15px; } }
+@media (max-width: 560px) { .hero-land h1 { font-size: 28px; } .hero-sub { font-size: 15px; } }
 
-.land-section { margin-top: 48px; }
-.land-section > h2 { font-size: 24px; letter-spacing: -0.01em; margin: 0 0 20px; text-align: center; }
+/* ---- hero proof / example module ---- */
+.hero-proof {
+  max-width: 560px; margin: 34px auto 0; padding: 20px 22px; text-align: left;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--accent-soft) 0%, rgba(238, 240, 254, 0) 55%),
+    var(--surface);
+}
+.hero-proof-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3);
+}
+.dotpulse { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 var(--good); animation: dotpulse 2s infinite; }
+@keyframes dotpulse {
+  0% { box-shadow: 0 0 0 0 rgba(15, 157, 107, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(15, 157, 107, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(15, 157, 107, 0); }
+}
+.hero-proof-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 16px 0 4px;
+}
+.hp-metric { display: flex; flex-direction: column; gap: 3px; }
+.hp-v { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.05; }
+.hp-v.hp-good { color: var(--good); }
+.hp-v.hp-name { font-size: 17px; color: var(--ink); }
+.hp-k { font-size: 11px; color: var(--ink-3); font-weight: 600; line-height: 1.3; }
+.hero-proof-insight {
+  margin-top: 14px; padding-top: 13px; border-top: 1px dashed var(--border);
+  font-size: 13.5px; color: var(--ink-2);
+}
+.hero-proof-insight b { color: var(--ink); }
+@media (max-width: 560px) {
+  .hero-proof-grid { grid-template-columns: repeat(2, 1fr); gap: 14px 12px; }
+  .hp-v { font-size: 20px; }
+}
+
+.land-section { margin-top: 56px; }
+.land-section > h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 22px; text-align: center; }
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .step { text-align: center; padding: 10px; }
 .step-n { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; display: grid; place-items: center; margin: 0 auto 12px; }

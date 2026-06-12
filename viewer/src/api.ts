@@ -51,6 +51,10 @@ export async function adminData<T = unknown>(): Promise<T> {
 }
 export const adminScan = (body: { form: unknown; mode: string; email?: string }) =>
   postJson<{ runId: string; mode: string; estimateMaxUsd: number; prompts: number }>("/api/admin/scan", body);
+export const adminFulfillOrder = (id: number) =>
+  postJson<{ ok: boolean }>(`/api/admin/orders/${id}/fulfill`, {});
+export const adminScanOrder = (id: number) =>
+  postJson<{ runId: string; mode: string; estimateMaxUsd: number; prompts: number }>(`/api/admin/orders/${id}/scan`, {});
 
 /** Fire-and-forget funnel analytics. Never throws / blocks the UI. */
 export function trackEvent(name: string, runId?: string, metadata?: unknown): void {

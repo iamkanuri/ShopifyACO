@@ -44,6 +44,8 @@ export const PLANS: PlanDef[] = [
     cadence: "/mo",
     blurb: "Track and defend your AI share of voice.",
     features: ["Automatic weekly scans", "Visibility & share-of-voice trends", "Alerts on new lost prompts", "Everything in Full report"],
+    // No `cta` by default: until STRIPE_WEEKLY_MONITORING_URL is set the UI shows a
+    // "Coming soon" badge + waitlist join (the fulfillment loop isn't ready yet).
     cta: "Weekly Monitoring — $49/mo",
   },
   {
@@ -51,8 +53,13 @@ export const PLANS: PlanDef[] = [
     name: "Founder beta",
     price: "$99",
     cadence: "beta",
-    blurb: "Go deep + shape the product.",
-    features: ["5 deep scans (30 prompts each)", "Early access to weekly monitoring", "Direct line to the founder", "Lock in beta pricing"],
+    blurb: "5 deep scans + direct founder review.",
+    features: [
+      "5 deep scans (30 prompts each)",
+      "Each report reviewed personally by the founder",
+      "Direct line to shape the product",
+      "Lock in beta pricing",
+    ],
     cta: "Founder Beta — $99",
   },
 ];
