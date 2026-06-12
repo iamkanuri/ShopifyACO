@@ -311,14 +311,25 @@ export function ScanPage() {
                 placeholder="you@store.com"
               />
             </label>
-            {/* honeypot: hidden from real users; bots fill it and get rejected */}
+            {/* Honeypot: hidden from real users; bots fill every field and get
+                rejected. Hardened so password managers / browser autofill skip it
+                (it sits next to the email field, so an autofilled email cluster was
+                falsely tripping real users). The data-* attrs are the documented
+                ignore hints for 1Password / LastPass / Bitwarden / Dashlane, and the
+                non-standard name + autocomplete=off keep Chrome autofill away. */}
             <input
               className="hp-field"
+              type="text"
+              name="hp_contact_ref"
               tabIndex={-1}
               autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore="true"
+              data-form-type="other"
+              aria-hidden="true"
               value={hp}
               onChange={(e) => setHp(e.target.value)}
-              aria-hidden="true"
             />
           </div>
 
