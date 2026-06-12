@@ -112,7 +112,9 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
         return;
       }
 
-      const plan = s.metadata?.plan ?? planFromAmount(s.amount_total) ?? "unknown";
+      // Accept either metadata key — we set both `plan` and `product_type` on the
+      // Payment Link; fall back to inferring from the amount, then "unknown".
+      const plan = s.metadata?.plan ?? s.metadata?.product_type ?? planFromAmount(s.amount_total) ?? "unknown";
       const sourceRunId = s.client_reference_id ?? s.metadata?.run_id ?? null;
       const created = await upsertOrder({
         session_id: s.id,
@@ -129,6 +131,7 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
       if (created) {
         await insertEvent("payment_confirmed", sourceRunId ?? undefined, {
           plan,
+          productType: s.metadata?.product_type ?? plan,
           amountUsd: (s.amount_total ?? 0) / 100,
           sessionId: s.id,
         });
