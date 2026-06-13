@@ -487,6 +487,31 @@ table td, .barcell, .enginecard .val, .funnel-n { font-variant-numeric: tabular-
 /* score ring crispness */
 .ring .inner { box-shadow: inset 0 0 0 1px var(--border); }
 
+/* ---- refined data-viz (refined-light) ---- */
+/* score: more presence + gradient component bars (scoped to ScorePanel; admin
+   bars set their fill inline and are untouched) */
+.scorecard .ring .num { font-size: 34px; }
+.components .bar { height: 7px; }
+.components .bar > span { background: linear-gradient(90deg, var(--accent), #7c73f0); }
+
+/* stat tiles read as crisp data callouts */
+.tiles .tile { position: relative; overflow: hidden; }
+.tiles .tile .v { font-size: 26px; }
+.tiles .tile.danger { background: linear-gradient(180deg, var(--bad-soft), var(--surface) 62%); }
+.tiles .tile.good { background: linear-gradient(180deg, var(--good-soft), var(--surface) 62%); }
+.tiles .tile:hover { box-shadow: var(--shadow-lg); }
+
+/* leaderboard: rounded, slightly taller mini-bars + a stronger "you" row */
+.barcell .minibar { height: 8px; border-radius: 999px; max-width: 110px; }
+.barcell .minibar > span { border-radius: 999px; }
+tbody tr.you td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* engine cards: make the weakest one unmistakable */
+.enginecard { position: relative; }
+.enginecard:has(.weak) { border-color: #f3c6cf; background: linear-gradient(180deg, var(--bad-soft), var(--surface) 55%); }
+.enginecard .row { border-top: 1px solid var(--border); padding-top: 11px; margin-top: 11px; }
+.enginecard .row:first-of-type { border-top: none; padding-top: 0; }
+
 /* ============ print ============ */
 @media print {
   body { background: #fff; }
