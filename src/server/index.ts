@@ -60,6 +60,46 @@ const STRIPE_BY_PLAN: Record<string, string | undefined> = ENV.stripe;
 const keys = ENV.keys;
 const app = express();
 if (ENV.isProd) app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+// --- security headers (every response) -------------------------------------
+// The app serves its own bundle (script-src 'self' — no inline/eval), uses inline
+// style attributes + Google Fonts (style/font allowances), and only talks to its
+// own /api. Stripe checkout is a top-level redirect to Stripe's domain, so no
+// Stripe origins are needed here. frame-ancestors 'none' blocks clickjacking.
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "img-src 'self' data:",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "script-src 'self'",
+  "connect-src 'self'",
+  "form-action 'self'",
+].join("; ");
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("Content-Security-Policy", CSP);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  if (ENV.isProd) res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  next();
+});
+
+// --- crawl hygiene: index public pages, keep admin/api out of search --------
+app.get("/robots.txt", (req, res) => {
+  res
+    .type("text/plain")
+    .send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nAllow: /\n\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
+});
+app.get("/sitemap.xml", (req, res) => {
+  const base = baseUrl(req);
+  const urls = ["/", "/demo", "/scan", "/privacy"].map((p) => `  <url><loc>${base}${p}</loc></url>`).join("\n");
+  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.w3.org/2000/sitemaps/0.9">\n${urls}\n</urlset>\n`);
+});
 
 // Stripe webhook needs the RAW body for signature verification, so it must be
 // registered BEFORE express.json() (and before the /api rate limiter — Stripe
