@@ -19,6 +19,7 @@
   --ring-soft: 0 0 0 1px rgba(79, 70, 229, 0.08);
   --radius: 16px;
   --radius-sm: 10px;
+  --font-display: "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -443,6 +444,26 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .admin select, .formcard select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 13.5px; font-family: inherit; background: var(--surface); }
 
 /* ============ premium polish ============ */
+/* Display typeface on hero titles + headings — the single biggest lift away from
+   a default-template feel. Body stays Inter. */
+.hero-land h1, .land-section > h2, .report-headline, .brandmark h1,
+.cta-band h2, .center-card h1, .prose h1, .modal h3, .sample h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+/* Big numbers read like a real analytics tool: display face + aligned figures. */
+.ring .num, .tile .v, .plan-price, .threat-name, .sample-score, .hp-v,
+.admin-tiles .v, .scoredial .num, .comp-top .pts {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+table td, .barcell, .enginecard .val, .funnel-n { font-variant-numeric: tabular-nums; }
+
+/* More whitespace + rhythm */
+.land-section { margin-top: 64px; }
+.app { padding-top: 32px; }
+.section { margin-top: 30px; }
+
 /* contextual minimal header on result/confirmation pages */
 .topbar-min { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
 
