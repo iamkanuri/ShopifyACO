@@ -88,6 +88,20 @@ test("multiple brands in one answer each classified", () => {
   assert.equal(own(text, c).status, "mentioned_neutral");
 });
 
+test("mixed sentence (semicolon): negation attributes to the right brand", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "I don't recommend GreenPan; I recommend Caraway.";
+  assert.equal(own(text, c).status, "recommended");
+  assert.notEqual(compFor(text, c, "GreenPan").status, "recommended");
+});
+
+test("mixed sentence ('but'): each side classified independently", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "Caraway is fine but I'd recommend GreenPan instead.";
+  assert.equal(compFor(text, c, "GreenPan").status, "recommended");
+  assert.notEqual(own(text, c).status, "recommended");
+});
+
 test("first-mention order recorded", () => {
   const c = cfg("Caraway", ["GreenPan"]);
   const text = "GreenPan is popular, and Caraway is too.";

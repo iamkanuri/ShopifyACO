@@ -56,13 +56,38 @@ function parseListItems(text: string): ListItem[] {
   return items;
 }
 
-/** The sentence (or list line) containing `index`, lowercased. */
+/**
+ * The CLAUSE containing `index`, lowercased — scoped tighter than a full sentence
+ * so per-brand attribution survives mixed answers like
+ * "I don't recommend GreenPan; I recommend Caraway." We split on sentence
+ * punctuation, semicolons, AND contrastive conjunctions (" but ", " whereas ",
+ * " however ", " while "), then keep only the segment around the brand mention.
+ */
 function localSentence(text: string, index: number): string {
   let start = index;
-  while (start > 0 && !".!?\n".includes(text[start - 1]!)) start--;
+  while (start > 0 && !".!?\n;".includes(text[start - 1]!)) start--;
   let end = index;
-  while (end < text.length && !".!?\n".includes(text[end]!)) end++;
-  return text.slice(start, end).toLowerCase();
+  while (end < text.length && !".!?\n;".includes(text[end]!)) end++;
+  let clause = text.slice(start, end);
+  let rel = index - start; // brand position within the clause
+
+  // Narrow further at contrastive conjunctions, keeping the brand's side.
+  for (const sep of [" but ", " whereas ", " however ", " while "]) {
+    let from = 0;
+    let cut = clause.toLowerCase().indexOf(sep, from);
+    while (cut !== -1) {
+      if (rel <= cut) {
+        clause = clause.slice(0, cut);
+      } else {
+        const after = cut + sep.length;
+        clause = clause.slice(after);
+        rel -= after;
+      }
+      from = 0;
+      cut = clause.toLowerCase().indexOf(sep, from);
+    }
+  }
+  return clause.toLowerCase();
 }
 
 function snippetAround(text: string, match: Match): string {
