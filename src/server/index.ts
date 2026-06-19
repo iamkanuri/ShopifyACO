@@ -224,12 +224,13 @@ app.post(
     if (body.hp) return res.status(400).json({ error: "Request rejected." });
     const formErr = validateForm(body?.form);
     if (formErr) return res.status(400).json({ error: formErr });
+    if (body.form.competitors.length > 8) return res.status(400).json({ error: "Free scans allow up to 8 competitors." });
     if (!isValidEmail(body.email)) return res.status(400).json({ error: "A valid email is required to run a scan." });
     const email = body.email;
     const ip = clientIp(req);
     const ipH = ipHash(ip);
 
-    const prompts = (body.prompts ?? []).map((p) => String(p).trim()).filter(Boolean).slice(0, SCAN_MODES.mini.prompts);
+    const prompts = (body.prompts ?? []).map((p) => String(p).trim().slice(0, 300)).filter(Boolean).slice(0, SCAN_MODES.mini.prompts);
     if (prompts.length === 0) return res.status(400).json({ error: "No prompts selected." });
 
     if (!rateLimit(`scan:${ip}`, 4, 60_000)) {
@@ -723,11 +724,26 @@ const EMAIL_IN_TEXT = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
 const redactEmails = (s: string) => s.replace(EMAIL_IN_TEXT, "[email]");
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+const CONTROL_CHARS = /[\x00-\x1F\x7F]/;
+function badText(s: string | undefined, max: number): boolean {
+  return s != null && (s.length > max || CONTROL_CHARS.test(s));
+}
+function badUrl(s: string | undefined): boolean {
+  return s != null && s.trim() !== "" && (s.length > 200 || /\s/.test(s) || CONTROL_CHARS.test(s));
+}
+
 function validateForm(form: ScanForm | undefined): string | null {
   if (!form || typeof form !== "object") return "Missing form.";
   if (!form.brand?.name?.trim()) return "Brand name is required.";
   if (!form.category?.trim()) return "Category is required.";
   if (!Array.isArray(form.competitors) || form.competitors.length === 0) return "Add at least one competitor.";
+  if (form.competitors.length > 25) return "Too many competitors (max 25).";
   if (form.competitors.some((c) => !c?.name?.trim())) return "Every competitor needs a name.";
+  if (badText(form.brand.name, 80)) return "Brand name is too long.";
+  if (badText(form.category, 120)) return "Category is too long.";
+  if (form.competitors.some((c) => badText(c.name, 80))) return "A competitor name is too long.";
+  if (badText(form.persona, 200)) return "Buyer persona is too long.";
+  if (badText(form.location, 80) || badText(form.priceRange, 60)) return "A field is too long.";
+  if (badUrl(form.brand.storeUrl) || form.competitors.some((c) => badUrl(c.storeUrl))) return "A store URL looks invalid.";
   return null;
 }

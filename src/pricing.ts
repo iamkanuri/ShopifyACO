@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
-// Pricing constants for the fake-door pricing test. These are NOT live payments —
-// clicking a CTA opens an email-capture modal (see runs/leads.jsonl). We will
-// test higher price points; comparable tools charge $50–$99 one-time.
+// Plan definitions. A CTA opens the plan's Stripe Payment Link when its
+// STRIPE_*_URL env var is set (real payment, recorded via the Stripe webhook);
+// if the URL is missing it falls back to email capture. Prices are constants we
+// can A/B; comparable tools charge $50–$99 one-time.
 // ---------------------------------------------------------------------------
 
 export interface PlanDef {

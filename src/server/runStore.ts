@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { Config } from "../types.js";
 import { ENV } from "./env.js";
@@ -48,8 +49,10 @@ export function runDir(runId: string): string {
 export function newRunId(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
+  // Sortable timestamp prefix (admin convenience) + 80 bits of crypto entropy so a
+  // report URL can't be guessed or enumerated — reports contain competitive intel.
   const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-  return `${stamp}-${Math.random().toString(36).slice(2, 6)}`;
+  return `${stamp}-${randomBytes(10).toString("hex")}`;
 }
 
 export async function createRun(runId: string, config: Config, status: RunStatusFile): Promise<void> {

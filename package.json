@@ -12,6 +12,7 @@
     "analyze": "tsx src/analyze.ts",
     "server": "tsx src/server/index.ts",
     "migrate": "tsx src/db/migrate.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "build": "npm --prefix viewer install --include=dev && npm --prefix viewer run build",
     "start": "tsx src/server/index.ts",
     "typecheck": "tsc --noEmit"

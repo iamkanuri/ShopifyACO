@@ -77,6 +77,25 @@ function hasRecommendLanguage(sentence: string): boolean {
   return RECOMMEND_PHRASES.some((p) => sentence.includes(p));
 }
 
+/** Negation / avoidance cues that should suppress a false "recommended". */
+const NEGATED_RECOMMEND = [
+  "not recommend",
+  "wouldn't recommend",
+  "would not recommend",
+  "don't recommend",
+  "do not recommend",
+  "can't recommend",
+  "cannot recommend",
+  "not the best",
+  "not a great",
+  "steer clear",
+  "stay away",
+  "avoid ",
+];
+function hasNegatedRecommend(sentence: string): boolean {
+  return NEGATED_RECOMMEND.some((p) => sentence.includes(p));
+}
+
 /** Detect one brand's visibility within a single answer. */
 function detectBrand(text: string, brand: BrandConfig, isOwn: boolean): BrandDetection {
   const variants = buildVariants(brand);
@@ -103,10 +122,13 @@ function detectBrand(text: string, brand: BrandConfig, isOwn: boolean): BrandDet
   }
 
   const sentence = localSentence(text, match.index);
+  const negated = hasNegatedRecommend(sentence);
   let status: RecommendationStatus = "mentioned_neutral";
   let reason: string | undefined;
 
-  if (listRank === 1) {
+  if (negated) {
+    reason = "mentioned with a negative / avoid cue";
+  } else if (listRank === 1) {
     status = "recommended";
     reason = "top of list (rank 1)";
   } else if (hasRecommendLanguage(sentence)) {

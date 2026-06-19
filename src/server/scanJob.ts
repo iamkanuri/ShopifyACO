@@ -44,7 +44,9 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       concurrency: opts.concurrency ?? config.concurrency ?? 3,
       maxCostUsd: opts.maxCostUsd,
       maxDurationMs: 120_000, // hard wall-clock budget per scan
-      saveRaw: true,
+      // Don't persist raw provider payloads — the analysis only needs the answer
+      // text (kept separately), and raw blobs are a privacy + disk liability.
+      saveRaw: false,
       onProgress: (m) => void appendProgress(runId, m),
     });
 

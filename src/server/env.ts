@@ -104,4 +104,16 @@ export function reportConfig(): void {
   if (!hasSupabase()) miss.push("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY (persistence disabled)");
   if (ENV.isProd && !ENV.databaseUrl) miss.push("DATABASE_URL (migrations)");
   if (miss.length) console.warn(`[config] missing: ${miss.join("; ")}`);
+
+  // Louder warnings for a weak PRODUCTION posture (don't crash — degrade visibly).
+  if (ENV.isProd) {
+    const warn: string[] = [];
+    if (ENV.ipHashSalt === "shopifyaco-ip-salt-v1") warn.push("IP_HASH_SALT is the default — set a unique random value");
+    if (!ENV.publicBaseUrl) warn.push("PUBLIC_BASE_URL unset — OG/share links derive from the request host");
+    if (!ENV.contactEmail) warn.push("CONTACT_EMAIL unset — privacy page/footer have no contact");
+    if (ENV.adminPassword && ENV.adminPassword.length < 12) warn.push("ADMIN_PASSWORD is short (<12 chars)");
+    const stripeUrls = Object.values(ENV.stripe).some(Boolean);
+    if (stripeUrls && !process.env.STRIPE_WEBHOOK_SECRET) warn.push("Stripe links set but STRIPE_WEBHOOK_SECRET missing — payments won't be recorded");
+    if (warn.length) console.warn(`[config] ⚠️ prod: ${warn.join("; ")}`);
+  }
 }
