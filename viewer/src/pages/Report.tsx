@@ -27,6 +27,14 @@ export function Report({
 }) {
   const a = run.analysis as MerchantAnalysis;
 
+  // Honest partial-failure surface: count real engine errors (not deliberate
+  // cost/time skips) so a flaky engine is visible, not silently dropped.
+  const engineFailures = (run.results ?? []).reduce<Record<string, number>>((m, r) => {
+    if (r.error && !r.error.startsWith("skipped:")) m[r.engine] = (m[r.engine] ?? 0) + 1;
+    return m;
+  }, {});
+  const failedEntries = Object.entries(engineFailures);
+
   useEffect(() => {
     trackEvent("report_viewed", runId, { brand: a.brand, score: a.visibilityScore.score });
   }, [runId, a.brand]);
@@ -51,7 +59,18 @@ export function Report({
         ))}
         <span className="chip">{a.basedOnResponses} grounded answers</span>
         <span className="chip">{fmtUsd(a.totalCostUsd)} spend</span>
+        {failedEntries.map(([e, n]) => (
+          <span className="chip warn" key={`fail-${e}`} title="These calls errored and are excluded from the rates below">
+            <span className="dot" /> {e} · {n} failed
+          </span>
+        ))}
       </div>
+      {failedEntries.length > 0 && (
+        <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>
+          Some engine calls errored and were excluded — rates below reflect only the calls that
+          succeeded.
+        </p>
+      )}
 
       <h1 className="report-headline">{a.headline}</h1>
 

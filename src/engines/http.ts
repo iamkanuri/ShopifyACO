@@ -22,19 +22,35 @@ export interface PostOpts {
   headers: Record<string, string>;
   body: unknown;
   signal?: AbortSignal;
+  /** Per-call hard timeout. A hung request fails fast (retryable) instead of
+   *  pinning a worker until the whole-scan budget aborts. */
+  timeoutMs?: number;
 }
+
+// Grounded web-search calls can legitimately take 20–40s; give them headroom but
+// never let a single call hang. The whole-scan wall-clock budget caps total time.
+const DEFAULT_TIMEOUT_MS = 45_000;
 
 /** POST JSON, parse JSON response, throw HttpError on non-2xx. */
 export async function postJson<T = unknown>(opts: PostOpts): Promise<T> {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  // Combine the caller's abort (cost cap / scan budget) with the per-call timeout.
+  const signal = opts.signal ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
+
   let res: Response;
   try {
     res = await fetch(opts.url, {
       method: "POST",
       headers: { "content-type": "application/json", ...opts.headers },
       body: JSON.stringify(opts.body),
-      signal: opts.signal,
+      signal,
     });
   } catch (err) {
+    // A per-call timeout (vs. a deliberate caller-abort) gets a clear, retryable message.
+    if (timeoutSignal.aborted && !opts.signal?.aborted) {
+      throw new HttpError(599, `request timed out after ${timeoutMs}ms`);
+    }
     // Network/abort errors — treat as retryable 599.
     throw new HttpError(599, (err as Error).message);
   }
