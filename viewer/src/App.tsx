@@ -7,6 +7,8 @@ import { ScanPage } from "./pages/ScanPage";
 import { AdminPage } from "./pages/AdminPage";
 import { ThanksPage } from "./pages/ThanksPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
+import { IndexListPage } from "./pages/IndexListPage";
+import { IndexLeaderboardPage } from "./pages/IndexLeaderboardPage";
 import { Footer } from "./components/Footer";
 import { Mark } from "./components/Mark";
 
@@ -20,6 +22,8 @@ export function App() {
 
   let page: React.ReactNode;
   if (path.startsWith("/report/")) page = <ReportPage runId={decodeURIComponent(path.split("/")[2] ?? "")} />;
+  else if (path.startsWith("/index/")) page = <IndexLeaderboardPage slug={decodeURIComponent(path.split("/")[2] ?? "")} />;
+  else if (path === "/index") page = <IndexListPage />;
   else if (path === "/scan") page = <ScanPage />;
   else if (path === "/demo") page = <DemoPage />;
   else if (path === "/admin") page = <AdminPage />;
@@ -42,6 +46,9 @@ export function App() {
           </Link>
           {!minimalHeader && (
             <nav className="nav">
+              <Link to="/index" className={`navlink ${active("/index")}`}>
+                Index
+              </Link>
               <Link to="/demo" className={`navlink ${active("/demo")}`}>
                 Demo
               </Link>

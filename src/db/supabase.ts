@@ -237,3 +237,45 @@ export const leadCountAll = () =>
     if (error) throw error;
     return count ?? 0;
   }, 0);
+
+// ---- AI Visibility Index (public category leaderboards) --------------------
+
+export interface IndexEntry {
+  brand: string;
+  rank: number;
+  mention: number; // 0..1
+  recommendation: number; // 0..1
+}
+export interface CategoryIndexRow {
+  slug: string;
+  label: string;
+  run_id?: string | null;
+  entries: IndexEntry[];
+  updated_at?: string;
+}
+
+export const upsertCategoryIndex = (row: { slug: string; label: string; run_id?: string; entries: IndexEntry[] }) =>
+  safe("upsertCategoryIndex", async (c) => {
+    const { error } = await c
+      .from("category_index")
+      .upsert({ ...row, updated_at: new Date().toISOString() }, { onConflict: "slug" });
+    if (error) throw error;
+    return true;
+  }, false);
+
+export const listCategoryIndexes = () =>
+  safe<CategoryIndexRow[]>("listCategoryIndexes", async (c) => {
+    const { data, error } = await c
+      .from("category_index")
+      .select("slug,label,entries,updated_at")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as CategoryIndexRow[];
+  }, []);
+
+export const getCategoryIndex = (slug: string) =>
+  safe<CategoryIndexRow | null>("getCategoryIndex", async (c) => {
+    const { data, error } = await c.from("category_index").select("*").eq("slug", slug).maybeSingle();
+    if (error) throw error;
+    return (data as CategoryIndexRow) ?? null;
+  }, null);

@@ -113,6 +113,20 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* AI Visibility Index promo */}
+      <section className="land-section">
+        <div className="index-promo">
+          <h2>The AI Visibility Index</h2>
+          <p>
+            We're ranking whole categories by who AI actually recommends — cookware, supplements,
+            skincare and more. See who wins, who's invisible, and where your brand lands.
+          </p>
+          <Link to="/index" className="btn btn-primary">
+            Browse the Index
+          </Link>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section className="land-section">
         <h2>Pricing</h2>

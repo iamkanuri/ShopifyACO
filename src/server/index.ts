@@ -21,7 +21,17 @@ import {
   rateLimit,
   spendAllows,
 } from "./guards.js";
-import { getOrder, insertEvent, insertLead, insertRun, updateOrder } from "../db/supabase.js";
+import {
+  getCategoryIndex,
+  getOrder,
+  insertEvent,
+  insertLead,
+  insertRun,
+  listCategoryIndexes,
+  updateOrder,
+  upsertCategoryIndex,
+  type IndexEntry,
+} from "../db/supabase.js";
 import { handleStripeWebhook } from "./stripe.js";
 import { ADMIN_COOKIE, buildAdminData, checkPassword, isAdmin, makeToken, requireAdmin } from "./admin.js";
 import {
@@ -53,6 +63,8 @@ const ALLOWED_EVENTS = new Set([
   "payment_link_clicked",
   "payment_completed",
   "lead_submitted",
+  "index_viewed",
+  "index_claim_click",
 ]);
 // Stripe Payment Link per plan id (URLs only).
 const STRIPE_BY_PLAN: Record<string, string | undefined> = ENV.stripe;
@@ -95,9 +107,15 @@ app.get("/robots.txt", (req, res) => {
     .type("text/plain")
     .send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nAllow: /\n\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
 });
-app.get("/sitemap.xml", (req, res) => {
+app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
-  const urls = ["/", "/demo", "/scan", "/privacy"].map((p) => `  <url><loc>${base}${p}</loc></url>`).join("\n");
+  const paths = ["/", "/demo", "/scan", "/privacy", "/index"];
+  try {
+    for (const idx of await listCategoryIndexes()) paths.push(`/index/${idx.slug}`);
+  } catch {
+    /* DB down — ship the static paths */
+  }
+  const urls = paths.map((p) => `  <url><loc>${base}${p}</loc></url>`).join("\n");
   res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.w3.org/2000/sitemaps/0.9">\n${urls}\n</urlset>\n`);
 });
 
@@ -304,6 +322,22 @@ app.get("/api/demo", (_req, res) => {
   res.status(404).json({ error: "No demo fixture found." });
 });
 
+// --- AI Visibility Index (public category leaderboards) --------------------
+app.get(
+  "/api/index",
+  wrap(async (_req, res) => {
+    res.json(await listCategoryIndexes());
+  }),
+);
+app.get(
+  "/api/index/:slug",
+  wrap(async (req, res) => {
+    const idx = await getCategoryIndex(String(req.params.slug));
+    if (!idx) return res.status(404).json({ error: "Index not found." });
+    res.json(idx);
+  }),
+);
+
 // --- analytics events ------------------------------------------------------
 app.post(
   "/api/events",
@@ -476,6 +510,25 @@ app.post(
   }),
 );
 
+// Build a public AI Visibility Index for a category from one multi-brand scan.
+app.post(
+  "/api/admin/index",
+  requireAdmin,
+  wrap(async (req, res) => {
+    const { label, brands, mode } = req.body as { label?: string; brands?: string[]; mode?: ScanMode };
+    if (!label?.trim()) return res.status(400).json({ error: "Category label required." });
+    const brandList = (brands ?? []).map((s) => String(s).trim()).filter(Boolean);
+    if (brandList.length < 3) return res.status(400).json({ error: "Add at least 3 brands." });
+    if (brandList.length > 25) return res.status(400).json({ error: "Max 25 brands per index." });
+    const m: ScanMode = mode && SCAN_MODES[mode] ? mode : "deep";
+    try {
+      res.json(await startCategoryIndexBuild(label.trim(), brandList, m));
+    } catch (e) {
+      res.status(409).json({ error: (e as Error).message });
+    }
+  }),
+);
+
 // --- serve the built viewer (single service) -------------------------------
 const dist = resolve("viewer/dist");
 let indexTemplate: string | null = null;
@@ -487,10 +540,21 @@ function serveIndex(req: Request, res: Response) {
       return res.status(503).send("App not built. Run `npm run build`.");
     }
   }
-  const html = indexTemplate
+  let html = indexTemplate
     .replaceAll("__BRAND_NAME__", escapeHtml(ENV.publicBrandName))
     .replaceAll("__DESC__", escapeHtml(TAGLINE))
     .replaceAll("__BASE_URL__", escapeHtml(baseUrl(req)));
+
+  // Category index pages get a shareable, category-specific title + OG title.
+  const m = req.path.match(/^\/index\/([a-z0-9-]+)/);
+  if (m) {
+    const pretty = m[1]!.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const t = escapeHtml(`AI Visibility Index: ${pretty} — ${ENV.publicBrandName}`);
+    html = html
+      .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
+      .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`);
+  }
   if (req.path.startsWith("/admin")) res.setHeader("Cache-Control", "no-store");
   res.type("html").send(html);
 }
@@ -576,6 +640,74 @@ async function createAndStart(
   }
   void runScanJob(runId, config, { maxCostUsd, keys, concurrency: 3, mode });
   return runId;
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+}
+
+/**
+ * Build a category index from ONE multi-brand scan: brand[0] is "the brand",
+ * the rest are competitors, so the analysis leaderboard ranks ALL of them on the
+ * same prompts. The scan runs in the background; the index row is written when it
+ * completes. Returns immediately with the slug + runId so the admin can poll.
+ */
+async function startCategoryIndexBuild(
+  label: string,
+  brands: string[],
+  mode: ScanMode,
+): Promise<{ slug: string; runId: string; estimateMaxUsd: number; brands: number }> {
+  const slug = slugify(label);
+  const form: ScanForm = {
+    brand: { name: brands[0]! },
+    category: label,
+    competitors: brands.slice(1).map((name) => ({ name })),
+  };
+  const prompts = generatePrompts(form).slice(0, SCAN_MODES[mode].prompts).map((p) => p.text);
+  const config = buildConfig(form, prompts, DEFAULT_ENGINES);
+  const { adapters } = buildAdapters(config, keys, false);
+  if (!adapters.length) throw new Error("No engines available.");
+  const estimateMaxUsd = estimateMaxCost(prompts.length, adapters);
+  const spend = await spendAllows(estimateMaxUsd);
+  if (!spend.ok) throw new Error(`Daily spend cap reached ($${spend.capUsd}).`);
+  if (isBusy()) throw new Error(`A scan is already running (${activeRun()}).`);
+
+  const runId = newRunId();
+  if (!acquireLock(runId)) throw new Error("A scan is already running.");
+  try {
+    await createRun(runId, config, {
+      runId, status: "pending", brand: config.brand.name, engines: adapters.map((a) => a.name),
+      promptCount: prompts.length, estimateMaxUsd, createdAt: new Date().toISOString(),
+    });
+    await insertRun({ id: runId, brand: config.brand.name, category: label, status: "pending", mode });
+    await insertEvent("index_build_started", runId, { slug, brands: brands.length });
+  } catch (e) {
+    releaseLock(runId);
+    throw e;
+  }
+  // Background: run scan to completion (runScanJob releases the lock), then write the index.
+  void (async () => {
+    try {
+      await runScanJob(runId, config, { maxCostUsd: SCAN_MODES[mode].maxCostUsd, keys, mode });
+      const results = (await getResults(runId)) as
+        | { analysis?: { leaderboard?: Array<{ brand: string; mention: { rate: number }; recommendation: { rate: number } }> } }
+        | null;
+      const lb = results?.analysis?.leaderboard;
+      if (lb?.length) {
+        const entries: IndexEntry[] = lb.map((r, i) => ({
+          brand: r.brand,
+          rank: i + 1,
+          mention: r.mention.rate,
+          recommendation: r.recommendation.rate,
+        }));
+        await upsertCategoryIndex({ slug, label, run_id: runId, entries });
+        await insertEvent("index_build_completed", runId, { slug, brands: entries.length });
+      }
+    } catch (err) {
+      console.error(`[index] build failed for ${slug}: ${(err as Error).message}`);
+    }
+  })();
+  return { slug, runId, estimateMaxUsd, brands: brands.length };
 }
 
 /** Strip raw API payloads + any stray email from a run before public exposure. */

@@ -10,6 +10,7 @@ export function Footer() {
           © {new Date().getFullYear()} {brandName}
         </span>
         <nav className="foot-links">
+          <Link to="/index">Index</Link>
           <Link to="/demo">Demo</Link>
           <Link to="/scan">Run a scan</Link>
           <Link to="/privacy">Privacy</Link>

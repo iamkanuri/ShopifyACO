@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminData, adminFulfillOrder, adminLogin, adminLogout, adminMe, adminScan, adminScanOrder } from "../api";
+import { adminBuildIndex, adminData, adminFulfillOrder, adminLogin, adminLogout, adminMe, adminScan, adminScanOrder } from "../api";
 import { useConfig } from "../config";
 
 interface AdminData {
@@ -56,6 +56,7 @@ export function AdminPage() {
           <Launch launch={data.launch} />
           <Funnel funnel={data.funnel} />
           <OrdersTable orders={data.orders} onDone={load} />
+          <CategoryIndexBuilder />
           <ManualScan onDone={load} />
           <RunsTable runs={data.runs} />
           <LeadsTable leads={data.leads} />
@@ -187,6 +188,59 @@ function Funnel({ funnel }: { funnel: AdminData["funnel"] }) {
             <span className="funnel-n">{f.count}</span>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function CategoryIndexBuilder() {
+  const { baseUrl } = useConfig();
+  const [label, setLabel] = useState("");
+  const [brands, setBrands] = useState("");
+  const [mode, setMode] = useState("deep");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const brandCount = brands.split(/[,\n]/).filter((s) => s.trim()).length;
+  async function build() {
+    setBusy(true);
+    setMsg("");
+    try {
+      const brandList = brands.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+      const r = await adminBuildIndex({ label: label.trim(), brands: brandList, mode });
+      setMsg(`Building "${label}" (${r.brands} brands, ~$${r.estimateMaxUsd.toFixed(3)}). Live in ~1–2 min: ${baseUrl}/index/${r.slug}`);
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="section">
+      <h2>Build an AI Visibility Index (public leaderboard)</h2>
+      <div className="card formcard">
+        <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+          One scan ranks every brand in a category and publishes a public page at <code>/index/&lt;slug&gt;</code> — your SEO/growth asset.
+        </p>
+        <div className="form-grid">
+          <input placeholder="Category label (e.g. Non-toxic cookware)" value={label} onChange={(e) => setLabel(e.target.value)} />
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            <option value="deep">Deep (30 prompts — richest)</option>
+            <option value="standard">Standard (15 prompts)</option>
+          </select>
+        </div>
+        <textarea
+          className="index-brands"
+          placeholder="Brands — comma or newline separated (3–25). All ranked equally on the same prompts."
+          value={brands}
+          onChange={(e) => setBrands(e.target.value)}
+          rows={3}
+        />
+        <div className="scan-actions">
+          <button className="btn btn-primary" disabled={busy || !label.trim() || brandCount < 3} onClick={build}>
+            {busy ? "Starting…" : `Build index (${brandCount} brands)`}
+          </button>
+        </div>
+        {msg && <div className="suggest-msg" style={{ wordBreak: "break-all" }}>{msg}</div>}
       </div>
     </section>
   );

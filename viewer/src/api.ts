@@ -51,10 +51,35 @@ export async function adminData<T = unknown>(): Promise<T> {
 }
 export const adminScan = (body: { form: unknown; mode: string; email?: string }) =>
   postJson<{ runId: string; mode: string; estimateMaxUsd: number; prompts: number }>("/api/admin/scan", body);
+export const adminBuildIndex = (body: { label: string; brands: string[]; mode?: string }) =>
+  postJson<{ slug: string; runId: string; estimateMaxUsd: number; brands: number }>("/api/admin/index", body);
 export const adminFulfillOrder = (id: number) =>
   postJson<{ ok: boolean }>(`/api/admin/orders/${id}/fulfill`, {});
 export const adminScanOrder = (id: number) =>
   postJson<{ runId: string; mode: string; estimateMaxUsd: number; prompts: number }>(`/api/admin/orders/${id}/scan`, {});
+
+// ---- AI Visibility Index (public) ----
+export interface IndexEntry {
+  brand: string;
+  rank: number;
+  mention: number; // 0..1
+  recommendation: number; // 0..1
+}
+export interface CategoryIndex {
+  slug: string;
+  label: string;
+  run_id?: string | null;
+  entries: IndexEntry[];
+  updated_at?: string;
+}
+export async function getIndexes(): Promise<CategoryIndex[]> {
+  const r = await fetch("/api/index");
+  return r.ok ? r.json() : [];
+}
+export async function getIndex(slug: string): Promise<CategoryIndex | null> {
+  const r = await fetch(`/api/index/${encodeURIComponent(slug)}`);
+  return r.ok ? r.json() : null;
+}
 
 /** Fire-and-forget funnel analytics. Never throws / blocks the UI. */
 export function trackEvent(name: string, runId?: string, metadata?: unknown): void {

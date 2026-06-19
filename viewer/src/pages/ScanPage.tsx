@@ -17,8 +17,10 @@ const MINI_CAP = 0.5;
 const ENGINE_LABEL: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity" };
 
 export function ScanPage() {
-  const [brand, setBrand] = useState<ScanBrand>({ name: "", storeUrl: "" });
-  const [category, setCategory] = useState("");
+  // Prefill from ?brand=&category= (e.g. arriving from an Index leaderboard row).
+  const qp = new URLSearchParams(window.location.search);
+  const [brand, setBrand] = useState<ScanBrand>({ name: qp.get("brand") ?? "", storeUrl: "" });
+  const [category, setCategory] = useState(qp.get("category") ?? "");
   const [persona, setPersona] = useState("");
   const [location, setLocation] = useState("");
   const [priceRange, setPriceRange] = useState("");
