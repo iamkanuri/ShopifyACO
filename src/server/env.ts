@@ -84,6 +84,25 @@ export const ENV = {
 
   // Deployed commit (Railway injects this) for /healthz version checks.
   commit: str(process.env.RAILWAY_GIT_COMMIT_SHA) ?? "dev",
+
+  // ---- Durable job queue (Phase 1) ----------------------------------------
+  // Process role: 'web' (default) serves HTTP; 'worker' runs the job loop;
+  // 'scheduler' runs periodic maintenance. One image, three Railway services.
+  processMode: (str(process.env.PROCESS_MODE) ?? "web") as "web" | "worker" | "scheduler",
+  // Opt-in: route scans through the durable queue instead of the in-process lock.
+  // Stays OFF until a worker service is deployed + verified (LAUNCH_CHECKLIST.md).
+  jobQueueEnabled: process.env.JOB_QUEUE_ENABLED === "1" || process.env.JOB_QUEUE_ENABLED === "true",
+  // Let the web process also run the worker loop in-process (handy for local/dev or
+  // a single-service deploy). Production should run a dedicated worker instead.
+  workerInProcess: process.env.WORKER_IN_PROCESS === "1",
+  queue: {
+    globalConcurrency: Number(process.env.QUEUE_GLOBAL_CONCURRENCY ?? 4),
+    shopConcurrency: Number(process.env.QUEUE_SHOP_CONCURRENCY ?? 1),
+    emailConcurrency: Number(process.env.QUEUE_EMAIL_CONCURRENCY ?? 1),
+    leaseSec: Number(process.env.QUEUE_LEASE_SEC ?? 120),
+    pollMs: Number(process.env.QUEUE_POLL_MS ?? 2000),
+    recoverGraceSec: Number(process.env.QUEUE_RECOVER_GRACE_SEC ?? 30),
+  },
 };
 
 /** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */

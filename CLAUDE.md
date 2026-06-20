@@ -281,6 +281,22 @@ recommend", "not the best", "steer clear", "avoid") so mixed answers like *"I do
 recommend GreenPan; I recommend Caraway"* attribute correctly. Still imperfect on very
 complex sentences — an optional LLM classification pass is the planned upgrade (TODO.md).
 
+## Platform build (in progress) → [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md)
+
+A larger "beta → AI-commerce control plane" program is underway. Its phased status,
+architecture decisions, and external blockers live in `IMPLEMENTATION_STATUS.md`;
+external (credential/dashboard) actions live in [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md).
+**Phase 1 (durable job system) is built on branch `phase1-job-system`** but dormant
+relative to the live funnel until a worker service + `JOB_QUEUE_ENABLED=1` are verified:
+- `migrations/0006_jobs.sql` — `jobs` (atomic claim via `FOR UPDATE SKIP LOCKED`,
+  idempotency, retry/backoff/dead-letter, lease recovery), `spend_days`+`spend_reservations`
+  (multi-instance-safe atomic spend reservation), `usage_ledger`, `system_heartbeats`.
+- `src/db/pg.ts` (runtime raw-pg pool for row locks), `src/queue/*` (jobs, spend, backoff,
+  handlers, runner), `src/worker.ts` + `src/scheduler.ts` (process modes via `PROCESS_MODE`).
+- Health: `/healthz/deep`; admin: `GET /api/admin/queue` + retry/cancel. Tests:
+  `test/queue.test.ts` (pure always-on + DB-gated `RUN_DB_TESTS=1`, verified against Supabase).
+- The legacy in-process scan lock still serves prod unchanged (D2 in IMPLEMENTATION_STATUS).
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned

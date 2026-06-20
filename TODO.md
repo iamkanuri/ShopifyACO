@@ -74,13 +74,16 @@ scaling traffic or selling to security-conscious merchants.
 - [ ] **Authenticated report access.** Reports are now unguessable (80-bit run IDs) but
       still public-by-link: anyone with the URL can `GET /api/runs/:id` + `/report.md`.
       Add a per-report access token or email magic-link for paid/serious merchants.
-- [ ] **Replace the single in-process scan lock with a real queue.** Today one scan at a
-      time → 409 under concurrent load (TODO already in `runStore.ts`). Move to a
-      Supabase-backed `runs` queue + worker loop + per-user/email/IP concurrency, status
-      transitions queued→running→complete/failed. Required before any paid ads / virality.
-- [ ] **Multi-instance spend-cap safety.** The global cap uses `max(in-memory, DB sum)` —
-      correct for ONE process. Keep Railway at **1 replica**. To scale out, reserve the
-      estimated spend in the DB *before* starting a scan (atomic), not after.
+- [~] **Replace the single in-process scan lock with a real queue.** 🟡 **Built** (branch
+      `phase1-job-system`, see `IMPLEMENTATION_STATUS.md` Phase 1): durable Postgres `jobs`
+      table, atomic `FOR UPDATE SKIP LOCKED` claim, idempotency, retry/backoff/dead-letter,
+      lease recovery, per-shop/email/global concurrency, worker/scheduler process modes,
+      tested. **Remaining to ship:** deploy a `worker` Railway service, register the `scan`
+      handler on the live path, flip `JOB_QUEUE_ENABLED=1`, verify, then retire the lock.
+- [~] **Multi-instance spend-cap safety.** 🟡 **Built** (`src/queue/spend.ts`): atomic
+      pre-scan reservation against a locked per-day counter (`spend_days`), correct across
+      replicas. **Remaining:** wire it into the live scan start path (today still uses the
+      legacy `max(in-memory, DB sum)` guard) + keep Railway at 1 web replica until then.
 - [ ] **DB-down policy is too permissive.** When Supabase is unreachable, per-email/IP
       daily counters return 0 (fail-open) so free-scan limits weaken. (Global spend cap
       still bounds cost via the in-memory accumulator, so it stays cost-safe.) For public

@@ -13,6 +13,9 @@ import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/libr
 import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
+import { hasPg, pgQuery } from "../db/pg.js";
+import { stats as queueStats, recentHeartbeats, retryDeadLetter, cancel as cancelJob } from "../queue/jobs.js";
+import { currentSpendDbUsd } from "../queue/spend.js";
 import { ENV, hasSupabase, reportConfig, SCAN_MODES, type ScanMode } from "./env.js";
 import {
   clientIp,
@@ -165,6 +168,44 @@ app.get("/healthz", async (_req, res) => {
     dailySpendCapUsd: ENV.dailySpendCapUsd,
     spendTodayUsd: Number(spendToday.toFixed(4)),
   });
+});
+
+// --- deep health: db, queue, worker/scheduler heartbeats, engine creds ------
+// No secrets. Used to verify the Phase-1 job system + process modes are live.
+app.get("/healthz/deep", async (_req, res) => {
+  const out: Record<string, unknown> = { ok: true, commit: ENV.commit, jobQueueEnabled: ENV.jobQueueEnabled };
+  // DB connectivity
+  let db = false;
+  if (hasPg()) {
+    try {
+      await pgQuery("select 1");
+      db = true;
+    } catch (err) {
+      out.dbError = (err as Error).message;
+    }
+  }
+  out.database = db ? "ok" : hasPg() ? "error" : "not_configured";
+  // Queue depth + heartbeats (only if DB reachable + tables migrated)
+  if (db) {
+    try {
+      const s = await queueStats();
+      out.queue = { byStatus: s.byStatus, oldestQueuedAgeSec: s.oldestQueuedAgeSec, deadLetter: s.deadLetter, running: s.running };
+      out.heartbeats = await recentHeartbeats(120);
+      out.spendTodayDbUsd = Number((await currentSpendDbUsd()).toFixed(4));
+    } catch (err) {
+      out.queue = "unavailable";
+      out.queueError = (err as Error).message; // e.g. tables not migrated yet
+    }
+  }
+  // Engine credentials (configured-or-not only; full validity check is admin-gated)
+  out.engines = {
+    openai: Boolean(keys.openai),
+    google: Boolean(keys.google),
+    perplexity: Boolean(keys.perplexity),
+    anthropic: Boolean(keys.anthropic),
+  };
+  out.ok = db || !hasPg(); // healthy if DB works, or if DB intentionally unconfigured
+  res.status(out.ok ? 200 : 503).json(out);
 });
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
@@ -439,6 +480,39 @@ app.post(
   }),
 );
 
+// --- admin job-queue visibility + controls (Phase 1) -----------------------
+app.get(
+  "/api/admin/queue",
+  requireAdmin,
+  wrap(async (_req, res) => {
+    if (!hasPg()) return res.json({ enabled: false, configured: false });
+    try {
+      const [s, hb] = await Promise.all([queueStats(), recentHeartbeats(120)]);
+      res.json({ enabled: ENV.jobQueueEnabled, configured: true, heartbeats: hb, ...s });
+    } catch (err) {
+      res.json({ enabled: ENV.jobQueueEnabled, configured: false, error: (err as Error).message });
+    }
+  }),
+);
+app.post(
+  "/api/admin/queue/:id/retry",
+  requireAdmin,
+  wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad job id." });
+    res.json({ ok: await retryDeadLetter(id) });
+  }),
+);
+app.post(
+  "/api/admin/queue/:id/cancel",
+  requireAdmin,
+  wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad job id." });
+    res.json({ ok: await cancelJob(id) });
+  }),
+);
+
 // Admin can run standard/deep scans for paid beta customers.
 app.post(
   "/api/admin/scan",
@@ -611,6 +685,18 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
 const host = ENV.isProd ? "0.0.0.0" : "127.0.0.1";
 reportConfig();
 if (!ENV.adminPassword) console.warn("[config] ADMIN_PASSWORD not set — /admin is disabled.");
+
+// Optional: run the job worker inside the web process (single-service/dev). Production
+// should run a dedicated `worker` service instead (see LAUNCH_CHECKLIST.md).
+if (ENV.workerInProcess && hasPg()) {
+  import("../queue/runner.js")
+    .then(({ startWorker }) => {
+      startWorker("web");
+      console.log("[server] in-process worker started (WORKER_IN_PROCESS=1)");
+    })
+    .catch((err) => console.error("[server] failed to start in-process worker:", (err as Error).message));
+}
+
 app.listen(ENV.port, host, () => {
   if (ENV.isProd) {
     console.log(JSON.stringify({ level: "info", msg: "server up", port: ENV.port, host, commit: ENV.commit, supabase: hasSupabase(), spendCap: ENV.dailySpendCapUsd }));
