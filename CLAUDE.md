@@ -11,9 +11,33 @@ shoppers increasingly ask AI assistants "what should I buy", being invisible to 
 assistants is the new being-on-page-2-of-Google. We measure that visibility, then
 close the gap.
 
-## What exists today (tonight's build)
+## Current production state (live)
 
-A standalone TypeScript CLI — the **measurement engine**. No Shopify yet, no DB, no UI.
+**Live:** https://lens.thirdocular.com · public brand **AisleLens** (`PUBLIC_BRAND_NAME`;
+repo/internal name stays `ShopifyACO`) · one Railway service · Supabase Postgres ·
+custom domain on Cloudflare (DNS-only/grey-cloud). See `DEPLOY.md`.
+
+What's shipped end-to-end (verified in prod):
+- **Measurement engine** → **detection** → **analysis** → **report** (CLI + server share it).
+- **Public funnel:** landing `/`, `/scan` (email-gated mini scan, 5 prompts × 3 engines,
+  $0.50 cap), `/report/:id`, `/demo`, `/privacy`, `/thanks`.
+- **AI Visibility Index** (the growth engine): public per-category leaderboards at
+  `/index` + `/index/:slug`, built by admin from one multi-brand scan. 5 categories live.
+- **Real Stripe payments** (Payment Links + webhook): $29 full report, $49/mo monitoring,
+  $99 founder beta. **Currently TEST mode** — live activation pending Stripe KYC. A paid
+  test order was recorded end-to-end (button → checkout → webhook → `orders` row → `/thanks`).
+- **Admin cockpit** `/admin`: today metrics, funnel, runs/leads/**orders**/errors, launch
+  targets, manual standard/deep scans, category-index builder, order fulfillment.
+- **Abuse/spend protection** + **detection test suite** (`npm test`, 16 cases).
+- **DB tables:** `leads`, `runs`, `events`, `orders`, `category_index` (migrations
+  `0001`–`0005`). Result files on the Railway volume (`DATA_DIR`).
+
+**Everything deferred (security/hardening) and every planned feature now lives in
+[`TODO.md`](TODO.md). Read it before starting new work.**
+
+## What it started as (CLI measurement engine)
+
+A standalone TypeScript CLI — the **measurement engine**. No Shopify, DB, or UI.
 
 Pipeline: `config.json` → expand prompt templates → ask N engines (concurrently, with
 retry/backoff) → **detection module** scores brand + competitor visibility per answer →
@@ -95,10 +119,10 @@ future public product but **bound to localhost** tonight.
 - **Viewer routes** (tiny custom history router, no dep): `/demo` (bundled Caraway),
   `/scan` (form → generate/suggest/edit prompts → confirm → live run w/ progress →
   redirect), `/report/:runId`. Report components are shared/pure.
-- **Pricing test (fake-door, NOT real payments):** `src/pricing.ts` constants; report
-  CTAs ("Full Report — $29", "Weekly Monitoring — $49/mo") open an honest
-  email-capture modal → `{email, plan, runId, ts}` appended to **`runs/leads.jsonl`
-  (gitignored)**. We will test higher prices; comps charge $50–$99 one-time.
+- **Pricing / payments:** `src/pricing.ts` plan constants. CTAs open the plan's Stripe
+  Payment Link when its `STRIPE_*_URL` env var is set (real payment, recorded via the
+  Stripe webhook → `orders` table); otherwise they fall back to an email-capture modal
+  (lead). See the "Payments" section below — this is no longer a fake door.
 - **Confidence guardrails** (`src/analysis/confidence.ts`): every insight is LABELED,
   never removed — High `n≥30` "Strong signal" / Medium `n≥12` "Moderate signal" /
   Directional `n<12`. Run-size badge Mini/Standard/Deep. Threat selection is
@@ -118,8 +142,9 @@ process. No Vercel, no CORS.
   `VITE_`/`import.meta.env` secret (verified by grepping `viewer/dist`).
 - **Persistence (Supabase):** `src/db/supabase.ts` — runtime reads/writes via the
   Supabase client + service-role key, all graceful (DB down → log + safe default,
-  scans still run on file storage). Tables: `leads`, `runs`, `events`. Result files
-  live on a **Railway volume** at `DATA_DIR` (e.g. `/data`); `runStore` writes there.
+  scans still run on file storage). Tables: `leads`, `runs`, `events`, `orders`
+  (Stripe), `category_index` (Index leaderboards) — migrations `0001`–`0005`. Result
+  files live on a **Railway volume** at `DATA_DIR` (e.g. `/data`); `runStore` writes there.
 - **Migration workflow (own the lifecycle — never hand-run SQL):** version-controlled
   `migrations/NNNN_*.sql` applied by `src/db/migrate.ts` (`npm run migrate`), tracked in
   `schema_migrations`, idempotent. Runs locally against `DATABASE_URL` (Supabase session
@@ -166,9 +191,40 @@ process. No Vercel, no CORS.
   "manually reviewed during beta, delivered by email within 24h".
 - **Scan modes** (`SCAN_MODES` in `env.ts`): mini (5/$0.50, public self-serve),
   standard (15/$2, admin), deep (30/$5, admin).
-- **Privacy/safety:** raw IPs are never stored — only `sha256(ip+IP_HASH_SALT)`;
-  `/api/runs/:id` strips raw payloads and redacts any email in answer text; `/privacy`
-  page + footer disclaimer; `/healthz` reports the deployed commit (`RAILWAY_GIT_COMMIT_SHA`).
+- **Privacy/safety:** report IDs (`newRunId`) carry 80 bits of crypto entropy so
+  `/report/:id` can't be enumerated; raw provider payloads are NOT persisted
+  (`saveRaw: false`); raw IPs are never stored — only `sha256(ip+IP_HASH_SALT)`;
+  `/api/runs/:id` strips any stray payloads and redacts emails in answer text;
+  `/privacy` + footer disclaimer; `/healthz` reports the deployed commit.
+
+## Payments (Stripe Payment Links — NO Stripe SDK)
+
+- CTAs open `STRIPE_FULL_REPORT_URL` / `STRIPE_WEEKLY_MONITORING_URL` /
+  `STRIPE_FOUNDER_BETA_URL` (env). Click → `payment_link_clicked`; we tag the link with
+  `client_reference_id`=runId + `prefilled_email` so the order ties back to the report.
+- **Webhook** `POST /api/stripe/webhook` (`src/server/stripe.ts`): raw body BEFORE
+  `express.json`; HMAC signature verified manually with `STRIPE_WEBHOOK_SECRET`; only
+  `checkout.session.completed` is treated as payment proof; optional `STRIPE_SECRET_KEY`
+  re-confirms paid via REST; idempotent upsert into `orders` by `session_id`. Emits
+  `payment_confirmed`.
+- Success URL → `/thanks?plan=…` → `payment_completed` (client) + links the buyer back
+  to their own report (runId from URL or `localStorage.al_last_run`).
+- Fulfillment is **manual during beta** (admin runs a deep scan, emails the report).
+  Monitoring ($49/mo) is sold but NOT auto-fulfilled yet (needs scheduled scans) — the
+  UI shows it as a waitlist when its Stripe URL is unset.
+
+## AI Visibility Index (growth engine) — `category_index` table
+
+- Public per-category leaderboards: `GET /api/index`, `GET /api/index/:slug`; pages
+  `/index` (list) + `/index/:slug` (ranked table with a "This is us →" deep-link to a
+  prefilled `/scan`). Per-category OG title injected server-side for shareable links;
+  slugs added to `sitemap.xml`.
+- Built by admin: `POST /api/admin/index {label, brands[3..25], mode}` runs ONE
+  multi-brand scan (brand[0] + competitors) so the analysis leaderboard ranks them all
+  on the same prompts, then upserts `category_index`. Events `index_viewed`/`index_claim_click`.
+- **This is the front door / acquisition loop** (publish a category → tag the losers →
+  they discover their gap → prefilled scan → report → paid). See TODO.md for the
+  "claim your brand" and shareable-card extensions.
 
 ## ⚠️ Rotate the Shopify secret before any Shopify work
 `imp keys.txt` holds a live **Shopify API secret** that was exposed in plaintext. No
@@ -210,29 +266,31 @@ detection/runner/report changes.
 
 ### Detection module — core IP (`src/detection/`)
 
-Pure, dependency-free, unit-testable. Turns one answer into per-brand
-`recommendationStatus`. The enum has five values; **only three are implemented now**:
-`recommended`, `mentioned_neutral`, `not_mentioned`. Matching is case-insensitive,
-variant-aware (aliases, products, possessives, corporate suffixes, store **domains**),
-and word-boundary safe. It also computes list rank, first-mention order, and a snippet.
+Pure, dependency-free, **unit-tested** (`npm test` — 16 cases in `test/detection.test.ts`;
+run before changing this module). Turns one answer into per-brand `recommendationStatus`.
+The enum has five values; **only three are implemented now**: `recommended`,
+`mentioned_neutral`, `not_mentioned`. Matching is case-insensitive, variant-aware
+(aliases, products, possessives, corporate suffixes, store **domains**), and
+word-boundary safe. Computes list rank, first-mention order, and a snippet.
 
-## Roadmap
+Recommendation classification is **clause-scoped**: it narrows to the clause around a
+brand mention (split on sentence punctuation, `;`, and contrastive conjunctions —
+" but / whereas / however / while ") and applies a **negation guard** ("wouldn't
+recommend", "not the best", "steer clear", "avoid") so mixed answers like *"I don't
+recommend GreenPan; I recommend Caraway"* attribute correctly. Still imperfect on very
+complex sentences — an optional LLM classification pass is the planned upgrade (TODO.md).
 
-### Week 1
-- Shopify OAuth + catalog read (pull real products/collections to auto-build configs).
-- Dashboard (visualize share of voice over time).
-- Scheduled scans (cron) with historical tracking.
+## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
-### Week 2+ (do NOT build before week 1)
-- **Multi-run aggregation** — AI answers vary run-to-run; aggregate N scans over time
-  to report stable rates with confidence/variance instead of single-run snapshots.
-- **Fixes engine** — requires **store crawling** to turn the GENERAL HYGIENE fix cards
-  into verified, brand-specific changes (audit the live PDPs/schema, confirm which
-  claims are already exposed). The analysis layer already drafts the cards offline.
-- **Detection day 2-3:** sentiment pass to populate `mentioned_positive` /
-  `mentioned_negative`, plus an optional **LLM classification pass** for ambiguous
-  answers. Enum values already exist so this is non-breaking.
-- Persistence / DB.
+The full backlog — **every deferred security/hardening item** and **all planned
+features** (Shopify OAuth, scheduled monitoring, fixes/generators engine, multi-run
+aggregation, growth experiments, payments lifecycle) — lives in `TODO.md`. Keep it the
+single source of truth; update it as items ship.
+
+> ⚠️ **The bottleneck right now is distribution, not features.** The product is a
+> credible beta. Before building anything in TODO.md, the highest-ROI work is getting it
+> in front of ~10 real merchants (publish Index categories, DM the brands their rank).
+> Build new features only once there's a paying-customer signal that pulls for them.
 
 ## TODO markers in code
 - `src/engines/anthropic.ts` — **Claude adapter placeholder** (not implemented). Fill in
