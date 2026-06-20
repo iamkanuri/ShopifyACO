@@ -10,23 +10,36 @@ Single source of truth for deferred work. Reflects the live beta at
 
 ---
 
-## ⭐ NEXT SESSION: UI / color refresh + simplify (before customer demos)
+## ✅ DONE (2026-06-20): dark/minimal re-theme + scan redesign
 
-The user wants to **refresh the color palette and simplify the UI** before presenting
-to customers. Where everything lives (it's centralized — don't hunt):
-- **All colors are CSS custom properties** in **`viewer/src/theme.css`** under `:root`
-  (`--bg`, `--surface`, `--ink`/`--ink-2`/`--ink-3`, `--accent` = indigo `#4f46e5`,
-  `--good`/`--warn`/`--bad`, `--border`, `--radius`, shadows). **Re-theme = edit those
-  variables.** Component classes below `:root` reference them, so a palette change ripples
-  everywhere automatically.
-- **Fonts:** Inter (body) + Space Grotesk (headings), loaded in `viewer/index.html`.
-- **Logo/mark:** `viewer/src/components/Mark.tsx` (aperture mark) + the favicon SVG in
-  `index.html`. Accent color appears in both.
-- **To preview while editing:** `cd viewer && npm run dev` (proxies `/api` to a local
-  `npm run server`), or use the Claude Preview tools. `npm run build` before deploy.
-- **Simplification candidates the user may want:** trim the report's section count, calm
-  the landing page density, reduce chip/badge noise, fewer competing CTAs per page.
-  Keep changes in `theme.css` + the page components under `viewer/src/pages|components`.
+Shipped a **dark, near-black, sleek** rebrand matching thirdocular.com, plus a
+progressive-disclosure restructure of the landing/scan/report flow.
+- **Palette** (all in `viewer/src/theme.css` `:root`): `--bg #0b0b0d`, `--surface #141417`,
+  `--ink #f5f4f0` (warm off-white), ONE muted gray `--ink-2 #8c8a83` for secondary text,
+  `--accent` is now the **off-white CTA** (`--ink`), `.btn-primary` = off-white bg / near-black
+  text. Removed all indigo/purple, gradients, box-shadows (`--shadow*: none`), and emoji/✓/✨
+  glyphs. Form controls get a global dark rule (they used to default to white). Favicon in
+  `index.html` updated to the dark mark.
+- **Landing** (`pages/LandingPage.tsx`): first screen = ONE thing (headline "See if AI
+  recommends your store" + subline + store-URL input + "Run free scan" + trust line). The
+  proof card / learn grid / sample / index promo / pricing band were removed; only a quiet
+  how-it-works + 3-item FAQ remain below the fold.
+- **Scan** (`pages/ScanPage.tsx`): two-step reveal. Step 1 = single URL input. Clicking
+  reveals step 2 (brand auto-guessed from the domain, category, ≥1 competitor, email).
+  Prompt editing + "Suggest more with AI" + engine toggles now live in a collapsed
+  **"Customize prompts (optional)"** `<details>`. Backend contract unchanged (still sends
+  brand/category/competitors/email/prompts; email gate + abuse guards intact).
+- **Report** (`pages/Report.tsx`): leads with the verdict headline + score + key tiles +
+  insight; the 6 deep sections are now collapsible (`<details className="report-collapse">`,
+  threat open by default).
+- **Bug fix:** the "Suggest more" button now surfaces failures as a loud red `banner-error`
+  (was a muted, easy-to-miss chip), handles the empty-result + non-200 cases, and no longer
+  dead-ends when no prompts exist (it generates them first). Removed the ✨ and "(~$0.01)".
+  Likely root cause in prod was a missing/silent OpenAI path — now visible. **Confirm
+  `OPENAI_API_KEY` is set on Railway** (OpenAI is engine-isolated, so scans run without it).
+
+Remaining simplification ideas if wanted later: trim report tile/badge noise further;
+revisit the demo fixture copy.
 
 ## 0. Go-to-market (the actual priority — not code)
 

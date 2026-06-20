@@ -72,6 +72,7 @@ export function Report({
         </p>
       )}
 
+      {/* Lead: one verdict headline + the key sub-metrics. */}
       <h1 className="report-headline">{a.headline}</h1>
 
       <ExportBar run={run} reportMdUrl={reportMdUrl} />
@@ -89,35 +90,30 @@ export function Report({
         <WhatThisMeans a={a} />
       </section>
 
-      <section className="section">
-        <h2>Category leader vs your direct niche threat</h2>
+      {/* Detail: collapsed by default, expand on demand. */}
+      <Collapse title="Category leader vs your direct niche threat" open>
         <ThreatCard a={a} />
-      </section>
+      </Collapse>
 
-      <section className="section">
-        <h2>Competitor leaderboard</h2>
+      <Collapse title="Competitor leaderboard">
         <Leaderboard rows={a.leaderboard} />
-      </section>
+      </Collapse>
 
-      <section className="section">
-        <h2>Engine breakdown</h2>
+      <Collapse title="Engine breakdown">
         <EngineCards engines={a.engineWeakness} brand={a.brand} />
-      </section>
+      </Collapse>
 
-      <section className="section">
-        <h2>Gap analysis — why AI picks your competitor</h2>
+      <Collapse title="Gap analysis — why AI picks your competitor">
         <GapAnalysis a={a} />
-      </section>
+      </Collapse>
 
-      <section className="section">
-        <h2>Lost prompts</h2>
+      <Collapse title="Lost prompts">
         <LostPrompts lost={a.lostPrompts} brand={a.brand} />
-      </section>
+      </Collapse>
 
-      <section className="section">
-        <h2>Recommended fixes</h2>
+      <Collapse title="Recommended fixes">
         <FixCards cards={a.fixCards} />
-      </section>
+      </Collapse>
 
       <section className="section no-print">
         <h2>Get the full report</h2>
@@ -132,5 +128,16 @@ export function Report({
         <p className="muted">{a.caveat}</p>
       </footer>
     </>
+  );
+}
+
+/** Collapsible report section — header reads like the old <h2>, body hidden until
+ *  expanded. Keeps the result dense but scannable (progressive disclosure). */
+function Collapse({ title, children, open }: { title: string; children: React.ReactNode; open?: boolean }) {
+  return (
+    <details className="section report-collapse" open={open}>
+      <summary>{title}</summary>
+      <div className="rc-body">{children}</div>
+    </details>
   );
 }
