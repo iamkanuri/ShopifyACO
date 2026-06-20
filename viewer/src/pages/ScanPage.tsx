@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScanBrand, ScanForm } from "../scanTypes";
-import { generatePrompts, startScan, suggestPrompts } from "../api";
+import { generatePrompts, inferStore, startScan, suggestPrompts } from "../api";
 import { getStatus } from "../api";
 import { navigate } from "../router";
 
@@ -13,14 +13,19 @@ interface PromptRow {
 // Per-call worst-case cost (max output tokens) by engine — mirrors src/engines/models.
 const PER_CALL: Record<string, number> = { openai: 0.00715, gemini: 0.00177, perplexity: 0.00076 };
 const MINI_CAP = 0.5;
+const MINI_PROMPTS = 5;
 
 const ENGINE_LABEL: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity" };
 
-// Best-effort brand guess from a store URL (editable). "https://www.carawayhome.com/x"
-// → "Carawayhome". Just a starting point so step 2 isn't empty.
-function brandFromUrl(raw: string): string {
+const looksLikeUrl = (s: string) => /\./.test(s.trim()) && !/\s/.test(s.trim());
+
+// Best-effort brand guess from a store URL/name (editable fallback if AI detection
+// doesn't return a brand). "https://www.carawayhome.com/x" → "Carawayhome".
+function brandFromInput(raw: string): string {
+  const v = raw.trim();
+  if (!looksLikeUrl(v)) return v ? v.charAt(0).toUpperCase() + v.slice(1) : "";
   try {
-    const host = new URL(/^https?:\/\//.test(raw) ? raw : `https://${raw}`).hostname.replace(/^www\./, "");
+    const host = new URL(/^https?:\/\//.test(v) ? v : `https://${v}`).hostname.replace(/^www\./, "");
     const label = host.split(".")[0] ?? "";
     return label ? label.charAt(0).toUpperCase() + label.slice(1) : "";
   } catch {
@@ -29,21 +34,18 @@ function brandFromUrl(raw: string): string {
 }
 
 export function ScanPage() {
-  // Prefill from ?url= (landing), or ?brand=&category= (Index leaderboard row).
+  // Prefill from ?url= (landing) or ?brand=&category= (Index leaderboard row).
   const qp = new URLSearchParams(window.location.search);
   const qpUrl = qp.get("url") ?? "";
   const qpBrand = qp.get("brand") ?? "";
   const qpCategory = qp.get("category") ?? "";
 
-  const [storeUrl, setStoreUrl] = useState(qpUrl);
-  const [brand, setBrand] = useState<ScanBrand>({
-    name: qpBrand || (qpUrl ? brandFromUrl(qpUrl) : ""),
-    storeUrl: qpUrl,
-  });
+  const [storeInput, setStoreInput] = useState(qpUrl);
+  const [brand, setBrand] = useState<ScanBrand>({ name: qpBrand, storeUrl: looksLikeUrl(qpUrl) ? qpUrl : "" });
   const [category, setCategory] = useState(qpCategory);
-  const [persona, setPersona] = useState("");
-  const [location, setLocation] = useState("");
-  const [priceRange, setPriceRange] = useState("");
+  const [persona] = useState("");
+  const [location] = useState("");
+  const [priceRange] = useState("");
   const [competitors, setCompetitors] = useState<ScanBrand[]>([{ name: "", storeUrl: "" }]);
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [engines, setEngines] = useState({ openai: true, gemini: true, perplexity: true });
@@ -52,14 +54,15 @@ export function ScanPage() {
   const [newPrompt, setNewPrompt] = useState("");
   const [suggestMsg, setSuggestMsg] = useState("");
   const [suggestErr, setSuggestErr] = useState("");
-  const [busy, setBusy] = useState<"" | "generating" | "suggesting" | "starting">("");
-  // First screen is a single URL input unless we already arrived with details.
+  const [inferNote, setInferNote] = useState("");
+  const [busy, setBusy] = useState<"" | "inferring" | "generating" | "suggesting" | "starting">("");
   const [phase, setPhase] = useState<"entry" | "details" | "running">(
-    qpBrand || qpCategory ? "details" : "entry",
+    qpUrl || qpBrand || qpCategory ? "details" : "entry",
   );
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<string[]>([]);
+  const inferred = useRef(false);
 
   const enabledEngines = Object.entries(engines).filter(([, v]) => v).map(([k]) => k);
   const selected = prompts.filter((p) => p.selected);
@@ -70,10 +73,22 @@ export function ScanPage() {
   const overCap = estMaxCost > MINI_CAP;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
+  // Arrived from the landing page (or a deep link) with a store already typed —
+  // auto-detect once. The Index path already supplies brand+category, so skip it there.
+  useEffect(() => {
+    if (inferred.current) return;
+    if (qpUrl && !qpBrand) {
+      inferred.current = true;
+      runInference(qpUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function buildForm(): ScanForm {
-    const clean = (s: string) => (s.trim() ? s.trim() : undefined);
+    const clean = (s?: string) => (s && s.trim() ? s.trim() : undefined);
+    const url = (brand.storeUrl ?? "").trim() || (looksLikeUrl(storeInput) ? storeInput.trim() : "");
     return {
-      brand: { name: brand.name.trim(), storeUrl: clean(brand.storeUrl ?? storeUrl ?? "") },
+      brand: { name: brand.name.trim(), storeUrl: clean(url) },
       category: category.trim(),
       competitors: competitors
         .filter((c) => c.name.trim())
@@ -91,16 +106,51 @@ export function ScanPage() {
     return null;
   }
 
-  function startDetails(e?: React.FormEvent) {
-    e?.preventDefault();
-    const u = storeUrl.trim();
-    if (u && !brand.name.trim()) setBrand({ name: brandFromUrl(u), storeUrl: u });
-    else if (u) setBrand((b) => ({ ...b, storeUrl: u }));
-    setPhase("details");
+  /** Ask the server to auto-detect brand/category/competitors/prompts from the
+   *  store the shopper typed, then prefill the form. Best-effort — on any failure
+   *  we just leave the form for manual entry (with a guessed brand name). */
+  async function runInference(store: string) {
+    setBusy("inferring");
+    setInferNote("");
+    setError("");
+    try {
+      const r = await inferStore(store);
+      const guessedBrand = r.brand || brandFromInput(store);
+      setBrand({
+        name: guessedBrand,
+        storeUrl: r.storeUrl || (looksLikeUrl(store) ? store.trim() : ""),
+      });
+      if (r.category) setCategory(r.category);
+      if (r.competitors && r.competitors.length) {
+        setCompetitors(r.competitors.map((name) => ({ name, storeUrl: "" })));
+      }
+      if (r.prompts && r.prompts.length) {
+        setPrompts(r.prompts.map((text, i) => ({ category: "ai_suggested", text, selected: i < MINI_PROMPTS })));
+      }
+      if (r.error) {
+        setInferNote("Couldn't auto-detect your store — fill in the details below.");
+      } else if (guessedBrand) {
+        setInferNote(`Detected ${guessedBrand}${r.category ? ` · ${r.category}` : ""}. Edit anything that's off.`);
+      }
+    } catch {
+      const guessedBrand = brandFromInput(store);
+      setBrand({ name: guessedBrand, storeUrl: looksLikeUrl(store) ? store.trim() : "" });
+      setInferNote("Couldn't auto-detect your store — fill in the details below.");
+    } finally {
+      setBusy("");
+    }
   }
 
-  /** Ensure prompts exist (generate + auto-select the mini default). Returns the
-   *  selected prompts so callers can act on the fresh list synchronously. */
+  function startDetails(e?: React.FormEvent) {
+    e?.preventDefault();
+    const s = storeInput.trim();
+    if (!s) return;
+    setPhase("details");
+    inferred.current = true;
+    runInference(s);
+  }
+
+  /** Ensure prompts exist (generate + auto-select the mini default). */
   async function ensurePrompts(): Promise<PromptRow[] | null> {
     if (prompts.length) return prompts;
     const v = formValid();
@@ -127,7 +177,6 @@ export function ScanPage() {
   async function doSuggest() {
     setSuggestMsg("");
     setSuggestErr("");
-    // Suggest extends an existing prompt set — make sure one exists first.
     const base = await ensurePrompts();
     if (!base) return;
     setBusy("suggesting");
@@ -226,20 +275,19 @@ export function ScanPage() {
     );
   }
 
-  // ---- step 1: single URL input ----
+  // ---- step 1: single store input ----
   if (phase === "entry") {
     return (
       <div className="scan-entry">
         <h1>See if AI recommends your store</h1>
-        <p className="muted">Enter your store URL to start a free scan.</p>
+        <p className="muted">Enter your store name or URL — we'll detect the rest.</p>
         <form className="hero-form" onSubmit={startDetails}>
           <input
             type="text"
-            inputMode="url"
-            value={storeUrl}
-            onChange={(e) => setStoreUrl(e.target.value)}
+            value={storeInput}
+            onChange={(e) => setStoreInput(e.target.value)}
             placeholder="yourstore.com"
-            aria-label="Your store URL"
+            aria-label="Your store name or URL"
             autoFocus
           />
           <button type="submit" className="btn btn-primary lg">
@@ -251,129 +299,132 @@ export function ScanPage() {
     );
   }
 
-  // ---- step 2: details (progressively revealed) ----
+  // ---- step 2: details (auto-detected, editable) ----
   return (
     <div className="scanpage">
-      <h1 className="report-headline">A few details and we'll scan</h1>
+      <h1 className="report-headline">Confirm your store</h1>
       <p className="muted" style={{ marginTop: -6 }}>
-        We'll ask ChatGPT, Gemini, and Perplexity what real shoppers ask — and show who they recommend.
+        {busy === "inferring"
+          ? "Detecting your brand, category, and competitors…"
+          : "We'll ask ChatGPT, Gemini, and Perplexity what real shoppers ask — and show who they recommend."}
       </p>
 
-      <div className="card formcard">
-        <h3>Your store</h3>
-        <div className="form-grid">
-          <Field label="Brand name *">
-            <input value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} placeholder="Caraway" />
-          </Field>
-          <Field label="Store URL">
-            <input value={brand.storeUrl ?? ""} onChange={(e) => setBrand({ ...brand, storeUrl: e.target.value })} placeholder="https://carawayhome.com" />
-          </Field>
-          <Field label="Category *">
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="nonstick cookware" />
-          </Field>
-          <Field label="Your email *">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@store.com" />
-          </Field>
-        </div>
-      </div>
+      {inferNote && busy !== "inferring" && <div className="infer-note">{inferNote}</div>}
 
-      <div className="card formcard">
-        <h3>Competitors <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· at least one</span></h3>
-        {competitors.map((c, i) => (
-          <div className="comp-row" key={i}>
-            <input
-              placeholder="Competitor name"
-              value={c.name}
-              onChange={(e) => updateComp(i, { name: e.target.value })}
-            />
-            <input
-              placeholder="Store URL (optional)"
-              value={c.storeUrl ?? ""}
-              onChange={(e) => updateComp(i, { storeUrl: e.target.value })}
-            />
-            <button className="btn icon" onClick={() => setCompetitors(competitors.filter((_, j) => j !== i))}>
-              ×
-            </button>
+      <fieldset className="scan-fields" disabled={busy === "inferring"}>
+        <div className="card formcard">
+          <h3>Your store</h3>
+          <div className="form-grid">
+            <Field label="Brand name *">
+              <input value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} placeholder="Caraway" />
+            </Field>
+            <Field label="Category *">
+              <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="nonstick cookware" />
+            </Field>
+            <Field label="Your email *">
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@store.com" />
+            </Field>
           </div>
-        ))}
-        <button className="btn" onClick={() => setCompetitors([...competitors, { name: "", storeUrl: "" }])}>
-          + Add competitor
-        </button>
-      </div>
-
-      {/* Advanced: prompt customization is hidden by default (progressive disclosure). */}
-      <details className="adv-prompts card formcard" onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && ensurePrompts()}>
-        <summary>Customize prompts (optional)</summary>
-
-        <div className="scan-actions" style={{ marginTop: 14 }}>
-          <button className="btn" disabled={busy === "generating"} onClick={() => ensurePrompts()}>
-            {busy === "generating" ? "Generating…" : prompts.length ? "Regenerate prompts" : "Generate prompts"}
-          </button>
-          <button className="btn" disabled={busy === "suggesting"} onClick={doSuggest}>
-            {busy === "suggesting" ? "Asking AI…" : "Suggest more with AI"}
-          </button>
         </div>
-        {suggestErr && <div className="banner-error">{suggestErr}</div>}
-        {suggestMsg && <div className="suggest-msg">{suggestMsg}</div>}
 
-        {prompts.length > 0 && (
-          <>
-            <div className="add-prompt" style={{ marginTop: 14 }}>
+        <div className="card formcard">
+          <h3>Competitors <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· at least one</span></h3>
+          {competitors.map((c, i) => (
+            <div className="comp-row" key={i}>
               <input
-                placeholder="Add your own prompt…"
-                value={newPrompt}
-                onChange={(e) => setNewPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addManual()}
+                placeholder="Competitor name"
+                value={c.name}
+                onChange={(e) => updateComp(i, { name: e.target.value })}
               />
-              <button className="btn" onClick={addManual}>
-                Add
+              <input
+                placeholder="Store URL (optional)"
+                value={c.storeUrl ?? ""}
+                onChange={(e) => updateComp(i, { storeUrl: e.target.value })}
+              />
+              <button className="btn icon" onClick={() => setCompetitors(competitors.filter((_, j) => j !== i))}>
+                ×
               </button>
             </div>
-            <div className="prompt-list">
-              {prompts.map((p, i) => (
-                <label className={`prompt-row ${p.selected ? "on" : ""}`} key={i}>
-                  <input
-                    type="checkbox"
-                    checked={p.selected}
-                    onChange={() => setPrompts(prompts.map((x, j) => (j === i ? { ...x, selected: !x.selected } : x)))}
-                  />
-                  <span className="ptag">{p.category}</span>
-                  <span className="ptext">{p.text}</span>
-                  <button
-                    className="btn icon"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setPrompts(prompts.filter((_, j) => j !== i));
-                    }}
-                  >
-                    ×
-                  </button>
-                </label>
-              ))}
-            </div>
+          ))}
+          <button className="btn" onClick={() => setCompetitors([...competitors, { name: "", storeUrl: "" }])}>
+            + Add competitor
+          </button>
+        </div>
 
-            <div className="run-bar">
-              <div className="engine-toggles">
-                {(["openai", "gemini", "perplexity"] as const).map((e) => (
-                  <label key={e} className={`engine-toggle ${engines[e] ? "on" : ""}`}>
-                    <input type="checkbox" checked={engines[e]} onChange={() => setEngines({ ...engines, [e]: !engines[e] })} />
-                    {ENGINE_LABEL[e]}
+        {/* Advanced: prompt customization is hidden by default (progressive disclosure). */}
+        <details className="adv-prompts card formcard" onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && ensurePrompts()}>
+          <summary>Customize prompts (optional)</summary>
+
+          <div className="scan-actions" style={{ marginTop: 14 }}>
+            <button className="btn" disabled={busy === "generating"} onClick={() => ensurePrompts()}>
+              {busy === "generating" ? "Generating…" : prompts.length ? "Regenerate prompts" : "Generate prompts"}
+            </button>
+            <button className="btn" disabled={busy === "suggesting"} onClick={doSuggest}>
+              {busy === "suggesting" ? "Asking AI…" : "Suggest more with AI"}
+            </button>
+          </div>
+          {suggestErr && <div className="banner-error">{suggestErr}</div>}
+          {suggestMsg && <div className="suggest-msg">{suggestMsg}</div>}
+
+          {prompts.length > 0 && (
+            <>
+              <div className="add-prompt" style={{ marginTop: 14 }}>
+                <input
+                  placeholder="Add your own prompt…"
+                  value={newPrompt}
+                  onChange={(e) => setNewPrompt(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addManual()}
+                />
+                <button className="btn" onClick={addManual}>
+                  Add
+                </button>
+              </div>
+              <div className="prompt-list">
+                {prompts.map((p, i) => (
+                  <label className={`prompt-row ${p.selected ? "on" : ""}`} key={i}>
+                    <input
+                      type="checkbox"
+                      checked={p.selected}
+                      onChange={() => setPrompts(prompts.map((x, j) => (j === i ? { ...x, selected: !x.selected } : x)))}
+                    />
+                    <span className="ptag">{p.category}</span>
+                    <span className="ptext">{p.text}</span>
+                    <button
+                      className="btn icon"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPrompts(prompts.filter((_, j) => j !== i));
+                      }}
+                    >
+                      ×
+                    </button>
                   </label>
                 ))}
               </div>
-              <div className="estimate">
-                <div>
-                  <b>{selected.length}</b> prompts × <b>{enabledEngines.length}</b> engines ={" "}
-                  <b>{selected.length * enabledEngines.length}</b> calls
+
+              <div className="run-bar">
+                <div className="engine-toggles">
+                  {(["openai", "gemini", "perplexity"] as const).map((e) => (
+                    <label key={e} className={`engine-toggle ${engines[e] ? "on" : ""}`}>
+                      <input type="checkbox" checked={engines[e]} onChange={() => setEngines({ ...engines, [e]: !engines[e] })} />
+                      {ENGINE_LABEL[e]}
+                    </label>
+                  ))}
                 </div>
-                <div className={overCap ? "over" : ""}>
-                  Est. max cost <b>${estMaxCost.toFixed(3)}</b> (cap ${MINI_CAP.toFixed(2)})
+                <div className="estimate">
+                  <div>
+                    <b>{selected.length}</b> prompts × <b>{enabledEngines.length}</b> engines ={" "}
+                    <b>{selected.length * enabledEngines.length}</b> calls
+                  </div>
+                  <div className={overCap ? "over" : ""}>
+                    Est. max cost <b>${estMaxCost.toFixed(3)}</b> (cap ${MINI_CAP.toFixed(2)})
+                  </div>
                 </div>
               </div>
-            </div>
-          </>
-        )}
-      </details>
+            </>
+          )}
+        </details>
+      </fieldset>
 
       {overCap && (
         <div className="banner-error">
@@ -401,13 +452,13 @@ export function ScanPage() {
       <div className="scan-actions">
         <button
           className="btn btn-primary lg"
-          disabled={busy === "generating" || busy === "starting" || overCap}
+          disabled={busy === "inferring" || busy === "generating" || busy === "starting" || overCap}
           onClick={openConfirm}
         >
-          {busy === "generating" ? "Preparing…" : "Run free scan →"}
+          {busy === "inferring" ? "Detecting…" : busy === "generating" ? "Preparing…" : "Run free scan →"}
         </button>
         <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
-          {prompts.length ? `${selected.length} prompts × ${enabledEngines.length} engines` : "5 prompts × 3 engines"}
+          {prompts.length ? `${selected.length} prompts × ${enabledEngines.length} engines` : `${MINI_PROMPTS} prompts × 3 engines`}
         </span>
       </div>
 

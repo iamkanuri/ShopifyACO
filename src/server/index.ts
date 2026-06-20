@@ -11,6 +11,7 @@ import { estimateMaxCost } from "../cli.js";
 import { expandPrompts } from "../prompts.js";
 import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/library.js";
 import { suggestPrompts } from "./suggest.js";
+import { inferStore } from "./infer.js";
 import { ENV, hasSupabase, reportConfig, SCAN_MODES, type ScanMode } from "./env.js";
 import {
   clientIp,
@@ -203,6 +204,24 @@ app.post(
     const result = await suggestPrompts(form, keys.openai);
     if (result.costUsd > SUGGEST_COST_CAP_USD) {
       return res.json({ prompts: [], costUsd: result.costUsd, error: "suggestion exceeded cost cap" });
+    }
+    res.json(result);
+  }),
+);
+
+// --- auto-detect a store from a name/URL (ONE capped call) -----------------
+app.post(
+  "/api/store/infer",
+  wrap(async (req, res) => {
+    const store = typeof (req.body as { store?: unknown })?.store === "string" ? (req.body as { store: string }).store.trim() : "";
+    if (store.length < 2) return res.status(400).json({ error: "Enter a store name or URL." });
+    if (store.length > 200) return res.status(400).json({ error: "Store name is too long." });
+    if (!rateLimit(`infer:${clientIp(req)}`, 8, 60_000)) {
+      return res.status(429).json({ error: "Too many lookups — try again shortly." });
+    }
+    const result = await inferStore(store, keys.openai);
+    if (result.costUsd > SUGGEST_COST_CAP_USD) {
+      return res.json({ costUsd: result.costUsd, competitors: [], prompts: [], error: "lookup exceeded cost cap" });
     }
     res.json(result);
   }),

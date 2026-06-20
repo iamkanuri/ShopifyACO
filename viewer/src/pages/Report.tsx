@@ -27,6 +27,10 @@ export function Report({
 }) {
   const a = run.analysis as MerchantAnalysis;
 
+  // Friendly engine names for the status chips (data uses provider ids).
+  const ENG: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity" };
+  const eng = (e: string) => ENG[e] ?? e;
+
   // Honest partial-failure surface: count real engine errors (not deliberate
   // cost/time skips) so a flaky engine is visible, not silently dropped.
   const engineFailures = (run.results ?? []).reduce<Record<string, number>>((m, r) => {
@@ -48,29 +52,29 @@ export function Report({
         <RunSizeBadge runSize={a.runSize} />
         <ConfidenceBadge c={a.confidence} />
         {a.groundedEngines.map((e) => (
-          <span className="chip" key={e}>
-            <span className="dot" /> {e} · grounded
+          <span className="chip" key={e} title="This assistant searched the live web before answering.">
+            <span className="dot" /> {eng(e)} · live web
           </span>
         ))}
         {a.ungroundedEngines.map((e) => (
-          <span className="chip warn" key={e}>
-            <span className="dot" /> {e} · ungrounded
+          <span className="chip warn" key={e} title="This assistant answered from its training data only — no live web search.">
+            <span className="dot" /> {eng(e)} · no web search
           </span>
         ))}
-        <span className="chip">{a.basedOnResponses} grounded answers</span>
+        <span className="chip">{a.basedOnResponses} answers analyzed</span>
         <span className="chip">{fmtUsd(a.totalCostUsd)} spend</span>
         {failedEntries.map(([e, n]) => (
           <span className="chip warn" key={`fail-${e}`} title="These calls errored and are excluded from the rates below">
-            <span className="dot" /> {e} · {n} failed
+            <span className="dot" /> {eng(e)} · {n} failed
           </span>
         ))}
       </div>
-      {failedEntries.length > 0 && (
-        <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>
-          Some engine calls errored and were excluded — rates below reflect only the calls that
-          succeeded.
-        </p>
-      )}
+      <p className="runmeta-legend muted">
+        These are status labels (not buttons). <b>“Live web”</b> means the assistant searched the
+        web before answering — what matters for shopping questions.
+        {a.ungroundedEngines.length > 0 && " “No web search” means it answered from training data only."}
+        {failedEntries.length > 0 && " Failed calls are excluded — rates reflect only answers that succeeded."}
+      </p>
 
       {/* Lead: one verdict headline + the key sub-metrics. */}
       <h1 className="report-headline">{a.headline}</h1>

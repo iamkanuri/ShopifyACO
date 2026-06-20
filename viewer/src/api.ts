@@ -17,6 +17,18 @@ export const generatePrompts = (form: ScanForm) =>
 export const suggestPrompts = (form: ScanForm) =>
   postJson<{ prompts: string[]; costUsd: number; error?: string }>("/api/prompts/suggest", form);
 
+export interface StoreInference {
+  brand?: string;
+  storeUrl?: string;
+  category?: string;
+  competitors?: string[];
+  prompts?: string[];
+  costUsd: number;
+  error?: string;
+}
+export const inferStore = (store: string) =>
+  postJson<StoreInference>("/api/store/infer", { store });
+
 export const startScan = (body: {
   form: ScanForm;
   prompts: string[];

@@ -4,13 +4,13 @@
      gray for secondary text, ONE high-contrast off-white CTA. No blue/purple,
      no gradients, no shadows, no emoji. Semantic good/warn/bad are muted so they
      read as data, not decoration. */
-  --bg: #0b0b0d;
-  --surface: #141417;
-  --surface-2: #1c1c20;
-  --ink: #f5f4f0;
-  --ink-2: #8c8a83;   /* the one muted gray (secondary text) */
-  --ink-3: #6b6962;   /* same family, a touch dimmer for tiny labels */
-  --border: #26262b;
+  --bg: #16171b;       /* soft charcoal, not pure black — easier on the eyes */
+  --surface: #1e1f24;
+  --surface-2: #282a30;
+  --ink: #dedcd5;      /* warm off-white, dialed back from pure white */
+  --ink-2: #908e87;    /* the one muted gray (secondary text) */
+  --ink-3: #6f6d67;    /* same family, a touch dimmer for tiny labels */
+  --border: #2f3037;
   --accent: #f5f4f0;            /* "accent" == the off-white CTA / highlight */
   --accent-soft: rgba(245, 244, 240, 0.06);
   --good: #6bbf9a;
@@ -73,8 +73,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--ink); }
 .chip {
   font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
   background: var(--surface); border: 1px solid var(--border); color: var(--ink-2);
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 6px; cursor: default;
 }
+.runmeta-legend { font-size: 12px; line-height: 1.55; margin: 2px 0 0; max-width: 640px; }
+.runmeta-legend b { color: var(--ink-2); font-weight: 700; }
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
 .chip.warn { background: var(--warn-soft); border-color: rgba(203, 163, 92, 0.3); color: var(--warn); }
 .chip.warn .dot { background: var(--warn); }
@@ -202,7 +204,7 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .btn-primary {
   background: var(--ink); color: var(--bg); border-color: var(--ink);
 }
-.btn-primary:hover { background: #ffffff; color: var(--bg); border-color: #ffffff; }
+.btn-primary:hover { background: #f0eee8; color: var(--bg); border-color: #f0eee8; }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn.lg { padding: 11px 20px; font-size: 14.5px; }
 .btn.icon { padding: 6px 10px; line-height: 1; }
@@ -289,6 +291,9 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .scan-entry h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 10px; }
 .scan-entry .muted { font-size: 14.5px; margin: 0 0 26px; }
 @media (max-width: 560px) { .scan-entry { margin-top: 48px; } .scan-entry h1 { font-size: 27px; } }
+.scan-fields { border: 0; padding: 0; margin: 0; min-inline-size: auto; }
+.scan-fields:disabled { opacity: 0.5; }
+.infer-note { font-size: 13px; color: var(--ink-2); background: var(--accent-soft); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin: 14px 0 2px; }
 .adv-prompts { padding: 0; margin-top: 16px; }
 .adv-prompts > summary { padding: 16px 22px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink); list-style: none; }
 .adv-prompts > summary::-webkit-details-marker { display: none; }
