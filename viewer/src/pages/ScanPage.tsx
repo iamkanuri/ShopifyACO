@@ -294,7 +294,7 @@ export function ScanPage() {
             Run free scan
           </button>
         </form>
-        <div className="hero-trust">Free · no store login required</div>
+        <div className="hero-trust">Free · no signup — we just need an email to send your results</div>
       </div>
     );
   }

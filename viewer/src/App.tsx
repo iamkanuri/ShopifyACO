@@ -52,9 +52,12 @@ export function App() {
               <Link to="/demo" className={`navlink ${active("/demo")}`}>
                 Demo
               </Link>
-              <Link to="/scan" className={`navlink btn btn-primary ${active("/scan")}`}>
-                Run free scan
-              </Link>
+              {/* The /scan page is itself the scan, so the nav CTA there is redundant. */}
+              {path !== "/scan" && (
+                <Link to="/scan" className="navlink btn btn-primary">
+                  Run free scan
+                </Link>
+              )}
             </nav>
           )}
         </header>

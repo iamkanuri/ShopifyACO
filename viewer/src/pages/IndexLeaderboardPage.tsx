@@ -97,7 +97,7 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
           beats you, and the exact content gaps that make AI choose someone else.
         </p>
         <Link to="/scan" className="btn btn-primary lg">
-          Run my free scan
+          Run free scan
         </Link>
       </div>
 

@@ -34,7 +34,7 @@ export function LandingPage() {
             Run free scan
           </button>
         </form>
-        <div className="hero-trust">Free · no store login · {miniPrompts} prompts across 3 engines</div>
+        <div className="hero-trust">Free · no signup · {miniPrompts} prompts across 3 AI assistants</div>
       </section>
 
       {/* Quiet secondary content below the fold. */}

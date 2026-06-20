@@ -21,6 +21,7 @@ import {
   ipHash,
   isValidEmail,
   rateLimit,
+  recordSpend,
   spendAllows,
 } from "./guards.js";
 import {
@@ -203,6 +204,7 @@ app.post(
       return res.status(429).json({ error: "Too many suggestions — try again shortly." });
     }
     const result = await suggestPrompts(form, keys.openai);
+    recordSpend(result.costUsd); // count toward the global daily cap
     if (result.costUsd > SUGGEST_COST_CAP_USD) {
       return res.json({ prompts: [], costUsd: result.costUsd, error: "suggestion exceeded cost cap" });
     }
@@ -221,6 +223,7 @@ app.post(
       return res.status(429).json({ error: "Too many lookups — try again shortly." });
     }
     const result = await inferStore(store, keys.openai);
+    recordSpend(result.costUsd); // count toward the global daily cap
     if (result.costUsd > SUGGEST_COST_CAP_USD) {
       return res.json({ costUsd: result.costUsd, competitors: [], prompts: [], error: "lookup exceeded cost cap" });
     }
