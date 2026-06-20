@@ -319,18 +319,18 @@ function buildMarkdown(
     L.push("");
   }
 
-  // ---- Recommended fixes ---------------------------------------------------
-  L.push("## Recommended fixes");
+  // ---- Recommended next steps ----------------------------------------------
+  L.push("## Recommended next steps");
   L.push("");
   const evidence = analysis.fixCards.filter((c) => c.tier === "evidence_backed");
   const hygiene = analysis.fixCards.filter((c) => c.tier === "general_hygiene");
 
   L.push("### Evidence-backed (cite this scan's lost prompts)");
   L.push("");
-  if (evidence.length === 0) L.push("_No evidence-backed fixes triggered._");
+  if (evidence.length === 0) L.push("_No evidence-backed steps triggered._");
   for (const card of evidence) L.push(...renderFixCard(card));
 
-  L.push("### General hygiene — site not yet audited (week-2 crawler will verify)");
+  L.push("### General hygiene — not checked against your live store");
   L.push("");
   for (const card of hygiene) L.push(...renderFixCard(card));
 
@@ -342,7 +342,7 @@ function renderFixCard(card: FixCard): string[] {
   out.push(`#### [${card.impact.toUpperCase()}] ${card.title}`);
   out.push("");
   out.push(`- **Why:** ${card.why}`);
-  out.push(`- **Fix:** ${card.suggestedFix}`);
+  out.push(`- **Suggested step:** ${card.suggestedFix}`);
   if (card.relatedPrompts.length) {
     out.push(`- **Triggered by prompts:** ${card.relatedPrompts.map((p) => `_${trunc(p, 60)}_`).join("; ")}`);
   }

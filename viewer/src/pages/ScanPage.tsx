@@ -269,7 +269,7 @@ export function ScanPage() {
       <div className="card scan-running">
         <div className="spinner" />
         <h2>Scanning AI assistants…</h2>
-        <p className="muted">Asking {enabledEngines.length} engines your {selected.length} prompts. This usually takes under a minute.</p>
+        <p className="muted">Asking {enabledEngines.length} AI assistants your {selected.length} shopper prompts. This usually takes under a minute.</p>
         <pre className="progress-log">{progress.join("\n") || "Starting…"}</pre>
       </div>
     );
@@ -294,7 +294,7 @@ export function ScanPage() {
             Run free scan
           </button>
         </form>
-        <div className="hero-trust">Free · no signup — we just need an email to send your results</div>
+        <div className="hero-trust">Free scan · results sent to your email</div>
       </div>
     );
   }
@@ -458,7 +458,7 @@ export function ScanPage() {
           {busy === "inferring" ? "Detecting…" : busy === "generating" ? "Preparing…" : "Run free scan →"}
         </button>
         <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
-          {prompts.length ? `${selected.length} prompts × ${enabledEngines.length} engines` : `${MINI_PROMPTS} prompts × 3 engines`}
+          {prompts.length ? `${selected.length} shopper prompts × ${enabledEngines.length} AI assistants` : `${MINI_PROMPTS} shopper prompts × 3 AI assistants`}
         </span>
       </div>
 
@@ -467,8 +467,10 @@ export function ScanPage() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Run a live scan?</h3>
             <p className="muted">
-              This makes <b>{selected.length * enabledEngines.length} live API calls</b> to{" "}
-              {enabledEngines.map((e) => ENGINE_LABEL[e]).join(", ")} and costs up to{" "}
+              AisleLens will ask{" "}
+              <b>{selected.length} realistic shopper {selected.length === 1 ? "question" : "questions"}</b> across{" "}
+              {enabledEngines.map((e) => ENGINE_LABEL[e]).join(", ")} and compare who they recommend. That's{" "}
+              <b>{selected.length * enabledEngines.length} live API calls</b>, costing up to{" "}
               <b>${estMaxCost.toFixed(3)}</b> (real money). Proceed?
             </p>
             <div className="scan-actions">

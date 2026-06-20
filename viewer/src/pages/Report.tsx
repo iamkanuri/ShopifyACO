@@ -115,7 +115,7 @@ export function Report({
         <LostPrompts lost={a.lostPrompts} brand={a.brand} />
       </Collapse>
 
-      <Collapse title="Recommended fixes">
+      <Collapse title="Recommended next steps">
         <FixCards cards={a.fixCards} />
       </Collapse>
 

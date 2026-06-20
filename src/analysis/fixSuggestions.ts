@@ -13,12 +13,12 @@ import { uniq } from "./util.js";
 //   (a) EVIDENCE-BACKED — every card cites the exact lost prompts/snippets that
 //       triggered it. No evidence link => it cannot be tier (a).
 //   (b) GENERAL HYGIENE — schema / llms.txt / structured data. The live site has
-//       NOT been audited; the week-2 crawler will verify. Always labeled as such.
+//       NOT been audited, so these are general best practices, always labeled as such.
 //
 // We never assert product facts. Factual cards carry a `verifyNote`.
 // ---------------------------------------------------------------------------
 
-const SITE_NOT_AUDITED = "Site not yet audited — the week-2 crawler will verify whether this already exists.";
+const SITE_NOT_AUDITED = "Not checked against your live store — verify whether this already exists before acting.";
 
 export function buildFixCards(
   cfg: Config,

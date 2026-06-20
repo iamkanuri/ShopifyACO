@@ -244,14 +244,14 @@ _Basis: 24 non-toxic / ceramic prompts. Moderate signal_
 - **Oven-safe temperature** — 8 answer(s), e.g. All-Clad, GreenPan, Made In
 - **Third-party testing / lab results** — 3 answer(s), e.g. All-Clad, GreenPan, Made In
 
-## Recommended fixes
+## Recommended next steps
 
 ### Evidence-backed (cite this scan's lost prompts)
 
 #### [HIGH] Add a "Caraway vs All-Clad" comparison page
 
 - **Why:** All-Clad out-recommended Caraway in 16 answer(s) in this scan (All-Clad is Caraway's most direct competitor in non-toxic / ceramic queries: recommended 2.0× more often than Caraway (25% (6/24) vs 13% (3/24), based on 24 non-toxic / ceramic prompts in this scan). Moderate signal). A direct comparison gives assistants a source to cite Caraway from.
-- **Fix:** Publish an honest side-by-side: coating type, PFAS/PTFE/PFOA status, oven-safe temp, induction support, warranty, price. Lead with where Caraway genuinely wins.
+- **Suggested step:** Publish an honest side-by-side: coating type, PFAS/PTFE/PFOA status, oven-safe temp, induction support, warranty, price. Lead with where Caraway genuinely wins.
 - **Triggered by prompts:** _what is the best nonstick cookware set for everyday home co…_; _what is the best nonstick cookware set for an induction sto…_; _what is the best nonstick cookware set for a beginner cook_; _I'm replacing my Teflon pans — what cookware should I buy i…_; _good alternatives to All-Clad for home cooks_; _good alternatives to HexClad_
 - **Evidence:** "…stockpot, and utensils. - Budget-friendly and great for even heating. 2. **All-Clad HA1 Hard Anodized Nonstick Cookwar…" / "…hat is induction-compatible and high-quality. Here are a few top options: 1. **All-Clad E785S264 Ha1 Hard Anodized Non…" / "…most people, the **best nonstick cookware set for an induction stove** is the **All-Clad HA1 hard-anodized nonstick se…"
 - ⚠️ **Verify before publishing:** Only claim advantages that are actually true for your products.
@@ -259,27 +259,27 @@ _Basis: 24 non-toxic / ceramic prompts. Moderate signal_
 #### [HIGH] Add a buying guide: "Best nonstick cookware under $300 / $400"
 
 - **Why:** Caraway is absent from "Budget / under-price" buying queries (0/9 mentioned in this scan). Price-anchored queries route shoppers to brands that publish clear value framing.
-- **Fix:** Publish a guide mapping Caraway sets to price tiers with what each includes.
+- **Suggested step:** Publish a guide mapping Caraway sets to price tiers with what each includes.
 - **Triggered by prompts:** _recommend a nonstick cookware brand under $400_
 - **Evidence:** "…he **Create Delicious 13-Piece Cookware Set** as a budget-friendly pick.[3] - **GreenPan** — Reviewed recommends the *…"
 
 #### [HIGH] Add a gift guide: "nonstick cookware as a wedding / registry gift"
 
 - **Why:** Caraway is absent from "Wedding / gift" buying queries (0/3 mentioned in this scan). Gift and registry queries are high-intent and rarely surface this brand in the scan.
-- **Fix:** Create giftable bundle/registry content positioning Caraway for weddings and new homes.
+- **Suggested step:** Create giftable bundle/registry content positioning Caraway for weddings and new homes.
 - **Triggered by prompts:** _best cookware set to give as a wedding gift_
 - **Evidence:** "…quality, durability, and versatility. Here are some top recommendations: 1. **All-Clad D3 Stainless Steel 10-Piece Set…" / "…eats evenly and performs well on various stovetops, including induction. * **All-Clad D3 or D5 Stainless Steel Cookwar…"
 
 #### [HIGH] Add a starter guide: "nonstick cookware for a first apartment"
 
 - **Why:** Caraway is absent from "First apartment / starter" buying queries (0/3 mentioned in this scan). First-apartment / starter queries favor brands with clear beginner-friendly starter sets.
-- **Fix:** Publish a starter-kit page recommending the right entry Caraway set and why.
+- **Suggested step:** Publish a starter-kit page recommending the right entry Caraway set and why.
 - **Triggered by prompts:** _what cookware set should I buy for a first apartment under …_
 
 #### [HIGH] Win "alternatives to All-Clad for home cooks, HexClad" searches
 
 - **Why:** Caraway is absent from "Alternatives to a competitor" buying queries (0/6 mentioned in this scan). Assistants answer "alternatives to All-Clad for home cooks, HexClad" without surfacing Caraway.
-- **Fix:** Create comparison/alternative content explaining why Caraway is a strong alternative to All-Clad for home cooks, HexClad.
+- **Suggested step:** Create comparison/alternative content explaining why Caraway is a strong alternative to All-Clad for home cooks, HexClad.
 - **Triggered by prompts:** _good alternatives to All-Clad for home cooks_; _good alternatives to HexClad_
 - **Evidence:** "If you're looking for good alternatives to All-Clad cookware for home cooks, here are some excellent options: 1. **Cuis…" / "For most home cooks, the best **All-Clad alternatives** are **Made In**, **Heritage Steel**, **Misen**, and **Tramontin…"
 - ⚠️ **Verify before publishing:** Frame comparisons honestly; only claim real advantages.
@@ -287,14 +287,14 @@ _Basis: 24 non-toxic / ceramic prompts. Moderate signal_
 #### [HIGH] Expose AI-quotable product specs on every PDP
 
 - **Why:** In answers where competitors beat Caraway, assistants leaned on concrete, quotable proof: durability / longevity, premium materials (steel/clad), price / value, signature product line, non-toxic material claims, induction compatibility. Caraway needs these stated in plain text AIs can lift.
-- **Fix:** On each product page, state in plain text: coating material, PFAS/PTFE/PFOA status, max oven-safe temperature, induction compatibility, dishwasher guidance, and warranty length.
+- **Suggested step:** On each product page, state in plain text: coating material, PFAS/PTFE/PFOA status, max oven-safe temperature, induction compatibility, dishwasher guidance, and warranty length.
 - **Evidence:** "…nd is built from heavy-gauge aluminum with a stainless steel base and hard-anodized nonstick coating.[1] If you want t…" / "…in a 2026 tested review and is built from heavy-gauge aluminum with a stainless steel base and hard-anodized nonstick …" / "…tor. - Includes: Fry pans, saucepans, stockpot, and utensils. - Budget-friendly and great for even heating. 2. **All-C…"
 - ⚠️ **Verify before publishing:** Add each spec only if true for that product; verify and expose it clearly.
 
 #### [MEDIUM] Add a use-case page: "Best nonstick cookware for induction"
 
 - **Why:** Caraway is weak in "Induction stove" buying queries (1/3 mentioned in this scan). Induction is a high-intent filter shoppers and assistants use to narrow choices.
-- **Fix:** Create a page confirming induction compatibility for Caraway products, with the spec stated explicitly.
+- **Suggested step:** Create a page confirming induction compatibility for Caraway products, with the spec stated explicitly.
 - **Triggered by prompts:** _what is the best nonstick cookware set for an induction sto…_
 - **Evidence:** "…hat is induction-compatible and high-quality. Here are a few top options: 1. **All-Clad E785S264 Ha1 Hard Anodized Non…" / "…most people, the **best nonstick cookware set for an induction stove** is the **All-Clad HA1 hard-anodized nonstick se…"
 - ⚠️ **Verify before publishing:** State induction compatibility only for products that actually support it.
@@ -302,21 +302,21 @@ _Basis: 24 non-toxic / ceramic prompts. Moderate signal_
 #### [MEDIUM] Feature named third-party test results
 
 - **Why:** Winning competitors (All-Clad, GreenPan, Made In) were cited with named reviews / lab tests in 3 answer(s). Assistants trust and repeat these.
-- **Fix:** If you have legitimate third-party testing or editorial awards, surface them as quotable, linkable text near the product (not only in images).
+- **Suggested step:** If you have legitimate third-party testing or editorial awards, surface them as quotable, linkable text near the product (not only in images).
 - **Triggered by prompts:** _what is the best nonstick cookware set for everyday home co…_
 - **Evidence:** "…oprietary non-stick ceramic.[5] \| \| Expert-tested consumer option \| **Consumer Reports top nonstick sets** \| Consu…"
 - ⚠️ **Verify before publishing:** Add this only if true — never fabricate test results or awards.
 
-### General hygiene — site not yet audited (week-2 crawler will verify)
+### General hygiene — not checked against your live store
 
 #### [MEDIUM] Add/verify structured product schema (Product, Offer, AggregateRating)
 
 - **Why:** Structured data helps AI crawlers extract price, availability, ratings, and specs reliably instead of guessing from prose.
-- **Fix:** Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, material, offers, and aggregateRating where available.
-- ⚠️ **Verify before publishing:** Site not yet audited — the week-2 crawler will verify whether this already exists.
+- **Suggested step:** Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, material, offers, and aggregateRating where available.
+- ⚠️ **Verify before publishing:** Not checked against your live store — verify whether this already exists before acting.
 
 #### [LOW] Publish an AI-readable brand summary (llms.txt candidate) for Caraway
 
 - **Why:** A concise, factual brand/product summary at a stable URL gives assistants a canonical source to ground answers about you.
-- **Fix:** Draft an /llms.txt (or a clean "About Caraway" page) listing product lines, materials, safety claims, price ranges, and differentiators in plain text.
-- ⚠️ **Verify before publishing:** Site not yet audited — the week-2 crawler will verify whether this already exists.
+- **Suggested step:** Draft an /llms.txt (or a clean "About Caraway" page) listing product lines, materials, safety claims, price ranges, and differentiators in plain text.
+- ⚠️ **Verify before publishing:** Not checked against your live store — verify whether this already exists before acting.

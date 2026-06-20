@@ -34,7 +34,7 @@ export function LandingPage() {
             Run free scan
           </button>
         </form>
-        <div className="hero-trust">Free · no signup · {miniPrompts} prompts across 3 AI assistants</div>
+        <div className="hero-trust">Free · {miniPrompts} shopper prompts across 3 AI assistants · results by email</div>
       </section>
 
       {/* Quiet secondary content below the fold. */}
@@ -44,7 +44,7 @@ export function LandingPage() {
           {[
             ["1", "Enter your store", "Just your URL — we fill in the rest."],
             ["2", "We ask the AI assistants", `${miniPrompts} real shopper prompts across ChatGPT, Gemini, and Perplexity.`],
-            ["3", "See your verdict", "Whether AI recommends you, who wins instead, and what to fix."],
+            ["3", "See your verdict", "Whether AI recommends you, who wins instead, and where to improve."],
           ].map(([n, t, d]) => (
             <div className="step" key={n}>
               <div className="step-n">{n}</div>
@@ -65,8 +65,8 @@ export function LandingPage() {
         <div className="faq">
           {[
             ["Is this SEO?", "No. SEO is about Google's ranked links. This measures whether AI assistants name and recommend you when shoppers ask what to buy — a different, newer surface."],
-            ["Does this guarantee AI will recommend me?", "No. We measure your current visibility and show concrete, honest fixes. AI answers vary; treat results as directional market intelligence."],
-            ["Which AI engines are scanned?", "ChatGPT (OpenAI), Gemini (Google), and Perplexity — all with live web grounding."],
+            ["Does this guarantee AI will recommend me?", "No. AisleLens measures a sample of your current visibility and identifies where competitors are being recommended instead. Results are directional because AI answers can change between prompts, assistants, and runs."],
+            ["Which AI engines are scanned?", "We test ChatGPT, Gemini, and Perplexity. Your report shows whether live web search was available for each result."],
           ].map(([q, a]) => (
             <details className="faq-item card" key={q}>
               <summary>{q}</summary>

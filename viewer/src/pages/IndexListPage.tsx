@@ -14,9 +14,9 @@ export function IndexListPage() {
       <div className="index-head">
         <h1>The AI Visibility Index</h1>
         <p className="index-sub">
-          We asked <b>ChatGPT, Gemini &amp; Perplexity</b> what to buy across popular shopping
-          categories — and tracked which brands they actually recommend. Pick a category to see the
-          full ranking.
+          See which brands AI assistants recommend when shoppers ask what to buy. We tested{" "}
+          <b>ChatGPT, Gemini &amp; Perplexity</b> across popular shopping categories — each ranking
+          comes from a single scan, so results are directional. Pick a category for the full leaderboard.
         </p>
       </div>
 
@@ -35,7 +35,10 @@ export function IndexListPage() {
             return (
               <Link to={`/index/${idx.slug}`} className="index-card card" key={idx.slug}>
                 <div className="index-card-label">{idx.label}</div>
-                <div className="index-card-meta">{idx.entries.length} brands ranked · AI recommends most:</div>
+                <div className="index-card-meta">
+                  {idx.entries.length} brands ranked
+                  {idx.updated_at ? ` · scanned ${new Date(idx.updated_at).toLocaleDateString()}` : ""} · AI recommends most:
+                </div>
                 <ol className="index-card-top">
                   {top.map((e) => (
                     <li key={e.brand}>

@@ -9,7 +9,7 @@ export function FixCards({ cards }: { cards: FixCard[] }) {
       <div>
         <div className="tierhead">
           <span className="t">✅ Evidence-backed</span>
-          <span className="note">each card cites the exact prompts/snippets from this scan that triggered it</span>
+          <span className="note">each step cites the exact shopper prompts/snippets from this scan that triggered it</span>
         </div>
         <div className="fixgrid">
           {evidence.map((c) => (
@@ -21,7 +21,7 @@ export function FixCards({ cards }: { cards: FixCard[] }) {
       <div>
         <div className="tierhead">
           <span className="t">🧹 General hygiene</span>
-          <span className="note">site not yet audited — the week-2 crawler will verify these</span>
+          <span className="note">general best practices — not yet checked against your live store</span>
         </div>
         <div className="fixgrid">
           {hygiene.map((c) => (
@@ -44,7 +44,7 @@ function Card({ c }: { c: FixCard }) {
         <b>Why:</b> {c.why}
       </div>
       <div className="meta">
-        <b>Fix:</b> {c.suggestedFix}
+        <b>Suggested step:</b> {c.suggestedFix}
       </div>
 
       {(c.relatedPrompts.length > 0 || c.relatedSnippets.length > 0) && (

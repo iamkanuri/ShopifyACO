@@ -56,7 +56,7 @@ const MINI_PROMPTS = 5;
 const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
 const SUGGEST_COST_CAP_USD = 0.02;
 const TAGLINE =
-  "See if AI shoppers recommend your store — or your competitors. Run a free mini scan across ChatGPT, Gemini, and Perplexity.";
+  "Test whether ChatGPT, Gemini, and Perplexity recommend your store, see which competitors appear instead, and find the shopper prompts where your brand is missing.";
 const DEMO_NOTE = "Demo data shown for illustration; not affiliated with or endorsed by Caraway.";
 const ALLOWED_EVENTS = new Set([
   "report_viewed",

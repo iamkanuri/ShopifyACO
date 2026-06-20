@@ -87,7 +87,8 @@ reads `results.json` (no API calls) and produces merchant-facing insights — ma
 competitor threat, mention→recommendation gap, weakest engine, transactional
 whiteout, competitor proof points (keyword taxonomy), and two-tier **fix cards**
 (EVIDENCE-BACKED cards cite the exact lost prompts/snippets; GENERAL HYGIENE cards —
-schema/llms.txt — are labeled "site not yet audited, week-2 crawler verifies").
+schema/llms.txt — are labeled "not checked against your live store"). Customer-facing
+copy calls these "next steps", not "fixes" (nothing is verified against the real store yet).
 - **AI Visibility Score** is a documented deterministic formula (see
   `src/analysis/score.ts`); its components are shown in the UI — never a black box.
 - The analysis is embedded into `results.json` under `analysis` and also rendered

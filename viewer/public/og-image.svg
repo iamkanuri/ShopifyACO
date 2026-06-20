@@ -1,23 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eef0fe"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="#16171b"/>
   <g transform="translate(80,86)">
-    <rect width="56" height="56" rx="15" fill="#4f46e5"/>
-    <text x="28" y="40" font-size="34" fill="#fff" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">A</text>
-    <text x="76" y="26" font-size="22" fill="#4a5063" font-family="Arial, sans-serif" font-weight="bold">ShopifyACO</text>
-    <text x="76" y="50" font-size="16" fill="#868ca0" font-family="Arial, sans-serif">AI Visibility for e-commerce</text>
+    <!-- aperture mark (matches favicon / in-app logo) -->
+    <g transform="translate(0,2)" fill="none" stroke="#dedcd5" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="26" cy="26" r="20"/>
+      <path d="M26 13 L37 32 L15 32 Z"/>
+      <circle cx="26" cy="26" r="3.6" fill="#dedcd5" stroke="none"/>
+    </g>
+    <text x="68" y="22" font-size="22" fill="#dedcd5" font-family="Arial, sans-serif" font-weight="bold">AisleLens</text>
+    <text x="68" y="46" font-size="16" fill="#908e87" font-family="Arial, sans-serif">AI Shopping Visibility</text>
   </g>
-  <text x="80" y="300" font-size="62" fill="#14161f" font-family="Arial, sans-serif" font-weight="bold">AI assistants know your brand —</text>
-  <text x="80" y="372" font-size="62" fill="#4f46e5" font-family="Arial, sans-serif" font-weight="bold">but do they recommend it?</text>
-  <text x="80" y="448" font-size="28" fill="#4a5063" font-family="Arial, sans-serif">Measure your share of voice in ChatGPT, Gemini &amp; Perplexity</text>
-  <text x="80" y="488" font-size="28" fill="#4a5063" font-family="Arial, sans-serif">vs competitors — then close the gap.</text>
+  <text x="80" y="300" font-size="62" fill="#dedcd5" font-family="Arial, sans-serif" font-weight="bold">AI assistants know your brand —</text>
+  <text x="80" y="372" font-size="62" fill="#dedcd5" font-family="Arial, sans-serif" font-weight="bold">but do they recommend it?</text>
+  <text x="80" y="448" font-size="28" fill="#908e87" font-family="Arial, sans-serif">See whether ChatGPT, Gemini &amp; Perplexity recommend you —</text>
+  <text x="80" y="488" font-size="28" fill="#908e87" font-family="Arial, sans-serif">or send shoppers to your competitors.</text>
   <g transform="translate(80,536)">
-    <rect width="232" height="58" rx="12" fill="#4f46e5"/>
-    <text x="116" y="37" font-size="22" fill="#fff" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">Run a free scan</text>
+    <rect width="232" height="58" rx="12" fill="#dedcd5"/>
+    <text x="116" y="37" font-size="22" fill="#16171b" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold">Run a free scan</text>
   </g>
 </svg>
