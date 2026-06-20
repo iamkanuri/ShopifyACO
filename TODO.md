@@ -10,6 +10,24 @@ Single source of truth for deferred work. Reflects the live beta at
 
 ---
 
+## ⭐ NEXT SESSION: UI / color refresh + simplify (before customer demos)
+
+The user wants to **refresh the color palette and simplify the UI** before presenting
+to customers. Where everything lives (it's centralized — don't hunt):
+- **All colors are CSS custom properties** in **`viewer/src/theme.css`** under `:root`
+  (`--bg`, `--surface`, `--ink`/`--ink-2`/`--ink-3`, `--accent` = indigo `#4f46e5`,
+  `--good`/`--warn`/`--bad`, `--border`, `--radius`, shadows). **Re-theme = edit those
+  variables.** Component classes below `:root` reference them, so a palette change ripples
+  everywhere automatically.
+- **Fonts:** Inter (body) + Space Grotesk (headings), loaded in `viewer/index.html`.
+- **Logo/mark:** `viewer/src/components/Mark.tsx` (aperture mark) + the favicon SVG in
+  `index.html`. Accent color appears in both.
+- **To preview while editing:** `cd viewer && npm run dev` (proxies `/api` to a local
+  `npm run server`), or use the Claude Preview tools. `npm run build` before deploy.
+- **Simplification candidates the user may want:** trim the report's section count, calm
+  the landing page density, reduce chip/badge noise, fewer competing CTAs per page.
+  Keep changes in `theme.css` + the page components under `viewer/src/pages|components`.
+
 ## 0. Go-to-market (the actual priority — not code)
 
 - [ ] Publish 3–5 **AI Visibility Index** categories (cookware, sunscreen, supplements…),
