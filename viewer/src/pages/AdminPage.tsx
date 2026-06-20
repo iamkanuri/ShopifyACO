@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminBuildIndex, adminData, adminFulfillOrder, adminLogin, adminLogout, adminMe, adminScan, adminScanOrder } from "../api";
+import { adminBuildIndex, adminData, adminEngineKeys, adminFulfillOrder, adminLogin, adminLogout, adminMe, adminScan, adminScanOrder, type EngineKeyStatus } from "../api";
 import { useConfig } from "../config";
 
 interface AdminData {
@@ -53,6 +53,7 @@ export function AdminPage() {
       ) : (
         <>
           <Summary s={data.summary} />
+          <EngineKeys />
           <Launch launch={data.launch} />
           <Funnel funnel={data.funnel} />
           <OrdersTable orders={data.orders} onDone={load} />
@@ -148,6 +149,57 @@ function Summary({ s }: { s: Record<string, number> }) {
             </div>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+function EngineKeys() {
+  const [rows, setRows] = useState<EngineKeyStatus[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function run() {
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await adminEngineKeys();
+      setRows(r.engines);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="section">
+      <h2>Engine keys</h2>
+      <div className="card formcard">
+        <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+          Pings each provider to confirm its API key authenticates. A failing engine is otherwise
+          dropped silently from every scan. (Perplexity check costs ~$0.0001.)
+        </p>
+        <div className="scan-actions" style={{ marginTop: 0 }}>
+          <button className="btn btn-primary" disabled={busy} onClick={run}>
+            {busy ? "Checking…" : "Check engine keys"}
+          </button>
+        </div>
+        {err && <div className="banner-error">{err}</div>}
+        {rows && (
+          <div className="keystatus-list">
+            {rows.map((r) => {
+              const state = !r.configured ? "missing" : r.ok ? "ok" : "bad";
+              const label = state === "ok" ? "Valid" : state === "missing" ? "Not configured" : "Invalid";
+              const cls = state === "ok" ? "rec" : state === "missing" ? "low" : "abs";
+              return (
+                <div className="keystatus-row" key={r.engine}>
+                  <span className={`badge ${cls}`}>{label}</span>
+                  <span className="ks-label">{r.label}</span>
+                  {r.detail && <span className="ks-detail muted">{r.detail}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

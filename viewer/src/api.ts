@@ -63,6 +63,16 @@ export async function adminData<T = unknown>(): Promise<T> {
 }
 export const adminScan = (body: { form: unknown; mode: string; email?: string }) =>
   postJson<{ runId: string; mode: string; estimateMaxUsd: number; prompts: number }>("/api/admin/scan", body);
+export interface EngineKeyStatus {
+  engine: string;
+  label: string;
+  configured: boolean;
+  ok?: boolean;
+  status?: number;
+  detail?: string;
+}
+export const adminEngineKeys = () =>
+  postJson<{ engines: EngineKeyStatus[] }>("/api/admin/engine-keys", {});
 export const adminBuildIndex = (body: { label: string; brands: string[]; mode?: string }) =>
   postJson<{ slug: string; runId: string; estimateMaxUsd: number; brands: number }>("/api/admin/index", body);
 export const adminFulfillOrder = (id: number) =>

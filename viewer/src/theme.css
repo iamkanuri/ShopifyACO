@@ -492,6 +492,10 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .err-row { padding: 8px 4px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .linkbtn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: inherit; padding: 0; }
 .admin select, .formcard select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 13.5px; font-family: inherit; background: var(--surface); }
+.keystatus-list { display: grid; gap: 9px; margin-top: 14px; }
+.keystatus-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.keystatus-row .ks-label { font-weight: 600; font-size: 13.5px; }
+.keystatus-row .ks-detail { font-size: 11.5px; word-break: break-word; font-family: ui-monospace, monospace; }
 
 /* ============ premium polish ============ */
 /* Display typeface on hero titles + headings — the single biggest lift away from

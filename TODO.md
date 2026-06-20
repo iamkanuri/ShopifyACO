@@ -41,6 +41,20 @@ progressive-disclosure restructure of the landing/scan/report flow.
 Remaining simplification ideas if wanted later: trim report tile/badge noise further;
 revisit the demo fixture copy.
 
+## ✅ DONE (2026-06-20, round 2): AI store auto-detect + key health check
+
+- `/api/store/infer` (`src/server/infer.ts`): one capped OpenAI call detects brand,
+  category, competitors, and starter prompts from a store name/URL. ScanPage runs it on
+  entry and prefills the form; fully graceful on failure (manual entry, guessed brand).
+- Fixed `/scan?url=…` re-asking for the URL; removed the redundant Store URL field.
+- Softened the dark palette (charcoal `#16171b` / warm off-white `#dedcd5`) — pure
+  black/white was too harsh. Report meta chips relabeled to "live web"/"no web search"
+  with a plain-English legend.
+- **Admin engine-key health check** (`src/server/healthcheck.ts`, `/api/admin/engine-keys`,
+  button on `/admin`): pings OpenAI/Google/Perplexity to report Valid/Invalid/Not-configured.
+  Added because **silent per-engine failures** hid a stale prod `OPENAI_API_KEY` (ChatGPT
+  was dropping out of every scan while the key worked locally). Run it after any key change.
+
 ## 0. Go-to-market (the actual priority — not code)
 
 - [ ] Publish 3–5 **AI Visibility Index** categories (cookware, sunscreen, supplements…),

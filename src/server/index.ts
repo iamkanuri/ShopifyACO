@@ -12,6 +12,7 @@ import { expandPrompts } from "../prompts.js";
 import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/library.js";
 import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
+import { checkEngineKeys } from "./healthcheck.js";
 import { ENV, hasSupabase, reportConfig, SCAN_MODES, type ScanMode } from "./env.js";
 import {
   clientIp,
@@ -423,6 +424,15 @@ app.get(
   requireAdmin,
   wrap(async (_req, res) => {
     res.json(await buildAdminData());
+  }),
+);
+
+// On-demand engine-key health check (pings each provider — see healthcheck.ts).
+app.post(
+  "/api/admin/engine-keys",
+  requireAdmin,
+  wrap(async (_req, res) => {
+    res.json({ engines: await checkEngineKeys(keys) });
   }),
 );
 
