@@ -243,6 +243,17 @@ test("diagnose produces evidence-backed + hygiene findings with mechanism, never
   assert.ok(summary.topIntervention && summary.topIntervention.length > 0);
 });
 
+test("diagnose flags an un-crawlable merchant page instead of reporting it clean", async () => {
+  const failed = {
+    url: MOCK_MERCHANT_URL, finalUrl: null, origin: null, ok: false, status: null, contentType: null,
+    error: "HTTP 503", bytes: 0, truncated: false, title: null, canonicalUrl: null, robotsIndex: null,
+    extracted: null, injection: { flagged: false, terms: [] }, textExcerpt: null, links: [],
+  };
+  const findings = diagnose({ merchantBrand: "MyBrand", observations: lossObs(), merchantPage: failed as never, competitorPages: new Map() });
+  assert.ok(findings.some((f) => /could not be crawled/i.test(f.merchantGap.join(" "))), "expected an explicit fetch-failure finding");
+  assert.equal(findings.filter((f) => f.kind === "evidence_backed").length, 0, "no evidence findings without a merchant baseline");
+});
+
 test("diagnose returns no evidence findings when there is no competitive loss", async () => {
   const [merchant] = await crawlSeeds([MOCK_MERCHANT_URL]);
   const won: DiagnosisObservation[] = [

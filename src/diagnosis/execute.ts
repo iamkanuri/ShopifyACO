@@ -55,6 +55,15 @@ function dedupeValidUrls(urls: string[], cap: number): string[] {
   return out;
 }
 
+function originOf(u: string): string | null {
+  try {
+    const url = new URL(u);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRunResult> {
   const mock = opts.mock ?? ENV.crawler.mode === "mock";
   const observations = await getDiagnosisObservations(opts.runId);
@@ -74,6 +83,11 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
     if (!merchantUrl) merchantUrl = MOCK_MERCHANT_URL;
     if (competitorUrls.length === 0) competitorUrls = [MOCK_COMPETITOR_URL];
   }
+
+  // Citations are unioned across every brand in a lost answer, so a merchant-owned
+  // URL can appear there. Never crawl/label our own pages as a competitor.
+  const merchantOrigin = merchantUrl ? originOf(merchantUrl) : null;
+  if (merchantOrigin) competitorUrls = competitorUrls.filter((u) => originOf(u) !== merchantOrigin);
 
   const maxCompetitors = Math.max(1, ENV.crawler.maxPages - 1);
   competitorUrls = dedupeValidUrls(competitorUrls, maxCompetitors);

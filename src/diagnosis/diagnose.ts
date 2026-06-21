@@ -192,6 +192,22 @@ export function diagnose(input: DiagnoseInput): Finding[] {
   const losses = findLosses(observations, merchantBrand);
   const findings: Finding[] = [];
 
+  // If a merchant page was attempted but couldn't be crawled, say so explicitly —
+  // an empty result must not be mistaken for "no gaps found".
+  if (merchantPage && !merchantPage.ok) {
+    findings.push({
+      kind: "general_hygiene",
+      intent: null, promptText: null, engine: null, merchantBrand,
+      winningCompetitor: null, aiAnswerSnippet: null, citations: [],
+      merchantGap: [`Merchant page could not be crawled (${merchantPage.error ?? "unknown error"})`],
+      competitorAdvantage: [],
+      confidenceLevel: "directional", basisN: 0,
+      limits: "Diagnosis could not assess the merchant page itself, so structural gaps are unknown — this is a fetch/availability problem, not a clean bill of health.",
+      recommendedIntervention: "Make the product page publicly reachable (HTTP 200, not blocked by robots.txt or noindex) so it can be assessed and indexed by assistants.",
+      expectedMechanism: "A page that cannot be retrieved cannot be evaluated, indexed, or cited. Reachability is a precondition for visibility — necessary, though not on its own sufficient.",
+    });
+  }
+
   const merchantExtract = merchantPage?.ok ? merchantPage.extracted : null;
   // The "winner advantage" is the union of signals exposed by any cited competitor
   // page — i.e. what at least one winning source exposes.

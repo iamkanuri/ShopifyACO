@@ -88,6 +88,24 @@ interface SingleResponse {
 function fetchOnce(target: URL, limits: FetchLimits): Promise<SingleResponse> {
   const mod = target.protocol === "https:" ? https : http;
   return new Promise<SingleResponse>((resolve, reject) => {
+    // Single-settle guard: every path (end, truncation, redirect, premature close,
+    // error, timeout) must settle the promise exactly once. Without this, a graceful
+    // mid-body socket close fires only 'close' (no 'end'/'error') and the promise
+    // would hang.
+    let settled = false;
+    const finish = (v: SingleResponse) => {
+      if (!settled) {
+        settled = true;
+        resolve(v);
+      }
+    };
+    const fail = (e: Error) => {
+      if (!settled) {
+        settled = true;
+        reject(e);
+      }
+    };
+
     const req = mod.request(
       target,
       {
@@ -102,7 +120,7 @@ function fetchOnce(target: URL, limits: FetchLimits): Promise<SingleResponse> {
         const peerFam = peer ? (peer.includes(":") ? 6 : 4) : 0;
         if (peer && !isPublicIp(peer, peerFam)) {
           res.destroy();
-          reject(new SsrfError(`connected to non-public peer ${peer}`));
+          fail(new SsrfError(`connected to non-public peer ${peer}`));
           return;
         }
 
@@ -113,19 +131,20 @@ function fetchOnce(target: URL, limits: FetchLimits): Promise<SingleResponse> {
         // Redirects: don't read a body, surface Location to the caller.
         if (REDIRECT_CODES.has(status) && location) {
           res.destroy();
-          resolve({ status, contentType, location, body: "", bytes: 0, truncated: false });
+          finish({ status, contentType, location, body: "", bytes: 0, truncated: false });
           return;
         }
         // Refuse to buffer content types we don't parse.
         if (!isAllowedContentType(contentType)) {
           res.destroy();
-          resolve({ status, contentType, location: null, body: "", bytes: 0, truncated: false });
+          finish({ status, contentType, location: null, body: "", bytes: 0, truncated: false });
           return;
         }
 
         const chunks: Buffer[] = [];
         let bytes = 0;
         let truncated = false;
+        const body = () => ({ status, contentType, location: null, body: Buffer.concat(chunks).toString("utf8"), bytes, truncated });
         res.on("data", (c: Buffer) => {
           bytes += c.length;
           if (bytes > limits.maxBytes) {
@@ -136,16 +155,19 @@ function fetchOnce(target: URL, limits: FetchLimits): Promise<SingleResponse> {
           }
           chunks.push(c);
         });
-        res.on("end", () => resolve({ status, contentType, location: null, body: Buffer.concat(chunks).toString("utf8"), bytes, truncated }));
+        res.on("end", () => finish(body()));
+        // Premature/graceful close (no 'end'): settle with whatever we have rather
+        // than hang. Mark truncated so callers know the body may be incomplete.
         res.on("close", () => {
-          if (truncated) resolve({ status, contentType, location: null, body: Buffer.concat(chunks).toString("utf8"), bytes, truncated });
+          if (!truncated && bytes > 0) truncated = true;
+          finish(body());
         });
-        res.on("error", reject);
+        res.on("error", fail);
       },
     );
 
     req.setTimeout(limits.timeoutMs, () => req.destroy(new Error(`request timed out after ${limits.timeoutMs}ms`)));
-    req.on("error", reject);
+    req.on("error", fail);
     req.end();
   });
 }

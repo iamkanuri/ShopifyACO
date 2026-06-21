@@ -269,5 +269,6 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
   Full crawl→extract→diagnose pipeline mock-verified at $0 with NO network
   (`CRAWLER_MODE=mock` default). SSRF deny-list exhaustively unit-tested (IPv4/IPv6/mapped,
   metadata, ports, schemes, credentials); `safeFetch` refuses blocked URLs before connecting.
-  DB-gated `diagnoseRun` end-to-end test (persists + idempotent re-run) ready behind
-  `RUN_DB_TESTS=1` + migration `0010` (not yet applied to Supabase — network, awaiting go).
+  Migration `0010` applied to Supabase (2026-06-21); DB-gated `diagnoseRun` end-to-end test
+  (crawl → diagnose → persist crawl_pages + findings → idempotent re-run) PASSED against the
+  live DB with cleanup (`RUN_DB_TESTS=1`, 21/21).
