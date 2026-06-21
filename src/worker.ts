@@ -5,6 +5,7 @@ import { startWorker } from "./queue/runner.js";
 import { registerCatalogJobs } from "./catalog/sync.js";
 import { registerBenchmarkJobs } from "./benchmarks/execute.js";
 import { registerDiagnosisJobs } from "./diagnosis/execute.js";
+import { registerExperimentJobs } from "./experiments/execute.js";
 
 // Standalone worker process (PROCESS_MODE=worker / `npm run worker`). Thin wrapper
 // around the shared worker loop; safe to run as multiple Railway replicas.
@@ -17,6 +18,7 @@ if (!hasPg()) {
 registerCatalogJobs(); // register job handlers before claiming
 registerBenchmarkJobs();
 registerDiagnosisJobs();
+registerExperimentJobs();
 const handle = startWorker("svc");
 
 async function shutdown(sig: string) {

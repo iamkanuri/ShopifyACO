@@ -17,8 +17,10 @@ import { installHandler, callbackHandler, webhookHandler, shopifyStatus, require
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
+import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInterventionsHandler, planHandler, verifyHandler } from "./experiments.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
+import { registerExperimentJobs } from "../experiments/execute.js";
 import { hasPg, pgQuery } from "../db/pg.js";
 import { stats as queueStats, recentHeartbeats, retryDeadLetter, cancel as cancelJob } from "../queue/jobs.js";
 import { currentSpendDbUsd } from "../queue/spend.js";
@@ -250,6 +252,17 @@ app.post("/app/api/fixes/:id/approve", shopMw, wrap(approveHandler));
 app.post("/app/api/fixes/:id/apply", shopMw, wrap(applyHandler));
 app.post("/app/api/fixes/:id/rollback", shopMw, wrap(rollbackHandler));
 app.post("/app/api/fixes/:id/dismiss", shopMw, wrap(dismissHandler));
+
+// --- Experiments API (Phase 7, shop-scoped). "Prove whether it worked": matched
+//     baseline/verification benchmark runs compared with CIs. Runs default to mock
+//     ($0); a live run (engine spend) requires explicit { live: true }. -----------
+app.post("/app/api/experiments/plan", shopMw, wrap(planHandler));
+app.get("/app/api/experiments", shopMw, wrap(listExperimentsHandler));
+app.get("/app/api/experiments/:id", shopMw, wrap(getExperimentHandler));
+app.post("/app/api/experiments/:id/baseline", shopMw, wrap(baselineHandler));
+app.post("/app/api/experiments/:id/verify", shopMw, wrap(verifyHandler));
+app.get("/app/api/interventions", shopMw, wrap(listInterventionsHandler));
+registerExperimentJobs();
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

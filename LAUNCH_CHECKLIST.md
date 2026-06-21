@@ -104,6 +104,18 @@ One image, three process modes via `PROCESS_MODE` (default `web`):
 - ☐ Test the install/uninstall/compliance-webhook flows on the dev store.
 - ☐ Submit the app for Shopify review.
 
+## 11. Separate dev and prod databases (Phase 13 — data isolation)
+**Why:** local/dev currently points `DATABASE_URL`/`SUPABASE_URL` at the SAME Supabase
+project as production, so a live test run on a laptop writes into prod's `benchmark_runs`/
+`spend_days`/etc. — dev activity then shows up in prod `/healthz` metrics and counts against
+the prod `DAILY_SPEND_CAP_USD`. (Observed 2026-06-21: a $0.0439 local benchmark verification
+run surfaced as prod `spendTodayDbUsd`.)
+- ☐ Create a **separate Supabase project** (or at minimum a separate database/branch) for dev/staging.
+- ☐ Point local `.env` `DATABASE_URL` + `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` at the dev project;
+  keep prod values only on the Railway service. Run `npm run migrate` against the dev project too.
+- ☐ Until then, treat any local **live** (non-mock) run as production data + spend, and prefer
+  `--mock` / `SHOPIFY_MODE=mock` / `CRAWLER_MODE=mock` locally (all $0, no prod-DB writes that cost).
+
 ---
 Each phase's code checks for its env at boot and surfaces a clear not-configured state; see
 `IMPLEMENTATION_STATUS.md` for which phase each item unblocks.

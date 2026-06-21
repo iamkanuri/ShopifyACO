@@ -352,6 +352,24 @@ into reviewable proposals and applies approved ones to the store.
   `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **Live writes need
   `SHOPIFY_SCOPES=…,write_products` + merchant re-consent + a user go.**
 
+**Phase 7 (Experiments & verification — "prove whether it worked") is built on branch
+`phase7-experiments`** (off `main`), mock-verified at $0. **The differentiator.** A matched pair
+of benchmark runs — the SAME definition before vs after an intervention — compared with CIs.
+- **Rigor + honesty are the whole point.** `src/experiments/verify.ts` (pure) reuses the Phase-4
+  two-proportion test (Wilson CIs) to classify each metric **improved | regressed | inconclusive**
+  (the 95% CI of the difference must exclude 0). It **never claims causation** — an intervention
+  plus a measured change is association; confounders (assistant model updates, index refreshes,
+  competitor moves, run-to-run variance) are surfaced as **comparability warnings** (model/engine/
+  prompt/repetition mismatch, low power) + explicit **caveats**. "Inconclusive" is a first-class
+  outcome = "no change detectable at this n", NOT "no effect".
+- `migrations/0012_experiments.sql` (`interventions` + `experiments`; additive).
+  `src/experiments/execute.ts`: `planIntervention` → `captureBaseline` (run BEFORE) →
+  `runVerification` (run AFTER + compare + persist verdict), reusing Phase-4 `executeBenchmark`
+  (mock $0; live reserves spend) + `aggregateRun`. `experiment_verify` queue handler.
+  Shop-scoped API `src/server/experiments.ts` (`/app/api/experiments/plan|:id/{baseline,verify}|…`,
+  tenant-isolated; mock default, live needs `{ live: true }`). `test/experiments.test.ts`
+  (4 pure + 1 DB-gated e2e). **Live baseline/verification spend money — cost-gated + user go.**
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned

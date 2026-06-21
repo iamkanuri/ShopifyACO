@@ -240,9 +240,37 @@ store-writing path is `applyProposal`, gated four ways.
 
 **Phase 6 status: functionally complete (mock-verified, $0); live writes gated on scope + go.**
 
-### Phase 7 — Experiments & verification (`/app/experiments`) ⬜
-`interventions` + matched baseline/verification benchmarks; improved/inconclusive/regressed
-classification with CIs. **The central differentiator: "prove whether it worked."**
+### Phase 7 — Experiments & verification (`/app/experiments`) 🟡 (built + mock-verified $0; 🔒 live runs cost-gated)
+Built on branch `phase7-experiments` (off `main`). **The central differentiator: "prove
+whether it worked."** A matched pair of benchmark runs (the SAME definition, before vs after
+an intervention) compared metric-by-metric with Wilson CIs. Mock-verified end-to-end at $0.
+- ✅ `migrations/0012_experiments.sql` — `interventions` (the merchant change: fix_applied |
+  copy_applied | manual; links a `fix_proposals.id`) + `experiments` (matched
+  `baseline_run_id`/`verification_run_id` + verdict + `result`/`comparability` jsonb). Additive.
+- ✅ `src/experiments/verify.ts` (pure) — `compareExperiment` reuses the Phase-4 two-proportion
+  test (Wilson CIs) across recommendation/mention/top-choice/coverage/citation rates →
+  **improved | regressed | inconclusive** (CI of the difference must exclude 0). Emits
+  **comparability warnings** (engine model changed between runs, engine-set/prompt-count/
+  repetition mismatch, low power, denominator change) and **causation caveats** — association,
+  not proof; confounders (model updates, index refreshes, competitor moves, run-to-run variance)
+  are surfaced, never hidden. "Inconclusive" is a first-class, honest outcome.
+- ✅ `src/db/experiments.ts` + `src/experiments/execute.ts` — `planIntervention` →
+  `captureBaseline` (run BEFORE) → `runVerification` (run AFTER + compare + persist verdict).
+  Reuses Phase-4 `executeBenchmark` (mock $0; live reserves worst-case spend up front) +
+  `aggregateRun`. `experiment_verify` queue handler registered in the worker (mock default;
+  live requires `payload.live`).
+- ✅ Shop-scoped API `src/server/experiments.ts`: `POST /app/api/experiments/plan`,
+  `POST /app/api/experiments/:id/{baseline,verify}`, `GET /app/api/experiments[/:id]`,
+  `GET /app/api/interventions` — each tenant-isolated; baseline/verify default to mock, a live
+  run needs explicit `{ live: true }`.
+- ✅ Tests `test/experiments.test.ts` (4 pure + 1 DB-gated): verdict classification,
+  comparability/low-power flags, causation caveats, and the full **plan → baseline →
+  verification** e2e (deterministic mock → identical runs → honest *inconclusive*). Migration
+  `0012` applied to Supabase; full suite **86/86** with `RUN_DB_TESTS=1 SHOPIFY_MODE=mock`; typecheck clean.
+- ⬜ Follow-ups: auto-open an experiment when a Phase-6 fix is applied; scheduled re-verification
+  (Phase 8); UI (Phase 12). **Live baseline/verification spend money — cost-gated + user go.**
+
+**Phase 7 status: functionally complete (mock-verified, $0); live runs gated on cost + go.**
 
 ### Phase 8 — Monitoring & alerts ⬜
 Recurring schedules (scheduler from Phase 1) + triggers. Notification provider interface,
@@ -270,6 +298,11 @@ monitoring/settings/billing). Keep dark system. New homepage positioning (headli
 Full loading/empty/partial/unavailable/denied/cost-limit/retry/failure states. Playwright.
 
 ### Phase 13 — Security, privacy & quality ⬜ (continuous)
+> **Known item — dev/prod DB isolation:** local dev shares the production Supabase project,
+> so local **live** runs write into prod tables (`benchmark_runs`/`spend_days`/…) and show up in
+> prod `/healthz` + count against the prod spend cap (observed 2026-06-21: a $0.0439 local
+> benchmark run appeared as prod `spendTodayDbUsd`). Fix = a separate dev/staging Supabase
+> (LAUNCH_CHECKLIST §11). Until then, run local work in mock mode ($0, no costly prod-DB writes).
 Token encryption+rotation, OAuth state/HMAC, webhook verify/idempotency, shop isolation,
 CSRF, secure cookies/headers, rate limits, SSRF, prompt-injection, output schema validation,
 secret redaction, data export/deletion, compliance webhooks, audit logging, least privilege.
