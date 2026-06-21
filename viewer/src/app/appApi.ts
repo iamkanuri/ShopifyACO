@@ -39,6 +39,9 @@ export const diagnose = (runId: number) => post<{ findings: number; evidenceBack
 
 export const getFixes = () => load<{ proposals: AppProposalRow[] }>(`/app/api/fixes`, { proposals: DEMO.proposals });
 
+/** Generate fix proposals for a product from a run's findings (writes nothing to the store). */
+export const proposeFixes = (runId: number, productGid: string) => post<{ created: number; writeProducts: number; copyReady: number }>(`/app/api/fixes/propose`, { runId, productGid });
+
 export const getExperiments = () => load<{ experiments: AppExperimentRow[] }>(`/app/api/experiments`, { experiments: DEMO.experiments });
 
 export const getSchedules = () => load<{ schedules: AppScheduleRow[] }>(`/app/api/schedules`, { schedules: DEMO.schedules });

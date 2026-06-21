@@ -32,7 +32,7 @@ export function Evidence() {
         </div>
         <div className="al-head-actions">
           {runId && <button className="btn" disabled={busy} onClick={runDiagnosis}>{busy ? "Diagnosing…" : "Run diagnosis"}</button>}
-          <Link to="/app/fixes" className="btn">Turn into fixes →</Link>
+          <Link to={`/app/fixes${runId ? `?run=${runId}` : ""}`} className="btn">Turn into fixes →</Link>
         </div>
       </div>
       {note && <div className="al-note ok" style={{ marginBottom: 16 }}>{note}</div>}

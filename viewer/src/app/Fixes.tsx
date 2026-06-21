@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { applyFix, approveFix, dismissFix, getFixes } from "./appApi";
+import { applyFix, approveFix, dismissFix, getCatalog, getFixes, proposeFixes } from "./appApi";
 import { DemoBadge, KindTag, StatePane, useLoaded } from "./ui";
 
 // Fix Studio: evidence-backed proposals. write_products are auto-applied (gated:
 // approve → scope → re-read conflict check → rollback snapshot, server-side);
-// copy_ready are validated snippets the merchant pastes into their theme.
+// copy_ready are validated snippets the merchant pastes into their theme. Arriving
+// with ?run=, the merchant can GENERATE proposals for a product from that run.
 export function Fixes() {
+  const runId = Number(new URLSearchParams(window.location.search).get("run")) || undefined;
   const f = useLoaded(() => getFixes(), []);
   const proposals = f.data?.proposals ?? [];
   const [busy, setBusy] = useState<number | null>(null);
@@ -28,7 +30,9 @@ export function Fixes() {
         </div>
       </div>
 
-      <StatePane loading={f.loading} empty={proposals.length === 0} emptyText="No proposals yet. Generate fixes from a finding.">
+      {runId && <GeneratePanel runId={runId} onCreated={() => f.reload()} />}
+
+      <StatePane loading={f.loading} empty={proposals.length === 0} emptyText="No proposals yet. Generate fixes from a diagnosed run.">
         <div className="grid">
           {proposals.map((p) => (
             <div key={p.id} className="card al-fix">
@@ -69,6 +73,42 @@ export function Fixes() {
           ))}
         </div>
       </StatePane>
+    </div>
+  );
+}
+
+// Generate proposals for one product from a diagnosed run's findings. Writes nothing
+// to the store — it only drafts reviewable proposals.
+function GeneratePanel({ runId, onCreated }: { runId: number; onCreated: () => void }) {
+  const cat = useLoaded(() => getCatalog(), []);
+  const products = cat.data?.products ?? [];
+  const [gid, setGid] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const chosen = gid || products[0]?.product_gid || "";
+
+  async function generate() {
+    if (!chosen) return;
+    setBusy(true); setMsg("");
+    const r = await proposeFixes(runId, chosen);
+    setBusy(false);
+    setMsg(r.ok ? `Generated ${(r.data as { created?: number })?.created ?? ""} proposal(s).` : r.demo ? "Connect your store to generate fixes for a product." : r.error ?? "Could not generate.");
+    if (r.ok) onCreated();
+  }
+
+  return (
+    <div className="card al-generate">
+      <div className="al-generate-main">
+        <div>
+          <div className="al-set-k">Generate fixes for a product · run #{runId}</div>
+          <p className="muted" style={{ margin: "3px 0 0", fontSize: 12.5 }}>Drafts evidence-backed proposals from this run's findings. Reviewable — nothing is written to your store.</p>
+        </div>
+        <select className="al-generate-select" value={chosen} disabled={busy || products.length === 0} onChange={(e) => setGid(e.target.value)}>
+          {products.map((p) => <option key={p.product_gid} value={p.product_gid}>{p.title}</option>)}
+        </select>
+        <button className="btn btn-primary" disabled={busy || !chosen} onClick={generate}>{busy ? "Generating…" : "Generate"}</button>
+      </div>
+      {msg && <div className="al-note ok" style={{ marginTop: 12 }}>{msg}</div>}
     </div>
   );
 }
