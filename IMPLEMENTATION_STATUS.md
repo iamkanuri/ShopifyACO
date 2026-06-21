@@ -137,13 +137,24 @@ unit-tested; live multi-engine execution wiring is the remaining piece.
   mention/top-choice rates, avg position, prompt coverage, citation-backed rate, SoV,
   per-engine breakdown + divergence, per-answer win/loss — all with CIs + sample sizes.
   `compareRuns` for baseline-vs-verification. Unit-tested.
-- ⬜ **Remaining:** `src/db/benchmarks.ts` (CRUD + run + observation insert + aggregate
-  query) and `src/benchmarks/execute.ts` (expand product×prompt×engine×repetition → call
-  engine → detect → store observation), wired to the existing engine adapters + detection
-  and the Phase-1 spend reservation. Build/test against the MOCK engine first ($0); a real
-  run spends money (gated by the per-scan + $25/day caps — always cost-confirmed first).
-- ⬜ Optional LLM adjudication pass (record `classification_method`); Claude adapter when
-  its current API/grounding are configured (degrade gracefully).
+- ✅ `src/db/benchmarks.ts` — CRUD + versioned config, `createRun`, `insertObservation`,
+  `finishRun`, `getObservations`, `aggregateRun`.
+- ✅ `src/benchmarks/execute.ts` — expands product×prompt×engine×repetition → calls each
+  engine (reuses existing adapters) → deterministic detection → stores one observation per
+  assessed brand (own + competitors, shared `response_id`). Live runs **reserve worst-case
+  spend up front** (Phase-1 atomic reservation) + reconcile to actuals + write the usage
+  ledger; on cap-hit the run fails cleanly without spending. Errors record an own-brand
+  not_mentioned row so the denominator stays honest. Queue handler `benchmark_run`
+  registered in the worker.
+- ✅ **Verified end-to-end against the mock engine ($0):** a 2-rep × 3-engine cohort →
+  140 observations → recommendation rate 30% [CI 20–43%, n=60], mention/coverage, engine
+  divergence, win/loss, share-of-voice. Self-cleaned. A real run spends money (per-scan +
+  $25/day caps; always cost-confirmed with the user first).
+- ⬜ Follow-ups: optional LLM adjudication pass (`classification_method` column ready);
+  Claude adapter when its current API/grounding are configured (degrade gracefully);
+  reuse the concurrency runner for large cohorts (currently sequential).
+
+**Phase 4 status: functionally complete (mock-verified); live runs gated on cost confirmation.**
 
 ### Phase 5 — Evidence & diagnosis engine (crawler) ⬜
 SSRF-hardened bounded crawler (`src/crawler/`), JSON-LD/Offer extraction, evidence-backed
