@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { getBenchmarks, runBenchmark, type RunBenchmarkResult } from "./appApi";
+import { diagnose, getBenchmarks, runBenchmark, type RunBenchmarkResult } from "./appApi";
 import { DemoBadge, Pct, StatePane, useLoaded } from "./ui";
-import { Link } from "../router";
+import { navigate } from "../router";
 
 // Measure: start the loop. A merchant enters their brand + category + competitors and
 // runs a benchmark across ChatGPT/Gemini/Perplexity. The preview is MOCK ($0); a live
@@ -25,6 +25,13 @@ export function Measure() {
     if (!r.ok) { setErr(r.error ?? "Run failed."); return; }
     setResult(r);
     runs.reload();
+  }
+
+  // Kick off the Phase-5 diagnosis for this run (mock crawl, $0), then jump to Evidence.
+  async function diagnoseAndGo() {
+    const id = result?.runId;
+    if (id) { setBusy(true); await diagnose(id); setBusy(false); }
+    navigate(`/app/evidence${id ? `?run=${id}` : ""}`);
   }
 
   return (
@@ -52,7 +59,7 @@ export function Measure() {
             <div className="al-measure-stat"><span className="al-set-k">Recommendation rate</span>{result.recommendationRate ? <Pct p={result.recommendationRate} /> : "—"}</div>
             <div className="al-measure-stat"><span className="al-set-k">Mention rate</span>{result.mentionRate ? <Pct p={result.mentionRate} /> : "—"}</div>
             <div className="al-measure-stat"><span className="al-set-k">Observations</span><b>{result.observationCount}</b></div>
-            <Link to="/app/evidence" className="btn">Diagnose why →</Link>
+            <button className="btn" disabled={busy} onClick={diagnoseAndGo}>Diagnose why →</button>
           </div>
         )}
       </div>

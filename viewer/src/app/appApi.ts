@@ -34,6 +34,9 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; data?
 export const getFindings = (runId?: number) =>
   load<{ findings: AppFindingRow[] }>(`/app/api/evidence/findings${runId ? `?runId=${runId}` : ""}`, { findings: DEMO.findings });
 
+/** Trigger the Phase-5 crawl + diagnosis for a run (mock crawl by default, $0). */
+export const diagnose = (runId: number) => post<{ findings: number; evidenceBacked: number }>(`/app/api/evidence/diagnose`, { runId });
+
 export const getFixes = () => load<{ proposals: AppProposalRow[] }>(`/app/api/fixes`, { proposals: DEMO.proposals });
 
 export const getExperiments = () => load<{ experiments: AppExperimentRow[] }>(`/app/api/experiments`, { experiments: DEMO.experiments });
