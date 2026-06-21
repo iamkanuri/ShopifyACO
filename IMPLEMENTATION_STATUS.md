@@ -207,10 +207,38 @@ makes outbound HTTP requests (spends no API money — gated for the network acce
 
 **Phase 5 status: functionally complete (mock-verified, $0); live crawl gated on user go.**
 
-### Phase 6 — Fix Studio (`/app/fixes`) ⬜
-Evidence-backed proposals with current/proposed/diff/approval. Merchant-approved GraphQL
-`write_products` with re-read conflict check, rollback snapshot, audit, partial-failure
-reporting. Themes/schema → validated copy-ready output + future theme-app-extension path.
+### Phase 6 — Fix Studio (`/app/fixes`) 🟡 (built + mock-verified $0; 🔒 live write needs write_products + go)
+Built on branch `phase6-fixes` (off `phase5-crawler`). Turns diagnosis findings + catalog
+data into reviewable change proposals, and applies approved ones through a gated, reversible
+write-back path. **Mock-verified end-to-end at $0** (no network/credentials); the only
+store-writing path is `applyProposal`, gated four ways.
+- ✅ `migrations/0011_fixes.sql` — `fix_proposals` (lifecycle: proposed → approved → applied |
+  failed | conflict | rolled_back | dismissed; `based_on` baseline + `applied_snapshot` for
+  rollback). Also `alter table findings add column signal` (additive) so a finding maps to its fix.
+- ✅ `src/fixes/propose.ts` (pure) — two tiers: **write_products** (only SEO-title/description
+  backfill — exact, reversible reformats of data the merchant ALREADY has; **never fabricates**
+  review counts/GTINs/prices) and **copy_ready** (validated JSON-LD: a factual Product snippet
+  built from the catalog, plus clearly-placeholdered AggregateRating/Offer-shipping/return/FAQ
+  templates the merchant fills with their real numbers).
+- ✅ `src/fixes/source.ts` — `rereadProduct` (re-read for the conflict check) + `productUpdate`
+  (GraphQL Admin `productUpdate`; mock simulates + records the write so re-read/rollback are
+  observable at $0). `src/fixes/apply.ts` — the write-back engine: **approval-gated**,
+  **write_products-scope-gated** (`hasWriteScope`), **re-read conflict-checked** (never clobbers
+  a value changed since the proposal), **snapshotted for rollback**, **audited**, with
+  partial-failure (`userErrors`) surfaced. `rollbackProposal` is itself conflict-checked so it
+  won't clobber a newer merchant edit.
+- ✅ Shop-scoped API `src/server/fixes.ts`: `POST /app/api/fixes/propose`, `GET /app/api/fixes`,
+  `POST /app/api/fixes/:id/{approve,apply,rollback,dismiss}` (each tenant-isolated; apply returns
+  409 on conflict, 422 on failure).
+- ✅ Tests `test/fixes.test.ts` (5 pure + 2 DB-gated): proposal generation (no fabrication),
+  scope gate, input shaping, and the full **approve → conflict-checked apply → rollback** lifecycle
+  + conflict + scope-denied refusals (mock store writes). Migration `0011` applied to Supabase;
+  full suite **80/80** with `RUN_DB_TESTS=1 SHOPIFY_MODE=mock`; typecheck clean.
+- ⬜ Follow-ups: writing metafields (richer direct writes) once needed; theme-app-extension path
+  for JSON-LD instead of copy-paste; Fix Studio UI (Phase 12). **Live writes require the merchant
+  to grant `write_products` (re-consent) + a user go.**
+
+**Phase 6 status: functionally complete (mock-verified, $0); live writes gated on scope + go.**
 
 ### Phase 7 — Experiments & verification (`/app/experiments`) ⬜
 `interventions` + matched baseline/verification benchmarks; improved/inconclusive/regressed

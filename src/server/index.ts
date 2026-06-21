@@ -16,6 +16,7 @@ import { checkEngineKeys } from "./healthcheck.js";
 import { installHandler, callbackHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
+import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
 import { hasPg, pgQuery } from "../db/pg.js";
@@ -239,6 +240,16 @@ app.post("/app/api/evidence/diagnose", shopMw, wrap(diagnoseHandler));
 app.get("/app/api/evidence/findings", shopMw, wrap(findingsHandler));
 app.get("/app/api/evidence/pages", shopMw, wrap(pagesHandler));
 registerDiagnosisJobs();
+
+// --- Fix Studio API (Phase 6, shop-scoped). APPLY is the only store-writing route
+//     and is gated: merchant approval + write_products scope + re-read conflict
+//     check + rollback snapshot, all inside applyProposal. ------------------------
+app.post("/app/api/fixes/propose", shopMw, wrap(proposeHandler));
+app.get("/app/api/fixes", shopMw, wrap(listFixesHandler));
+app.post("/app/api/fixes/:id/approve", shopMw, wrap(approveHandler));
+app.post("/app/api/fixes/:id/apply", shopMw, wrap(applyHandler));
+app.post("/app/api/fixes/:id/rollback", shopMw, wrap(rollbackHandler));
+app.post("/app/api/fixes/:id/dismiss", shopMw, wrap(dismissHandler));
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

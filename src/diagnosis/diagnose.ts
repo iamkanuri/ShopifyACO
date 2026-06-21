@@ -34,6 +34,8 @@ export type FindingKind = "evidence_backed" | "general_hygiene";
 
 export interface Finding {
   kind: FindingKind;
+  /** The structural signal this finding is about (drives Phase-6 fix proposals). */
+  signal?: SignalKey | "reachability";
   intent: string | null;
   promptText: string | null;
   engine: string | null;
@@ -197,6 +199,7 @@ export function diagnose(input: DiagnoseInput): Finding[] {
   if (merchantPage && !merchantPage.ok) {
     findings.push({
       kind: "general_hygiene",
+      signal: "reachability",
       intent: null, promptText: null, engine: null, merchantBrand,
       winningCompetitor: null, aiAnswerSnippet: null, citations: [],
       merchantGap: [`Merchant page could not be crawled (${merchantPage.error ?? "unknown error"})`],
@@ -238,6 +241,7 @@ export function diagnose(input: DiagnoseInput): Finding[] {
       if (!merchantHas && competitorWithIt) {
         findings.push({
           kind: "evidence_backed",
+          signal: sig,
           intent: exemplar.intent,
           promptText: exemplar.promptText,
           engine: exemplar.engine,
@@ -265,6 +269,7 @@ export function diagnose(input: DiagnoseInput): Finding[] {
       if (!merchantExtract.signals[sig]) {
         findings.push({
           kind: "general_hygiene",
+          signal: sig,
           intent: null,
           promptText: null,
           engine: null,

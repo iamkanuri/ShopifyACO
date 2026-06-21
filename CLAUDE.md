@@ -334,6 +334,24 @@ page + the competitor pages the assistants cited, then diagnosing the structural
   `CRAWLER_MODE=live` + a user go.** Known follow-up: Phase 4 stores `observations.citations`
   as `[]` — wire real engine citations so live diagnosis auto-derives competitor URLs.
 
+**Phase 6 (Fix Studio — gated, reversible write-back) is built on branch `phase6-fixes`** (off
+`phase5-crawler`), mock-verified end-to-end at $0. It turns diagnosis findings + catalog data
+into reviewable proposals and applies approved ones to the store.
+- **`write_products` is the only place this app mutates a store, and it is gated four ways:**
+  merchant **approval** → **`write_products` scope** check (`hasWriteScope`) → **re-read conflict
+  check** (abort if the live value changed since the proposal — never clobber) → **snapshot for
+  rollback** → audited, with `userErrors` (partial failure) surfaced. `rollbackProposal` is itself
+  conflict-checked. `src/fixes/apply.ts` + `src/fixes/source.ts` (`productUpdate`/`rereadProduct`;
+  mock simulates + records writes so the lifecycle runs at $0).
+- **Proposals never fabricate** (`src/fixes/propose.ts`, pure): direct **write_products** is limited
+  to SEO title/description backfill (exact reformats of existing data); everything else is
+  **copy_ready** validated JSON-LD — a factual Product snippet from the catalog, plus clearly
+  placeholdered AggregateRating/shipping/return/FAQ templates the merchant fills with real numbers.
+- `migrations/0011_fixes.sql` (`fix_proposals` + `findings.signal`; additive). Shop-scoped API
+  `src/server/fixes.ts` (`/app/api/fixes/propose|…/{approve,apply,rollback,dismiss}`, tenant-isolated).
+  `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **Live writes need
+  `SHOPIFY_SCOPES=…,write_products` + merchant re-consent + a user go.**
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned
