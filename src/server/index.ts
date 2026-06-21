@@ -18,9 +18,11 @@ import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./ca
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
 import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInterventionsHandler, planHandler, verifyHandler } from "./experiments.js";
+import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, listAlertsHandler, listSchedulesHandler, runScheduleHandler, updateScheduleHandler } from "./monitoring.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
 import { registerExperimentJobs } from "../experiments/execute.js";
+import { registerMonitoringJobs } from "../monitoring/execute.js";
 import { hasPg, pgQuery } from "../db/pg.js";
 import { stats as queueStats, recentHeartbeats, retryDeadLetter, cancel as cancelJob } from "../queue/jobs.js";
 import { currentSpendDbUsd } from "../queue/spend.js";
@@ -263,6 +265,17 @@ app.post("/app/api/experiments/:id/baseline", shopMw, wrap(baselineHandler));
 app.post("/app/api/experiments/:id/verify", shopMw, wrap(verifyHandler));
 app.get("/app/api/interventions", shopMw, wrap(listInterventionsHandler));
 registerExperimentJobs();
+
+// --- Monitoring & alerts API (Phase 8, shop-scoped). Recurring schedules + alerts.
+//     Runs default to mock ($0); the scheduler enqueues live only if MONITORING_LIVE=1.
+app.post("/app/api/schedules", shopMw, wrap(createScheduleHandler));
+app.get("/app/api/schedules", shopMw, wrap(listSchedulesHandler));
+app.post("/app/api/schedules/:id", shopMw, wrap(updateScheduleHandler));
+app.post("/app/api/schedules/:id/delete", shopMw, wrap(deleteScheduleHandler));
+app.post("/app/api/schedules/:id/run", shopMw, wrap(runScheduleHandler));
+app.get("/app/api/alerts", shopMw, wrap(listAlertsHandler));
+app.post("/app/api/alerts/:id/acknowledge", shopMw, wrap(acknowledgeAlertHandler));
+registerMonitoringJobs();
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

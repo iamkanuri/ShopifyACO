@@ -272,9 +272,38 @@ an intervention) compared metric-by-metric with Wilson CIs. Mock-verified end-to
 
 **Phase 7 status: functionally complete (mock-verified, $0); live runs gated on cost + go.**
 
-### Phase 8 — Monitoring & alerts ⬜
-Recurring schedules (scheduler from Phase 1) + triggers. Notification provider interface,
-dev logger first, email adapter (Phase 11 env). Historical dashboards w/ comparability flags.
+### Phase 8 — Monitoring & alerts 🟡 (built + mock-verified $0; 🔒 live cadence + email gated)
+Built on branch `phase8-monitoring` (off `phase7-experiments`). Closes the loop: re-run a
+benchmark (or re-verify a fix) on a cadence and alert on **statistically credible** change.
+Mock-verified at $0.
+- ✅ `migrations/0013_monitoring.sql` — `schedules` (cadence + next_run_at + last_run_id),
+  `alerts` (regression/improvement/threshold/competitor_overtake + CI-backed `comparison`),
+  `notifications` (delivery log). Additive.
+- ✅ `src/monitoring/alerts.ts` (pure) — `nextRunAt` cadence math + `evaluateAlerts(current,
+  previous)`: a regression/improvement alert fires **only when the 95% CI of the difference
+  excludes 0** (no cry-wolf on run-to-run noise); "inconclusive" is silent. Also threshold-floor
+  + share-of-voice **competitor-overtake** (lead flip). Never claims causation — alerts say
+  "your measured visibility moved", with the comparison attached.
+- ✅ `src/notify/provider.ts` — `NotificationProvider` interface + `LoggerProvider` (default,
+  dev-safe) + `EmailProvider` (gated on `EMAIL_*`; reports `skipped` rather than faking a send
+  until the Phase-11 HTTP integration). `getProvider()` picks by config.
+- ✅ `src/db/monitoring.ts` + `src/monitoring/execute.ts` — `monitorRun` (re-run → compare to
+  the previous run → raise alerts → notify → advance cadence) reusing Phase-4 `executeBenchmark`/
+  `aggregateRun` and Phase-7 `runVerification`. `runDueSchedules` enqueues due schedules;
+  `monitor_run` worker handler. **Wired into the Phase-1 scheduler** (`src/scheduler.ts`).
+- ✅ Recurring runs are **mock ($0) by default**; the scheduler enqueues LIVE engine spend only
+  when `MONITORING_LIVE=1` (so monitoring never auto-spends without an explicit opt-in; still
+  under the daily cap).
+- ✅ Shop-scoped API `src/server/monitoring.ts`: `POST/GET /app/api/schedules`,
+  `POST /app/api/schedules/:id[/delete|/run]`, `GET /app/api/alerts`,
+  `POST /app/api/alerts/:id/acknowledge` — tenant-isolated.
+- ✅ Tests `test/monitoring.test.ts` (4 pure + 2 DB-gated): cadence, CI-gated alert verdicts
+  (incl. **no false alert on identical runs**), provider behavior, schedule run + advance, alert
+  lifecycle. Migration `0013` applied; full suite green with `npm run test:db`; typecheck clean.
+- ⬜ Follow-ups: real email dispatch (Phase 11 env), per-merchant alert recipients/preferences,
+  historical dashboards (Phase 12). **Live recurring runs need `MONITORING_LIVE=1` + a user go.**
+
+**Phase 8 status: functionally complete (mock-verified, $0); live cadence + email gated.**
 
 ### Phase 9 — Product feeds & agentic readiness ⬜🔒
 Versioned feed validator vs current official OpenAI commerce spec (consult docs at build).

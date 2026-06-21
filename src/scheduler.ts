@@ -3,6 +3,7 @@ import process from "node:process";
 import { ENV } from "./server/env.js";
 import { hasPg, closePg } from "./db/pg.js";
 import { recoverAbandoned, touchHeartbeat } from "./queue/jobs.js";
+import { runDueSchedules } from "./monitoring/execute.js";
 
 // Scheduler process (PROCESS_MODE=scheduler / `npm run scheduler`). Runs periodic
 // maintenance: recovers abandoned jobs and (in later phases) enqueues due recurring
@@ -15,7 +16,9 @@ let stopping = false;
 async function tick(): Promise<void> {
   const recovered = await recoverAbandoned(ENV.queue.recoverGraceSec);
   if (recovered) console.log(`[scheduler] recovered ${recovered} abandoned job(s)`);
-  // Phase 8: enqueue due `schedules` here (monitoring/recurring benchmarks).
+  // Phase 8: enqueue due monitoring schedules (mock unless MONITORING_LIVE=1).
+  const sched = await runDueSchedules({ mock: !ENV.monitoringLive });
+  if (sched.processed) console.log(`[scheduler] enqueued ${sched.processed} due schedule(s)`);
   await touchHeartbeat("scheduler", { tickMs: TICK_MS });
 }
 

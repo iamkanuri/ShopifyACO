@@ -121,6 +121,20 @@ export const ENV = {
     recoverGraceSec: Number(process.env.QUEUE_RECOVER_GRACE_SEC ?? 30),
   },
 
+  // ---- Notifications (Phase 8) --------------------------------------------
+  // Until a provider + key are set, alerts fall back to the dev logger adapter
+  // (recorded as channel='log', no real send). Email is opt-in.
+  email: {
+    provider: str(process.env.EMAIL_PROVIDER), // e.g. resend | postmark | ses (unset => logger)
+    apiKey: str(process.env.EMAIL_API_KEY),
+    from: str(process.env.EMAIL_FROM),
+    replyTo: str(process.env.EMAIL_REPLY_TO),
+  },
+  // Recurring monitoring runs are MOCK ($0) by default; flip to 1 to let the
+  // scheduler enqueue LIVE benchmark runs (real engine spend, still under the daily
+  // cap). Off by default so monitoring never auto-spends without an explicit opt-in.
+  monitoringLive: process.env.MONITORING_LIVE === "1",
+
   // ---- Evidence & diagnosis crawler (Phase 5) -----------------------------
   // Live crawling hits the network (it spends NO API money — Shopify/web reads are
   // free — but it makes outbound HTTP requests, so it is gated). Default 'mock'

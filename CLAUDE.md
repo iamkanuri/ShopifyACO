@@ -370,6 +370,25 @@ of benchmark runs — the SAME definition before vs after an intervention — co
   tenant-isolated; mock default, live needs `{ live: true }`). `test/experiments.test.ts`
   (4 pure + 1 DB-gated e2e). **Live baseline/verification spend money — cost-gated + user go.**
 
+**Phase 8 (Monitoring & alerts) is built on branch `phase8-monitoring`** (off
+`phase7-experiments`), mock-verified at $0. Recurring schedules re-run a benchmark / re-verify a
+fix and alert on change.
+- **Honest alerting (no cry-wolf):** `src/monitoring/alerts.ts` (pure) fires a regression/
+  improvement alert **only when the 95% CI of the difference excludes 0** — identical/noisy runs
+  raise nothing. Plus threshold-floor + share-of-voice **competitor-overtake**. Never claims
+  causation. `evaluateAlerts` + `nextRunAt` cadence math.
+- `src/notify/provider.ts`: `NotificationProvider` seam — `LoggerProvider` (default) +
+  `EmailProvider` (gated on `EMAIL_*`; reports `skipped` until the Phase-11 HTTP send, never
+  fakes delivery). `src/monitoring/execute.ts`: `monitorRun` (re-run → compare to previous →
+  alert → notify → advance cadence) reusing Phase-4 `executeBenchmark`/`aggregateRun` + Phase-7
+  `runVerification`; `runDueSchedules` wired into the **Phase-1 scheduler** (`src/scheduler.ts`);
+  `monitor_run` worker handler.
+- **Recurring runs are mock ($0) by default; `MONITORING_LIVE=1` opts into live engine spend**
+  (still under the daily cap) so monitoring never auto-spends silently.
+- `migrations/0013_monitoring.sql` (`schedules`/`alerts`/`notifications`; additive). Shop-scoped
+  API `src/server/monitoring.ts` (`/app/api/schedules*`, `/app/api/alerts*`, tenant-isolated).
+  `test/monitoring.test.ts` (4 pure + 2 DB-gated, incl. no-false-alert-on-identical-runs).
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned
