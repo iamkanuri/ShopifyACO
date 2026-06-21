@@ -34,6 +34,22 @@ export async function planIntervention(
   return { interventionId, experimentId };
 }
 
+/** One-shot: build a benchmark from merchant inputs, plan an intervention, and
+ *  capture its BEFORE baseline — so the merchant can apply a change and later verify.
+ *  mock ($0) by default. */
+export async function startVerification(
+  shop: string,
+  input: { brand: string; category: string; competitors: string[]; description: string; mock?: boolean },
+): Promise<{ interventionId: number; experimentId: number; baselineRunId: number }> {
+  const { buildShopBenchmarkConfig } = await import("../benchmarks/shopRun.js");
+  const { createBenchmark } = await import("../db/benchmarks.js");
+  const config = buildShopBenchmarkConfig({ brand: input.brand, category: input.category, competitors: input.competitors });
+  const benchmarkId = await createBenchmark(shop, `${config.brand.name} — verification`, "verification", config);
+  const { interventionId, experimentId } = await planIntervention(shop, { benchmarkId, kind: "manual", description: input.description });
+  const baseline = await captureBaseline(shop, experimentId, { mock: input.mock });
+  return { interventionId, experimentId, baselineRunId: baseline.runId };
+}
+
 async function ownedExperiment(shop: string, experimentId: number): Promise<ExperimentRow> {
   const exp = await getExperiment(experimentId);
   if (!exp || exp.shop_domain !== shop) throw new Error("experiment not found for this shop");

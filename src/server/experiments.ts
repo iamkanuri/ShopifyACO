@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { shopOf } from "./shopify.js";
 import { getBenchmark } from "../db/benchmarks.js";
 import { getExperiment, listExperiments, listInterventions } from "../db/experiments.js";
-import { captureBaseline, planIntervention, runVerification } from "../experiments/execute.js";
+import { captureBaseline, planIntervention, runVerification, startVerification } from "../experiments/execute.js";
 
 // Shop-scoped Experiments API (Phase 7). requireShop sets req.shopDomain; every
 // handler is tenant-isolated. Baseline/verification are benchmark runs: mock by
@@ -34,6 +34,27 @@ export async function planHandler(req: Request, res: Response): Promise<void> {
     primaryMetric: primaryMetric as never,
   });
   res.json({ ...out, primaryMetric: primaryMetric ?? "recommendationRate" });
+}
+
+/** POST /app/api/experiments/start { brand, category, competitors[], description, live? }
+ *  — build a benchmark, plan an intervention, and capture its baseline in one step. */
+export async function startVerificationHandler(req: Request, res: Response): Promise<void> {
+  const shop = shopOf(req);
+  const brand = typeof req.body?.brand === "string" ? req.body.brand.trim() : "";
+  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "";
+  const description = typeof req.body?.description === "string" ? req.body.description.trim() : "";
+  const competitors = Array.isArray(req.body?.competitors) ? req.body.competitors.map(String) : [];
+  if (!brand || !category || !description) {
+    res.status(400).json({ error: "brand, category and description are required." });
+    return;
+  }
+  const live = req.body?.live === true;
+  try {
+    const r = await startVerification(shop, { brand, category, competitors, description, mock: !live });
+    res.json({ ok: true, mode: live ? "live" : "mock", ...r });
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
 }
 
 /** POST /app/api/experiments/:id/baseline { live? } — capture the BEFORE run. */

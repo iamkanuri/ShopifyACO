@@ -17,7 +17,7 @@ import { installHandler, callbackHandler, webhookHandler, shopifyStatus, require
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
-import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInterventionsHandler, planHandler, verifyHandler } from "./experiments.js";
+import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInterventionsHandler, planHandler, startVerificationHandler, verifyHandler } from "./experiments.js";
 import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, listAlertsHandler, listSchedulesHandler, runScheduleHandler, updateScheduleHandler } from "./monitoring.js";
 import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
@@ -260,6 +260,7 @@ app.post("/app/api/fixes/:id/dismiss", shopMw, wrap(dismissHandler));
 //     baseline/verification benchmark runs compared with CIs. Runs default to mock
 //     ($0); a live run (engine spend) requires explicit { live: true }. -----------
 app.post("/app/api/experiments/plan", shopMw, wrap(planHandler));
+app.post("/app/api/experiments/start", shopMw, wrap(startVerificationHandler));
 app.get("/app/api/experiments", shopMw, wrap(listExperimentsHandler));
 app.get("/app/api/experiments/:id", shopMw, wrap(getExperimentHandler));
 app.post("/app/api/experiments/:id/baseline", shopMw, wrap(baselineHandler));

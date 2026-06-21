@@ -149,6 +149,14 @@ export const DEMO = {
     },
   ],
 
+  pendingExperiment: <AppExperimentRow>{
+    id: 23, verdict: "pending", primary_metric: "recommendationRate", verification_run_id: null,
+    result: {
+      primary: { metric: "recommendationRate", baseline: p(12, 60), current: p(0, 0), diff: null, diffCiLow: 0, diffCiHigh: 0, verdict: "pending" },
+      secondary: [], comparability: [], caveats: [],
+    },
+  },
+
   schedules: <AppScheduleRow[]>[
     { id: 31, kind: "benchmark", cadence: "weekly", enabled: true, next_run_at: "2026-06-28T15:00:00Z", last_run_at: "2026-06-21T15:00:00Z" },
   ],

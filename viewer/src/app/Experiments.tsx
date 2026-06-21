@@ -1,13 +1,16 @@
-import { getExperiments } from "./appApi";
-import type { AppExperimentRow, Proportion } from "./fixtures";
+import { useState } from "react";
+import { getExperiments, startVerification, verifyExperiment } from "./appApi";
+import { DEMO, type AppExperimentRow, type Proportion } from "./fixtures";
 import { CiBar, DemoBadge, Pct, StatePane, VerdictPill, useLoaded } from "./ui";
 
 // Experiments: the differentiator — did the change actually work? Matched
 // baseline/verification runs compared with CIs. "Inconclusive" is shown honestly,
-// and every result carries its causation caveats.
+// and every result carries its causation caveats. Merchants START one here (capture
+// a baseline), apply their change, then run the verification.
 export function Experiments() {
   const e = useLoaded(() => getExperiments(), []);
-  const experiments = e.data?.experiments ?? [];
+  // Surface the demo pending experiment so the verify action is visible in preview.
+  const experiments = e.demo ? [DEMO.pendingExperiment, ...(e.data?.experiments ?? [])] : (e.data?.experiments ?? []);
 
   return (
     <div>
@@ -18,17 +21,79 @@ export function Experiments() {
         </div>
       </div>
 
-      <StatePane loading={e.loading} empty={experiments.length === 0} emptyText="No experiments yet. Apply a fix, then verify it.">
+      <StartPanel onStarted={() => e.reload()} />
+
+      <StatePane loading={e.loading} empty={experiments.length === 0} emptyText="No experiments yet. Start one below, apply your change, then verify it.">
         <div className="grid">
-          {experiments.map((x) => <ExperimentCard key={x.id} x={x} />)}
+          {experiments.map((x) => <ExperimentCard key={x.id} x={x} onVerified={() => e.reload()} />)}
         </div>
       </StatePane>
     </div>
   );
 }
 
-function ExperimentCard({ x }: { x: AppExperimentRow }) {
+function StartPanel({ onStarted }: { onStarted: () => void }) {
+  const [brand, setBrand] = useState("");
+  const [category, setCategory] = useState("");
+  const [competitors, setCompetitors] = useState("");
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function start() {
+    if (!brand.trim() || !category.trim() || !description.trim()) { setMsg("Brand, category and what-you-changed are required."); return; }
+    setBusy(true); setMsg("");
+    const r = await startVerification({ brand: brand.trim(), category: category.trim(), competitors: competitors.split(",").map((s) => s.trim()).filter(Boolean), description: description.trim() });
+    setBusy(false);
+    setMsg(r.ok ? "Baseline captured. Apply your change, then run the verification below." : r.demo ? "Connect your store to start a verification." : r.error ?? "Could not start.");
+    if (r.ok) onStarted();
+  }
+
+  return (
+    <div className="card al-generate" style={{ marginBottom: 18 }}>
+      <div className="al-measure-grid">
+        <label className="al-field"><span className="al-set-k">Brand</span><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Caraway" /></label>
+        <label className="al-field"><span className="al-set-k">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="ceramic cookware" /></label>
+        <label className="al-field"><span className="al-set-k">Competitors</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="GreenPan, Our Place" /></label>
+        <label className="al-field"><span className="al-set-k">What did you change?</span><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Added review schema" /></label>
+      </div>
+      <div className="al-measure-actions">
+        <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? "Capturing baseline…" : "Start a verification (capture baseline)"}</button>
+        <span className="muted al-fineprint" style={{ margin: 0 }}>Captures the BEFORE benchmark. Preview is $0.</span>
+      </div>
+      {msg && <div className="al-note ok" style={{ marginTop: 12 }}>{msg}</div>}
+    </div>
+  );
+}
+
+function ExperimentCard({ x, onVerified }: { x: AppExperimentRow; onVerified: () => void }) {
   const r = x.result;
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function verify() {
+    setBusy(true); setMsg("");
+    const res = await verifyExperiment(x.id);
+    setBusy(false);
+    setMsg(res.ok ? "Verification complete." : res.demo ? "Connect your store to run the verification." : res.error ?? "Verification failed.");
+    if (res.ok) onVerified();
+  }
+
+  if (x.verdict === "pending") {
+    return (
+      <div className="card al-exp">
+        <div className="al-exp-top">
+          <VerdictPill verdict="pending" />
+          <span className="al-exp-metric">Baseline captured</span>
+          <button className="btn btn-primary al-exp-verify" disabled={busy} onClick={verify}>{busy ? "Verifying…" : "Run verification"}</button>
+        </div>
+        <div className="al-exp-mrow"><span className="al-exp-mlabel">Baseline</span><Pct p={r.primary.baseline} /><CiBar p={r.primary.baseline} tone="neutral" /></div>
+        <p className="muted al-fineprint">Apply your change, then run the verification to measure whether it moved {labelOf(r.primary.metric)} — with CIs and honest caveats.</p>
+        {msg && <div className="al-note ok" style={{ marginTop: 10 }}>{msg}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="card al-exp">
       <div className="al-exp-top">

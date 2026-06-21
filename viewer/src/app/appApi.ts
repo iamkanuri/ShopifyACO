@@ -44,6 +44,12 @@ export const proposeFixes = (runId: number, productGid: string) => post<{ create
 
 export const getExperiments = () => load<{ experiments: AppExperimentRow[] }>(`/app/api/experiments`, { experiments: DEMO.experiments });
 
+/** Start a verification: build a benchmark, plan the intervention, capture the baseline. */
+export const startVerification = (body: { brand: string; category: string; competitors: string[]; description: string }) =>
+  post<{ experimentId: number; baselineRunId: number }>(`/app/api/experiments/start`, body);
+/** Run the AFTER benchmark + compare to the baseline. */
+export const verifyExperiment = (id: number) => post<{ verdict: string }>(`/app/api/experiments/${id}/verify`, {});
+
 export const getSchedules = () => load<{ schedules: AppScheduleRow[] }>(`/app/api/schedules`, { schedules: DEMO.schedules });
 
 export const getAlerts = (status = "open") => load<{ alerts: AppAlertRow[] }>(`/app/api/alerts?status=${status}`, { alerts: DEMO.alerts });

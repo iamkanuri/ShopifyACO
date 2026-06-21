@@ -112,3 +112,29 @@ test("plan → captureBaseline → runVerification persists a CI-backed verdict 
     await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
   }
 });
+
+test("startVerification builds a benchmark, captures a baseline, then verify yields a verdict (mock)", { skip: !RUN_DB }, async () => {
+  const { startVerification, runVerification } = await import("../src/experiments/execute.js");
+  const { getExperiment } = await import("../src/db/experiments.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `exps-${Date.now()}.myshopify.com`;
+  let benchmarkId = 0;
+  try {
+    const started = await startVerification(shop, { brand: "Caraway", category: "non-toxic cookware", competitors: ["GreenPan"], description: "added AggregateRating schema", mock: true });
+    assert.ok(started.baselineRunId > 0);
+    const exp = await getExperiment(started.experimentId);
+    benchmarkId = exp!.benchmark_id!;
+    assert.equal(exp!.baseline_run_id, started.baselineRunId);
+
+    const result = await runVerification(shop, started.experimentId, { mock: true });
+    assert.ok(["improved", "regressed", "inconclusive"].includes(result.verdict));
+    assert.equal(result.verdict, "inconclusive"); // deterministic mock → matched runs
+  } finally {
+    await pgQuery("delete from experiments where shop_domain=$1", [shop]);
+    await pgQuery("delete from interventions where shop_domain=$1", [shop]);
+    await pgQuery("delete from observations where benchmark_id=$1", [benchmarkId]);
+    await pgQuery("delete from benchmark_runs where benchmark_id=$1", [benchmarkId]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
+});

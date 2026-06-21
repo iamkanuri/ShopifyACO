@@ -24,25 +24,28 @@ export interface ShopBenchmarkResult extends ExecuteResult {
   promptCount: number;
 }
 
-export async function runShopBenchmark(shop: string, input: ShopBenchmarkInput): Promise<ShopBenchmarkResult> {
+/** Build a versioned benchmark config from merchant inputs (shared by the self-serve
+ *  run and the verification-experiment flows). Throws on missing brand/category. */
+export function buildShopBenchmarkConfig(input: ShopBenchmarkInput): BenchmarkConfig {
   const brand = input.brand.trim();
   const category = input.category.trim();
   if (!brand || !category) throw new Error("brand and category are required");
   const competitors = [...new Set(input.competitors.map((c) => c.trim()).filter(Boolean))].slice(0, 10);
-
   const cap = Math.max(1, Math.min(input.maxPrompts ?? 12, 30));
   const cohort = generateIntentCohort({ category, competitors, persona: input.persona, priceRange: input.priceRange, attribute: input.attribute });
-  const prompts = cohort.slice(0, cap).map((c) => ({ intent: c.intent, text: c.text }));
-
-  const config: BenchmarkConfig = {
+  return {
     brand: { name: brand },
     category,
     competitors: competitors.map((name) => ({ name })),
-    prompts,
+    prompts: cohort.slice(0, cap).map((c) => ({ intent: c.intent, text: c.text })),
     engines: ["openai", "gemini", "perplexity"],
     repetitions: 1,
   };
-  const benchmarkId = await createBenchmark(shop, `${brand} — AI visibility`, "monitoring", config);
+}
+
+export async function runShopBenchmark(shop: string, input: ShopBenchmarkInput): Promise<ShopBenchmarkResult> {
+  const config = buildShopBenchmarkConfig(input);
+  const benchmarkId = await createBenchmark(shop, `${config.brand.name} — AI visibility`, "monitoring", config);
   const result = await executeBenchmark(benchmarkId, { mock: input.mock ?? true });
-  return { benchmarkId, promptCount: prompts.length, ...result };
+  return { benchmarkId, promptCount: config.prompts.length, ...result };
 }
