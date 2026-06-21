@@ -120,6 +120,20 @@ export const ENV = {
     pollMs: Number(process.env.QUEUE_POLL_MS ?? 2000),
     recoverGraceSec: Number(process.env.QUEUE_RECOVER_GRACE_SEC ?? 30),
   },
+
+  // ---- Evidence & diagnosis crawler (Phase 5) -----------------------------
+  // Live crawling hits the network (it spends NO API money — Shopify/web reads are
+  // free — but it makes outbound HTTP requests, so it is gated). Default 'mock'
+  // exercises the entire pipeline against built-in fixtures at $0 with no network.
+  crawler: {
+    mode: (str(process.env.CRAWLER_MODE) ?? "mock") as "live" | "mock",
+    maxPages: Number(process.env.CRAWLER_MAX_PAGES ?? 8),
+    maxDepth: Number(process.env.CRAWLER_MAX_DEPTH ?? 1),
+    maxBytes: Number(process.env.CRAWLER_MAX_BYTES ?? 2_500_000),
+    timeoutMs: Number(process.env.CRAWLER_TIMEOUT_MS ?? 10_000),
+    maxRedirects: Number(process.env.CRAWLER_MAX_REDIRECTS ?? 4),
+    respectRobots: process.env.CRAWLER_RESPECT_ROBOTS !== "0",
+  },
 };
 
 /** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */

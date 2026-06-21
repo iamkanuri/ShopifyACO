@@ -156,10 +156,56 @@ unit-tested; live multi-engine execution wiring is the remaining piece.
 
 **Phase 4 status: functionally complete (mock-verified); live runs gated on cost confirmation.**
 
-### Phase 5 — Evidence & diagnosis engine (crawler) ⬜
-SSRF-hardened bounded crawler (`src/crawler/`), JSON-LD/Offer extraction, evidence-backed
-findings (mechanism, not guaranteed outcome). Treat crawled text as untrusted (injection
-defense). Heavy security test surface.
+### Phase 5 — Evidence & diagnosis engine (crawler) 🟡 (built + mock-verified $0; 🔒 live verify)
+Built on branch `phase5-crawler` (off `phase4-benchmarks`). `CRAWLER_MODE=mock` (the
+default) runs the entire pipeline against fixtures at $0 with **no network**; `live`
+makes outbound HTTP requests (spends no API money — gated for the network access).
+**SSRF + prompt-injection are the primary threat model.**
+- ✅ `migrations/0010_crawler.sql` — `crawl_pages` (sanitized, untrusted artifacts;
+  unique on `(coalesce(run_id,0), url)` so re-crawl converges) + `findings`
+  (two-tier: `evidence_backed` | `general_hygiene`). Additive + idempotent.
+- ✅ `src/crawler/ssrf.ts` — URL guard: http/https only, no credentials, port allowlist,
+  literal-host blocklist (localhost/*.internal/.local/metadata names), and full IPv4+IPv6
+  classification (loopback, RFC1918, CGNAT, link-local incl. `169.254.169.254`, multicast,
+  reserved, IPv4-mapped/NAT64/6to4 embedded forms). `pickPublicAddress` PINS the socket to
+  a validated IP (DNS-rebinding-safe). Exhaustively unit-tested.
+- ✅ `src/crawler/fetch.ts` — bounded fetcher on `node:http/https` with a validating DNS
+  `lookup` hook (so the connected IP is the one we vetted), per-request timeout, byte cap
+  (socket destroyed on overflow), bounded redirects **each re-validated through the guard**,
+  content-type allowlist, and a peer-address re-check (defense in depth).
+- ✅ `src/crawler/robots.ts` — robots.txt fetch (via the safe fetcher) + parse + longest-match
+  allow/deny for our UA (falls back to `*`); respected per origin (cached).
+- ✅ `src/crawler/sanitize.ts` — `sanitizeHtml` (strip scripts/handlers/`javascript:`),
+  `htmlToText`, `detectInjection` (curated hijack-cue list), `wrapUntrusted` (fences any
+  future LLM input). All crawled text is treated as untrusted data, never instructions.
+- ✅ `src/crawler/extract.ts` — pure extraction: JSON-LD/`@graph`, Product/Offer, identifiers
+  (GTIN/MPN/SKU/brand), price/availability, shipping (`OfferShippingDetails`) + returns
+  (`MerchantReturnPolicy`), AggregateRating (rating + review count), headings, FAQ (`FAQPage`),
+  canonical + `robots`/noindex signals, and presence booleans the diagnosis layer diffs.
+- ✅ `src/crawler/crawl.ts` (+ `fixtures.ts`) — bounded orchestration: page/depth caps,
+  same-origin link-following, dedupe, robots respect; `crawlOne` never throws (failures land
+  on the page). Mock fixtures (thin merchant vs rich competitor + an injection page).
+- ✅ `src/diagnosis/diagnose.ts` — PURE findings. Joins observations (the lost intent, winning
+  competitor, AI answer snippet + citations) with crawled merchant/competitor structured
+  signals → evidence-backed gap + recommended intervention + **expected MECHANISM (hedged,
+  never a guaranteed outcome; no causation inferred from a competitor merely having X)** +
+  confidence/`basisN`/limits. Plus `general_hygiene` findings for structural deficiencies.
+- ✅ `src/db/crawler.ts` + `src/diagnosis/execute.ts` — shop-scoped persistence (upsert on
+  `(run_id,url)`; findings replaced per run = idempotent) + orchestrator + `evidence_diagnose`
+  queue handler (registered in the worker). Mock by default; live requires `payload.live`.
+- ✅ Shop-scoped API `src/server/evidence.ts`: `POST /app/api/evidence/diagnose`,
+  `GET /app/api/evidence/findings`, `GET /app/api/evidence/pages` (each verifies the run
+  belongs to the caller's shop — tenant isolation). Enqueues when the worker is on, else inline.
+- ✅ Tests `test/crawler.test.ts` (20 always-on + 1 DB-gated): SSRF deny-list (v4/v6/mapped),
+  `safeFetch` refusal before connect, robots, sanitize/injection, extraction, bounded crawl
+  (mock), and diagnosis (mechanism present, no guarantee, hygiene tier). `npm test` 61 pass /
+  11 skipped / 0 fail; `npm run typecheck` clean.
+- ⬜ Follow-ups: capture REAL engine citations into `observations.citations` (Phase 4 stores
+  `[]` today) so live diagnosis derives competitor URLs automatically; UI surfaces (Phase 12);
+  optional LLM adjudication over `wrapUntrusted` evidence. Live crawl needs `CRAWLER_MODE=live`
+  + user go (network).
+
+**Phase 5 status: functionally complete (mock-verified, $0); live crawl gated on user go.**
 
 ### Phase 6 — Fix Studio (`/app/fixes`) ⬜
 Evidence-backed proposals with current/proposed/diff/approval. Merchant-approved GraphQL
@@ -219,3 +265,9 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 - Phase 1: `npm test` (pure queue unit tests + existing 16 detection) green; `npm run
   typecheck`; `viewer` build; DB-gated integration tests run once against Supabase with
   cleanup (see commit notes). Live funnel untouched (dormant).
+- Phase 5: `npm test` 61 pass / 11 skipped (DB-gated) / 0 fail; `npm run typecheck` clean.
+  Full crawl→extract→diagnose pipeline mock-verified at $0 with NO network
+  (`CRAWLER_MODE=mock` default). SSRF deny-list exhaustively unit-tested (IPv4/IPv6/mapped,
+  metadata, ports, schemes, credentials); `safeFetch` refuses blocked URLs before connecting.
+  DB-gated `diagnoseRun` end-to-end test (persists + idempotent re-run) ready behind
+  `RUN_DB_TESTS=1` + migration `0010` (not yet applied to Supabase — network, awaiting go).

@@ -306,6 +306,34 @@ testable with `SHOPIFY_MODE=mock` (no real Shopify creds needed):
   only** (no REST). HMAC timing-safe; offline tokens; GDPR compliance webhooks; least-privilege
   `read_products`. `test/shopify.test.ts` (pure + DB-gated), HTTP e2e verified. 503 until configured.
 
+**Phase 5 (Evidence & diagnosis engine — SSRF-hardened crawler) is built on branch
+`phase5-crawler`** (off `phase4-benchmarks`), mock-verified at $0 with **no network**
+(`CRAWLER_MODE=mock`, the default). It explains WHY competitors win by crawling the merchant's
+page + the competitor pages the assistants cited, then diagnosing the structural gap.
+- **SSRF + prompt-injection are the PRIMARY threat model.** `src/crawler/ssrf.ts` blocks
+  non-http(s) schemes, URL credentials, non-standard ports, localhost/*.internal/.local/
+  metadata hostnames, and **every** private/loopback/link-local (incl. `169.254.169.254`)/
+  CGNAT/multicast/reserved IPv4+IPv6 address (incl. IPv4-mapped/NAT64/6to4 embedded forms).
+  `src/crawler/fetch.ts` (`node:http/https`, not global fetch) installs a validating DNS
+  `lookup` that **pins the socket to a vetted public IP** (DNS-rebinding-safe), enforces
+  timeout/byte-cap/bounded-redirects (**each hop re-validated**)/content-type allowlist, and
+  re-checks the peer address. All crawled text is **untrusted data, never instructions**
+  (`sanitize.ts`: `sanitizeHtml`, `detectInjection`, `wrapUntrusted`). `robots.ts` is respected.
+- **Extraction** (`src/crawler/extract.ts`, pure): JSON-LD/`@graph`, Product/Offer, identifiers
+  (GTIN/MPN/SKU/brand), price/availability, shipping/returns policy, AggregateRating (rating +
+  review count), headings, FAQ, canonical + noindex signals, and presence booleans.
+- **Findings** (`src/diagnosis/diagnose.ts`, pure) join benchmark observations (lost intent,
+  winning competitor, AI answer + citations) with the crawled gap → recommended intervention +
+  **expected MECHANISM, always hedged — never a guaranteed outcome, and never inferring causation
+  from a competitor merely exposing a signal.** Two tiers: `evidence_backed` (tied to specific
+  lost queries) and `general_hygiene`. Each ships confidence/`basisN`/limits.
+- `migrations/0010_crawler.sql` (`crawl_pages`, `findings`; additive). `src/diagnosis/execute.ts`
+  + `evidence_diagnose` queue handler (mock default; `live` opt-in hits the network — gated).
+  Shop-scoped API `src/server/evidence.ts` (`/app/api/evidence/diagnose|findings|pages`, each
+  verifies run ownership). `test/crawler.test.ts` (20 pure + 1 DB-gated). **Live crawl needs
+  `CRAWLER_MODE=live` + a user go.** Known follow-up: Phase 4 stores `observations.citations`
+  as `[]` — wire real engine citations so live diagnosis auto-derives competitor URLs.
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned

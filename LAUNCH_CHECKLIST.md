@@ -63,6 +63,15 @@ One image, three process modes via `PROCESS_MODE` (default `web`):
 - ☐ `ANTHROPIC_API_KEY` — only when the Claude adapter is enabled (Phase 4). Adapter degrades
   gracefully if unset. Verify all keys via `/admin → Check engine keys`.
 
+## 5b. Evidence & diagnosis crawler (Phase 5) — no new credentials
+- ☐ Apply migration `0010_crawler.sql` (`crawl_pages`, `findings`) — happens automatically
+  with `npm run migrate` / at Railway deploy.
+- ☐ Leave `CRAWLER_MODE=mock` (default) for $0/no-network operation. Set `CRAWLER_MODE=live`
+  only when you want real crawling — it makes **outbound HTTP requests** (no API spend, no new
+  secrets) and is SSRF-hardened (private/link-local/metadata IPs blocked). Tune
+  `CRAWLER_MAX_PAGES/DEPTH/BYTES`, `CRAWLER_TIMEOUT_MS`, `CRAWLER_MAX_REDIRECTS`,
+  `CRAWLER_RESPECT_ROBOTS` as needed. The `evidence_diagnose` job runs on the worker service.
+
 ## 6. Email provider (Phase 8)
 - ☐ Choose a provider (e.g. Resend/Postmark/SES). Verify a sending domain (SPF/DKIM/DMARC).
 - ☐ Set `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` (e.g. `reports@thirdocular.com`),

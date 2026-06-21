@@ -15,7 +15,9 @@ import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
 import { installHandler, callbackHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
+import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
+import { registerDiagnosisJobs } from "../diagnosis/execute.js";
 import { hasPg, pgQuery } from "../db/pg.js";
 import { stats as queueStats, recentHeartbeats, retryDeadLetter, cancel as cancelJob } from "../queue/jobs.js";
 import { currentSpendDbUsd } from "../queue/spend.js";
@@ -230,6 +232,13 @@ app.post("/app/api/catalog/sync", shopMw, wrap(triggerSyncHandler));
 app.get("/app/api/catalog/sync/status", shopMw, wrap(syncStatusHandler));
 app.get("/app/api/catalog/products", shopMw, wrap(listProductsHandler));
 registerCatalogJobs();
+
+// --- Evidence & diagnosis API (Phase 5, shop-scoped). Crawl defaults to mock;
+//     a live crawl is explicit opt-in and hits the network (no API spend). ------
+app.post("/app/api/evidence/diagnose", shopMw, wrap(diagnoseHandler));
+app.get("/app/api/evidence/findings", shopMw, wrap(findingsHandler));
+app.get("/app/api/evidence/pages", shopMw, wrap(pagesHandler));
+registerDiagnosisJobs();
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

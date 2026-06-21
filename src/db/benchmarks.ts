@@ -39,6 +39,25 @@ export async function listBenchmarks(shop: string): Promise<Array<Record<string,
   return rows;
 }
 
+export interface RunRow {
+  id: number;
+  benchmark_id: number | null;
+  shop_domain: string | null;
+  tier: string;
+  status: string;
+  observation_count: number;
+}
+
+/** A single run's metadata — used to verify shop ownership before diagnosing it. */
+export async function getRun(runId: number): Promise<RunRow | null> {
+  const { rows } = await pgQuery<{ id: string; benchmark_id: string | null; shop_domain: string | null; tier: string; status: string; observation_count: number }>(
+    "select id, benchmark_id, shop_domain, tier, status, observation_count from benchmark_runs where id=$1",
+    [runId],
+  );
+  const r = rows[0];
+  return r ? { id: Number(r.id), benchmark_id: r.benchmark_id != null ? Number(r.benchmark_id) : null, shop_domain: r.shop_domain, tier: r.tier, status: r.status, observation_count: r.observation_count } : null;
+}
+
 export async function createRun(benchmarkId: number, shop: string | null, tier: string, engines: string[], promptCount: number, repetitions: number): Promise<number> {
   const { rows } = await pgQuery<{ id: string }>(
     "insert into benchmark_runs (benchmark_id, shop_domain, tier, status, engines, prompt_count, repetitions) values ($1,$2,$3,'running',$4,$5,$6) returning id",
