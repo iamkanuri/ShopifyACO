@@ -389,6 +389,34 @@ fix and alert on change.
   API `src/server/monitoring.ts` (`/app/api/schedules*`, `/app/api/alerts*`, tenant-isolated).
   `test/monitoring.test.ts` (4 pure + 2 DB-gated, incl. no-false-alert-on-identical-runs).
 
+**Phase 9 (Product feeds & agentic readiness) is built on branch `phase9-feeds`** (off `main`),
+verified pure at $0. A **versioned feed generator + validator + readiness score** over the
+normalized catalog (Phase 3). Pure local computation — **$0, no network**; the only network was a
+read-only fetch of the CURRENT official OpenAI spec at build time. **Generating a feed ≠ submitting
+it** — OpenAI onboarding/delivery is an external, config-gated step (`FEED_DELIVERY_ENABLED`).
+- **Spec as auditable data, not assumptions** (`src/feeds/spec.ts`): the OpenAI Agentic Commerce
+  product-feed spec fetched from `developers.openai.com/commerce` (2026-06-21) — 14 always-required
+  fields + conditional/recommended/optional tiers, enums, formats — with **provenance** (source URL,
+  fetch date, `SPEC_VERSION` flagged `versionConfirmed:false`; `return_policy` docs discrepancy marked).
+- **No fabrication** (`src/feeds/map.ts`, pure): one record **per variant** (`group_id`/`variant_dict`
+  tie variants); catalog-absent fields stay absent; merchant decisions (currency, eligibility, seller
+  identity, countries) come from per-feed config with derived defaults; ARCHIVED/DRAFT filtered.
+- **Factual validation only** (`src/feeds/validate.ts`, pure): required/conditional presence,
+  eligibility invariant, enums, http(s)-URL shape, price format + sale≤price, full ISO-3166-1 alpha-2,
+  ISO-8601, **GTIN check-digit**, length limits, feed-level **duplicate item_id**. error vs warning.
+  No URL-200 network check (documented limit, never claimed).
+- **Transparent score** (`src/feeds/readiness.ts`, pure): 0..100 =
+  `0.45·validity + 0.25·requiredCompleteness + 0.20·recommendedCoverage + 0.10·identifierCoverage`,
+  every component exposed — never a black box. Export CSV/TSV/JSON (official) + JSONL (convenience,
+  `official:false`) via `src/feeds/export.ts`.
+- `migrations/0014_feeds.sql` (`feeds`/`feed_versions`/`feed_items`; additive, format-agnostic for
+  future Gemini/Copilot/Shopify-Catalog adapters). Orchestrator `src/feeds/generate.ts` (load synced
+  catalog via `db/catalog.ts#loadNormalizedProducts` → map → validate → score → persist a NEW version
+  atomically) + `feed_generate` queue handler ($0, no mock/live split). Shop-scoped API
+  `src/server/feeds.ts` (`/app/api/feeds*`, `/spec`, `/delivery/status`, `:id/generate`,
+  `versions/:vid[/items|/export]`, tenant-isolated; config whitelisted). `test/feeds.test.ts` (13 pure
+  + 1 DB-gated e2e). **Migration `0014` apply + DB e2e + merge await a user go** (shared prod Supabase).
+
 **Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
 (off `main`), preview-verified. It makes the headless Phase 4–8 backend **visible + demoable**.
 - `viewer/src/app/*` — embedded shell (`AppShell.tsx`, sidebar + sub-routes via the shared tiny

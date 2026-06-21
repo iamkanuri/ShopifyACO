@@ -148,6 +148,19 @@ export const ENV = {
     maxRedirects: Number(process.env.CRAWLER_MAX_REDIRECTS ?? 4),
     respectRobots: process.env.CRAWLER_RESPECT_ROBOTS !== "0",
   },
+
+  // ---- Product feeds (Phase 9) --------------------------------------------
+  // Generating + validating + scoring a feed is local computation over the synced
+  // catalog: $0 and NO network. SUBMITTING/DELIVERING a feed to OpenAI is a separate
+  // external onboarding step (merchant eligibility + delivery endpoint), kept behind
+  // this flag so the app never implies it delivered a feed it hasn't. Off until OpenAI
+  // approves the merchant and delivery is wired (LAUNCH_CHECKLIST item 8).
+  feeds: {
+    deliveryEnabled: process.env.FEED_DELIVERY_ENABLED === "1",
+    // Fallback currency for the feed price column — the catalog doesn't yet capture
+    // the shop's currency, so a feed's config currency (or this) is used.
+    defaultCurrency: str(process.env.FEED_DEFAULT_CURRENCY) ?? "USD",
+  },
 };
 
 /** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */

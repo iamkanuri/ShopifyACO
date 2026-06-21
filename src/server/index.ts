@@ -19,6 +19,8 @@ import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
 import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInterventionsHandler, planHandler, startVerificationHandler, verifyHandler } from "./experiments.js";
 import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, listAlertsHandler, listSchedulesHandler, runScheduleHandler, updateScheduleHandler } from "./monitoring.js";
+import { createFeedHandler, deliveryStatusHandler, exportVersionHandler, feedSpecHandler, generateFeedHandler, getVersionHandler, listFeedsHandler, listItemsHandler, listVersionsHandler } from "./feeds.js";
+import { registerFeedJobs } from "../feeds/generate.js";
 import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
@@ -283,6 +285,20 @@ app.post("/app/api/schedules/:id/run", shopMw, wrap(runScheduleHandler));
 app.get("/app/api/alerts", shopMw, wrap(listAlertsHandler));
 app.post("/app/api/alerts/:id/acknowledge", shopMw, wrap(acknowledgeAlertHandler));
 registerMonitoringJobs();
+
+// --- Product feeds API (Phase 9, shop-scoped). Generate a versioned, validated feed
+//     over the synced catalog + an auditable readiness score. Generation is $0 + no
+//     network; DELIVERY to OpenAI is an external, config-gated step (never faked).
+app.post("/app/api/feeds", shopMw, wrap(createFeedHandler));
+app.get("/app/api/feeds", shopMw, wrap(listFeedsHandler));
+app.get("/app/api/feeds/spec", shopMw, wrap(feedSpecHandler));
+app.get("/app/api/feeds/delivery/status", shopMw, wrap(deliveryStatusHandler));
+app.post("/app/api/feeds/:id/generate", shopMw, wrap(generateFeedHandler));
+app.get("/app/api/feeds/:id/versions", shopMw, wrap(listVersionsHandler));
+app.get("/app/api/feeds/versions/:vid", shopMw, wrap(getVersionHandler));
+app.get("/app/api/feeds/versions/:vid/items", shopMw, wrap(listItemsHandler));
+app.get("/app/api/feeds/versions/:vid/export", shopMw, wrap(exportVersionHandler));
+registerFeedJobs();
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

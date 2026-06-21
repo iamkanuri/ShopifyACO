@@ -44,7 +44,7 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
   (Phase 2); `products`, `variants`, `collections`, `catalog_syncs`, `catalog_snapshots`
   (Phase 3); `benchmarks`, `observations` (Phase 4); `crawl_pages`, `findings` (Phase 5);
   `fix_proposals` (Phase 6); `interventions`, `experiments` (Phase 7); `schedules`,
-  `alerts`, `notifications` (Phase 8); `feed_snapshots` (Phase 9); `pixel_events` (Phase 10);
+  `alerts`, `notifications` (Phase 8); `feeds`, `feed_versions`, `feed_items` (Phase 9); `pixel_events` (Phase 10);
   `entitlements` (Phase 11). All additive/idempotent.
 
 ## 4. Railway services (Phase 1) — ✅ DONE 2026-06-21
@@ -93,10 +93,16 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 - ☐ Set `PIXEL_INGEST_URL` / shared secret env as documented in the Phase 10 code.
 
 ## 9. OpenAI product feed (Phase 9)
-- ☐ Review the current official OpenAI commerce/product-feed spec and eligibility.
-- ☐ Complete OpenAI merchant onboarding (external). Set delivery env
-  (`OPENAI_FEED_DELIVERY`, endpoint/SFTP creds) only when eligible. Generating a feed does
-  **not** submit it to ChatGPT — submission is this external step.
+- ✅ Reviewed the current official OpenAI commerce/product-feed spec (fetched 2026-06-21,
+  `developers.openai.com/commerce`); encoded as auditable data in `src/feeds/spec.ts` with
+  provenance. The generator/validator/readiness/export are built (branch `phase9-feeds`).
+- ☐ **Apply migration `0014` to Supabase** (`npm run migrate`) + run the DB-gated e2e
+  (`npm run test:db`) — both touch the shared prod DB, so they need an explicit go.
+- ☐ Confirm OpenAI merchant **eligibility** + complete onboarding (external).
+- ☐ Set `FEED_DELIVERY_ENABLED=1` (+ the delivery endpoint/creds, when that path is built)
+  ONLY when eligible. Generating/exporting a feed does **not** submit it to ChatGPT —
+  submission is this external step. Until then `/app/api/feeds/delivery/status` reports
+  "not configured" honestly.
 
 ## 10. Legal & app review (Phase 12–13)
 - ☐ Publish Privacy Policy, Terms, Support contact, and a Data-deletion request URL.

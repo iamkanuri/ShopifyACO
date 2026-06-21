@@ -305,11 +305,63 @@ Mock-verified at $0.
 
 **Phase 8 status: functionally complete (mock-verified, $0); live cadence + email gated.**
 
-### Phase 9 — Product feeds & agentic readiness ⬜🔒
-Versioned feed validator vs current official OpenAI commerce spec (consult docs at build).
-Readiness score = factual validations only. Export CSV/JSONL where officially supported.
-Delivery/onboarding behind explicit config (launch checklist). Normalized catalog layer so
-Gemini/Copilot/Shopify-Catalog adapters slot in without rewriting storage.
+### Phase 9 — Product feeds & agentic readiness 🟡 (built + verified $0; 🔒 live DB apply + delivery gated)
+Built on branch `phase9-feeds` (off `main`). A **versioned product-feed generator +
+validator + agentic-readiness score** over the normalized catalog (Phase 3). Pure local
+computation — **$0 and NO network**; the one network action was a read-only fetch of the
+CURRENT official OpenAI spec at build time (logged below). Generating a feed is **not**
+submitting it — OpenAI onboarding/delivery is an external, config-gated step.
+- ✅ **Spec fetched live, encoded as auditable data:** `src/feeds/spec.ts` records the
+  OpenAI Agentic Commerce product-feed spec from `developers.openai.com/commerce`
+  (fetched 2026-06-21) — the 14 always-required fields, conditional/recommended/optional
+  tiers, enums (availability/condition), formats, + **provenance** (source URL, fetch date,
+  `SPEC_VERSION="2026-01-30"` flagged `versionConfirmed:false` because the rendered docs
+  expose no machine-readable version). `return_policy` discrepancy (Products table says
+  Required; required-only view omits it) is **marked**, not silently resolved — treated as
+  conditional-on-checkout.
+- ✅ `src/feeds/map.ts` (pure) — normalized product → **one record per variant** (OpenAI
+  per-item granularity; `group_id`/`variant_dict` tie variants). **Never fabricates**
+  (same discipline as Phase 6): catalog-absent fields stay absent; merchant decisions
+  (currency, eligibility flags, seller identity, target/store countries) come from per-feed
+  config with safe derived defaults. ARCHIVED always excluded; DRAFT excluded unless opted in.
+- ✅ `src/feeds/validate.ts` (pure) — **FACTUAL/structural checks only**: required presence,
+  conditional (checkout→privacy/tos/return; pre_order→availability_date), eligibility
+  invariant, enum membership, http(s) URL well-formedness (https-preferred), price format
+  + sale≤price, **full ISO-3166-1 alpha-2** country validation, ISO-8601 dates, **GTIN
+  check-digit** (8/12/13/14), length limits, all-caps title; FEED-level **duplicate item_id**.
+  Two levels (error = would be rejected / warning = accepted-but-weaker). No network 200-check
+  (documented limit, not a claim).
+- ✅ `src/feeds/readiness.ts` (pure) — documented deterministic 0..100 score
+  (`0.45·validity + 0.25·requiredCompleteness + 0.20·recommendedCoverage + 0.10·identifierCoverage`),
+  every component (weight/value/points/the count behind it) exposed — **never a black box**.
+- ✅ `src/feeds/export.ts` (pure) — CSV/TSV/JSON (all **officially** accepted) + JSONL
+  (convenience, `official:false`), correct escaping, spec-ordered columns.
+- ✅ `migrations/0014_feeds.sql` — `feeds` (definition+config), `feed_versions` (snapshot +
+  readiness + summary, version per feed), `feed_items` (one record + issues per item).
+  Additive + idempotent; `shop_domain` scopes every row; format-agnostic for future
+  Gemini/Copilot/Shopify-Catalog adapters.
+- ✅ `src/db/feeds.ts` + `src/db/catalog.ts#loadNormalizedProducts` + `src/feeds/generate.ts`
+  — orchestrator: load synced catalog → map → validate → score → persist a NEW version
+  atomically (row-locked version numbering; chunked item insert). `feed_generate` queue
+  handler (no mock/live split — it's $0 everywhere). Re-generating preserves history.
+- ✅ Shop-scoped API `src/server/feeds.ts`: `POST/GET /app/api/feeds`, `GET /app/api/feeds/spec`
+  (transparency), `GET /app/api/feeds/delivery/status` (honest not-configured state),
+  `POST /app/api/feeds/:id/generate` (enqueue when worker on, else inline; 409 on empty
+  catalog), `GET /app/api/feeds/:id/versions`, `GET /app/api/feeds/versions/:vid[/items|/export]`
+  — each tenant-isolated; config whitelisted (no arbitrary jsonb persisted).
+- ✅ Tests `test/feeds.test.ts` (13 pure + 1 DB-gated): spec/provenance, mapping (per-variant,
+  no-fabrication, draft/archived filter), validation (required/conditional/enums/urls/countries/
+  dates/gtin/price/duplicate-id), readiness transparency, export escaping, format helpers + a
+  DB e2e (empty→NoCatalogError, generate→version+items+readiness+export, re-gen→v2). `npm test`
+  **89 pass / 20 skipped / 0 fail**; `npm run typecheck` clean.
+- 🔒 **Not yet applied to the live DB:** `npm run migrate` (0014) + the DB-gated e2e need a
+  user go (shared prod Supabase — was flagged + denied by the auto gate, as intended).
+- ⬜ Follow-ups: capture shop currency at catalog sync (currency is config/default today);
+  Gemini/Copilot/Shopify-Catalog mappers; Feeds screen (Phase 12); review_count/star_rating +
+  shipping/returns from metafields; version pruning. **Delivery to OpenAI needs
+  `FEED_DELIVERY_ENABLED=1` + OpenAI merchant onboarding + a user go (external).**
+
+**Phase 9 status: functionally complete (pure-verified, $0); live DB apply + delivery gated on user go.**
 
 ### Phase 10 — Directional attribution (Web Pixel) ⬜🔒
 Shopify Web Pixel extension (official Web Pixels API), consent-aware AI-referrer + funnel
@@ -372,9 +424,12 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   monitoring are **running** (recurring runs stay mock/$0 until `MONITORING_LIVE=1`).
 - **Shopify:** live OAuth (`read_products`); API secret **rotated** 2026-06-21.
 - **The embedded `/app` UI is live** (demo-fallback for non-sessions). Homepage repositioned.
-- **Next phase to build: Phase 9** (Product feeds & agentic readiness). Phases 9, 10, 11, 13
-  remain unbuilt. The live (non-demo) loop for real merchants needs a merchant to install +
-  (optionally) `MONITORING_LIVE=1` / `CRAWLER_MODE=live` (both gated, spend-capped).
+- **Phase 9 (Product feeds & agentic readiness) is BUILT** on branch `phase9-feeds`
+  (pure-verified $0, 89 pass / 0 fail) but **not yet applied/merged** — migration `0014`
+  apply to the shared prod Supabase + the DB-gated e2e + review + merge all await a user go.
+  **Next unbuilt: Phase 10** (Web Pixel). Phases 10, 11, 13 remain. The live (non-demo) loop
+  for real merchants needs a merchant to install + (optionally) `MONITORING_LIVE=1` /
+  `CRAWLER_MODE=live` (both gated, spend-capped).
 
 ## External blockers (summary → details in LAUNCH_CHECKLIST.md)
 1. ✅ Rotate exposed Shopify secret — **done 2026-06-21**.
@@ -384,11 +439,20 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 5. 🔒 Email provider + verified domain (Phase 8 send lands in Phase 11; logger until then).
 6. 🔒 Stripe products/prices/webhook/portal (live) — needs KYC + Phase 11.
 7. 🔒 Web Pixel extension deploy — needs Phase 10.
-8. 🔒 OpenAI product-feed onboarding/eligibility — needs Phase 9 build + OpenAI approval.
+8. 🔒 OpenAI product-feed onboarding/eligibility — Phase 9 build **done** (generate/validate/
+   score/export); still needs OpenAI merchant approval + `FEED_DELIVERY_ENABLED=1` + a
+   delivery endpoint to actually submit. Generating/exporting a feed never submits it.
 9. 🔒 Legal/support/data-deletion URLs for app review.
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 Phase 9 (branch `phase9-feeds`, off `main`): built the product-feed generator/
+  validator/readiness/export over the normalized catalog. **One network action** — a read-only
+  WebFetch of the CURRENT OpenAI Agentic Commerce product-feed spec
+  (`developers.openai.com/commerce`) — flagged + done at build; spec encoded with provenance
+  (version flagged unconfirmed). `npm test` **89 pass / 20 skipped / 0 fail**; `npm run typecheck`
+  clean. **Migration `0014` apply + the DB-gated e2e were flagged and DENIED by the auto gate
+  (correct — shared prod Supabase); they await a user go.** Not merged/deployed.
 - 2026-06-21 DEPLOY: Phases 4–8 + 12 + the `PROCESS_MODE` dispatcher all merged to `main` and
   deployed to Railway in sequence (each fast-forward, smoke-tested green). Full serial DB suite
   (`npm run test:db`) peaked at 95/95. Worker + scheduler services stood up; `/healthz/deep`

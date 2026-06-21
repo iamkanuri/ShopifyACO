@@ -8,6 +8,7 @@ import { registerBenchmarkJobs } from "./benchmarks/execute.js";
 import { registerDiagnosisJobs } from "./diagnosis/execute.js";
 import { registerExperimentJobs } from "./experiments/execute.js";
 import { registerMonitoringJobs } from "./monitoring/execute.js";
+import { registerFeedJobs } from "./feeds/generate.js";
 
 // Standalone worker process (PROCESS_MODE=worker / `npm run worker`). Thin wrapper
 // around the shared worker loop; safe to run as multiple Railway replicas.
@@ -23,6 +24,7 @@ registerBenchmarkJobs();
 registerDiagnosisJobs();
 registerExperimentJobs();
 registerMonitoringJobs();
+registerFeedJobs();
 const handle = startWorker("svc");
 
 async function shutdown(sig: string) {

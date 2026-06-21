@@ -113,3 +113,65 @@ export async function listProducts(shop: string, opts: { q?: string; limit?: num
   );
   return rows;
 }
+
+/** Reconstruct the FULL normalized catalog (products + their variants) for the shop,
+ *  for downstream consumers like the Phase 9 feed generator. Collections aren't
+ *  reattached (the feed mapper doesn't use them) — `collections` is left empty. A
+ *  hard `cap` bounds memory; feed generation processes the whole catalog at once. */
+export async function loadNormalizedProducts(shop: string, opts: { cap?: number } = {}): Promise<NormalizedProduct[]> {
+  const cap = Math.min(100_000, Math.max(1, opts.cap ?? 50_000));
+  const { rows: prods } = await pgQuery<{
+    product_gid: string; handle: string | null; title: string | null; description: string | null;
+    vendor: string | null; product_type: string | null; tags: string[] | null; status: string | null;
+    online_url: string | null; image_url: string | null; seo_title: string | null; seo_description: string | null;
+    metafields: unknown;
+  }>(
+    `select product_gid, handle, title, description, vendor, product_type, tags, status,
+            online_url, image_url, seo_title, seo_description, metafields
+       from products where shop_domain=$1 order by product_gid asc limit $2`,
+    [shop, cap],
+  );
+  if (!prods.length) return [];
+
+  const { rows: vars } = await pgQuery<{
+    product_gid: string; variant_gid: string; title: string | null; sku: string | null; barcode: string | null;
+    price: string | null; available: boolean | null; inventory_quantity: number | null; options: unknown;
+  }>(
+    `select product_gid, variant_gid, title, sku, barcode, price, available, inventory_quantity, options
+       from product_variants where shop_domain=$1 order by product_gid asc, variant_gid asc`,
+    [shop],
+  );
+  const byProduct = new Map<string, NormalizedProduct["variants"]>();
+  for (const v of vars) {
+    const list = byProduct.get(v.product_gid) ?? [];
+    list.push({
+      variantGid: v.variant_gid,
+      title: v.title,
+      sku: v.sku,
+      barcode: v.barcode,
+      price: v.price != null ? Number(v.price) : null,
+      available: v.available,
+      inventoryQuantity: v.inventory_quantity,
+      options: Array.isArray(v.options) ? (v.options as Array<{ name: string; value: string }>) : [],
+    });
+    byProduct.set(v.product_gid, list);
+  }
+
+  return prods.map((p) => ({
+    productGid: p.product_gid,
+    handle: p.handle,
+    title: p.title,
+    description: p.description,
+    vendor: p.vendor,
+    productType: p.product_type,
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    status: p.status,
+    onlineUrl: p.online_url,
+    imageUrl: p.image_url,
+    seoTitle: p.seo_title,
+    seoDescription: p.seo_description,
+    metafields: Array.isArray(p.metafields) ? (p.metafields as NormalizedProduct["metafields"]) : [],
+    variants: byProduct.get(p.product_gid) ?? [],
+    collections: [],
+  }));
+}
