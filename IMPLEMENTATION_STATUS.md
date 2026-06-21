@@ -69,11 +69,35 @@ Built this pass (branch), tested with pure + DB-gated integration tests:
 - 🔒 **Not yet wired to the live mini-scan path** (D2). Flip is a launch-checklist step
   after the worker Railway service exists and integration tests pass against it.
 
-### Phase 2 — Shopify OAuth & multi-tenancy 🔒⬜
-Design fixed (D4). Blocked on: rotated Shopify secret, Partner app, API key/secret,
-`APP_ENCRYPTION_KEY`, callback URLs, compliance webhooks (all in launch checklist).
-Models to add: `shops`, `shop_credentials` (encrypted), `installations`, `webhook_events`
-(idempotency/replay), `audit_log`. Code will be built against mocked Shopify in Phase 2 work.
+### Phase 2 — Shopify OAuth & multi-tenancy 🟡 (built against mock; 🔒 live verify)
+Built + tested on branch `phase2-shopify-oauth` (off `phase1-job-system`). **`SHOPIFY_MODE=mock`
+runs the entire flow with no real credentials**; flip to `live` after Track-B setup.
+- ✅ `migrations/0007_shopify.sql` — `shops`, `shop_credentials` (encrypted), `installations`,
+  `webhook_events` (unique dedupe → idempotency/replay), `audit_log`, `oauth_states`
+  (single-use nonce store, multi-instance-safe).
+- ✅ Token encryption at rest: AES-256-GCM, versioned blobs, rotation (`reEncrypt`) —
+  `src/shopify/crypto.ts`. Verified tokens are never stored in plaintext.
+- ✅ Strict shop-domain validation (anti open-redirect/SSRF) — `src/shopify/domain.ts`.
+- ✅ Timing-safe HMAC for OAuth callback (hex, sorted query) + webhooks (base64, raw body) —
+  `src/shopify/hmac.ts`.
+- ✅ OAuth authorization-code flow with offline tokens, crypto state/nonce (single-use),
+  shop-scoped session cookie (signed) + `requireShop` middleware — `src/shopify/oauth.ts`,
+  `src/server/shopify.ts`. Live client uses the **current GraphQL Admin API** (no REST).
+- ✅ Lifecycle: install / reconnect / uninstall (`app/uninstalled` clears the token),
+  `shop/update`, product create/update/delete signals, **GDPR compliance webhooks**
+  (`customers/data_request|redact`, `shop/redact`) — all HMAC-verified, idempotent, audited.
+- ✅ Least-privilege scopes (`read_products`); `write_products` deferred to Phase 6.
+- ✅ Mandatory + app webhooks registered on install (mock records, live via GraphQL).
+- ✅ Health: `/healthz/deep` reports a `shopify` block. Routes 503 when not configured.
+- ✅ Tests: `test/shopify.test.ts` — crypto round-trip/tamper/rotation, domain, HMAC,
+  authorize URL (pure, always-on) + DB-gated (state single-use, encrypted-token round trip,
+  webhook idempotency, uninstall). HTTP e2e verified: install→callback→exchange→encrypt→
+  store→8 webhooks→signed session (200/redirect) and webhook gate (valid 200 / bad 401).
+- 🔒 Live verification needs the Partner app + `SHOPIFY_API_KEY/SECRET` + `APP_ENCRYPTION_KEY`
+  + callback URL registered (launch checklist). **Models for products/variants/collections/
+  catalog_syncs/snapshots land in Phase 3** (catalog sync), keeping migrations cohesive.
+- ⬜ `/app` onboarding UI (Connect→Sync→Select→Confirm→Benchmark→Baseline) is Phase 12 IA;
+  the URL-based free scan for non-Shopify prospects is retained unchanged.
 
 ### Phase 3 — Product-level catalog intelligence ⬜
 Depends on Phase 2 tokens. Models: `products`, `variants`, `collections`, `catalog_syncs`,

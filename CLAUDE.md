@@ -297,6 +297,15 @@ relative to the live funnel until a worker service + `JOB_QUEUE_ENABLED=1` are v
   `test/queue.test.ts` (pure always-on + DB-gated `RUN_DB_TESTS=1`, verified against Supabase).
 - The legacy in-process scan lock still serves prod unchanged (D2 in IMPLEMENTATION_STATUS).
 
+**Phase 2 (Shopify OAuth + multi-tenancy) is built on branch `phase2-shopify-oauth`**,
+testable with `SHOPIFY_MODE=mock` (no real Shopify creds needed):
+- `migrations/0007_shopify.sql` — `shops`, `shop_credentials` (AES-256-GCM token at rest),
+  `installations`, `webhook_events` (idempotency), `audit_log`, `oauth_states` (single-use nonce).
+- `src/shopify/*` (crypto, domain, hmac, oauth, client) + `src/server/shopify.ts` (install/
+  callback/webhooks + `requireShop`) + `src/db/shops.ts`. Live client = **GraphQL Admin API
+  only** (no REST). HMAC timing-safe; offline tokens; GDPR compliance webhooks; least-privilege
+  `read_products`. `test/shopify.test.ts` (pure + DB-gated), HTTP e2e verified. 503 until configured.
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned

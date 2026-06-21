@@ -82,6 +82,23 @@ export const ENV = {
   stripeWebhookSecret: str(process.env.STRIPE_WEBHOOK_SECRET),
   stripeSecretKey: str(process.env.STRIPE_SECRET_KEY),
 
+  // ---- Shopify public app (Phase 2) ---------------------------------------
+  // All server-only. When key/secret are unset the integration reports
+  // "not configured" and the OAuth/webhook routes return 503 instead of running.
+  shopify: {
+    apiKey: str(process.env.SHOPIFY_API_KEY),
+    apiSecret: str(process.env.SHOPIFY_API_SECRET),
+    // Comma/space separated; least-privilege default. write_products added later.
+    scopes: (str(process.env.SHOPIFY_SCOPES) ?? "read_products").split(/[,\s]+/).filter(Boolean),
+    apiVersion: str(process.env.SHOPIFY_API_VERSION) ?? "2025-01",
+    appUrl: str(process.env.SHOPIFY_APP_URL) ?? str(process.env.PUBLIC_BASE_URL),
+    // 'mock' lets us build + test the full flow with no real Shopify credentials.
+    mode: (str(process.env.SHOPIFY_MODE) ?? "live") as "live" | "mock",
+  },
+  // Base64 32-byte key for AES-256-GCM token encryption at rest. Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+  appEncryptionKey: str(process.env.APP_ENCRYPTION_KEY),
+
   // Deployed commit (Railway injects this) for /healthz version checks.
   commit: str(process.env.RAILWAY_GIT_COMMIT_SHA) ?? "dev",
 
@@ -115,6 +132,12 @@ export type ScanMode = keyof typeof SCAN_MODES;
 
 /** True when Supabase persistence is configured. */
 export const hasSupabase = () => Boolean(ENV.supabaseUrl && ENV.supabaseServiceRoleKey);
+
+/** True when the Shopify app can run OAuth/webhooks (mock mode needs only the key). */
+export const hasShopify = () =>
+  ENV.shopify.mode === "mock"
+    ? Boolean(ENV.appEncryptionKey)
+    : Boolean(ENV.shopify.apiKey && ENV.shopify.apiSecret && ENV.appEncryptionKey);
 
 /** Warn (don't crash) about anything important that's missing for the current mode. */
 export function reportConfig(): void {

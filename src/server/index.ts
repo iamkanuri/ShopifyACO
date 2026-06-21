@@ -13,6 +13,7 @@ import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/libr
 import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
+import { installHandler, callbackHandler, webhookHandler, shopifyStatus } from "./shopify.js";
 import { hasPg, pgQuery } from "../db/pg.js";
 import { stats as queueStats, recentHeartbeats, retryDeadLetter, cancel as cancelJob } from "../queue/jobs.js";
 import { currentSpendDbUsd } from "../queue/spend.js";
@@ -135,6 +136,14 @@ app.post("/api/stripe/webhook", express.raw({ type: () => true, limit: "1mb" }),
   });
 });
 
+// Shopify webhooks also need the RAW body for HMAC verification (before express.json).
+app.post("/api/shopify/webhooks", express.raw({ type: () => true, limit: "1mb" }), (req, res) => {
+  webhookHandler(req, res).catch((err) => {
+    console.error(`[shopify] unhandled webhook error: ${(err as Error).message}`);
+    if (!res.headersSent) res.status(500).end();
+  });
+});
+
 app.use(express.json({ limit: "256kb" }));
 
 app.use("/api", (req: Request, res: Response, next: NextFunction) => {
@@ -204,9 +213,14 @@ app.get("/healthz/deep", async (_req, res) => {
     perplexity: Boolean(keys.perplexity),
     anthropic: Boolean(keys.anthropic),
   };
+  out.shopify = shopifyStatus();
   out.ok = db || !hasPg(); // healthy if DB works, or if DB intentionally unconfigured
   res.status(out.ok ? 200 : 503).json(out);
 });
+
+// --- Shopify OAuth: install + callback (Phase 2) ---------------------------
+app.get("/api/shopify/install", wrap(installHandler));
+app.get("/api/shopify/callback", wrap(callbackHandler));
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {
