@@ -59,13 +59,13 @@ export async function runVerification(shop: string, experimentId: number, opts: 
   if (!bench) throw new Error("benchmark not found");
   const brand = bench.config.brand.name;
 
-  // Run verification, then aggregate BOTH runs for the merchant brand on identical metrics.
+  // Run verification (its metrics are already aggregated for the benchmark brand);
+  // only the BASELINE needs re-aggregating from its stored observations.
   const v = await executeBenchmark(exp.benchmark_id!, { mock: opts.mock });
   const baselineAgg = await aggregateRun(exp.baseline_run_id, brand);
-  const verificationAgg = await aggregateRun(v.runId, brand);
 
   const [baseMeta, verifMeta] = await Promise.all([getRunComparability(exp.baseline_run_id), getRunComparability(v.runId)]);
-  const result = compareExperiment(baselineAgg.metrics, verificationAgg.metrics, {
+  const result = compareExperiment(baselineAgg.metrics, v.metrics, {
     baseline: baseMeta, verification: verifMeta, primaryMetric: exp.primary_metric as ComparedMetric,
   });
 

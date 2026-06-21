@@ -115,6 +115,9 @@ run surfaced as prod `spendTodayDbUsd`.)
   keep prod values only on the Railway service. Run `npm run migrate` against the dev project too.
 - ☐ Until then, treat any local **live** (non-mock) run as production data + spend, and prefer
   `--mock` / `SHOPIFY_MODE=mock` / `CRAWLER_MODE=mock` locally (all $0, no prod-DB writes that cost).
+- Note: run the **DB-gated** test suite serially — `RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`
+  (`--test-concurrency=1`). The parallel `npm test` can exceed the shared Supabase pooler's
+  connection headroom and flake; `test:db` is deterministic. (Pure tests: plain `npm test`.)
 
 ---
 Each phase's code checks for its env at boot and surfaces a clear not-configured state; see

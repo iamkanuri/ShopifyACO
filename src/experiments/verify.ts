@@ -122,7 +122,10 @@ export function compareExperiment(
   verification: BenchmarkMetrics,
   meta: { baseline: RunMeta; verification: RunMeta; primaryMetric?: ComparedMetric } = { baseline: {}, verification: {} },
 ): ExperimentResult {
-  const primaryMetric = meta.primaryMetric ?? "recommendationRate";
+  // Defensive: primaryMetric is read back from the DB (a free-text column), so guard
+  // against an unrecognized value rather than indexing into `undefined`.
+  const primaryMetric: ComparedMetric =
+    meta.primaryMetric && (COMPARED_METRICS as readonly string[]).includes(meta.primaryMetric) ? meta.primaryMetric : "recommendationRate";
   const primary = compareMetric(primaryMetric, baseline, verification);
   const secondary = COMPARED_METRICS.filter((m) => m !== primaryMetric).map((m) => compareMetric(m, baseline, verification));
 
