@@ -320,11 +320,33 @@ Central `entitlements` model (config-driven limits), preserve current Stripe flo
 migration. Idempotent provisioning, refunds, failed payments, cancellation, expiration,
 billing portal. No hardcoded unapproved prices.
 
-### Phase 12 — Experience redesign (`/app/*`) ⬜
-Authenticated product IA (dashboard/catalog/benchmarks/runs/evidence/fixes/experiments/
-monitoring/settings/billing). Keep dark system. New homepage positioning (headline
-"Turn AI shopping visibility into action." / CTAs Connect Shopify · Run a free scan).
-Full loading/empty/partial/unavailable/denied/cost-limit/retry/failure states. Playwright.
+### Phase 12 — Experience redesign (`/app/*`) 🟡 (core IA built + preview-verified)
+Built on branch `phase12-app-ui` (off `main`). The authenticated embedded experience that
+finally makes the headless Phase 4–8 backend **visible + demoable**. Dark system, same tiny
+token palette. Preview-verified (vite) end-to-end with zero console errors.
+- ✅ `viewer/src/app/` — embedded shell (`AppShell.tsx`, sticky sidebar nav, sub-routes via the
+  shared tiny history router) wired into `App.tsx` (`/app`, `/app/{evidence,fixes,experiments,
+  monitoring}`), rendered standalone (own chrome, no public header/footer).
+- ✅ **Screens (prop-driven, dark, all states):** Dashboard (AI Visibility Score ring, headline
+  KPIs with CIs, the 5-step measure→diagnose→fix→verify→monitor loop, share-of-voice,
+  open alerts) · Evidence (findings: AI answer + citations + merchant gap + competitor
+  advantage + intervention + hedged mechanism + confidence/limits) · Fix Studio (proposals
+  with current/proposed diff, copy-ready snippets, approve/apply/dismiss) · Experiments
+  (baseline→verification with CI bars, improved/regressed/inconclusive verdict, comparability
+  warnings + causation caveats) · Monitoring (schedules + acknowledgeable alerts).
+- ✅ `appApi.ts` calls the real `/app/api/*`; on **401/503/unavailable it falls back to demo
+  fixtures and flags `demo:true`** → an honest "Demo data" badge + a Connect-store prompt
+  (this doubles as the unavailable/denied state — we never fake liveness). `useLoaded` gives
+  uniform loading/empty/error. `fixtures.ts` carries the Caraway loop story for $0 preview.
+- ✅ New homepage positioning (`LandingPage`): headline "Turn AI shopping visibility into
+  action", CTAs **Connect Shopify** + Run a free scan + See the app.
+- ✅ `viewer build` green (66 modules); preview-verified all 5 screens + responsive (sidebar
+  collapses < 920px) + the homepage, desktop + narrow.
+- ⬜ Follow-ups: Catalog/Settings/Billing screens; live wiring against a connected dev store;
+  Playwright e2e; the onboarding wizard (Connect→Sync→Select→Benchmark→Baseline). Pre-existing
+  viewer `tsc` errors (Report/IndexLeaderboard) are unrelated and don't block the esbuild build.
+
+**Phase 12 status: core authenticated IA built + preview-verified; demoable now via fixtures.**
 
 ### Phase 13 — Security, privacy & quality ⬜ (continuous)
 > **Known item — dev/prod DB isolation:** local dev shares the production Supabase project,

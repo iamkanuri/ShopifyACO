@@ -389,6 +389,21 @@ fix and alert on change.
   API `src/server/monitoring.ts` (`/app/api/schedules*`, `/app/api/alerts*`, tenant-isolated).
   `test/monitoring.test.ts` (4 pure + 2 DB-gated, incl. no-false-alert-on-identical-runs).
 
+**Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
+(off `main`), preview-verified. It makes the headless Phase 4–8 backend **visible + demoable**.
+- `viewer/src/app/*` — embedded shell (`AppShell.tsx`, sidebar + sub-routes via the shared tiny
+  router; wired in `App.tsx` for `/app[/evidence|fixes|experiments|monitoring]`, own chrome) +
+  screens: **Dashboard** (score ring, KPIs w/ CIs, the 5-step loop, SoV, alerts), **Evidence**
+  (findings w/ AI answer+citations+gap+mechanism), **Fix Studio** (diff + copy-ready snippets +
+  approve/apply/dismiss), **Experiments** (baseline→verification CI bars + verdict + caveats),
+  **Monitoring** (schedules + acknowledge alerts). Dark token palette; all loading/empty/error states.
+- `appApi.ts` hits the real `/app/api/*`; on **401/503/unavailable it falls back to `fixtures.ts`
+  (the Caraway loop story) and flags `demo:true`** → an honest "Demo data" badge + Connect-store
+  prompt (never fakes liveness). New homepage headline "Turn AI shopping visibility into action" +
+  **Connect Shopify** CTA. `npm --prefix viewer run build` green; preview-verified all 5 screens +
+  responsive. Components are prop-driven so they lift cleanly. (Pre-existing viewer `tsc` errors in
+  `Report`/`IndexLeaderboard` are unrelated; the ship path is `vite build`/esbuild.)
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned

@@ -11,11 +11,16 @@ import { IndexListPage } from "./pages/IndexListPage";
 import { IndexLeaderboardPage } from "./pages/IndexLeaderboardPage";
 import { Footer } from "./components/Footer";
 import { Mark } from "./components/Mark";
+import { AppShell } from "./app/AppShell";
 
 export function App() {
   const path = usePath();
   const { brandName } = useConfig();
   const isAdmin = path === "/admin";
+  const isApp = path === "/app" || path.startsWith("/app/");
+
+  // The embedded merchant app has its own sidebar chrome — render it standalone.
+  if (isApp) return <div className="app app-embedded"><AppShell /></div>;
   // On result/confirmation pages the acquisition CTAs are redundant — keep the
   // header minimal (brand only) so the page's own content carries the next step.
   const minimalHeader = path.startsWith("/report/") || path === "/thanks" || path === "/privacy";

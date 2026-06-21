@@ -16,10 +16,10 @@ export function LandingPage() {
     <div className="landing">
       {/* First screen = one thing only. */}
       <section className="hero-land">
-        <h1>See if AI recommends your store</h1>
+        <h1>Turn AI shopping visibility into action</h1>
         <p className="hero-sub">
-          We ask ChatGPT, Gemini, and Perplexity what shoppers ask — and show whether they
-          send buyers to you or your competitors.
+          We ask ChatGPT, Gemini, and Perplexity what shoppers ask — show whether they send buyers
+          to you or your competitors — then diagnose why, fix it, and prove it worked.
         </p>
         <form className="hero-form" onSubmit={run}>
           <input
@@ -34,6 +34,10 @@ export function LandingPage() {
             Run free scan
           </button>
         </form>
+        <div className="hero-ctas">
+          <a className="hero-connect" href="/api/shopify/install">Connect Shopify</a>
+          <Link className="hero-seeapp" to="/app">See the app →</Link>
+        </div>
         <div className="hero-trust">Free · {miniPrompts} shopper prompts across 3 AI assistants · results by email</div>
       </section>
 
