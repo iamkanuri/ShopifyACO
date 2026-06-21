@@ -107,6 +107,42 @@ test("monitorRun runs a benchmark, advances cadence, and does NOT alert on ident
   }
 });
 
+test("a verification schedule is refused until the experiment has a baseline", { skip: !RUN_DB }, async () => {
+  const { createBenchmark } = await import("../src/db/benchmarks.js");
+  const { planIntervention } = await import("../src/experiments/execute.js");
+  const { setBaselineRun } = await import("../src/db/experiments.js");
+  const { createScheduleHandler } = await import("../src/server/monitoring.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `monv-${Date.now()}.myshopify.com`;
+  const benchmarkId = await createBenchmark(shop, "v", "verification", { brand: { name: "Caraway" }, category: "c", competitors: [], prompts: [{ text: "q" }], engines: ["openai"] } as never);
+  // Minimal Express req/res doubles.
+  const make = (body: Record<string, unknown>) => {
+    const res = { code: 0, payload: null as unknown, status(c: number) { this.code = c; return this; }, json(b: unknown) { this.payload = b; return this; } };
+    return { req: { shopDomain: shop, body, params: {}, query: {} } as never, res };
+  };
+  try {
+    const { experimentId } = await planIntervention(shop, { benchmarkId, kind: "manual", description: "x" });
+
+    const noBaseline = make({ kind: "verification", experimentId, cadence: "weekly" });
+    await createScheduleHandler(noBaseline.req, noBaseline.res as never);
+    assert.equal(noBaseline.res.code, 409);
+    assert.equal((noBaseline.res.payload as { code: string }).code, "no_baseline");
+
+    // After a baseline exists, the schedule is accepted.
+    await setBaselineRun(experimentId, 999999);
+    const ok = make({ kind: "verification", experimentId, cadence: "weekly" });
+    await createScheduleHandler(ok.req, ok.res as never);
+    assert.equal(ok.res.code, 0); // res.json without status() leaves code at its default
+    assert.ok((ok.res.payload as { id: number }).id > 0);
+  } finally {
+    await pgQuery("delete from schedules where shop_domain=$1", [shop]);
+    await pgQuery("delete from experiments where shop_domain=$1", [shop]);
+    await pgQuery("delete from interventions where shop_domain=$1", [shop]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
+});
+
 test("alert create → list → acknowledge (DB)", { skip: !RUN_DB }, async () => {
   const { createAlert, listAlerts, acknowledgeAlert } = await import("../src/db/monitoring.js");
   const { pgQuery } = await import("../src/db/pg.js");

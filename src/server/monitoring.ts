@@ -42,6 +42,12 @@ export async function createScheduleHandler(req: Request, res: Response): Promis
     res.status(404).json({ error: "Experiment not found for this shop." });
     return;
   }
+  // A verification schedule re-checks against the experiment's baseline; without one,
+  // every run would fail. Require the baseline first.
+  if (exp.baseline_run_id == null) {
+    res.status(409).json({ error: "Capture the experiment's baseline before scheduling re-verification.", code: "no_baseline" });
+    return;
+  }
   const id = await createSchedule(shop, { kind, experimentId, benchmarkId: exp.benchmark_id, cadence });
   res.json({ id, kind, cadence });
 }
