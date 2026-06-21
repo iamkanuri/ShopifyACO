@@ -7,7 +7,7 @@ export function Onboarding() {
   const steps = [
     { n: 1, t: "Connect your store", d: "Install the app to read your catalog (read-only).", href: "/api/shopify/install", cta: "Connect Shopify" },
     { n: 2, t: "Sync your catalog", d: "Pull your products so benchmarks and fixes can use them. Free.", to: "/app/catalog", cta: "Go to Catalog" },
-    { n: 3, t: "Measure your visibility", d: "Run a benchmark across ChatGPT, Gemini and Perplexity.", to: "/scan", cta: "Run a scan" },
+    { n: 3, t: "Measure your visibility", d: "Run a benchmark across ChatGPT, Gemini and Perplexity.", to: "/app/measure", cta: "Run a benchmark" },
     { n: 4, t: "Diagnose · fix · verify", d: "See why competitors win, apply fixes, and prove they worked.", to: "/app/evidence", cta: "See the evidence" },
   ];
   return (

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { compareProportions, engineDivergence, mean, proportion, shareOfVoice, volatility } from "../src/benchmarks/stats.js";
@@ -66,4 +67,31 @@ test("aggregate computes rates, SoV, and per-answer win/loss with CIs", () => {
   assert.equal(m.winLoss.wins, 1);
   assert.equal(m.winLoss.losses, 1);
   assert.equal(m.winLoss.responses, 2);
+});
+
+// ---- DB-gated: self-serve shop benchmark (mock engines, $0) -----------------
+const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
+test("runShopBenchmark builds a cohort, runs it (mock), and lists the run for the shop", { skip: !RUN_DB }, async () => {
+  const { runShopBenchmark } = await import("../src/benchmarks/shopRun.js");
+  const { listRunsForShop } = await import("../src/db/benchmarks.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `bench-${Date.now()}.myshopify.com`;
+  let benchmarkId = 0;
+  try {
+    const r = await runShopBenchmark(shop, { brand: "Caraway", category: "non-toxic cookware", competitors: ["GreenPan", "Our Place"], maxPrompts: 5, mock: true });
+    benchmarkId = r.benchmarkId;
+    assert.ok(r.runId > 0);
+    assert.equal(r.promptCount, 5);
+    assert.ok(r.observationCount > 0);
+    assert.equal(r.costUsd, 0); // mock is free
+    assert.ok(r.metrics.recommendationRate.n > 0); // honest denominator
+
+    const runs = await listRunsForShop(shop);
+    assert.ok(runs.some((row) => Number(row.id) === r.runId));
+  } finally {
+    await pgQuery("delete from observations where benchmark_id=$1", [benchmarkId]);
+    await pgQuery("delete from benchmark_runs where benchmark_id=$1", [benchmarkId]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
 });

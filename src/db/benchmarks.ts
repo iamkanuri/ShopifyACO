@@ -58,6 +58,16 @@ export async function getRun(runId: number): Promise<RunRow | null> {
   return r ? { id: Number(r.id), benchmark_id: r.benchmark_id != null ? Number(r.benchmark_id) : null, shop_domain: r.shop_domain, tier: r.tier, status: r.status, observation_count: r.observation_count } : null;
 }
 
+/** Recent benchmark runs for a shop (for the in-app Measure/runs view). */
+export async function listRunsForShop(shop: string, limit = 20): Promise<Array<Record<string, unknown>>> {
+  const { rows } = await pgQuery(
+    `select id, benchmark_id, tier, status, observation_count, cost_usd, prompt_count, started_at, finished_at
+       from benchmark_runs where shop_domain=$1 order by started_at desc limit $2`,
+    [shop, Math.min(100, Math.max(1, limit))],
+  );
+  return rows;
+}
+
 export async function createRun(benchmarkId: number, shop: string | null, tier: string, engines: string[], promptCount: number, repetitions: number): Promise<number> {
   const { rows } = await pgQuery<{ id: string }>(
     "insert into benchmark_runs (benchmark_id, shop_domain, tier, status, engines, prompt_count, repetitions) values ($1,$2,$3,'running',$4,$5,$6) returning id",

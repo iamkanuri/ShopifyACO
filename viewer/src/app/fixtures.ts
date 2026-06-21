@@ -31,6 +31,7 @@ export interface Proportion { successes: number; n: number; rate: number | null;
 export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; }
 export interface AppAlertRow { id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string; }
 export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
+export interface AppRunRow { id: number; tier: string; status: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
 
 const p = (successes: number, n: number): Proportion => {
   const rate = n ? successes / n : null;
@@ -159,6 +160,11 @@ export const DEMO = {
       detail: "You led share of voice in the use-case cohort last run; this run All-Clad leads. Share of voice is recommendation-weighted and varies between runs — corroborate before acting.",
       status: "open", created_at: "2026-06-21T15:05:00Z",
     },
+  ],
+
+  runs: <AppRunRow[]>[
+    { id: 142, tier: "monitoring", status: "completed", observation_count: 86, cost_usd: 0.04, prompt_count: 12, started_at: "2026-06-21T15:00:00Z" },
+    { id: 131, tier: "monitoring", status: "completed", observation_count: 84, cost_usd: 0.04, prompt_count: 12, started_at: "2026-06-14T15:00:00Z" },
   ],
 
   catalog: {

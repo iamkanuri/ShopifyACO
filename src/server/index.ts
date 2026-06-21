@@ -19,6 +19,7 @@ import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
 import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInterventionsHandler, planHandler, verifyHandler } from "./experiments.js";
 import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, listAlertsHandler, listSchedulesHandler, runScheduleHandler, updateScheduleHandler } from "./monitoring.js";
+import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
 import { registerExperimentJobs } from "../experiments/execute.js";
@@ -265,6 +266,11 @@ app.post("/app/api/experiments/:id/baseline", shopMw, wrap(baselineHandler));
 app.post("/app/api/experiments/:id/verify", shopMw, wrap(verifyHandler));
 app.get("/app/api/interventions", shopMw, wrap(listInterventionsHandler));
 registerExperimentJobs();
+
+// --- Self-serve benchmarks (Phase 12, shop-scoped). Lets a merchant start the loop.
+//     Runs default to mock ($0); a live run (engine spend) needs explicit { live: true }.
+app.post("/app/api/benchmarks/run", shopMw, wrap(runBenchmarkHandler));
+app.get("/app/api/benchmarks", shopMw, wrap(listBenchmarksHandler));
 
 // --- Monitoring & alerts API (Phase 8, shop-scoped). Recurring schedules + alerts.
 //     Runs default to mock ($0); the scheduler enqueues live only if MONITORING_LIVE=1.

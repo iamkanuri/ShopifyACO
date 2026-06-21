@@ -9,6 +9,7 @@ import { Experiments } from "./Experiments";
 import { Monitoring } from "./Monitoring";
 import { Catalog } from "./Catalog";
 import { Settings } from "./Settings";
+import { Measure } from "./Measure";
 
 // The authenticated embedded experience. A real merchant arrives here after OAuth
 // (shop session cookie); a prospect or local preview sees the same screens backed by
@@ -18,6 +19,7 @@ import { Settings } from "./Settings";
 const NAV = [
   { to: "/app", label: "Dashboard", key: "" },
   { to: "/app/catalog", label: "Catalog", key: "catalog" },
+  { to: "/app/measure", label: "Measure", key: "measure" },
   { to: "/app/evidence", label: "Evidence", key: "evidence" },
   { to: "/app/fixes", label: "Fix Studio", key: "fixes" },
   { to: "/app/experiments", label: "Experiments", key: "experiments" },
@@ -35,6 +37,7 @@ export function AppShell() {
 
   let screen: React.ReactNode;
   if (sub === "catalog") screen = <Catalog />;
+  else if (sub === "measure") screen = <Measure />;
   else if (sub === "evidence") screen = <Evidence />;
   else if (sub === "fixes") screen = <Fixes />;
   else if (sub === "experiments") screen = <Experiments />;
