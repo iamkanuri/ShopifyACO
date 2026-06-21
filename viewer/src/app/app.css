@@ -168,3 +168,44 @@
   .al-loop { grid-template-columns: repeat(2, 1fr); }
   .al-kpis { grid-template-columns: 1fr; }
 }
+
+/* catalog table */
+.al-table-wrap { overflow-x: auto; padding: 4px; }
+.al-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.al-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.al-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.al-table tr:last-child td { border-bottom: none; }
+.al-table-sub { font-size: 11px; margin-top: 2px; }
+.al-ok { color: var(--good); font-weight: 600; }
+.al-gapmark { color: var(--warn); font-weight: 600; }
+
+/* settings */
+.al-setrow { padding: 14px 16px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.al-set-k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 700; margin-bottom: 3px; }
+.al-setrow .btn-primary { margin-left: auto; }
+.al-field { display: flex; flex-direction: column; gap: 4px; }
+.al-field select { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.al-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); }
+.al-plangrid { grid-template-columns: repeat(3, 1fr); }
+.al-plan2 { padding: 16px; }
+.al-plan2-name { font-size: 13px; font-weight: 700; }
+.al-plan2-price { font-size: 22px; font-weight: 800; margin: 4px 0 8px; }
+.al-plan2-price span { font-size: 12px; font-weight: 500; }
+
+/* onboarding */
+.al-onboard { padding: 18px 20px; margin-bottom: 22px; }
+.al-onboard-head h3 { margin: 0 0 2px; font-size: 16px; }
+.al-onboard-head p { margin: 0 0 14px; font-size: 12.5px; }
+.al-onboard-steps { display: grid; gap: 10px; }
+.al-onboard-step { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.al-onboard-n { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--surface); border: 1px solid var(--border); color: var(--ink-2); }
+.al-onboard-body { min-width: 0; }
+.al-onboard-t { font-size: 13.5px; font-weight: 700; }
+.al-onboard-d { font-size: 12px; margin-top: 1px; }
+.al-onboard-step .btn { margin-left: auto; white-space: nowrap; }
+
+@media (max-width: 920px) {
+  .al-plangrid { grid-template-columns: 1fr; }
+  .al-onboard-step { flex-wrap: wrap; }
+  .al-onboard-step .btn { margin-left: 38px; }
+}

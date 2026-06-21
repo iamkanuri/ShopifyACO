@@ -30,6 +30,7 @@ export interface Proportion { successes: number; n: number; rate: number | null;
 
 export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; }
 export interface AppAlertRow { id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string; }
+export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
 
 const p = (successes: number, n: number): Proportion => {
   const rate = n ? successes / n : null;
@@ -159,4 +160,14 @@ export const DEMO = {
       status: "open", created_at: "2026-06-21T15:05:00Z",
     },
   ],
+
+  catalog: {
+    total: 7, lastSyncAt: "2026-06-21T14:50:00Z",
+    products: <AppProductRow[]>[
+      { product_gid: "gid://shopify/Product/1001", title: "Ceramic Sauté Pan", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: "Caraway Ceramic Sauté Pan", seo_description: null, variant_count: 4, metafield_count: 2 },
+      { product_gid: "gid://shopify/Product/1002", title: "Fry Pan", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 4, metafield_count: 1 },
+      { product_gid: "gid://shopify/Product/1003", title: "Dutch Oven", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: "Caraway Dutch Oven", seo_description: "Non-toxic enameled Dutch oven.", variant_count: 5, metafield_count: 3 },
+      { product_gid: "gid://shopify/Product/1004", title: "Cookware Set", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 6, metafield_count: 0 },
+    ],
+  },
 };

@@ -7,6 +7,8 @@ import { Evidence } from "./Evidence";
 import { Fixes } from "./Fixes";
 import { Experiments } from "./Experiments";
 import { Monitoring } from "./Monitoring";
+import { Catalog } from "./Catalog";
+import { Settings } from "./Settings";
 
 // The authenticated embedded experience. A real merchant arrives here after OAuth
 // (shop session cookie); a prospect or local preview sees the same screens backed by
@@ -15,10 +17,12 @@ import { Monitoring } from "./Monitoring";
 
 const NAV = [
   { to: "/app", label: "Dashboard", key: "" },
+  { to: "/app/catalog", label: "Catalog", key: "catalog" },
   { to: "/app/evidence", label: "Evidence", key: "evidence" },
   { to: "/app/fixes", label: "Fix Studio", key: "fixes" },
   { to: "/app/experiments", label: "Experiments", key: "experiments" },
   { to: "/app/monitoring", label: "Monitoring", key: "monitoring" },
+  { to: "/app/settings", label: "Settings", key: "settings" },
 ];
 
 export function AppShell() {
@@ -30,10 +34,12 @@ export function AppShell() {
   const demo = probe.demo;
 
   let screen: React.ReactNode;
-  if (sub === "evidence") screen = <Evidence />;
+  if (sub === "catalog") screen = <Catalog />;
+  else if (sub === "evidence") screen = <Evidence />;
   else if (sub === "fixes") screen = <Fixes />;
   else if (sub === "experiments") screen = <Experiments />;
   else if (sub === "monitoring") screen = <Monitoring />;
+  else if (sub === "settings") screen = <Settings connected={!demo} />;
   else screen = <Dashboard demo={demo} />;
 
   return (

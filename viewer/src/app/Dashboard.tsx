@@ -1,6 +1,7 @@
 import { DEMO } from "./fixtures";
 import { getAlerts } from "./appApi";
 import { CiBar, DemoBadge, Pct, SeverityPill, useLoaded } from "./ui";
+import { Onboarding } from "./Onboarding";
 import { Link } from "../router";
 
 // The /app home: where do I stand, and what's the next action across the loop.
@@ -17,6 +18,8 @@ export function Dashboard({ demo }: { demo: boolean }) {
         </div>
         <Link to="/app/evidence" className="btn btn-primary">See why you're losing →</Link>
       </div>
+
+      {demo && <Onboarding />}
 
       <div className="al-hero">
         <div className="card al-score">

@@ -1,4 +1,4 @@
-import { DEMO, type AppAlertRow, type AppExperimentRow, type AppFindingRow, type AppProposalRow, type AppScheduleRow } from "./fixtures";
+import { DEMO, type AppAlertRow, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppScheduleRow } from "./fixtures";
 
 // Client for the authenticated /app/api/* surface. Every call tries the live API; if
 // there's no shop session (401) or the backend is unavailable, it transparently falls
@@ -42,8 +42,15 @@ export const getSchedules = () => load<{ schedules: AppScheduleRow[] }>(`/app/ap
 
 export const getAlerts = (status = "open") => load<{ alerts: AppAlertRow[] }>(`/app/api/alerts?status=${status}`, { alerts: DEMO.alerts });
 
+export const getCatalog = () => load<{ total: number; products: AppProductRow[] }>(`/app/api/catalog/products`, { total: DEMO.catalog.total, products: DEMO.catalog.products });
+
+export const getCatalogStatus = () => load<{ products: number; lastSync: { finished_at?: string; status?: string } | null }>(`/app/api/catalog/sync/status`, { products: DEMO.catalog.total, lastSync: { finished_at: DEMO.catalog.lastSyncAt, status: "completed" } });
+
 // ---- writes ----------------------------------------------------------------
 export const approveFix = (id: number) => post(`/app/api/fixes/${id}/approve`, {});
 export const applyFix = (id: number) => post(`/app/api/fixes/${id}/apply`, {});
 export const dismissFix = (id: number) => post(`/app/api/fixes/${id}/dismiss`, {});
 export const acknowledgeAlert = (id: number) => post(`/app/api/alerts/${id}/acknowledge`, {});
+export const syncCatalog = () => post(`/app/api/catalog/sync`, {});
+export const updateSchedule = (id: number, body: { cadence?: string; enabled?: boolean }) => post(`/app/api/schedules/${id}`, body);
+export const runSchedule = (id: number) => post(`/app/api/schedules/${id}/run`, {});
