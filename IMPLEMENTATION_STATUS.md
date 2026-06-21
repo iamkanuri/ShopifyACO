@@ -93,16 +93,32 @@ runs the entire flow with no real credentials**; flip to `live` after Track-B se
   authorize URL (pure, always-on) + DB-gated (state single-use, encrypted-token round trip,
   webhook idempotency, uninstall). HTTP e2e verified: install→callback→exchange→encrypt→
   store→8 webhooks→signed session (200/redirect) and webhook gate (valid 200 / bad 401).
-- 🔒 Live verification needs the Partner app + `SHOPIFY_API_KEY/SECRET` + `APP_ENCRYPTION_KEY`
-  + callback URL registered (launch checklist). **Models for products/variants/collections/
-  catalog_syncs/snapshots land in Phase 3** (catalog sync), keeping migrations cohesive.
+- ✅ **LIVE-VERIFIED on prod (2026-06-21):** real OAuth install of `ai-visibility-dev-
+  m2su2ozk.myshopify.com` → shop `active`, offline token stored **encrypted** (decrypts only
+  with the Railway key), install audited, 8 webhooks registered. App configured via
+  `shopify app deploy` (version `ai-visibility-2`). Catalog models moved to Phase 3.
 - ⬜ `/app` onboarding UI (Connect→Sync→Select→Confirm→Benchmark→Baseline) is Phase 12 IA;
   the URL-based free scan for non-Shopify prospects is retained unchanged.
 
-### Phase 3 — Product-level catalog intelligence ⬜
-Depends on Phase 2 tokens. Models: `products`, `variants`, `collections`, `catalog_syncs`,
-`catalog_snapshots`. GraphQL cursor sync + incremental webhooks + resumable full sync.
-`/app/catalog` UI. Brand-mention vs SKU-recommendation kept distinct.
+### Phase 3 — Product-level catalog intelligence 🟡 (backend built + tested; UI = Phase 12)
+Built on branch `phase3-catalog`. Pulls the catalog using the decrypted offline token.
+- ✅ `migrations/0008_catalog.sql` — `products`, `product_variants`, `collections`,
+  `product_collections`, `catalog_syncs` (resumable cursor), `catalog_snapshots`.
+- ✅ `src/catalog/source.ts` — GraphQL Admin API products query, cursor pagination,
+  adaptive **rate-limit/throttle handling** (leaky-bucket restoreRate) + retries; mock
+  fixture (7 products / 2 pages) for $0 testing. Single-product fetch for incrementals.
+- ✅ `src/catalog/normalize.ts` — pure map (ids, title, HTML-stripped description, vendor,
+  type, tags, url, image, variant options, price, sku/barcode/GTIN, SEO, metafields).
+- ✅ `src/db/catalog.ts` — **deterministic upserts** (re-sync converges; removed variants/
+  collection-links pruned), sync tracking, snapshots, search/list.
+- ✅ `src/catalog/sync.ts` — full **resumable** sync, incremental single-product upsert +
+  delete (wired to `products/*` webhooks), `catalog_sync` queue handler.
+- ✅ Shop-scoped API: `POST/GET /app/api/catalog/sync[/status]`, `GET /app/api/catalog/products`
+  (requireShop). Enqueues when the worker is on, else runs inline.
+- ✅ Tests `test/catalog.test.ts`: normalize (pure) + DB-gated upsert/prune + **full mock
+  sync (7 products, idempotent)**. Brand-mention vs SKU kept distinct (variants are rows).
+- ⬜ `/app/catalog` UI (search/filter/health/selection) → Phase 12. Live sync against the
+  real store is free (Shopify reads) — triggerable post-deploy via the shop session.
 
 ### Phase 4 — Statistically credible benchmarks ⬜
 Reusable `benchmarks` (versioned config) + `observations` (one row per response). Metrics

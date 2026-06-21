@@ -10,6 +10,7 @@ import {
   audit, consumeOAuthState, getShop, markUninstalled, recordInstallation,
   saveOAuthState, storeCredentials, upsertShop, webhookSeen,
 } from "../db/shops.js";
+import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
 
 // Shopify OAuth + webhook routes (Phase 2). Disabled (503) until configured; in
 // SHOPIFY_MODE=mock the whole flow runs end-to-end with no real Shopify.
@@ -44,18 +45,23 @@ function readCookie(req: Request, name: string): string | undefined {
 
 /** Shop-scoped authorization for /app/* merchant routes. Sets req.shopDomain. */
 export async function requireShop(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const shop = verifyShopCookie(readCookie(req, SHOP_COOKIE));
-  if (!shop) {
-    res.status(401).json({ error: "Not connected. Install the app from Shopify.", code: "no_shop_session" });
-    return;
+  try {
+    const shop = verifyShopCookie(readCookie(req, SHOP_COOKIE));
+    if (!shop) {
+      res.status(401).json({ error: "Not connected. Install the app from Shopify.", code: "no_shop_session" });
+      return;
+    }
+    const row = await getShop(shop);
+    if (!row || row.status === "uninstalled") {
+      res.status(401).json({ error: "Shop is not connected.", code: "shop_inactive" });
+      return;
+    }
+    (req as Request & { shopDomain?: string }).shopDomain = shop;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Authorization check failed." });
+    console.error("[shopify] requireShop error:", (err as Error).message);
   }
-  const row = await getShop(shop);
-  if (!row || row.status === "uninstalled") {
-    res.status(401).json({ error: "Shop is not connected.", code: "shop_inactive" });
-    return;
-  }
-  (req as Request & { shopDomain?: string }).shopDomain = shop;
-  next();
 }
 
 // ---- install: redirect merchant to Shopify's OAuth consent ----------------
@@ -179,10 +185,21 @@ export async function webhookHandler(req: Request, res: Response): Promise<void>
           break;
         case "products/create":
         case "products/update":
-        case "products/delete":
-          // Catalog reconciliation is Phase 3; for now record the signal.
+        case "products/delete": {
           await audit(shop, "webhook", topic.replace("/", "_"), "product");
+          // Incremental catalog reconciliation (best-effort; never fail the webhook).
+          try {
+            const body = JSON.parse(raw.toString("utf8")) as { id?: string | number };
+            if (body.id != null) {
+              const gid = productGidFromId(body.id);
+              if (topic === "products/delete") await deleteProduct(shop, gid);
+              else await syncOneProduct(shop, gid);
+            }
+          } catch (e) {
+            console.error(`[shopify] incremental catalog sync failed (${topic}):`, (e as Error).message);
+          }
           break;
+        }
         case "customers/data_request":
         case "customers/redact":
         case "shop/redact":

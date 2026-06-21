@@ -13,7 +13,9 @@ import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/libr
 import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
-import { installHandler, callbackHandler, webhookHandler, shopifyStatus } from "./shopify.js";
+import { installHandler, callbackHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
+import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
+import { registerCatalogJobs } from "../catalog/sync.js";
 import { hasPg, pgQuery } from "../db/pg.js";
 import { stats as queueStats, recentHeartbeats, retryDeadLetter, cancel as cancelJob } from "../queue/jobs.js";
 import { currentSpendDbUsd } from "../queue/spend.js";
@@ -221,6 +223,13 @@ app.get("/healthz/deep", async (_req, res) => {
 // --- Shopify OAuth: install + callback (Phase 2) ---------------------------
 app.get("/api/shopify/install", wrap(installHandler));
 app.get("/api/shopify/callback", wrap(callbackHandler));
+
+// --- Catalog API (Phase 3, shop-scoped). Shopify reads are free. -----------
+const shopMw = (req: Request, res: Response, next: NextFunction) => requireShop(req, res, next).catch(next);
+app.post("/app/api/catalog/sync", shopMw, wrap(triggerSyncHandler));
+app.get("/app/api/catalog/sync/status", shopMw, wrap(syncStatusHandler));
+app.get("/app/api/catalog/products", shopMw, wrap(listProductsHandler));
+registerCatalogJobs();
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {
