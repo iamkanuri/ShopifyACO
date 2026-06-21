@@ -10,10 +10,9 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
 ---
 
 ## 0. Secrets hygiene (do first)
-- ☐ **Rotate the exposed Shopify API secret.** `imp keys.txt` contains a secret that was
-  committed in plaintext historically. No code reads it, but treat it as burned: in the
-  Shopify Partner dashboard, regenerate the app's API secret. Never reuse the old value.
-- ☐ Confirm `imp keys.txt` and `.env` remain gitignored (`git check-ignore imp\ keys.txt .env`).
+- ☑ **Rotated the Shopify API secret (2026-06-21)** in the Partner dashboard + updated
+  `SHOPIFY_API_SECRET` on the Railway web service. The burned value is invalidated.
+- ☑ Confirmed `imp keys.txt` (not present/tracked) and `.env` are gitignored.
 
 ## 1. Token-encryption key (Phase 2)
 - ☐ Generate a 32-byte key: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
@@ -48,18 +47,19 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
   `alerts`, `notifications` (Phase 8); `feed_snapshots` (Phase 9); `pixel_events` (Phase 10);
   `entitlements` (Phase 11). All additive/idempotent.
 
-## 4. Railway services (Phase 1)
-One image, three process modes via `PROCESS_MODE` (default `web`):
-- ☐ **web** (existing service): start `npm run migrate; npm start` (`PROCESS_MODE=web`).
-- ☐ **worker** (new service, same repo/image): start `npm run worker` (`PROCESS_MODE=worker`).
-- ☐ **scheduler** (new service): start `npm run scheduler` (`PROCESS_MODE=scheduler`).
-- ☐ Keep **web at 1 replica** until DB-backed spend reservation + job claiming are verified
-  in staging. Workers can scale horizontally (claiming is atomic via `FOR UPDATE SKIP LOCKED`).
-- ☐ Set `JOB_QUEUE_ENABLED=1` only after the worker service is live and the integration tests
-  pass against it. Until then the existing in-process scan path serves prod (no behavior change).
-- ☐ All three services need the same env (Railway shared vars are NOT auto-injected — set on
-  each service): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, engine keys,
-  `DAILY_SPEND_CAP_USD`, `IP_HASH_SALT`.
+## 4. Railway services (Phase 1) — ✅ DONE 2026-06-21
+One image, three process modes via `PROCESS_MODE` dispatch (`src/start.ts`). railway.json's
+shared start command + `/healthz` check apply to every service, so **the only per-service
+difference is the `PROCESS_MODE` variable** (no start-command/healthcheck overrides). The
+worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared check passes.
+- ☑ **web** service (`ShopifyACO`): default `PROCESS_MODE=web` (has the public domain + volume).
+- ☑ **worker** service (same repo): `PROCESS_MODE=worker`, copied env, no domain/volume.
+- ☑ **scheduler** service (same repo): `PROCESS_MODE=scheduler`, copied env, no domain/volume.
+- ☑ `JOB_QUEUE_ENABLED=1` set on the **web** service (only place it's read — gates the
+  catalog-sync + evidence-diagnose routes to enqueue vs run inline; public funnel untouched).
+- ☑ Verified: `/healthz/deep` shows `worker` + `scheduler` heartbeats + `jobQueueEnabled:true`.
+- To add a service: Railway **+ Create → GitHub Repo** (NOT Empty Service) → set `PROCESS_MODE`.
+  Each service needs the same env (shared vars are NOT auto-injected); do not hardcode `PORT`.
 
 ## 5. Engine API keys (Phases 1, 4)
 - ☐ `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `PERPLEXITY_API_KEY` (already set in prod).

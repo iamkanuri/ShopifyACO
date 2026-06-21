@@ -362,18 +362,39 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `4d8a735`)
+**Phases 1–8 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
+Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
+- **All 13 migrations applied** to Supabase (`0001`–`0013`).
+- **Multi-process is LIVE:** one image, three Railway services via `PROCESS_MODE` dispatch
+  (`src/start.ts`). `web` (the site + API) + `worker` + `scheduler` all deployed and
+  **heartbeating** (`/healthz/deep`). `JOB_QUEUE_ENABLED=1` on web → durable queue + scheduled
+  monitoring are **running** (recurring runs stay mock/$0 until `MONITORING_LIVE=1`).
+- **Shopify:** live OAuth (`read_products`); API secret **rotated** 2026-06-21.
+- **The embedded `/app` UI is live** (demo-fallback for non-sessions). Homepage repositioned.
+- **Next phase to build: Phase 9** (Product feeds & agentic readiness). Phases 9, 10, 11, 13
+  remain unbuilt. The live (non-demo) loop for real merchants needs a merchant to install +
+  (optionally) `MONITORING_LIVE=1` / `CRAWLER_MODE=live` (both gated, spend-capped).
+
 ## External blockers (summary → details in LAUNCH_CHECKLIST.md)
-1. 🔒 Rotate exposed Shopify secret.
-2. 🔒 Shopify Partner app + API key/secret + callback URLs + scopes + compliance webhooks.
-3. 🔒 `APP_ENCRYPTION_KEY` (token encryption at rest).
-4. 🔒 Railway `worker` + `scheduler` services.
-5. 🔒 Email provider + verified domain.
-6. 🔒 Stripe products/prices/webhook/portal (live).
-7. 🔒 Web Pixel extension deploy.
-8. 🔒 OpenAI product-feed onboarding/eligibility.
+1. ✅ Rotate exposed Shopify secret — **done 2026-06-21**.
+2. ✅ Shopify Partner app + API key/secret + callback URLs + scopes + compliance webhooks — live.
+3. ✅ `APP_ENCRYPTION_KEY` (token encryption at rest) — set (live OAuth works).
+4. ✅ Railway `worker` + `scheduler` services + `JOB_QUEUE_ENABLED=1` — **done 2026-06-21**.
+5. 🔒 Email provider + verified domain (Phase 8 send lands in Phase 11; logger until then).
+6. 🔒 Stripe products/prices/webhook/portal (live) — needs KYC + Phase 11.
+7. 🔒 Web Pixel extension deploy — needs Phase 10.
+8. 🔒 OpenAI product-feed onboarding/eligibility — needs Phase 9 build + OpenAI approval.
 9. 🔒 Legal/support/data-deletion URLs for app review.
+10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 DEPLOY: Phases 4–8 + 12 + the `PROCESS_MODE` dispatcher all merged to `main` and
+  deployed to Railway in sequence (each fast-forward, smoke-tested green). Full serial DB suite
+  (`npm run test:db`) peaked at 95/95. Worker + scheduler services stood up; `/healthz/deep`
+  confirms both heartbeating + `jobQueueEnabled:true`. Reviews: `/security-review` clean on
+  Phase 5/6/8; `/code-review high` findings fixed on each. **`npm run test:db` is the
+  deterministic DB-gated run (parallel `npm test` can flake on the shared Supabase pooler).**
 - Phase 1: `npm test` (pure queue unit tests + existing 16 detection) green; `npm run
   typecheck`; `viewer` build; DB-gated integration tests run once against Supabase with
   cleanup (see commit notes). Live funnel untouched (dormant).

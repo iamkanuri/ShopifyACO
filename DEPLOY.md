@@ -121,6 +121,19 @@ rate-limited login). It shows today's metrics, the funnel, runs, leads, errors, 
 launch-target progress, and can launch standard/deep scans for paid-beta customers.
 If `ADMIN_PASSWORD` is unset, `/admin` is disabled.
 
+## Multi-process services (LIVE 2026-06-21) — web + worker + scheduler
+One image, three Railway services from the **same repo**. `railway.json` runs `npm run migrate;
+npm start` for all of them; `src/start.ts` then **dispatches on `PROCESS_MODE`**: `web`
+(default → Express + viewer) · `worker` (`npm run worker`) · `scheduler`. So the **only
+per-service difference is the `PROCESS_MODE` variable** — no per-service start-command or
+healthcheck overrides (Railway handles those inconsistently). `worker`/`scheduler` run a minimal
+`/healthz` server (`src/health.ts`) so the shared healthcheck passes; they need no domain/volume.
+- Add a service: Railway **+ Create → GitHub Repo** (NOT Empty Service) → copy the web service's
+  env vars → set `PROCESS_MODE=worker` (or `scheduler`). Don't hardcode `PORT` (Railway injects it).
+- Turn the queue on LAST: set `JOB_QUEUE_ENABLED=1` on the **web** service only.
+- Verify: `/healthz/deep` → `worker` + `scheduler` heartbeats + `jobQueueEnabled:true`.
+- Recurring monitoring is mock/$0 until `MONITORING_LIVE=1`; live crawl needs `CRAWLER_MODE=live`.
+
 ## Rollback
 
 - **Code:** Railway → Deployments → pick a previous green deploy → **Redeploy**.
