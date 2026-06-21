@@ -1,6 +1,7 @@
 import "dotenv/config";
 import process from "node:process";
 import { hasPg, closePg } from "./db/pg.js";
+import { startHealthServer } from "./health.js";
 import { startWorker } from "./queue/runner.js";
 import { registerCatalogJobs } from "./catalog/sync.js";
 import { registerBenchmarkJobs } from "./benchmarks/execute.js";
@@ -16,6 +17,7 @@ if (!hasPg()) {
   process.exit(1);
 }
 
+startHealthServer("worker"); // satisfy Railway's /healthz check (no Express here)
 registerCatalogJobs(); // register job handlers before claiming
 registerBenchmarkJobs();
 registerDiagnosisJobs();

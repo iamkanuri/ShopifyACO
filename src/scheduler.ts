@@ -2,6 +2,7 @@ import "dotenv/config";
 import process from "node:process";
 import { ENV } from "./server/env.js";
 import { hasPg, closePg } from "./db/pg.js";
+import { startHealthServer } from "./health.js";
 import { recoverAbandoned, touchHeartbeat } from "./queue/jobs.js";
 import { runDueSchedules } from "./monitoring/execute.js";
 
@@ -27,6 +28,7 @@ async function main(): Promise<void> {
     console.error("[scheduler] DATABASE_URL not set — cannot run. Exiting.");
     process.exit(1);
   }
+  startHealthServer("scheduler"); // satisfy Railway's /healthz check (no Express here)
   console.log(`[scheduler] starting (tick ${TICK_MS}ms)`);
   while (!stopping) {
     try {
