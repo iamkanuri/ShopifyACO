@@ -120,11 +120,30 @@ Built on branch `phase3-catalog`. Pulls the catalog using the decrypted offline 
 - ⬜ `/app/catalog` UI (search/filter/health/selection) → Phase 12. Live sync against the
   real store is free (Shopify reads) — triggerable post-deploy via the shop session.
 
-### Phase 4 — Statistically credible benchmarks ⬜
-Reusable `benchmarks` (versioned config) + `observations` (one row per response). Metrics
-with CIs + sample sizes. LLM adjudication pass (optional, recorded per classification).
-Claude adapter added only when its current API + grounding are correctly configured.
-Partially seeded by existing analysis/detection — will extend, not replace, tested logic.
+### Phase 4 — Statistically credible benchmarks 🟡 (statistical foundation built + tested)
+Built on branch `phase4-benchmarks`. The pure statistical + data + intent core is done and
+unit-tested; live multi-engine execution wiring is the remaining piece.
+- ✅ `migrations/0009_benchmarks.sql` — `benchmarks` (versioned config), `benchmark_runs`,
+  `observations` (one row per engine answer × brand; captures engine/model/grounding/
+  prompt-version/rank/sentiment/citations/snippet/latency/cost/`classification_method`/
+  `response_id`). `shop_domain` nullable so the URL free-scan reuses it.
+- ✅ `src/benchmarks/stats.ts` — **Wilson CIs** for proportions (well-behaved at small n),
+  mean+stderr, volatility, share-of-voice, engine divergence, and a two-proportion
+  **compareProportions** that returns improved/regressed/**inconclusive** (CI of the diff
+  must exclude 0 — "no evidence of change" ≠ "declined"). Unit-tested.
+- ✅ `src/benchmarks/intents.ts` — deterministic shopper-intent cohort across all 10
+  taxonomy types (category discovery → alternatives). Unit-tested.
+- ✅ `src/benchmarks/metrics.ts` — pure `aggregate(observations, brand)` → recommendation/
+  mention/top-choice rates, avg position, prompt coverage, citation-backed rate, SoV,
+  per-engine breakdown + divergence, per-answer win/loss — all with CIs + sample sizes.
+  `compareRuns` for baseline-vs-verification. Unit-tested.
+- ⬜ **Remaining:** `src/db/benchmarks.ts` (CRUD + run + observation insert + aggregate
+  query) and `src/benchmarks/execute.ts` (expand product×prompt×engine×repetition → call
+  engine → detect → store observation), wired to the existing engine adapters + detection
+  and the Phase-1 spend reservation. Build/test against the MOCK engine first ($0); a real
+  run spends money (gated by the per-scan + $25/day caps — always cost-confirmed first).
+- ⬜ Optional LLM adjudication pass (record `classification_method`); Claude adapter when
+  its current API/grounding are configured (degrade gracefully).
 
 ### Phase 5 — Evidence & diagnosis engine (crawler) ⬜
 SSRF-hardened bounded crawler (`src/crawler/`), JSON-LD/Offer extraction, evidence-backed
