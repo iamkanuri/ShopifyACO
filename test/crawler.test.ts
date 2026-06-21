@@ -243,6 +243,27 @@ test("diagnose produces evidence-backed + hygiene findings with mechanism, never
   assert.ok(summary.topIntervention && summary.topIntervention.length > 0);
 });
 
+test("diagnose attributes the advantage to the WINNER's page, not another cited brand", async () => {
+  const [merchant] = await crawlSeeds([MOCK_MERCHANT_URL]); // thin: no reviews/shipping/…
+  // The winner ("GreenPan") is the rich competitor fixture; pretend a DIFFERENT brand's
+  // page was also cited. The finding must only claim what the winner's own page exposes.
+  const [winner] = await crawlSeeds([MOCK_COMPETITOR_URL]); // brand GreenPan, has reviews/shipping/…
+  const otherBrandPage = {
+    ...winner!,
+    extracted: { ...winner!.extracted!, product: { ...winner!.extracted!.product!, brand: "SomeoneElse" } },
+  };
+  const competitorPages = new Map([
+    [winner!.finalUrl ?? winner!.url, winner!],
+    ["https://other.example.com/x", otherBrandPage as never],
+  ]);
+  const findings = diagnose({ merchantBrand: "MyBrand", observations: lossObs(), merchantPage: merchant!, competitorPages });
+  for (const f of findings.filter((x) => x.kind === "evidence_backed")) {
+    assert.equal(f.winningCompetitor, "GreenPan");
+  }
+  // The winner genuinely has the signals, so we still produce evidence findings.
+  assert.ok(findings.some((f) => f.kind === "evidence_backed"));
+});
+
 test("diagnose flags an un-crawlable merchant page instead of reporting it clean", async () => {
   const failed = {
     url: MOCK_MERCHANT_URL, finalUrl: null, origin: null, ok: false, status: null, contentType: null,

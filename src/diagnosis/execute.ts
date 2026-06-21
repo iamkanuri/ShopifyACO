@@ -1,6 +1,6 @@
 import { ENV } from "../server/env.js";
 import { registerHandler } from "../queue/handlers.js";
-import { crawlSeeds } from "../crawler/crawl.js";
+import { crawlSeeds, originOf } from "../crawler/crawl.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { diagnose, findLosses, summarizeFindings, type Finding } from "./diagnose.js";
 import { clearFindings, getDiagnosisObservations, savePage, saveFinding } from "../db/crawler.js";
@@ -55,15 +55,6 @@ function dedupeValidUrls(urls: string[], cap: number): string[] {
   return out;
 }
 
-function originOf(u: string): string | null {
-  try {
-    const url = new URL(u);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRunResult> {
   const mock = opts.mock ?? ENV.crawler.mode === "mock";
   const observations = await getDiagnosisObservations(opts.runId);
@@ -93,16 +84,20 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
   competitorUrls = dedupeValidUrls(competitorUrls, maxCompetitors);
 
   // Crawl (bounded). Merchant + competitors crawled as separate seed sets so each
-  // page keeps its role. crawlOne never throws — failures land on the page row.
-  const merchantPages = merchantUrl && validateUrl(merchantUrl).ok ? await crawlSeeds([merchantUrl], { maxDepth: 0 }) : [];
-  const competitorPages = competitorUrls.length > 0 ? await crawlSeeds(competitorUrls, { maxDepth: 0 }) : [];
+  // page keeps its role. crawlOne never throws (and re-validates each URL itself —
+  // no need to pre-validate here). Failures land on the page row.
+  const merchantPages = merchantUrl ? await crawlSeeds([merchantUrl], { maxDepth: 0 }) : [];
+  // A competitor URL can 30x-redirect onto the merchant's own origin; drop any whose
+  // FINAL origin is the merchant's so we never feed the merchant's page in as a rival.
+  const competitorPages = (competitorUrls.length > 0 ? await crawlSeeds(competitorUrls, { maxDepth: 0 }) : [])
+    .filter((p) => !merchantOrigin || originOf(p.finalUrl ?? p.url) !== merchantOrigin);
 
   const merchantPage: CrawledPage | null = merchantPages[0] ?? null;
   const competitorMap = new Map<string, CrawledPage>();
   for (const p of competitorPages) competitorMap.set(p.finalUrl ?? p.url, p);
 
-  // Persist crawl artifacts (sanitized, untrusted). Best-effort; never blocks
-  // findings if the DB is briefly unavailable for one row.
+  // Persist crawl artifacts (sanitized, untrusted). Best-effort + concurrent; never
+  // blocks findings if the DB is briefly unavailable for one row.
   let injectionFlagged = 0;
   const persist = async (page: CrawledPage, role: "merchant" | "competitor", brand: string | null) => {
     if (page.injection.flagged) injectionFlagged++;
@@ -112,9 +107,11 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
       console.error("[diagnose] savePage failed:", (err as Error).message);
     }
   };
-  if (merchantPage) await persist(merchantPage, "merchant", opts.merchantBrand);
-  // Best-effort brand label for a competitor page from its extracted product brand.
-  for (const p of competitorPages) await persist(p, "competitor", p.extracted?.product?.brand ?? null);
+  await Promise.all([
+    ...(merchantPage ? [persist(merchantPage, "merchant", opts.merchantBrand)] : []),
+    // Best-effort brand label for a competitor page from its extracted product brand.
+    ...competitorPages.map((p) => persist(p, "competitor", p.extracted?.product?.brand ?? null)),
+  ]);
 
   // Diagnose + persist findings (replace prior findings for this run → idempotent).
   const findings: Finding[] = diagnose({

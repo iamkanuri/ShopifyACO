@@ -19,7 +19,7 @@ import { buildProductInput, productUpdate, rereadProduct } from "./source.js";
 
 export interface ApplyOutcome {
   ok: boolean;
-  status: "applied" | "failed" | "conflict" | "rolled_back" | "rejected";
+  status: "approved" | "dismissed" | "applied" | "failed" | "conflict" | "rolled_back" | "rejected";
   detail?: string;
   conflict?: boolean;
 }
@@ -44,14 +44,14 @@ export async function approveProposal(shop: string, id: number, actor: string): 
   if (!p) return NOT_FOUND;
   if (p.status !== "proposed") return { ok: false, status: "rejected", detail: `cannot approve a '${p.status}' proposal` };
   await updateProposal(id, { status: "approved", actor, markApproved: true, error: null });
-  return { ok: true, status: "applied", detail: "approved" };
+  return { ok: true, status: "approved", detail: "approved" };
 }
 
 export async function dismissProposal(shop: string, id: number, actor: string): Promise<ApplyOutcome> {
   const p = await loadOwned(shop, id);
   if (!p) return NOT_FOUND;
   await updateProposal(id, { status: "dismissed", actor, error: null });
-  return { ok: true, status: "applied", detail: "dismissed" };
+  return { ok: true, status: "dismissed", detail: "dismissed" };
 }
 
 /** Apply an APPROVED write_products proposal to the live store (gated + reversible). */

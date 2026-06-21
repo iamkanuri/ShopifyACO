@@ -43,6 +43,11 @@ function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
+/** The shop domain set on the request by requireShop (call only behind it). */
+export function shopOf(req: Request): string {
+  return (req as Request & { shopDomain?: string }).shopDomain!;
+}
+
 /** Shop-scoped authorization for /app/* merchant routes. Sets req.shopDomain. */
 export async function requireShop(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {

@@ -212,9 +212,7 @@ export function diagnose(input: DiagnoseInput): Finding[] {
   }
 
   const merchantExtract = merchantPage?.ok ? merchantPage.extracted : null;
-  // The "winner advantage" is the union of signals exposed by any cited competitor
-  // page — i.e. what at least one winning source exposes.
-  const competitorExtracts = [...input.competitorPages.values()].filter((p) => p.ok && p.extracted).map((p) => p.extracted!);
+  const allCompetitorExtracts = [...input.competitorPages.values()].filter((p) => p.ok && p.extracted).map((p) => p.extracted!);
 
   // Group losses by winning competitor to find the dominant pattern + basis n.
   const byWinner = new Map<string, Loss[]>();
@@ -231,6 +229,12 @@ export function diagnose(input: DiagnoseInput): Finding[] {
     const basisN = topLosses.length;
     const exemplar = topLosses[0]!;
     const allCitations = [...new Set(topLosses.flatMap((l) => l.citations))];
+
+    // Attribute the advantage to the WINNER's own cited page(s). Only if we can't
+    // match the winner's brand on any crawled page do we fall back to the union of
+    // cited sources — never claim "GreenPan exposes X" using a different brand's page.
+    const winnerPages = allCompetitorExtracts.filter((c) => c.product?.brand && norm(c.product.brand) === norm(winnerName));
+    const competitorExtracts = winnerPages.length > 0 ? winnerPages : allCompetitorExtracts;
 
     for (const sig of EVIDENCE_SIGNALS) {
       const mech = MECHANISMS[sig];

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { shopOf } from "./shopify.js";
 import { getRun } from "../db/benchmarks.js";
 import { listFindings } from "../db/crawler.js";
 import { createProposal, getProductForFix, listProposals } from "../db/fixes.js";
@@ -10,10 +11,6 @@ import { applyProposal, approveProposal, dismissProposal, rollbackProposal } fro
 // handler is tenant-isolated. Generating/approving proposals is free; APPLY is the
 // only path that writes to the store and is gated (approval + write_products scope +
 // conflict check inside applyProposal).
-
-function shopOf(req: Request): string {
-  return (req as Request & { shopDomain?: string }).shopDomain!;
-}
 
 /** Reconstruct the minimal Finding shape proposeFixes needs from a DB row. */
 function rowToFinding(r: Record<string, unknown>): Finding {

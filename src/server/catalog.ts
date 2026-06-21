@@ -1,15 +1,12 @@
 import type { Request, Response } from "express";
 import { ENV } from "./env.js";
+import { shopOf } from "./shopify.js";
 import { syncCatalog } from "../catalog/sync.js";
 import { countProducts, latestSync, listProducts } from "../db/catalog.js";
 import { enqueue } from "../queue/jobs.js";
 
 // Shop-scoped catalog API (Phase 3). requireShop sets req.shopDomain. Reads are free
 // (Shopify Admin API), so triggering a sync never spends money.
-
-function shopOf(req: Request): string {
-  return (req as Request & { shopDomain?: string }).shopDomain!;
-}
 
 /** POST /app/api/catalog/sync — start a full catalog sync (queued if the worker is on). */
 export async function triggerSyncHandler(req: Request, res: Response): Promise<void> {

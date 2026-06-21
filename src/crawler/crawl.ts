@@ -44,7 +44,7 @@ export interface CrawlOptions {
   sameOriginOnly?: boolean;
 }
 
-function originOf(u: string): string | null {
+export function originOf(u: string): string | null {
   try {
     const url = new URL(u);
     return `${url.protocol}//${url.host}`;

@@ -70,14 +70,14 @@ export async function updateProposal(
     `update fix_proposals set
        status = coalesce($2, status),
        applied_snapshot = case when $3::boolean then $4::jsonb else applied_snapshot end,
-       error = $5,
+       error = case when $9::boolean then $5 else error end,
        actor = coalesce($6, actor),
        approved_at = case when $7::boolean then now() else approved_at end,
        applied_at = case when $8::boolean then now() else applied_at end,
        updated_at = now()
      where id=$1`,
     [id, fields.status ?? null, fields.appliedSnapshot !== undefined, fields.appliedSnapshot != null ? JSON.stringify(fields.appliedSnapshot) : null,
-     fields.error ?? null, fields.actor ?? null, Boolean(fields.markApproved), Boolean(fields.markApplied)],
+     fields.error ?? null, fields.actor ?? null, Boolean(fields.markApproved), Boolean(fields.markApplied), "error" in fields],
   );
 }
 

@@ -57,7 +57,11 @@ const evidenceOf = (f?: Finding): FixProposal["evidence"] =>
     ? { findingKind: f.kind, signal: f.signal, intervention: f.recommendedIntervention, mechanism: f.expectedMechanism, citations: f.citations }
     : {};
 
-/** Build a factual Product JSON-LD snippet from KNOWN catalog data only. */
+/** Build a factual Product JSON-LD snippet from KNOWN catalog data only.
+ *  We deliberately OMIT offers/price: our catalog doesn't record the store's
+ *  currency, so emitting a priceCurrency would risk asserting the wrong one. The
+ *  merchant's theme already renders price; an Offer block is left as copy_ready
+ *  guidance with an explicit <YOUR_CURRENCY> placeholder when needed. */
 function productJsonLd(p: CatalogProduct): string {
   const node: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -67,9 +71,6 @@ function productJsonLd(p: CatalogProduct): string {
   if (p.description) node.description = trunc(p.description, 500);
   if (p.vendor) node.brand = { "@type": "Brand", name: p.vendor };
   if (p.onlineUrl) node.url = p.onlineUrl;
-  if (p.price != null) {
-    node.offers = { "@type": "Offer", price: String(p.price), priceCurrency: p.currency ?? "USD", availability: "https://schema.org/InStock" };
-  }
   return `<script type="application/ld+json">\n${JSON.stringify(node, null, 2)}\n</script>`;
 }
 

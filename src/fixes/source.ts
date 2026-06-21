@@ -22,8 +22,10 @@ mutation FixProductUpdate($input: ProductInput!) {
 
 // In mock mode the write must be OBSERVABLE on the next read so the full
 // apply → re-read → rollback lifecycle (and conflict detection) is exercisable at
-// $0. We record applied fields per product and merge them onto the fixture on read.
+// $0. We record applied fields per (shop, product) — shop-scoped so two mock shops
+// operating on the same fixture GID don't contaminate each other's state.
 const mockWrites = new Map<string, Partial<Record<"seoTitle" | "seoDescription" | "descriptionHtml", string>>>();
+const mockKey = (shop: string, gid: string) => `${shop}::${gid}`;
 /** Test/maintenance helper — clear simulated mock writes. */
 export function __resetMockWrites(): void {
   mockWrites.clear();
@@ -35,7 +37,7 @@ export async function rereadProduct(shop: string, token: string, productGid: str
   if (!node) return null;
   const norm = normalizeProduct(node);
   if (norm && ENV.shopify.mode === "mock") {
-    const ov = mockWrites.get(productGid);
+    const ov = mockWrites.get(mockKey(shop, productGid));
     if (ov) {
       if (ov.seoTitle !== undefined) norm.seoTitle = ov.seoTitle;
       if (ov.seoDescription !== undefined) norm.seoDescription = ov.seoDescription;
@@ -59,15 +61,16 @@ export function buildProductInput(productGid: string, field: "seoTitle" | "seoDe
  *  (partial-failure reporting). Throws only on transport/HTTP failure. */
 export async function productUpdate(shop: string, token: string, input: Record<string, unknown>): Promise<WriteResult> {
   if (ENV.shopify.mode === "mock") {
-    // Record the write so a subsequent rereadProduct reflects it.
+    // Record the write so a subsequent rereadProduct reflects it (shop-scoped).
     const gid = typeof input.id === "string" ? input.id : null;
     if (gid) {
-      const ov = mockWrites.get(gid) ?? {};
+      const key = mockKey(shop, gid);
+      const ov = mockWrites.get(key) ?? {};
       const seo = input.seo as { title?: string; description?: string } | undefined;
       if (seo?.title !== undefined) ov.seoTitle = seo.title;
       if (seo?.description !== undefined) ov.seoDescription = seo.description;
       if (typeof input.descriptionHtml === "string") ov.descriptionHtml = input.descriptionHtml;
-      mockWrites.set(gid, ov);
+      mockWrites.set(key, ov);
     }
     return { ok: true, userErrors: [] };
   }

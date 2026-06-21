@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { ENV } from "./env.js";
+import { shopOf } from "./shopify.js";
 import { diagnoseRun } from "../diagnosis/execute.js";
 import { getBenchmark, getRun } from "../db/benchmarks.js";
 import { listCrawlPages, listFindings } from "../db/crawler.js";
@@ -8,10 +9,6 @@ import { enqueue } from "../queue/jobs.js";
 // Shop-scoped Evidence & Diagnosis API (Phase 5). requireShop sets req.shopDomain;
 // every handler verifies the target run belongs to THIS shop (tenant isolation).
 // Diagnosis defaults to mock (no network); a live crawl is explicit opt-in.
-
-function shopOf(req: Request): string {
-  return (req as Request & { shopDomain?: string }).shopDomain!;
-}
 
 /** Load a run and confirm it belongs to the caller's shop. */
 async function ownedRun(req: Request, res: Response): Promise<{ runId: number; benchmarkId: number | null } | null> {

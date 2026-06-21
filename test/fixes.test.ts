@@ -46,6 +46,8 @@ test("proposeFixes builds factual Product JSON-LD and placeholder templates (no 
   assert.match(product.proposedValue, /"@type": "Product"/);
   assert.match(product.proposedValue, /AisleLens Test Co/); // brand from real data
   assert.equal(/YOUR_/.test(product.proposedValue), false); // factual, no placeholders
+  // Never assert a currency we don't actually store (would risk wrong priceCurrency).
+  assert.equal(/priceCurrency|"USD"/.test(product.proposedValue), false);
 
   const reviews = proposals.find((p) => p.target === "guidance:reviews")!;
   assert.match(reviews.proposedValue, /<YOUR_REVIEW_COUNT>/); // template must NOT invent numbers
