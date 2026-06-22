@@ -364,9 +364,42 @@ submitting it — OpenAI onboarding/delivery is an external, config-gated step.
 
 **Phase 9 status: ✅ LIVE in production (merged + deployed 2026-06-21, commit `c178cb4`); feed DELIVERY to OpenAI remains external/config-gated.**
 
-### Phase 10 — Directional attribution (Web Pixel) ⬜🔒
-Shopify Web Pixel extension (official Web Pixels API), consent-aware AI-referrer + funnel
-events. "Identifiable AI-referred sessions," not full causal attribution. Needs extension deploy.
+### Phase 10 — Directional attribution (Web Pixel) 🟡 (built + verified $0; 🔒 extension deploy gated)
+Built on branch `phase10-pixel` (off `main`), mock-verified at $0. A Shopify **Web Pixel
+extension** (official Web Pixels API) detects storefront sessions that arrived from an AI
+assistant and beacons consent-gated funnel events to a public ingest endpoint → directional
+attribution. **"Identifiable AI-referred sessions," NOT causal attribution** (AI assistants
+strip referrers, so it undercounts — surfaced as a floor).
+- ✅ `migrations/0015_pixel.sql` — `pixel_events` (session/event/ai_source/referrer_host/
+  utm/landing_path/consent/ip_hash; additive, idempotent, shop-scoped).
+- ✅ `src/pixel/referrer.ts` (pure) — server-authoritative AI classifier (ChatGPT/Perplexity/
+  Gemini/Copilot/Claude by host + utm_source). **Deliberately conservative**: plain
+  google.com/bing.com are organic search, NOT AI (only assistant subdomains count) — a miss
+  beats mislabeling normal traffic.
+- ✅ `src/pixel/event.ts` (pure) — validates the untrusted public beacon: shop normalize,
+  event-type enum, session-id shape, consent honored, **PII minimized** (referrer HOST +
+  landing PATH only, query stripped), client-clock clamp.
+- ✅ `src/db/pixel.ts` + `src/server/pixel.ts` — `POST /api/pixel/ingest` (PUBLIC, CORS +
+  preflight, per-IP rate-limit, consent-gated, **install-scoped** via `getShop`, server
+  re-classifies, no raw IP — only salted hash; always 202s so a beacon never breaks a
+  storefront) + shop-scoped `GET /app/api/pixel/attribution` (distinct-session funnel by
+  source). **Honest security posture documented**: a storefront pixel can't hold a real
+  secret, so `PIXEL_SHARED_SECRET` is a weak anti-noise gate, never auth.
+- ✅ `extensions/ai-referral-pixel/` — the Web Pixel extension (`shopify.extension.toml` with
+  `customer_privacy.analytics=true` platform consent gate + settings; `src/index.js` persists
+  the original AI referrer in sessionStorage so later funnel events stay attributed; README
+  deploy steps). **This is the merchant/owner-deployed artifact (`shopify app deploy`).**
+- ✅ Tests `test/pixel.test.ts` (10 pure + 1 DB-gated): classifier (each assistant + no
+  false-positive on organic search + utm fallback), beacon validation (bad shop/type/session,
+  consent honored, PII stripping, clock clamp), and a DB e2e (distinct-session funnel,
+  consent-filtered). `npm test` 99 pass / 21 skipped / 0 fail; `npm run typecheck` clean.
+- 🔒 **Not yet applied/deployed:** migration `0015` apply + the DB-gated e2e + merge/deploy
+  await a user go; the Web Pixel **extension deploy** (`shopify app deploy`) + activation +
+  settings is an external step only the app owner can do (LAUNCH_CHECKLIST item 8).
+- ⬜ Follow-ups: surface attribution in the `/app` UI (Phase 12); add-to-cart funnel step;
+  optional server-pixel path for higher-fidelity checkout events.
+
+**Phase 10 status: functionally complete (pure-verified, $0); migration apply + extension deploy gated on user go.**
 
 ### Phase 11 — Commercial product & entitlements ⬜
 Central `entitlements` model (config-driven limits), preserve current Stripe flows during
@@ -430,10 +463,13 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   commit `c178cb4`; `/healthz/deep` green, new worker heartbeating with the `feed_generate`
   handler, `/app/api/feeds/*` registered + tenant-gated). 89 pure pass / 0 fail; migration
   `0014` applied + DB-gated e2e 14/14; both reviews clean/fixed.
-  **Next unbuilt: Phase 10** (Web Pixel). Phases 10, 11, 13 remain. The live (non-demo) loop
-  for real merchants needs a merchant to install + (optionally) `MONITORING_LIVE=1` /
-  `CRAWLER_MODE=live` (both gated, spend-capped). Feed DELIVERY to OpenAI still needs
-  `FEED_DELIVERY_ENABLED=1` + external onboarding (generating ≠ submitting).
+  **Phase 10 (Web Pixel attribution) is BUILT** on branch `phase10-pixel` (pure-verified $0,
+  99 pass / 0 fail) — migration `0015` apply + DB e2e + merge/deploy + the external Web Pixel
+  extension deploy await a user go. **Next unbuilt: Phase 11** (commercial/entitlements);
+  Phase 13 (continuous security) also remains. The live (non-demo) loop for real merchants
+  needs a merchant to install + (optionally) `MONITORING_LIVE=1` / `CRAWLER_MODE=live` (both
+  gated, spend-capped). Feed DELIVERY to OpenAI still needs `FEED_DELIVERY_ENABLED=1` +
+  external onboarding (generating ≠ submitting).
 
 ## External blockers (summary → details in LAUNCH_CHECKLIST.md)
 1. ✅ Rotate exposed Shopify secret — **done 2026-06-21**.
@@ -442,7 +478,9 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 4. ✅ Railway `worker` + `scheduler` services + `JOB_QUEUE_ENABLED=1` — **done 2026-06-21**.
 5. 🔒 Email provider + verified domain (Phase 8 send lands in Phase 11; logger until then).
 6. 🔒 Stripe products/prices/webhook/portal (live) — needs KYC + Phase 11.
-7. 🔒 Web Pixel extension deploy — needs Phase 10.
+7. 🔒 Web Pixel extension deploy — Phase 10 build **done** (ingest + classifier + attribution +
+   the extension in `extensions/ai-referral-pixel/`); still needs `shopify app deploy` +
+   activation + settings (Ingest URL) by the app owner, and migration `0015` applied.
 8. 🔒 OpenAI product-feed onboarding/eligibility — Phase 9 build **done** (generate/validate/
    score/export); still needs OpenAI merchant approval + `FEED_DELIVERY_ENABLED=1` + a
    delivery endpoint to actually submit. Generating/exporting a feed never submits it.
@@ -450,6 +488,11 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 Phase 10 (branch `phase10-pixel`, off `main`): built the AI-referral Web Pixel
+  (extension + public consent-gated ingest + server-authoritative classifier + directional
+  attribution). `npm test` **99 pass / 21 skipped / 0 fail**; `npm run typecheck` clean. NO
+  network/spend (pure + mock). **Migration `0015` apply + DB-gated e2e + merge/deploy + the
+  external `shopify app deploy` of the extension await a user go.**
 - 2026-06-21 Phase 9 DEPLOY: `phase9-feeds` fast-forwarded into `main` (`cee1550..c178cb4`) and
   pushed → Railway auto-deployed. `/healthz` flipped to `c178cb4`; `/healthz/deep` green
   (`database:ok`, `jobQueueEnabled:true`, scheduler + new `c178cb4-svc` worker heartbeating,

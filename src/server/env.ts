@@ -161,6 +161,16 @@ export const ENV = {
     // the shop's currency, so a feed's config currency (or this) is used.
     defaultCurrency: str(process.env.FEED_DEFAULT_CURRENCY) ?? "USD",
   },
+
+  // ---- AI-referral pixel (Phase 10) ---------------------------------------
+  // The public /api/pixel/ingest beacon accepts storefront events. On by default
+  // (harmless until the Web Pixel extension is deployed + activated — a separate
+  // external step). The shared secret is a WEAK anti-noise gate only (it ships to the
+  // browser inside the pixel), never authentication — real scoping is install + consent.
+  pixel: {
+    ingestEnabled: process.env.PIXEL_INGEST_ENABLED !== "0",
+    sharedSecret: str(process.env.PIXEL_SHARED_SECRET),
+  },
 };
 
 /** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */

@@ -21,6 +21,7 @@ import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInte
 import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, listAlertsHandler, listSchedulesHandler, runScheduleHandler, updateScheduleHandler } from "./monitoring.js";
 import { createFeedHandler, deliveryStatusHandler, exportVersionHandler, feedSpecHandler, generateFeedHandler, getVersionHandler, listFeedsHandler, listItemsHandler, listVersionsHandler } from "./feeds.js";
 import { registerFeedJobs } from "../feeds/generate.js";
+import { attributionHandler, ingestHandler, ingestPreflightHandler } from "./pixel.js";
 import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
@@ -300,6 +301,11 @@ app.get("/app/api/feeds/versions/:vid/items", shopMw, wrap(listItemsHandler));
 app.get("/app/api/feeds/versions/:vid/export", shopMw, wrap(exportVersionHandler));
 registerFeedJobs();
 
+// --- AI-referral attribution API (Phase 10, shop-scoped). Directional funnel of
+//     AI-referred storefront sessions. Read-only; the storefront pixel writes via the
+//     public /api/pixel/ingest beacon above. -------------------------------------
+app.get("/app/api/pixel/attribution", shopMw, wrap(attributionHandler));
+
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {
   const plans = PLANS.map((p) => ({ ...p, stripeUrl: STRIPE_BY_PLAN[p.id] ?? null }));
@@ -505,6 +511,13 @@ app.post(
     res.json({ ok: true });
   }),
 );
+
+// --- AI-referral pixel ingest (Phase 10, PUBLIC storefront beacon) ----------
+//     Cross-origin (storefront → our domain): CORS preflight + a forgiving 202 so a
+//     beacon never breaks a merchant's storefront. Consent-gated, install-scoped,
+//     server-classified; data is directional, not authenticated. See server/pixel.ts.
+app.options("/api/pixel/ingest", ingestPreflightHandler);
+app.post("/api/pixel/ingest", wrap(ingestHandler));
 
 // --- CTA lead capture (fake-door fallback) ---------------------------------
 app.post(

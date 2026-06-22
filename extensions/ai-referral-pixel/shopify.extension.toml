@@ -1,0 +1,36 @@
+# AI Referral Pixel — a Shopify Web Pixel extension (Phase 10). Runs on the storefront,
+# detects sessions that arrived from an AI assistant, and (only with analytics consent)
+# beacons directional funnel events to the AI Visibility ingest endpoint.
+#
+# Deploy with:  shopify app deploy   (then activate + fill settings in Admin → Customer events)
+api_version = "2025-01"
+
+[[extensions]]
+name = "AI Referral Pixel"
+handle = "ai-referral-pixel"
+type = "web_pixel_extension"
+# 'strict' runtime: the pixel runs in a sandbox with no DOM access — exactly what we want.
+runtime_context = "strict"
+
+# Consent gating at the PLATFORM level: Shopify only runs this pixel when the shopper has
+# granted ANALYTICS consent (where consent is required). We do not sell data.
+[extensions.customer_privacy]
+analytics = true
+marketing = false
+preferences = false
+sale_of_data = "disabled"
+
+# Merchant/app-configurable settings, injected into the sandbox at runtime.
+[extensions.settings]
+type = "object"
+
+  [extensions.settings.fields.ingest_url]
+  name = "Ingest URL"
+  description = "The AI Visibility ingest endpoint, e.g. https://lens.thirdocular.com/api/pixel/ingest"
+  type = "single_line_text_field"
+  validations = [ { name = "min", value = "1" } ]
+
+  [extensions.settings.fields.shared_secret]
+  name = "Shared secret (optional)"
+  description = "Optional value sent as the X-Pixel-Secret header. Anti-noise only — it ships to the browser, so it is NOT authentication."
+  type = "single_line_text_field"

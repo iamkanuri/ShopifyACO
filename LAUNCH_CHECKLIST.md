@@ -89,8 +89,15 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 - ☐ Flip from TEST to LIVE only after Stripe KYC; swap all `STRIPE_*` to live values.
 
 ## 8. Web Pixel extension (Phase 10)
-- ☐ Scaffold + deploy the Shopify Web Pixel extension via Shopify CLI to the Partner app.
-- ☐ Set `PIXEL_INGEST_URL` / shared secret env as documented in the Phase 10 code.
+- ✅ Built the Web Pixel extension (`extensions/ai-referral-pixel/`) + ingest endpoint
+  (`POST /api/pixel/ingest`) + classifier + attribution (`GET /app/api/pixel/attribution`).
+- ☐ **Apply migration `0015` to Supabase** (`npm run migrate`) + DB-gated e2e (`npm run test:db`).
+- ☐ **Deploy the extension:** `shopify app deploy` (from repo root, Shopify CLI authed to the
+  Partner app), then **Admin → Settings → Customer events** → activate "AI Referral Pixel".
+- ☐ In the pixel settings, set **Ingest URL** = `https://lens.thirdocular.com/api/pixel/ingest`
+  (and, if you set `PIXEL_SHARED_SECRET` on the server, the matching **Shared secret**).
+- ☐ Verify: visit the store with `?utm_source=chatgpt`, then check `/app` attribution
+  (or `pixel_events` in Supabase). Note: directional only — AI assistants strip referrers.
 
 ## 9. OpenAI product feed (Phase 9)
 - ✅ Reviewed the current official OpenAI commerce/product-feed spec (fetched 2026-06-21,

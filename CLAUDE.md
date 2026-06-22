@@ -418,6 +418,31 @@ it** — OpenAI onboarding/delivery is an external, config-gated step (`FEED_DEL
   + 1 DB-gated e2e). **Migration `0014` applied to Supabase + DB e2e PASSED 14/14 (2026-06-21);
   code merge to `main` + deploy await a user go.**
 
+**Phase 10 (Directional attribution — Web Pixel) is built on branch `phase10-pixel`** (off
+`main`), verified pure at $0. A Shopify **Web Pixel extension** detects storefront sessions
+that arrived from an AI assistant and beacons consent-gated funnel events → directional
+attribution. **"Identifiable AI-referred sessions," NOT causal** (assistants strip referrers →
+it undercounts; surfaced as a floor). Generating data needs the extension deployed (external).
+- **Conservative classifier** (`src/pixel/referrer.ts`, pure): ChatGPT/Perplexity/Gemini/
+  Copilot/Claude by referrer host + `utm_source`. Plain google.com/bing.com are organic search,
+  NOT AI — a miss beats mislabeling normal traffic. Server-authoritative (the pixel does a
+  minimal client check; the server re-classifies).
+- **Untrusted-input hygiene** (`src/pixel/event.ts`, pure): the public beacon is typed/length-
+  capped/enum-checked; consent honored; PII minimized (referrer HOST + landing PATH only, query
+  stripped); client clock clamped.
+- **Honest security posture** (`src/server/pixel.ts`): `POST /api/pixel/ingest` is PUBLIC (CORS
+  + preflight), per-IP rate-limited, **consent-gated**, **install-scoped** (`getShop`), server-
+  re-classified, stores no raw IP (salted hash), and always 202s so a beacon never breaks a
+  storefront. A storefront pixel can't hold a real secret → `PIXEL_SHARED_SECRET` is a weak
+  anti-noise gate, NEVER auth. Shop-scoped read `GET /app/api/pixel/attribution` (distinct-
+  session funnel by source).
+- `migrations/0015_pixel.sql` (`pixel_events`; additive). `extensions/ai-referral-pixel/`
+  (`shopify.extension.toml` with `customer_privacy.analytics=true` platform consent gate;
+  `src/index.js` persists the original AI referrer in sessionStorage so later funnel events stay
+  attributed) — **the owner-deployed artifact (`shopify app deploy`)**. `test/pixel.test.ts`
+  (10 pure + 1 DB-gated). **Migration `0015` apply + DB e2e + merge/deploy + extension deploy
+  await a user go.**
+
 **Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
 (off `main`), preview-verified. It makes the headless Phase 4–8 backend **visible + demoable**.
 - `viewer/src/app/*` — embedded shell (`AppShell.tsx`, sidebar + sub-routes via the shared tiny
