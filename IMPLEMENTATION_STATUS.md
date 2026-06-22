@@ -362,7 +362,7 @@ submitting it — OpenAI onboarding/delivery is an external, config-gated step.
   shipping/returns from metafields; version pruning. **Delivery to OpenAI needs
   `FEED_DELIVERY_ENABLED=1` + OpenAI merchant onboarding + a user go (external).**
 
-**Phase 9 status: functionally complete (pure + live-DB verified, $0); migration applied; merge/deploy + delivery gated on user go.**
+**Phase 9 status: ✅ LIVE in production (merged + deployed 2026-06-21, commit `c178cb4`); feed DELIVERY to OpenAI remains external/config-gated.**
 
 ### Phase 10 — Directional attribution (Web Pixel) ⬜🔒
 Shopify Web Pixel extension (official Web Pixels API), consent-aware AI-referrer + funnel
@@ -415,8 +415,8 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
-## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `4d8a735`)
-**Phases 1–8 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `c178cb4`)
+**Phases 1–9 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
 - **All 14 migrations applied** to Supabase (`0001`–`0014`; `0014_feeds` applied 2026-06-21,
   ahead of the Phase 9 code deploy — additive, so the table exists unused until deploy).
@@ -426,12 +426,14 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   monitoring are **running** (recurring runs stay mock/$0 until `MONITORING_LIVE=1`).
 - **Shopify:** live OAuth (`read_products`); API secret **rotated** 2026-06-21.
 - **The embedded `/app` UI is live** (demo-fallback for non-sessions). Homepage repositioned.
-- **Phase 9 (Product feeds & agentic readiness) is BUILT + DB-verified** on branch
-  `phase9-feeds` (89 pure pass / 0 fail; migration `0014` applied + DB-gated e2e 14/14 against
-  live Supabase; both reviews clean/fixed). **Code merge to `main` + deploy await a user go.**
+- **Phase 9 (Product feeds & agentic readiness) is LIVE** (merged + deployed 2026-06-21,
+  commit `c178cb4`; `/healthz/deep` green, new worker heartbeating with the `feed_generate`
+  handler, `/app/api/feeds/*` registered + tenant-gated). 89 pure pass / 0 fail; migration
+  `0014` applied + DB-gated e2e 14/14; both reviews clean/fixed.
   **Next unbuilt: Phase 10** (Web Pixel). Phases 10, 11, 13 remain. The live (non-demo) loop
   for real merchants needs a merchant to install + (optionally) `MONITORING_LIVE=1` /
-  `CRAWLER_MODE=live` (both gated, spend-capped).
+  `CRAWLER_MODE=live` (both gated, spend-capped). Feed DELIVERY to OpenAI still needs
+  `FEED_DELIVERY_ENABLED=1` + external onboarding (generating ≠ submitting).
 
 ## External blockers (summary → details in LAUNCH_CHECKLIST.md)
 1. ✅ Rotate exposed Shopify secret — **done 2026-06-21**.
@@ -448,6 +450,11 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 Phase 9 DEPLOY: `phase9-feeds` fast-forwarded into `main` (`cee1550..c178cb4`) and
+  pushed → Railway auto-deployed. `/healthz` flipped to `c178cb4`; `/healthz/deep` green
+  (`database:ok`, `jobQueueEnabled:true`, scheduler + new `c178cb4-svc` worker heartbeating,
+  0 dead-letter); `/app/api/feeds/spec` returns 401 (registered + tenant-gated, not 404).
+  Migration `0014` already applied, so startup migrate was a no-op.
 - 2026-06-21 Phase 9 (branch `phase9-feeds`, off `main`): built the product-feed generator/
   validator/readiness/export over the normalized catalog. **One network action** — a read-only
   WebFetch of the CURRENT OpenAI Agentic Commerce product-feed spec
