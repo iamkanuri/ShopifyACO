@@ -167,6 +167,17 @@ app.use("/api", (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// The embedded-app API is authenticated (requireShop) but still per-IP rate-limited as
+// defense-in-depth: a stolen or abused shop session must not be able to hammer the
+// expensive shop-scoped endpoints (live benchmarks, crawls, feed generation). Generous
+// limit — a normal dashboard makes several calls per screen.
+app.use("/app/api", (req: Request, res: Response, next: NextFunction) => {
+  if (!rateLimit(`appapi:${clientIp(req)}`, 240, 60_000)) {
+    return res.status(429).json({ error: "Too many requests — slow down a moment." });
+  }
+  next();
+});
+
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) =>
   fn(req, res).catch(next);
 
@@ -204,7 +215,9 @@ app.get("/healthz/deep", async (_req, res) => {
       await pgQuery("select 1");
       db = true;
     } catch (err) {
-      out.dbError = (err as Error).message;
+      // Log the detail server-side; the PUBLIC payload exposes only the status (no raw
+      // error string — it can leak schema/connection internals).
+      console.error("[healthz] db check failed:", (err as Error).message);
     }
   }
   out.database = db ? "ok" : hasPg() ? "error" : "not_configured";
@@ -216,8 +229,8 @@ app.get("/healthz/deep", async (_req, res) => {
       out.heartbeats = await recentHeartbeats(120);
       out.spendTodayDbUsd = Number((await currentSpendDbUsd()).toFixed(4));
     } catch (err) {
-      out.queue = "unavailable";
-      out.queueError = (err as Error).message; // e.g. tables not migrated yet
+      out.queue = "unavailable"; // detail logged server-side, not exposed publicly
+      console.error("[healthz] queue check failed:", (err as Error).message);
     }
   }
   // Engine credentials (configured-or-not only; full validity check is admin-gated)
