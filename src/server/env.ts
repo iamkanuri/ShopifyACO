@@ -88,6 +88,10 @@ export const ENV = {
   shopify: {
     apiKey: str(process.env.SHOPIFY_API_KEY),
     apiSecret: str(process.env.SHOPIFY_API_SECRET),
+    // Optional SECOND secret accepted during a client-secret rotation. Shopify keeps
+    // both the old and new secret valid for a grace period and may sign callbacks/
+    // webhooks with either; we VERIFY against both so rotation never breaks OAuth.
+    apiSecretFallback: str(process.env.SHOPIFY_API_SECRET_FALLBACK),
     // Comma/space separated; least-privilege default. write_products added later.
     scopes: (str(process.env.SHOPIFY_SCOPES) ?? "read_products").split(/[,\s]+/).filter(Boolean),
     apiVersion: str(process.env.SHOPIFY_API_VERSION) ?? "2025-01",

@@ -8,6 +8,8 @@ api_version = "2025-01"
 [[extensions]]
 name = "AI Referral Pixel"
 handle = "ai-referral-pixel"
+
+uid = "2dd5ae46-0e79-46b9-7070-226448b4ad3e1a8bc3f1"
 type = "web_pixel_extension"
 # 'strict' runtime: the pixel runs in a sandbox with no DOM access — exactly what we want.
 runtime_context = "strict"

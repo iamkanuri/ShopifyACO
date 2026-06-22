@@ -7,10 +7,20 @@ import { ENV } from "../server/env.js";
 
 export const MOCK_SECRET = "mock-shopify-shared-secret";
 
-/** The HMAC secret in effect (mock mode uses a fixed secret so signatures verify). */
+/** The HMAC secret used for SIGNING (cookies, mock callbacks): the primary secret. */
 export function effectiveSecret(): string | undefined {
   if (ENV.shopify.apiSecret) return ENV.shopify.apiSecret;
   return ENV.shopify.mode === "mock" ? MOCK_SECRET : undefined;
+}
+
+/** All secrets to VERIFY incoming HMACs against: the primary + an optional fallback
+ *  (so a Shopify client-secret rotation, where either the old or new secret may sign a
+ *  request during the grace period, never causes "Invalid HMAC"). Mock mode falls back
+ *  to the fixed mock secret. Order doesn't matter — verification tries each. */
+export function effectiveSecrets(): string[] {
+  const list = [ENV.shopify.apiSecret, ENV.shopify.apiSecretFallback].filter((s): s is string => Boolean(s));
+  if (list.length) return list;
+  return ENV.shopify.mode === "mock" ? [MOCK_SECRET] : [];
 }
 
 export interface TokenExchange {

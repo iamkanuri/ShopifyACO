@@ -4,7 +4,7 @@ import { ENV, hasShopify } from "./env.js";
 import { normalizeShopDomain, isValidShopDomain } from "../shopify/domain.js";
 import { verifyOAuthHmac, verifyWebhookHmac, webhookHmac } from "../shopify/hmac.js";
 import { buildAuthorizeUrl, generateState, redirectUri } from "../shopify/oauth.js";
-import { getShopifyClient, effectiveSecret } from "../shopify/client.js";
+import { getShopifyClient, effectiveSecret, effectiveSecrets } from "../shopify/client.js";
 import { safeEqualStr } from "../shopify/crypto.js";
 import {
   audit, consumeOAuthState, getShop, markUninstalled, recordInstallation,
@@ -102,13 +102,14 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
     res.status(503).json({ error: "Shopify integration not configured." });
     return;
   }
-  const secret = effectiveSecret();
-  if (!secret) {
+  const secrets = effectiveSecrets();
+  if (!secrets.length) {
     res.status(503).json({ error: "Shopify secret not configured." });
     return;
   }
-  // 1) HMAC over the query (timing-safe)
-  if (!verifyOAuthHmac(req.query as Record<string, string | string[] | undefined>, secret)) {
+  // 1) HMAC over the query (timing-safe). Accept EITHER secret during a rotation.
+  const query = req.query as Record<string, string | string[] | undefined>;
+  if (!secrets.some((s) => verifyOAuthHmac(query, s))) {
     res.status(400).json({ error: "Invalid HMAC." });
     return;
   }
@@ -163,20 +164,21 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
 
 // ---- webhooks: HMAC-verified, idempotent, audited (RAW body) ---------------
 export async function webhookHandler(req: Request, res: Response): Promise<void> {
-  const secret = effectiveSecret();
-  if (!secret) {
+  const secrets = effectiveSecrets();
+  if (!secrets.length) {
     res.status(401).end();
     return;
   }
   const raw: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body ?? "");
   const hmacHeader = req.get("X-Shopify-Hmac-Sha256");
-  if (!verifyWebhookHmac(raw, hmacHeader, secret)) {
+  // Accept EITHER secret during a rotation (old + new both valid for a grace period).
+  if (!secrets.some((s) => verifyWebhookHmac(raw, hmacHeader, s))) {
     res.status(401).end();
     return;
   }
   const topic = (req.get("X-Shopify-Topic") ?? "").toLowerCase();
   const shop = normalizeShopDomain(req.get("X-Shopify-Shop-Domain"));
-  const dedupe = req.get("X-Shopify-Webhook-Id") ?? webhookHmac(raw, secret);
+  const dedupe = req.get("X-Shopify-Webhook-Id") ?? webhookHmac(raw, secrets[0]!);
   const payloadHash = createHash("sha256").update(raw).digest("hex");
 
   // Idempotency / replay protection: ack duplicates without reprocessing.
