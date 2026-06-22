@@ -88,9 +88,12 @@ test("hasPixelScope requires BOTH write_pixels and read_customer_events", () => 
   assert.deepEqual([...REQUIRED_PIXEL_SCOPES], ["read_customer_events", "write_pixels"]);
 });
 
-test("pixelSettings emits the ingest endpoint as JSON", () => {
+test("pixelSettings includes EVERY schema key (webPixelCreate rejects missing keys)", () => {
   const s = JSON.parse(pixelSettings());
   assert.ok(typeof s.ingest_url === "string" && s.ingest_url.endsWith("/api/pixel/ingest"));
+  // shared_secret must always be present (empty when unset) or webPixelCreate fails.
+  assert.equal(Object.prototype.hasOwnProperty.call(s, "shared_secret"), true);
+  assert.equal(typeof s.shared_secret, "string");
 });
 
 // ---- DB-gated: ingest → directional attribution funnel ---------------------

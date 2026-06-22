@@ -19,12 +19,16 @@ export function hasPixelScope(scopes: string | null | undefined): boolean {
 }
 
 /** The settings JSON injected into the storefront pixel: where to beacon + optional
- *  anti-noise secret. The ingest URL is derived from the app/public base URL. */
+ *  anti-noise secret. The ingest URL is derived from the app/public base URL.
+ *  IMPORTANT: webPixelCreate requires EVERY field declared in the extension's settings
+ *  schema to be present, so we ALWAYS include shared_secret (empty string = no gate;
+ *  the pixel + ingest both treat an empty secret as "no secret"). */
 export function pixelSettings(): string {
   const base = (ENV.shopify.appUrl ?? ENV.publicBaseUrl ?? "").replace(/\/+$/, "");
-  const settings: Record<string, string> = { ingest_url: `${base}/api/pixel/ingest` };
-  if (ENV.pixel.sharedSecret) settings.shared_secret = ENV.pixel.sharedSecret;
-  return JSON.stringify(settings);
+  return JSON.stringify({
+    ingest_url: `${base}/api/pixel/ingest`,
+    shared_secret: ENV.pixel.sharedSecret ?? "",
+  });
 }
 
 export interface ActivateResult {
