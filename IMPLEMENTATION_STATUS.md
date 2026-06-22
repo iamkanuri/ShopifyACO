@@ -354,14 +354,15 @@ submitting it — OpenAI onboarding/delivery is an external, config-gated step.
   dates/gtin/price/duplicate-id), readiness transparency, export escaping, format helpers + a
   DB e2e (empty→NoCatalogError, generate→version+items+readiness+export, re-gen→v2). `npm test`
   **89 pass / 20 skipped / 0 fail**; `npm run typecheck` clean.
-- 🔒 **Not yet applied to the live DB:** `npm run migrate` (0014) + the DB-gated e2e need a
-  user go (shared prod Supabase — was flagged + denied by the auto gate, as intended).
+- ✅ **Migration `0014` APPLIED to Supabase (2026-06-21); DB-gated e2e PASSED** (14/14 against
+  the live DB: empty→NoCatalogError, generate→version+items+readiness+export, re-gen→v2,
+  self-cleaned). Code merge to `main` + deploy still await a user go.
 - ⬜ Follow-ups: capture shop currency at catalog sync (currency is config/default today);
   Gemini/Copilot/Shopify-Catalog mappers; Feeds screen (Phase 12); review_count/star_rating +
   shipping/returns from metafields; version pruning. **Delivery to OpenAI needs
   `FEED_DELIVERY_ENABLED=1` + OpenAI merchant onboarding + a user go (external).**
 
-**Phase 9 status: functionally complete (pure-verified, $0); live DB apply + delivery gated on user go.**
+**Phase 9 status: functionally complete (pure + live-DB verified, $0); migration applied; merge/deploy + delivery gated on user go.**
 
 ### Phase 10 — Directional attribution (Web Pixel) ⬜🔒
 Shopify Web Pixel extension (official Web Pixels API), consent-aware AI-referrer + funnel
@@ -417,16 +418,17 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 ## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `4d8a735`)
 **Phases 1–8 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
-- **All 13 migrations applied** to Supabase (`0001`–`0013`).
+- **All 14 migrations applied** to Supabase (`0001`–`0014`; `0014_feeds` applied 2026-06-21,
+  ahead of the Phase 9 code deploy — additive, so the table exists unused until deploy).
 - **Multi-process is LIVE:** one image, three Railway services via `PROCESS_MODE` dispatch
   (`src/start.ts`). `web` (the site + API) + `worker` + `scheduler` all deployed and
   **heartbeating** (`/healthz/deep`). `JOB_QUEUE_ENABLED=1` on web → durable queue + scheduled
   monitoring are **running** (recurring runs stay mock/$0 until `MONITORING_LIVE=1`).
 - **Shopify:** live OAuth (`read_products`); API secret **rotated** 2026-06-21.
 - **The embedded `/app` UI is live** (demo-fallback for non-sessions). Homepage repositioned.
-- **Phase 9 (Product feeds & agentic readiness) is BUILT** on branch `phase9-feeds`
-  (pure-verified $0, 89 pass / 0 fail) but **not yet applied/merged** — migration `0014`
-  apply to the shared prod Supabase + the DB-gated e2e + review + merge all await a user go.
+- **Phase 9 (Product feeds & agentic readiness) is BUILT + DB-verified** on branch
+  `phase9-feeds` (89 pure pass / 0 fail; migration `0014` applied + DB-gated e2e 14/14 against
+  live Supabase; both reviews clean/fixed). **Code merge to `main` + deploy await a user go.**
   **Next unbuilt: Phase 10** (Web Pixel). Phases 10, 11, 13 remain. The live (non-demo) loop
   for real merchants needs a merchant to install + (optionally) `MONITORING_LIVE=1` /
   `CRAWLER_MODE=live` (both gated, spend-capped).
@@ -451,8 +453,8 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   WebFetch of the CURRENT OpenAI Agentic Commerce product-feed spec
   (`developers.openai.com/commerce`) — flagged + done at build; spec encoded with provenance
   (version flagged unconfirmed). `npm test` **89 pass / 20 skipped / 0 fail**; `npm run typecheck`
-  clean. **Migration `0014` apply + the DB-gated e2e were flagged and DENIED by the auto gate
-  (correct — shared prod Supabase); they await a user go.** Not merged/deployed.
+  clean. **Migration `0014` APPLIED to Supabase + the DB-gated e2e PASSED 14/14 against the live
+  DB (2026-06-21, user-authorized; self-cleaned).** Code not merged/deployed — awaits a user go.
 - 2026-06-21 DEPLOY: Phases 4–8 + 12 + the `PROCESS_MODE` dispatcher all merged to `main` and
   deployed to Railway in sequence (each fast-forward, smoke-tested green). Full serial DB suite
   (`npm run test:db`) peaked at 95/95. Worker + scheduler services stood up; `/healthz/deep`

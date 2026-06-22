@@ -415,7 +415,8 @@ it** — OpenAI onboarding/delivery is an external, config-gated step (`FEED_DEL
   atomically) + `feed_generate` queue handler ($0, no mock/live split). Shop-scoped API
   `src/server/feeds.ts` (`/app/api/feeds*`, `/spec`, `/delivery/status`, `:id/generate`,
   `versions/:vid[/items|/export]`, tenant-isolated; config whitelisted). `test/feeds.test.ts` (13 pure
-  + 1 DB-gated e2e). **Migration `0014` apply + DB e2e + merge await a user go** (shared prod Supabase).
+  + 1 DB-gated e2e). **Migration `0014` applied to Supabase + DB e2e PASSED 14/14 (2026-06-21);
+  code merge to `main` + deploy await a user go.**
 
 **Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
 (off `main`), preview-verified. It makes the headless Phase 4–8 backend **visible + demoable**.

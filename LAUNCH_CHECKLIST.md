@@ -96,8 +96,8 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 - ✅ Reviewed the current official OpenAI commerce/product-feed spec (fetched 2026-06-21,
   `developers.openai.com/commerce`); encoded as auditable data in `src/feeds/spec.ts` with
   provenance. The generator/validator/readiness/export are built (branch `phase9-feeds`).
-- ☐ **Apply migration `0014` to Supabase** (`npm run migrate`) + run the DB-gated e2e
-  (`npm run test:db`) — both touch the shared prod DB, so they need an explicit go.
+- ✅ **Migration `0014` applied to Supabase** (`npm run migrate`, 2026-06-21) + DB-gated e2e
+  PASSED 14/14 against the live DB. (Code merge to `main` + deploy still pending a go.)
 - ☐ Confirm OpenAI merchant **eligibility** + complete onboarding (external).
 - ☐ Set `FEED_DELIVERY_ENABLED=1` (+ the delivery endpoint/creds, when that path is built)
   ONLY when eligible. Generating/exporting a feed does **not** submit it to ChatGPT —
