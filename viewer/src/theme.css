@@ -13,6 +13,8 @@
   --border: #2f3037;
   --accent: #f5f4f0;            /* "accent" == the off-white CTA / highlight */
   --accent-soft: rgba(245, 244, 240, 0.06);
+  --border-strong: rgba(245, 244, 240, 0.22); /* an emphasized hairline (CTA accents) */
+  --ink-hover: #f0eee8;         /* primary-button hover (the off-white nudged) */
   --good: #6bbf9a;
   --good-soft: rgba(107, 191, 154, 0.12);
   --warn: #cba35c;
@@ -26,6 +28,58 @@
   --radius-sm: 10px;
   --font-display: "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+
+/* ============ light theme ============
+   Same restraint, inverted: warm paper instead of near-black, dark ink instead of
+   off-white, ONE high-contrast dark CTA. Because btn-primary/accent are driven by the
+   --ink/--bg/--accent variables, the inversion flows automatically. Applied two ways:
+   (1) the visitor's system preference when they HAVEN'T chosen (`:not([data-theme])`),
+   (2) an explicit choice (`[data-theme="light"]`). An explicit "dark" keeps the default
+   above and suppresses the system-light media query. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-2: #efece6;
+  --ink: #232220;
+  --ink-2: #6b6862;
+  --ink-3: #918e87;
+  --border: #e4e1d9;
+  --accent: #232220;
+  --accent-soft: rgba(35, 34, 32, 0.05);
+  --border-strong: rgba(35, 34, 32, 0.18);
+  --ink-hover: #3a3833;
+  --good: #2f9e74;
+  --good-soft: rgba(47, 158, 116, 0.12);
+  --warn: #a67c1f;
+  --warn-soft: rgba(166, 124, 31, 0.13);
+  --bad: #c5504e;
+  --bad-soft: rgba(197, 80, 78, 0.10);
+  --ring-soft: 0 0 0 1px rgba(35, 34, 32, 0.08);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface-2: #efece6;
+    --ink: #232220;
+    --ink-2: #6b6862;
+    --ink-3: #918e87;
+    --border: #e4e1d9;
+    --accent: #232220;
+    --accent-soft: rgba(35, 34, 32, 0.05);
+    --ink-hover: #3a3833;
+    --good: #2f9e74;
+    --good-soft: rgba(47, 158, 116, 0.12);
+    --warn: #a67c1f;
+    --warn-soft: rgba(166, 124, 31, 0.13);
+    --bad: #c5504e;
+    --bad-soft: rgba(197, 80, 78, 0.10);
+    --ring-soft: 0 0 0 1px rgba(35, 34, 32, 0.08);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -198,13 +252,25 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 
 /* ============ nav + headline ============ */
 .brandmark { text-decoration: none; color: inherit; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
 .nav { display: flex; align-items: center; gap: 10px; }
+
+/* ---- light/dark toggle ---- */
+.theme-toggle {
+  display: inline-grid; place-items: center; flex: none;
+  width: 36px; height: 36px; padding: 0;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--ink-2); cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+}
+.theme-toggle:hover { border-color: var(--ink-2); color: var(--ink); }
+.theme-toggle svg { width: 17px; height: 17px; }
 .navlink { text-decoration: none; font-size: 13.5px; font-weight: 600; color: var(--ink-2); padding: 8px 12px; border-radius: 10px; }
 .navlink.active:not(.btn) { color: var(--ink); background: var(--accent-soft); }
 .btn-primary {
   background: var(--ink); color: var(--bg); border-color: var(--ink);
 }
-.btn-primary:hover { background: #f0eee8; color: var(--bg); border-color: #f0eee8; }
+.btn-primary:hover { background: var(--ink-hover); color: var(--bg); border-color: var(--ink-hover); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn.lg { padding: 11px 20px; font-size: 14.5px; }
 .btn.icon { padding: 6px 10px; line-height: 1; }

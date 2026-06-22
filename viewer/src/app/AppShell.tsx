@@ -1,5 +1,6 @@
 import { Link, usePath } from "../router";
 import { useConfig } from "../config";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { getSchedules } from "./appApi";
 import { useLoaded } from "./ui";
 import { Dashboard } from "./Dashboard";
@@ -61,6 +62,7 @@ export function AppShell() {
           <div className={`al-conn ${demo ? "demo" : "live"}`}>
             <span className="al-dot" /> {demo ? "Demo data" : "Store connected"}
           </div>
+          <ThemeToggle />
         </div>
       </aside>
 

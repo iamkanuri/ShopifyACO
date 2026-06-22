@@ -11,6 +11,7 @@ import { IndexListPage } from "./pages/IndexListPage";
 import { IndexLeaderboardPage } from "./pages/IndexLeaderboardPage";
 import { Footer } from "./components/Footer";
 import { Mark } from "./components/Mark";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { AppShell } from "./app/AppShell";
 
 export function App() {
@@ -49,22 +50,26 @@ export function App() {
               <div className="sub">Are AI assistants recommending your store?</div>
             </div>
           </Link>
-          {!minimalHeader && (
-            <nav className="nav">
-              <Link to="/index" className={`navlink ${active("/index")}`}>
-                Index
-              </Link>
-              <Link to="/demo" className={`navlink ${active("/demo")}`}>
-                Demo
-              </Link>
-              {/* The /scan page is itself the scan, so the nav CTA there is redundant. */}
-              {path !== "/scan" && (
-                <Link to="/scan" className="navlink btn btn-primary">
-                  Run free scan
+          <div className="topbar-actions">
+            {!minimalHeader && (
+              <nav className="nav">
+                <Link to="/index" className={`navlink ${active("/index")}`}>
+                  Index
                 </Link>
-              )}
-            </nav>
-          )}
+                <Link to="/demo" className={`navlink ${active("/demo")}`}>
+                  Demo
+                </Link>
+                {/* The /scan page is itself the scan, so the nav CTA there is redundant. */}
+                {path !== "/scan" && (
+                  <Link to="/scan" className="navlink btn btn-primary">
+                    Run free scan
+                  </Link>
+                )}
+              </nav>
+            )}
+            {/* Theme toggle shows on every page, including the minimal-header ones. */}
+            <ThemeToggle />
+          </div>
         </header>
       )}
       {page}
