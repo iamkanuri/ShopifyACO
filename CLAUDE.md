@@ -476,8 +476,10 @@ them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extend
   upgrade payload) into live benchmarks / monitoring schedules / Fix Studio apply / feed definitions,
   but blocking is off until flipped — so deploy never breaks existing behavior or the owner's own dev
   store. `/app/billing` UI surfaces plan + usage + upgrade (Phase 12 patterns). `test/billing.test.ts`
-  (9 pure + 4 DB-gated). **Migration `0017` apply + Stripe TEST setup + deploy + `BILLING_ENFORCED=1`
-  await a user go; going LIVE needs Stripe KYC.**
+  (9 pure + 4 DB-gated). **✅ LIVE in production (merged + deployed 2026-06-22, commit `6660aa6`;
+  migration `0017` applied, DB suite 136/136; Stripe sandbox webhook now subscribes to the
+  subscription/refund events + customer portal enabled).** Enforcement stays DORMANT
+  (`BILLING_ENFORCED` unset — flip to `1` to gate); going LIVE (real cards) needs Stripe KYC.
 
 **Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
 (off `main`), preview-verified. It makes the headless Phase 4–8 backend **visible + demoable**.

@@ -413,7 +413,7 @@ strip referrers, so it undercounts — surfaced as a floor).
 
 **Phase 10 status: ✅ LIVE in production (merged + deployed 2026-06-21, commit `b7e1184`); the storefront Web Pixel extension deploy (`shopify app deploy`) remains an external step to start data collection.**
 
-### Phase 11 — Commercial product & entitlements 🟡 (built + mock/$0-verified; 🔒 Stripe TEST setup + DB apply gated)
+### Phase 11 — Commercial product & entitlements ✅ LIVE (deployed `6660aa6`; enforcement dormant; Stripe TEST)
 Built on branch `phase11-entitlements` (off `main`). A central, **config-driven
 entitlements model** + a complete, **idempotent Stripe billing lifecycle** layered on top
 of the existing payment flows **without changing them**. NO new dependency — the existing
@@ -466,7 +466,7 @@ no-SDK / raw-`fetch` Stripe integration is extended. Stripe stays in **TEST mode
   `STRIPE_PORTAL_RETURN_URL`); add the subscription/refund webhook events. Code merge/deploy +
   `BILLING_ENFORCED=1` await a go. Going LIVE (real cards) needs Stripe KYC — not in scope.
 
-**Phase 11 status: functionally complete (mock-verified, $0); migration apply + Stripe TEST setup + deploy gated on a user go.**
+**Phase 11 status: ✅ LIVE in production (merged + deployed 2026-06-22, commit `6660aa6`; migration `0017` applied, full DB suite 136/136). Enforcement stays DORMANT (`BILLING_ENFORCED` unset); Stripe stays in TEST mode (going live needs KYC).**
 
 ### Phase 12 — Experience redesign (`/app/*`) 🟡 (core IA built + preview-verified)
 Built on branch `phase12-app-ui` (off `main`). The authenticated embedded experience that
@@ -510,11 +510,14 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
-## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `bfa0dac`)
-**Phases 1–10 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-22, commit `6660aa6`)
+**Phases 1–12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
-- **All 16 migrations applied** to Supabase (`0001`–`0016`; `0015_pixel` + `0016_pixel_activation`
-  applied 2026-06-21).
+- **All 17 migrations applied** to Supabase (`0001`–`0017`; `0017_entitlements` applied 2026-06-22).
+- **Phase 11 (commercial/entitlements) is LIVE** (commit `6660aa6`): config-driven entitlements +
+  idempotent Stripe lifecycle (subscription/refund/failed-payment) + billing portal + `/app/billing`.
+  **Enforcement stays DORMANT** (`BILLING_ENFORCED` unset) — the plan/usage surface is live, gating is
+  off. Stripe in TEST mode; the sandbox webhook now subscribes to the subscription/refund events.
 - **Multi-process is LIVE:** one image, three Railway services via `PROCESS_MODE` dispatch
   (`src/start.ts`). `web` (the site + API) + `worker` + `scheduler` all deployed and
   **heartbeating** (`/healthz/deep`). `JOB_QUEUE_ENABLED=1` on web → durable queue + scheduled
@@ -561,6 +564,18 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-22 Phase 11 DEPLOY: migration `0017` applied to Supabase; full serial DB suite
+  (`RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`) **136 pass / 0 fail / 0 skipped** against
+  live Supabase (incl. the billing lifecycle e2e: idempotent checkout, full-refund revoke,
+  subscription active→past_due→deleted→expired period-end gating, ledger dedupe, usage). Code-review
+  high (3 fixes: partial-refund order state, subscription.deleted access-end, sub-checkout guard) +
+  security-review clean. `phase11-entitlements` fast-forwarded into `main` (`b4b53ff..6660aa6`) →
+  pushed → Railway auto-deployed. `/healthz`=`6660aa6`; `/healthz/deep` green (db ok, jobQueue,
+  scheduler + new `6660aa6-svc` worker heartbeating); `/app/api/billing`→401 (registered+tenant-gated);
+  webhook unsigned→400 (sig enforced); `/api/config` 4 plans (no regression). User completed the
+  Stripe TEST setup: sandbox webhook `brilliant-sensation` now subscribes to the 5 new
+  subscription/refund events; customer portal enabled; `STRIPE_PORTAL_RETURN_URL` set on Railway.
+  Enforcement left DORMANT (`BILLING_ENFORCED` unset). Stripe stays TEST (live needs KYC).
 - 2026-06-21 Phase 10 activation DEPLOY: migration `0016` applied; full serial DB suite
   (`RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`) **116 pass / 7 skipped / 0 fail** against
   live Supabase (incl. the pixel activation e2e; `shops.web_pixel_id` add caused no regression).
