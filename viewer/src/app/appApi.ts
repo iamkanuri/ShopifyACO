@@ -1,4 +1,4 @@
-import { DEMO, type AppAlertRow, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type Proportion } from "./fixtures";
+import { DEMO, type AppAlertRow, type AppBilling, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type Proportion } from "./fixtures";
 
 // Client for the authenticated /app/api/* surface. Every call tries the live API; if
 // there's no shop session (401) or the backend is unavailable, it transparently falls
@@ -59,6 +59,11 @@ export const getCatalog = () => load<{ total: number; products: AppProductRow[] 
 export const getCatalogStatus = () => load<{ products: number; lastSync: { finished_at?: string; status?: string } | null }>(`/app/api/catalog/sync/status`, { products: DEMO.catalog.total, lastSync: { finished_at: DEMO.catalog.lastSyncAt, status: "completed" } });
 
 export const getBenchmarks = () => load<{ runs: AppRunRow[] }>(`/app/api/benchmarks`, { runs: DEMO.runs });
+
+export const getBilling = () => load<AppBilling>(`/app/api/billing`, DEMO.billing);
+
+/** Open the Stripe billing portal (returns a hosted URL to redirect to). */
+export const openBillingPortal = () => post<{ url: string }>(`/app/api/billing/portal`, {});
 
 export interface RunBenchmarkResult { ok: boolean; runId?: number; observationCount?: number; promptCount?: number; recommendationRate?: Proportion; mentionRate?: Proportion; mode?: string; error?: string; demo?: boolean }
 export const runBenchmark = (body: { brand: string; category: string; competitors: string[]; priceRange?: string; live?: boolean }) =>

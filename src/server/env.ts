@@ -78,9 +78,30 @@ export const ENV = {
 
   // Stripe webhook (proof of payment). Signature is verified manually with the
   // webhook secret (no SDK). The secret API key is optional defense-in-depth: when
-  // set, the webhook re-confirms the session is paid via the Stripe REST API.
+  // set, the webhook re-confirms the session is paid via the Stripe REST API. It is
+  // ALSO required to open the billing portal (Phase 11).
   stripeWebhookSecret: str(process.env.STRIPE_WEBHOOK_SECRET),
   stripeSecretKey: str(process.env.STRIPE_SECRET_KEY),
+  // Per-plan Stripe Price ids (Phase 11). Used to map a paid line item back to a plan
+  // entitlement (the webhook also accepts metadata.plan / amount as fallbacks). NO
+  // prices are hardcoded — only the opaque price id, set in the dashboard.
+  stripePrices: {
+    full_report: str(process.env.STRIPE_PRICE_FULL_REPORT),
+    monitoring: str(process.env.STRIPE_PRICE_MONITORING),
+    founder_beta: str(process.env.STRIPE_PRICE_FOUNDER_BETA),
+  } as Record<string, string | undefined>,
+  // Where Stripe returns the merchant after they manage billing in the portal.
+  stripePortalReturnUrl: str(process.env.STRIPE_PORTAL_RETURN_URL),
+
+  // ---- Entitlement enforcement (Phase 11) ---------------------------------
+  // Additive & DORMANT by default (mirrors the Phase-1 D2 "ship dormant" rule): the
+  // entitlements model, provisioning, portal, and usage are always live, but gating
+  // paid features/limits is OFF until BILLING_ENFORCED=1 so existing behavior (and the
+  // owner's own dev store) is never broken on deploy. When off, the resolved plan is
+  // still surfaced in /app for transparency; only the BLOCK is suppressed.
+  billing: {
+    enforced: process.env.BILLING_ENFORCED === "1" || process.env.BILLING_ENFORCED === "true",
+  },
 
   // ---- Shopify public app (Phase 2) ---------------------------------------
   // All server-only. When key/secret are unset the integration reports

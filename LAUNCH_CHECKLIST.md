@@ -45,7 +45,7 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
   (Phase 3); `benchmarks`, `observations` (Phase 4); `crawl_pages`, `findings` (Phase 5);
   `fix_proposals` (Phase 6); `interventions`, `experiments` (Phase 7); `schedules`,
   `alerts`, `notifications` (Phase 8); `feeds`, `feed_versions`, `feed_items` (Phase 9); `pixel_events` (Phase 10);
-  `entitlements` (Phase 11). All additive/idempotent.
+  `entitlements`, `billing_events` (Phase 11, migration `0017`; + additive `orders` columns). All additive/idempotent.
 
 ## 4. Railway services (Phase 1) — ✅ DONE 2026-06-21
 One image, three process modes via `PROCESS_MODE` dispatch (`src/start.ts`). railway.json's
@@ -80,12 +80,24 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 - ☐ Set `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` (e.g. `reports@thirdocular.com`),
   `EMAIL_REPLY_TO`. Until set, notifications use the dev logger adapter (no real sends).
 
-## 7. Stripe (Phase 11)
-- ☐ Create products + prices for each plan (config-driven — do **not** hardcode prices).
-- ☐ Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and per-plan price IDs
-  `STRIPE_PRICE_<PLAN>`; enable the **billing portal**; set `STRIPE_PORTAL_RETURN_URL`.
-- ☐ Webhook endpoint: `https://lens.thirdocular.com/api/stripe/webhook` (already live for
-  `checkout.session.completed`; Phase 11 adds refunds/failures/cancellations).
+## 7. Stripe (Phase 11) — code DONE (branch `phase11-entitlements`), TEST-mode setup pending
+The entitlements model, idempotent billing lifecycle (provision/refund/failed-payment/cancel/
+expire), and the billing portal are built (no Stripe SDK — raw `fetch`). KEEP STRIPE IN **TEST
+MODE**; going live needs KYC + an explicit go.
+- ☐ **Apply migration `0017`** (`npm run migrate`) — `entitlements`, `billing_events`, +
+  `orders.stripe_payment_intent`/`refunded_at`. Additive/idempotent. Then run the DB-gated suite
+  (`RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`) to verify the lifecycle against Supabase.
+- ☐ Create products + prices for each plan in the **TEST** dashboard (config-driven — do **not**
+  hardcode prices). Copy each price id into `STRIPE_PRICE_FULL_REPORT` / `STRIPE_PRICE_MONITORING`
+  / `STRIPE_PRICE_FOUNDER_BETA`.
+- ☐ Set (Railway, TEST values): `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET`, the
+  `STRIPE_PRICE_*` ids; **enable the billing portal** in the dashboard; set `STRIPE_PORTAL_RETURN_URL`
+  (e.g. `https://lens.thirdocular.com/app/settings`).
+- ☐ Webhook endpoint `https://lens.thirdocular.com/api/stripe/webhook` — **add the new events** to
+  the existing endpoint: `customer.subscription.created/updated/deleted`, `invoice.payment_failed`,
+  `charge.refunded` (already live for `checkout.session.completed`).
+- ☐ Leave `BILLING_ENFORCED` unset (dormant) until you want to actually gate paid features; the
+  plan/usage surface in `/app/billing` is live regardless. Flip to `1` to enforce.
 - ☐ Flip from TEST to LIVE only after Stripe KYC; swap all `STRIPE_*` to live values.
 
 ## 8. Web Pixel extension (Phase 10)

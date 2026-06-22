@@ -22,6 +22,7 @@ import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, 
 import { createFeedHandler, deliveryStatusHandler, exportVersionHandler, feedSpecHandler, generateFeedHandler, getVersionHandler, listFeedsHandler, listItemsHandler, listVersionsHandler } from "./feeds.js";
 import { registerFeedJobs } from "../feeds/generate.js";
 import { activateHandler, attributionHandler, ingestHandler, ingestPreflightHandler } from "./pixel.js";
+import { billingPortalHandler, billingStatusHandler } from "./billing.js";
 import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
@@ -306,6 +307,13 @@ registerFeedJobs();
 //     public /api/pixel/ingest beacon above. -------------------------------------
 app.get("/app/api/pixel/attribution", shopMw, wrap(attributionHandler));
 app.post("/app/api/pixel/activate", shopMw, wrap(activateHandler));
+
+// --- Billing & entitlements API (Phase 11, shop-scoped). Effective plan + usage vs
+//     limits + the Stripe billing portal. Paid-feature ENFORCEMENT is dormant until
+//     BILLING_ENFORCED=1 (additive deploy); this read surface is always live. Stripe
+//     stays in TEST mode — going live is a credentials-only swap (KYC-gated).
+app.get("/app/api/billing", shopMw, wrap(billingStatusHandler));
+app.post("/app/api/billing/portal", shopMw, wrap(billingPortalHandler));
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

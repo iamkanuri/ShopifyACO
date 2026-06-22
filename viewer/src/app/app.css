@@ -194,6 +194,19 @@
 .al-plan2-price { font-size: 22px; font-weight: 800; margin: 4px 0 8px; }
 .al-plan2-price span { font-size: 12px; font-weight: 500; }
 
+/* billing */
+.al-plan-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.al-plan-feats { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 5px; }
+.al-plan-feats li { font-size: 12px; color: var(--ink-2); padding-left: 16px; position: relative; }
+.al-plan-feats li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+.al-plan2 .btn { width: 100%; text-align: center; }
+.al-meter { padding: 8px 0; }
+.al-meter + .al-meter { border-top: 1px solid var(--border); }
+.al-meter-head { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.al-meter-track { height: 7px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.al-meter-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.2s; }
+.al-meter-fill.over { background: var(--bad, #e5484d); }
+
 /* onboarding */
 .al-onboard { padding: 18px 20px; margin-bottom: 22px; }
 .al-onboard-head h3 { margin: 0 0 2px; font-size: 16px; }

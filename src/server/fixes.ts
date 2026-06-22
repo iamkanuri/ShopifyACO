@@ -6,6 +6,7 @@ import { createProposal, getProductForFix, listProposals } from "../db/fixes.js"
 import { proposeFixes } from "../fixes/propose.js";
 import type { Finding } from "../diagnosis/diagnose.js";
 import { applyProposal, approveProposal, dismissProposal, rollbackProposal } from "../fixes/apply.js";
+import { assertFeature, gateDenial } from "../billing/enforce.js";
 
 // Shop-scoped Fix Studio API (Phase 6). requireShop sets req.shopDomain; every
 // handler is tenant-isolated. Generating/approving proposals is free; APPLY is the
@@ -88,7 +89,12 @@ export async function approveHandler(req: Request, res: Response): Promise<void>
 
 /** POST /app/api/fixes/:id/apply — the only store-writing route (gated + reversible). */
 export async function applyHandler(req: Request, res: Response): Promise<void> {
-  const out = await applyProposal(shopOf(req), idParam(req), "merchant");
+  const shop = shopOf(req);
+  // Entitlement gate (Phase 11, dormant until BILLING_ENFORCED=1): write-back is a paid
+  // feature. (The write itself is still independently scope/approval/conflict-gated.)
+  const feat = await assertFeature(shop, "fixes");
+  if (!feat.allowed) { res.status(402).json(gateDenial(feat)); return; }
+  const out = await applyProposal(shop, idParam(req), "merchant");
   res.status(out.ok ? 200 : out.conflict ? 409 : 422).json(out);
 }
 

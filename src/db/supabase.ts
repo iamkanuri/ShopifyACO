@@ -132,6 +132,7 @@ export interface OrderRow {
   status?: string;
   source_run_id?: string | null;
   scan_run_id?: string;
+  stripe_payment_intent?: string | null; // Phase 11: ties a refund (charge.refunded) back to the order
 }
 
 /**
@@ -159,6 +160,18 @@ export const getOrder = (id: number) =>
 export const updateOrder = (id: number, patch: Partial<OrderRow> & { fulfilled_at?: string }) =>
   safe("updateOrder", async (c) => {
     const { error } = await c.from("orders").update(patch).eq("id", id);
+    if (error) throw error;
+    return true;
+  }, false);
+
+/** Mark order(s) refunded by Stripe payment_intent (Phase 11). Graceful no-op on DB error. */
+export const refundOrderByPaymentIntent = (paymentIntent: string) =>
+  safe("refundOrderByPaymentIntent", async (c) => {
+    const { error } = await c
+      .from("orders")
+      .update({ status: "refunded", refunded_at: new Date().toISOString() })
+      .eq("stripe_payment_intent", paymentIntent)
+      .neq("status", "refunded");
     if (error) throw error;
     return true;
   }, false);

@@ -413,10 +413,60 @@ strip referrers, so it undercounts — surfaced as a floor).
 
 **Phase 10 status: ✅ LIVE in production (merged + deployed 2026-06-21, commit `b7e1184`); the storefront Web Pixel extension deploy (`shopify app deploy`) remains an external step to start data collection.**
 
-### Phase 11 — Commercial product & entitlements ⬜
-Central `entitlements` model (config-driven limits), preserve current Stripe flows during
-migration. Idempotent provisioning, refunds, failed payments, cancellation, expiration,
-billing portal. No hardcoded unapproved prices.
+### Phase 11 — Commercial product & entitlements 🟡 (built + mock/$0-verified; 🔒 Stripe TEST setup + DB apply gated)
+Built on branch `phase11-entitlements` (off `main`). A central, **config-driven
+entitlements model** + a complete, **idempotent Stripe billing lifecycle** layered on top
+of the existing payment flows **without changing them**. NO new dependency — the existing
+no-SDK / raw-`fetch` Stripe integration is extended. Stripe stays in **TEST mode**.
+- ✅ `migrations/0017_entitlements.sql` — `entitlements` (dual-keyed by shop_domain AND/OR
+  email so it reconciles the Shopify install + public funnel; subscription/one-time grants,
+  status, period end, cancel-at-period-end, Stripe customer/subscription/payment_intent) +
+  `billing_events` (idempotency ledger for EVERY processed event id) + additive
+  `orders.stripe_payment_intent`/`refunded_at` (refund mapping). Partial unique indexes make
+  re-purchases idempotent. Additive + idempotent.
+- ✅ `src/billing/entitlements.ts` (PURE, no prices) — the single source of truth for
+  plan→features+limits (free | full_report | monitoring | founder_beta). `effectiveEntitlement`/
+  `isGrantActive` resolve a stored grant to access (active/past_due grant; canceled grants
+  **until current_period_end**; expired/refunded never); `bestEntitlement` picks the highest-tier
+  ACTIVE grant; `stripeSubStatusToEntitlement` maps the lifecycle. free/free_mini aliased.
+- ✅ `src/db/entitlements.ts` — raw-pg persistence: subscription upsert (on subscription id),
+  one-time upsert (on shop+plan / email+plan), status transitions, refund-by-payment_intent,
+  the `billing_events` ledger, and the portal customer lookup.
+- ✅ `src/billing/provision.ts` (pure interpreters + idempotent orchestrators) — maps verified
+  Stripe events → entitlement transitions: `provisionFromCheckout` (subscription vs perpetual
+  one-time; non-paid plans grant nothing), `provisionSubscriptionEvent` (created/updated/deleted),
+  `provisionInvoiceFailed` (→ past_due), `provisionRefund` (**only on a FULL refund**).
+- ✅ `src/server/stripe.ts` extended — the verified webhook now ALSO drives the lifecycle. The
+  `checkout.session.completed` → `orders` path is **unchanged** (payment proof); entitlement
+  provisioning is added **best-effort + PG-gated** so a billing hiccup never jeopardizes the live
+  $29 order path. Idempotency is layered: `orders.session_id` + idempotent entitlement upserts +
+  a `billing_events` ledger checked at start / recorded after success (so a failed event reprocesses
+  on Stripe's retry). New events handled: subscription.*, invoice.payment_failed, charge.refunded.
+- ✅ `src/billing/portal.ts` + `src/server/billing.ts` — Stripe **billing portal** session via raw
+  `fetch` (gated on `STRIPE_SECRET_KEY` + a known customer; honest 503/409 otherwise) +
+  `GET /app/api/billing` (effective plan, usage vs limits, plan catalogue, portal availability) +
+  `POST /app/api/billing/portal`. Shop-scoped + tenant-isolated.
+- ✅ `src/billing/usage.ts` + `src/billing/enforce.ts` — usage counters read from the existing
+  tables (no new bookkeeping); **enforcement is DORMANT by default** (`BILLING_ENFORCED`, mirrors
+  the Phase-1 D2 "ship dormant" rule) so deploying never breaks existing behavior or the owner's own
+  dev store. The pure `gateFeature`/`gateLimit` are wired (402 + upgrade payload) into the spend/paid
+  surfaces: **live benchmarks, monitoring schedules, Fix Studio apply, feed definitions**. When off,
+  the resolved plan is still surfaced for transparency; only the BLOCK is suppressed.
+- ✅ `/app/billing` UI (Phase 12 patterns) — current plan + status, usage meters vs limits, Manage-
+  billing (portal), upgrade catalogue; demo-fallback + honest "enforcement not active yet" note.
+  Wired into the AppShell nav. `npm --prefix viewer run build` green; preview-verified (no console errors).
+- ✅ Tests `test/billing.test.ts` (9 pure + 4 DB-gated): plan resolution, grant activation/lapse,
+  best-grant, Stripe→status mappings, price/subscription plan resolution, full-vs-partial refund,
+  pure enforcement gates (on/off) + DB lifecycle (idempotent checkout, full-refund revoke,
+  subscription active→past_due→canceled period-end gating, ledger dedupe, usage counters).
+  `npm test` **110 pass / 26 skipped (DB-gated) / 0 fail**; `npm run typecheck` clean.
+- 🔒 **Gated on a user go (external/shared-DB):** apply migration `0017` to Supabase (`npm run
+  migrate`) + run the DB-gated suite; Stripe TEST-mode dashboard setup (products/prices per plan,
+  copy `STRIPE_PRICE_*`, enable the portal) + Railway env (`STRIPE_SECRET_KEY` test,
+  `STRIPE_PORTAL_RETURN_URL`); add the subscription/refund webhook events. Code merge/deploy +
+  `BILLING_ENFORCED=1` await a go. Going LIVE (real cards) needs Stripe KYC — not in scope.
+
+**Phase 11 status: functionally complete (mock-verified, $0); migration apply + Stripe TEST setup + deploy gated on a user go.**
 
 ### Phase 12 — Experience redesign (`/app/*`) 🟡 (core IA built + preview-verified)
 Built on branch `phase12-app-ui` (off `main`). The authenticated embedded experience that
@@ -479,8 +529,11 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   `/healthz/deep` green, new worker heartbeating, `/api/pixel/ingest` smoke-verified —
   preflight 204/CORS, bad-payload 400, unknown-shop 202 no-op, attribution read 401). The
   external Web Pixel **extension deploy** (`shopify app deploy` + activate + Ingest URL) is the
-  only remaining step to start collecting data. **Next unbuilt: Phase 11** (commercial/entitlements);
-  Phase 13 (continuous security) also remains. The live (non-demo) loop for real merchants
+  only remaining step to start collecting data. **Phase 11 (commercial/entitlements) is BUILT on
+  branch `phase11-entitlements`** (config-driven entitlements + idempotent Stripe lifecycle +
+  billing portal + dormant enforcement + `/app/billing`; mock-verified $0) — migration `0017` apply
+  + Stripe TEST setup + deploy await a user go. Phase 13 (continuous security) also remains. The
+  live (non-demo) loop for real merchants
   needs a merchant to install + (optionally) `MONITORING_LIVE=1` / `CRAWLER_MODE=live` (both
   gated, spend-capped). Feed DELIVERY to OpenAI still needs `FEED_DELIVERY_ENABLED=1` +
   external onboarding (generating ≠ submitting).
@@ -490,8 +543,11 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 2. ✅ Shopify Partner app + API key/secret + callback URLs + scopes + compliance webhooks — live.
 3. ✅ `APP_ENCRYPTION_KEY` (token encryption at rest) — set (live OAuth works).
 4. ✅ Railway `worker` + `scheduler` services + `JOB_QUEUE_ENABLED=1` — **done 2026-06-21**.
-5. 🔒 Email provider + verified domain (Phase 8 send lands in Phase 11; logger until then).
-6. 🔒 Stripe products/prices/webhook/portal (live) — needs KYC + Phase 11.
+5. 🔒 Email provider + verified domain (Phase 8 send; logger until then).
+6. 🔒 Stripe products/prices/portal — **Phase 11 code DONE** (entitlements + lifecycle + portal,
+   no-SDK). Needs TEST-mode dashboard setup (`STRIPE_PRICE_*`, enable portal, `STRIPE_SECRET_KEY`,
+   `STRIPE_PORTAL_RETURN_URL`) + the subscription/refund webhook events + migration `0017`. Going
+   LIVE (real cards) needs Stripe KYC.
 7. 🔒 Web Pixel extension deploy + activation — Phase 10 build **done** (ingest + classifier +
    attribution + the extension in `extensions/ai-referral-pixel/` + `webPixelCreate` activation,
    all scope-gated). Migrations `0015` (live) + `0016` (pending). To collect data the app owner

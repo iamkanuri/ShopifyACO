@@ -450,6 +450,35 @@ it undercounts; surfaced as a floor). Generating data needs the extension deploy
   (branch `phase10-pixel-activate`) + migration `0016` + the scope change/`shopify app deploy`
   await a user go.**
 
+**Phase 11 (Commercial product & entitlements / billing) is built on branch `phase11-entitlements`**
+(off `main`), mock-verified at $0. A central, **config-driven entitlements model** + a complete,
+**idempotent Stripe billing lifecycle** — layered on the existing payment flows **without changing
+them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extended). Stripe stays in
+**TEST mode**.
+- **Entitlements are CONFIG, not prices** (`src/billing/entitlements.ts`, pure): plan→features+limits
+  (free | full_report | monitoring | founder_beta) — never a price. `effectiveEntitlement`/
+  `isGrantActive` resolve a grant to access (active/past_due grant; **canceled grants until
+  current_period_end**; expired/refunded never); `bestEntitlement` picks the highest-tier active
+  grant. `migrations/0017_entitlements.sql` — `entitlements` (dual-keyed by shop_domain AND/OR email
+  so it reconciles the Shopify install + the public email funnel) + `billing_events` (idempotency
+  ledger) + additive `orders.stripe_payment_intent`/`refunded_at`.
+- **The webhook now drives the full lifecycle** (`src/server/stripe.ts` + `src/billing/provision.ts`):
+  the verified `checkout.session.completed` → `orders` path is **UNCHANGED** (payment proof);
+  entitlement provisioning is added **best-effort + PG-gated** so a billing hiccup never breaks the
+  live $29 order path. New events: `customer.subscription.created/updated/deleted` (status/period
+  mapping), `invoice.payment_failed` (→ past_due), `charge.refunded` (revoke **only on a FULL
+  refund**). Idempotency is layered: `orders.session_id` + idempotent entitlement upserts + a
+  `billing_events` ledger (checked at start, recorded after success → a failed event reprocesses).
+- **Billing portal** (`src/billing/portal.ts`, raw `fetch`, gated on `STRIPE_SECRET_KEY` + a known
+  customer) + shop-scoped `GET /app/api/billing` (effective plan, usage vs limits, plan catalogue) +
+  `POST /app/api/billing/portal`. **Enforcement is DORMANT by default** (`BILLING_ENFORCED`, mirrors
+  the Phase-1 D2 "ship dormant" rule): the pure `gateFeature`/`gateLimit` gates are wired (402 +
+  upgrade payload) into live benchmarks / monitoring schedules / Fix Studio apply / feed definitions,
+  but blocking is off until flipped — so deploy never breaks existing behavior or the owner's own dev
+  store. `/app/billing` UI surfaces plan + usage + upgrade (Phase 12 patterns). `test/billing.test.ts`
+  (9 pure + 4 DB-gated). **Migration `0017` apply + Stripe TEST setup + deploy + `BILLING_ENFORCED=1`
+  await a user go; going LIVE needs Stripe KYC.**
+
 **Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
 (off `main`), preview-verified. It makes the headless Phase 4–8 backend **visible + demoable**.
 - `viewer/src/app/*` — embedded shell (`AppShell.tsx`, sidebar + sub-routes via the shared tiny

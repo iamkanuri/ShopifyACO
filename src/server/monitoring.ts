@@ -5,6 +5,7 @@ import { getExperiment } from "../db/experiments.js";
 import { acknowledgeAlert, createSchedule, deleteSchedule, getSchedule, listAlerts, listSchedules, updateSchedule } from "../db/monitoring.js";
 import { CADENCES, type Cadence } from "../monitoring/alerts.js";
 import { monitorRun } from "../monitoring/execute.js";
+import { assertScheduleQuota, gateDenial } from "../billing/enforce.js";
 
 // Shop-scoped Monitoring API (Phase 8). requireShop sets req.shopDomain; tenant-
 // isolated. Recurring runs default to mock ($0); a live run needs { live: true }.
@@ -20,6 +21,10 @@ export async function createScheduleHandler(req: Request, res: Response): Promis
     res.status(400).json({ error: `cadence must be one of: ${CADENCES.join(", ")}` });
     return;
   }
+  // Entitlement gate (Phase 11, dormant until BILLING_ENFORCED=1): recurring monitoring
+  // is a paid feature with a per-plan cap on active schedules.
+  const quota = await assertScheduleQuota(shop);
+  if (!quota.allowed) { res.status(402).json(gateDenial(quota)); return; }
   if (kind === "benchmark") {
     const benchmarkId = Number(req.body?.benchmarkId);
     if (!Number.isInteger(benchmarkId)) {

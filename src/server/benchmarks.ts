@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { shopOf } from "./shopify.js";
 import { listRunsForShop } from "../db/benchmarks.js";
 import { runShopBenchmark } from "../benchmarks/shopRun.js";
+import { assertBenchmarkQuota, assertFeature, gateDenial } from "../billing/enforce.js";
 
 // Shop-scoped Benchmarks API (Phase 12). Lets a connected merchant START the loop
 // themselves. Runs are MOCK ($0) by default; a live run (real engine spend) requires
@@ -18,6 +19,16 @@ export async function runBenchmarkHandler(req: Request, res: Response): Promise<
     return;
   }
   const live = req.body?.live === true;
+
+  // Entitlement gate (Phase 11, dormant until BILLING_ENFORCED=1). Real engine spend
+  // needs the live_benchmarks feature; every run counts against the monthly quota.
+  if (live) {
+    const feat = await assertFeature(shop, "live_benchmarks");
+    if (!feat.allowed) { res.status(402).json(gateDenial(feat)); return; }
+  }
+  const quota = await assertBenchmarkQuota(shop);
+  if (!quota.allowed) { res.status(402).json(gateDenial(quota)); return; }
+
   try {
     const r = await runShopBenchmark(shop, {
       brand, category, competitors,

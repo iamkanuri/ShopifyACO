@@ -7,6 +7,7 @@ import {
   listFeedVersions, listFeeds, latestFeedVersion, upsertFeed, type FeedRow, type FeedVersionRow,
 } from "../db/feeds.js";
 import { generateFeed, NoCatalogError } from "../feeds/generate.js";
+import { assertFeedQuota, gateDenial } from "../billing/enforce.js";
 import { specManifest } from "../feeds/spec.js";
 import { exportFeed } from "../feeds/export.js";
 import { isExportFormat } from "../feeds/spec.js";
@@ -82,6 +83,14 @@ export async function createFeedHandler(req: Request, res: Response): Promise<vo
   if (!SUPPORTED_FORMATS.includes(format)) {
     res.status(400).json({ error: `Unsupported format "${format}". Supported: ${SUPPORTED_FORMATS.join(", ")}.` });
     return;
+  }
+  // Entitlement gate (Phase 11, dormant until BILLING_ENFORCED=1): cap the number of
+  // distinct feeds per plan. Updating an existing feed (same name) never counts.
+  const existing = await listFeeds(shop);
+  const isNew = !existing.some((f) => f.name === name);
+  if (isNew) {
+    const quota = await assertFeedQuota(shop, existing.length);
+    if (!quota.allowed) { res.status(402).json(gateDenial(quota)); return; }
   }
   const id = await upsertFeed(shop, { name, format, config: sanitizeConfig(req.body?.config) });
   res.json({ id, name, format });

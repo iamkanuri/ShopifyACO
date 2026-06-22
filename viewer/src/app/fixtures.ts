@@ -33,6 +33,24 @@ export interface AppAlertRow { id: number; type: string; severity: string; metri
 export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
 export interface AppRunRow { id: number; tier: string; status: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
 
+export interface AppPlanLimits { benchmarksPerMonth: number; monitoringSchedules: number; feeds: number; }
+export interface AppEntitlement {
+  id: string; label: string; status: string; active: boolean; source: string; tier: number; recurring: boolean;
+  currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean;
+  features: Record<string, boolean>; limits: AppPlanLimits;
+}
+export interface AppPlanCard {
+  id: string; name: string; price: string; cadence: string; blurb: string; features: string[];
+  limits: AppPlanLimits; tier: number; stripeUrl: string | null; current: boolean;
+}
+export interface AppBilling {
+  plan: AppEntitlement;
+  usage: { benchmarksLast30d: number; monitoringSchedules: number; feeds: number };
+  enforced: boolean;
+  portal: { available: boolean };
+  plans: AppPlanCard[];
+}
+
 const p = (successes: number, n: number): Proportion => {
   const rate = n ? successes / n : null;
   const z = 1.96, ph = rate ?? 0, denom = 1 + z * z / n;
@@ -174,6 +192,24 @@ export const DEMO = {
     { id: 142, tier: "monitoring", status: "completed", observation_count: 86, cost_usd: 0.04, prompt_count: 12, started_at: "2026-06-21T15:00:00Z" },
     { id: 131, tier: "monitoring", status: "completed", observation_count: 84, cost_usd: 0.04, prompt_count: 12, started_at: "2026-06-14T15:00:00Z" },
   ],
+
+  billing: <AppBilling>{
+    plan: {
+      id: "free", label: "Free", status: "active", active: true, source: "default", tier: 0, recurring: false,
+      currentPeriodEnd: null, cancelAtPeriodEnd: false,
+      features: { evidence: true, live_benchmarks: false, fixes: false, experiments: false, monitoring: false, feeds: true, attribution: true },
+      limits: { benchmarksPerMonth: 3, monitoringSchedules: 0, feeds: 1 },
+    },
+    usage: { benchmarksLast30d: 2, monitoringSchedules: 0, feeds: 1 },
+    enforced: false,
+    portal: { available: false },
+    plans: [
+      { id: "free_mini", name: "Free mini scan", price: "$0", cadence: "", blurb: "See if AI assistants know you.", features: ["5 buyer-intent prompts", "3 engines", "Visibility score + competitor leaderboard"], limits: { benchmarksPerMonth: 3, monitoringSchedules: 0, feeds: 1 }, tier: 0, stripeUrl: null, current: true },
+      { id: "full_report", name: "Full report", price: "$29", cadence: "one-time", blurb: "The complete picture + how to fix it.", features: ["25+ prompts", "Competitor gap + lost-prompt analysis", "Fix roadmap + report"], limits: { benchmarksPerMonth: 25, monitoringSchedules: 0, feeds: 3 }, tier: 1, stripeUrl: null, current: false },
+      { id: "monitoring", name: "Weekly monitoring", price: "$49", cadence: "/mo", blurb: "Track and defend your AI share of voice.", features: ["Automatic weekly scans", "Share-of-voice trends", "Alerts on new lost prompts"], limits: { benchmarksPerMonth: 60, monitoringSchedules: 5, feeds: 10 }, tier: 2, stripeUrl: null, current: false },
+      { id: "founder_beta", name: "Founder beta", price: "$99", cadence: "beta", blurb: "5 deep scans + direct founder review.", features: ["5 deep scans", "Founder review", "Shape the product"], limits: { benchmarksPerMonth: 100, monitoringSchedules: 10, feeds: 25 }, tier: 3, stripeUrl: null, current: false },
+    ],
+  },
 
   catalog: {
     total: 7, lastSyncAt: "2026-06-21T14:50:00Z",

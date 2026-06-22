@@ -9,6 +9,7 @@ import { Experiments } from "./Experiments";
 import { Monitoring } from "./Monitoring";
 import { Catalog } from "./Catalog";
 import { Settings } from "./Settings";
+import { Billing } from "./Billing";
 import { Measure } from "./Measure";
 
 // The authenticated embedded experience. A real merchant arrives here after OAuth
@@ -24,6 +25,7 @@ const NAV = [
   { to: "/app/fixes", label: "Fix Studio", key: "fixes" },
   { to: "/app/experiments", label: "Experiments", key: "experiments" },
   { to: "/app/monitoring", label: "Monitoring", key: "monitoring" },
+  { to: "/app/billing", label: "Billing", key: "billing" },
   { to: "/app/settings", label: "Settings", key: "settings" },
 ];
 
@@ -42,6 +44,7 @@ export function AppShell() {
   else if (sub === "fixes") screen = <Fixes />;
   else if (sub === "experiments") screen = <Experiments />;
   else if (sub === "monitoring") screen = <Monitoring />;
+  else if (sub === "billing") screen = <Billing />;
   else if (sub === "settings") screen = <Settings connected={!demo} />;
   else screen = <Dashboard demo={demo} />;
 
