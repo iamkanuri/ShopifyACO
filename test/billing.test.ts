@@ -167,6 +167,7 @@ test("checkout → one-time entitlement is idempotent + resolvable; full refund 
 test("subscription lifecycle: active → past_due → canceled (period-end gating)", { skip: !RUN_DB }, async () => {
   const { provisionSubscriptionEvent } = await import("../src/billing/provision.js");
   const { entitlementForShop } = await import("../src/billing/enforce.js");
+  const { getEntitlementBySubscription } = await import("../src/db/entitlements.js");
   const { pgQuery } = await import("../src/db/pg.js");
   const shop = `sub-${Date.now()}.myshopify.com`;
   const subId = `sub_${Date.now()}`;
@@ -184,12 +185,15 @@ test("subscription lifecycle: active → past_due → canceled (period-end gatin
     eff = await entitlementForShop(shop);
     assert.equal(eff.status, "past_due");
     assert.equal(eff.active, true);
-    // deleted → expired → access ends immediately (even if a period end is still in the future)
+    // deleted → expired → access ends immediately (even with a still-future period end).
+    // The grant is stored 'expired'; the RESOLVED entitlement collapses to the free tier
+    // (no active grant), so access lapses — that's the property that matters.
     const future2 = Math.floor(Date.now() / 1000) + 10 * 86400;
     await provisionSubscriptionEvent({ id: subId, status: "canceled", current_period_end: future2, items }, priceMap, { deleted: true });
     eff = await entitlementForShop(shop);
-    assert.equal(eff.plan, "free");
-    assert.equal(eff.status, "expired");
+    assert.equal(eff.plan, "free"); // paid access lapsed → back to free tier (which is itself "active")
+    const stored = await getEntitlementBySubscription(subId);
+    assert.equal(stored!.status, "expired"); // the raw grant row records the expiry
   } finally {
     await pgQuery("delete from entitlements where stripe_subscription_id=$1", [subId]);
   }
