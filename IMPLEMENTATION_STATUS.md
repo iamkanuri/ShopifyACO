@@ -401,7 +401,7 @@ strip referrers, so it undercounts — surfaced as a floor).
 - ⬜ Follow-ups: surface attribution in the `/app` UI (Phase 12); add-to-cart funnel step;
   optional server-pixel path for higher-fidelity checkout events.
 
-**Phase 10 status: functionally complete (pure + live-DB verified, $0); migration applied; merge/deploy + external extension deploy gated on user go.**
+**Phase 10 status: ✅ LIVE in production (merged + deployed 2026-06-21, commit `b7e1184`); the storefront Web Pixel extension deploy (`shopify app deploy`) remains an external step to start data collection.**
 
 ### Phase 11 — Commercial product & entitlements ⬜
 Central `entitlements` model (config-driven limits), preserve current Stripe flows during
@@ -450,11 +450,10 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
-## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `c178cb4`)
-**Phases 1–9 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `b7e1184`)
+**Phases 1–10 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
-- **All 14 migrations applied** to Supabase (`0001`–`0014`; `0014_feeds` applied 2026-06-21,
-  ahead of the Phase 9 code deploy — additive, so the table exists unused until deploy).
+- **All 15 migrations applied** to Supabase (`0001`–`0015`; `0015_pixel` applied 2026-06-21).
 - **Multi-process is LIVE:** one image, three Railway services via `PROCESS_MODE` dispatch
   (`src/start.ts`). `web` (the site + API) + `worker` + `scheduler` all deployed and
   **heartbeating** (`/healthz/deep`). `JOB_QUEUE_ENABLED=1` on web → durable queue + scheduled
@@ -465,10 +464,11 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   commit `c178cb4`; `/healthz/deep` green, new worker heartbeating with the `feed_generate`
   handler, `/app/api/feeds/*` registered + tenant-gated). 89 pure pass / 0 fail; migration
   `0014` applied + DB-gated e2e 14/14; both reviews clean/fixed.
-  **Phase 10 (Web Pixel attribution) is BUILT + DB-verified** on branch `phase10-pixel`
-  (99 pure pass / 0 fail; migration `0015` applied + DB-gated e2e 11/11 against live Supabase).
-  Code merge to `main` + deploy + the external Web Pixel extension deploy await a user go.
-  **Next unbuilt: Phase 11** (commercial/entitlements);
+  **Phase 10 (Web Pixel attribution) is LIVE** (merged + deployed 2026-06-21, commit `b7e1184`;
+  `/healthz/deep` green, new worker heartbeating, `/api/pixel/ingest` smoke-verified —
+  preflight 204/CORS, bad-payload 400, unknown-shop 202 no-op, attribution read 401). The
+  external Web Pixel **extension deploy** (`shopify app deploy` + activate + Ingest URL) is the
+  only remaining step to start collecting data. **Next unbuilt: Phase 11** (commercial/entitlements);
   Phase 13 (continuous security) also remains. The live (non-demo) loop for real merchants
   needs a merchant to install + (optionally) `MONITORING_LIVE=1` / `CRAWLER_MODE=live` (both
   gated, spend-capped). Feed DELIVERY to OpenAI still needs `FEED_DELIVERY_ENABLED=1` +
@@ -491,6 +491,12 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 Phase 10 DEPLOY: `phase10-pixel` fast-forwarded into `main` (`9caab20..b7e1184`)
+  and pushed → Railway auto-deployed. `/healthz` flipped to `b7e1184`; `/healthz/deep` green
+  (db ok, jobQueueEnabled, scheduler + new `b7e1184-svc` worker heartbeating). Public ingest
+  smoke-verified: OPTIONS 204 + ACAO; `{}`→400 invalid_shop; valid-shape-unknown-shop→202
+  `stored:false/unknown_shop` (install-scoping writes nothing); `/app/api/pixel/attribution`→401.
+  Migration `0015` already applied → startup migrate a no-op.
 - 2026-06-21 Phase 10 (branch `phase10-pixel`, off `main`): built the AI-referral Web Pixel
   (extension + public consent-gated ingest + server-authoritative classifier + directional
   attribution). `npm test` **99 pass / 21 skipped / 0 fail**; `npm run typecheck` clean. NO
