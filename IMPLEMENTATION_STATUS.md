@@ -393,13 +393,15 @@ strip referrers, so it undercounts — surfaced as a floor).
   false-positive on organic search + utm fallback), beacon validation (bad shop/type/session,
   consent honored, PII stripping, clock clamp), and a DB e2e (distinct-session funnel,
   consent-filtered). `npm test` 99 pass / 21 skipped / 0 fail; `npm run typecheck` clean.
-- 🔒 **Not yet applied/deployed:** migration `0015` apply + the DB-gated e2e + merge/deploy
-  await a user go; the Web Pixel **extension deploy** (`shopify app deploy`) + activation +
-  settings is an external step only the app owner can do (LAUNCH_CHECKLIST item 8).
+- ✅ **Migration `0015` APPLIED to Supabase (2026-06-21); DB-gated e2e PASSED** (11/11 against
+  the live DB: distinct-session funnel by source + consent filtering, self-cleaned). Code merge
+  to `main` + deploy still await a user go.
+- 🔒 The Web Pixel **extension deploy** (`shopify app deploy`) + activation + settings is an
+  external step only the app owner can do (LAUNCH_CHECKLIST item 8).
 - ⬜ Follow-ups: surface attribution in the `/app` UI (Phase 12); add-to-cart funnel step;
   optional server-pixel path for higher-fidelity checkout events.
 
-**Phase 10 status: functionally complete (pure-verified, $0); migration apply + extension deploy gated on user go.**
+**Phase 10 status: functionally complete (pure + live-DB verified, $0); migration applied; merge/deploy + external extension deploy gated on user go.**
 
 ### Phase 11 — Commercial product & entitlements ⬜
 Central `entitlements` model (config-driven limits), preserve current Stripe flows during
@@ -463,9 +465,10 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   commit `c178cb4`; `/healthz/deep` green, new worker heartbeating with the `feed_generate`
   handler, `/app/api/feeds/*` registered + tenant-gated). 89 pure pass / 0 fail; migration
   `0014` applied + DB-gated e2e 14/14; both reviews clean/fixed.
-  **Phase 10 (Web Pixel attribution) is BUILT** on branch `phase10-pixel` (pure-verified $0,
-  99 pass / 0 fail) — migration `0015` apply + DB e2e + merge/deploy + the external Web Pixel
-  extension deploy await a user go. **Next unbuilt: Phase 11** (commercial/entitlements);
+  **Phase 10 (Web Pixel attribution) is BUILT + DB-verified** on branch `phase10-pixel`
+  (99 pure pass / 0 fail; migration `0015` applied + DB-gated e2e 11/11 against live Supabase).
+  Code merge to `main` + deploy + the external Web Pixel extension deploy await a user go.
+  **Next unbuilt: Phase 11** (commercial/entitlements);
   Phase 13 (continuous security) also remains. The live (non-demo) loop for real merchants
   needs a merchant to install + (optionally) `MONITORING_LIVE=1` / `CRAWLER_MODE=live` (both
   gated, spend-capped). Feed DELIVERY to OpenAI still needs `FEED_DELIVERY_ENABLED=1` +
@@ -491,8 +494,9 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 - 2026-06-21 Phase 10 (branch `phase10-pixel`, off `main`): built the AI-referral Web Pixel
   (extension + public consent-gated ingest + server-authoritative classifier + directional
   attribution). `npm test` **99 pass / 21 skipped / 0 fail**; `npm run typecheck` clean. NO
-  network/spend (pure + mock). **Migration `0015` apply + DB-gated e2e + merge/deploy + the
-  external `shopify app deploy` of the extension await a user go.**
+  network/spend (pure + mock). **Migration `0015` APPLIED to Supabase + DB-gated e2e PASSED
+  11/11 against the live DB (2026-06-21, user-authorized; self-cleaned).** Code merge/deploy +
+  the external `shopify app deploy` of the extension await a user go.
 - 2026-06-21 Phase 9 DEPLOY: `phase9-feeds` fast-forwarded into `main` (`cee1550..c178cb4`) and
   pushed → Railway auto-deployed. `/healthz` flipped to `c178cb4`; `/healthz/deep` green
   (`database:ok`, `jobQueueEnabled:true`, scheduler + new `c178cb4-svc` worker heartbeating,

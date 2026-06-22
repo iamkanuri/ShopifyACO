@@ -91,7 +91,8 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 ## 8. Web Pixel extension (Phase 10)
 - ✅ Built the Web Pixel extension (`extensions/ai-referral-pixel/`) + ingest endpoint
   (`POST /api/pixel/ingest`) + classifier + attribution (`GET /app/api/pixel/attribution`).
-- ☐ **Apply migration `0015` to Supabase** (`npm run migrate`) + DB-gated e2e (`npm run test:db`).
+- ✅ **Migration `0015` applied to Supabase** (`npm run migrate`, 2026-06-21) + DB-gated e2e
+  PASSED 11/11 against the live DB.
 - ☐ **Deploy the extension:** `shopify app deploy` (from repo root, Shopify CLI authed to the
   Partner app), then **Admin → Settings → Customer events** → activate "AI Referral Pixel".
 - ☐ In the pixel settings, set **Ingest URL** = `https://lens.thirdocular.com/api/pixel/ingest`
