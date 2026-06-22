@@ -93,10 +93,17 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
   (`POST /api/pixel/ingest`) + classifier + attribution (`GET /app/api/pixel/attribution`).
 - ✅ **Migration `0015` applied to Supabase** (`npm run migrate`, 2026-06-21) + DB-gated e2e
   PASSED 11/11 against the live DB.
-- ☐ **Deploy the extension:** `shopify app deploy` (from repo root, Shopify CLI authed to the
-  Partner app), then **Admin → Settings → Customer events** → activate "AI Referral Pixel".
-- ☐ In the pixel settings, set **Ingest URL** = `https://lens.thirdocular.com/api/pixel/ingest`
-  (and, if you set `PIXEL_SHARED_SECRET` on the server, the matching **Shared secret**).
+- ☐ **Apply migration `0016`** (`npm run migrate`) — adds `shops.web_pixel_id` for idempotent activation.
+- ☐ **Grant the pixel scopes:** set `SHOPIFY_SCOPES=read_products,read_customer_events,write_pixels`
+  on the server (matches `shopify.app.toml`, already updated). `webPixelCreate` needs
+  `write_pixels` + `read_customer_events`.
+- ☐ **Deploy the extension + scope change:** `shopify app deploy` (repo root, Shopify CLI authed)
+  → releases the new version with the pixel + new scopes. The merchant must **re-consent**
+  (reinstall/approve the added scopes) — the app then **auto-activates** the pixel on install,
+  or you can trigger `POST /app/api/pixel/activate`. (App-owned pixels are NOT configured in
+  Admin → Customer events; the app sets the Ingest URL via `webPixelCreate`.)
+- ☐ The Ingest URL is derived server-side from `SHOPIFY_APP_URL`/`PUBLIC_BASE_URL`
+  (`…/api/pixel/ingest`); set `PIXEL_SHARED_SECRET` if you want the anti-noise header.
 - ☐ Verify: visit the store with `?utm_source=chatgpt`, then check `/app` attribution
   (or `pixel_events` in Supabase). Note: directional only — AI assistants strip referrers.
 

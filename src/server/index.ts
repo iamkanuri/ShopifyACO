@@ -21,7 +21,7 @@ import { baselineHandler, getExperimentHandler, listExperimentsHandler, listInte
 import { acknowledgeAlertHandler, createScheduleHandler, deleteScheduleHandler, listAlertsHandler, listSchedulesHandler, runScheduleHandler, updateScheduleHandler } from "./monitoring.js";
 import { createFeedHandler, deliveryStatusHandler, exportVersionHandler, feedSpecHandler, generateFeedHandler, getVersionHandler, listFeedsHandler, listItemsHandler, listVersionsHandler } from "./feeds.js";
 import { registerFeedJobs } from "../feeds/generate.js";
-import { attributionHandler, ingestHandler, ingestPreflightHandler } from "./pixel.js";
+import { activateHandler, attributionHandler, ingestHandler, ingestPreflightHandler } from "./pixel.js";
 import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
@@ -305,6 +305,7 @@ registerFeedJobs();
 //     AI-referred storefront sessions. Read-only; the storefront pixel writes via the
 //     public /api/pixel/ingest beacon above. -------------------------------------
 app.get("/app/api/pixel/attribution", shopMw, wrap(attributionHandler));
+app.post("/app/api/pixel/activate", shopMw, wrap(activateHandler));
 
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {

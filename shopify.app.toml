@@ -13,8 +13,11 @@ embedded = false
 application_url = "https://lens.thirdocular.com/app"
 
 [access_scopes]
-# Least privilege. We add write_products later, only for merchant-approved writes.
-scopes = "read_products"
+# Least privilege. write_products is added only for merchant-approved writes (Phase 6).
+# read_customer_events + write_pixels are required to activate the AI-referral Web Pixel
+# (Phase 10, webPixelCreate). ⚠️ Adding scopes triggers merchant RE-CONSENT on the next
+# `shopify app deploy` + reinstall. Keep SHOPIFY_SCOPES on the server in sync with this.
+scopes = "read_products,read_customer_events,write_pixels"
 
 [auth]
 redirect_urls = [

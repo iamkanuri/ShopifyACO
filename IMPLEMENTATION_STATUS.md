@@ -396,8 +396,17 @@ strip referrers, so it undercounts — surfaced as a floor).
 - ✅ **Migration `0015` APPLIED to Supabase (2026-06-21); DB-gated e2e PASSED** (11/11 against
   the live DB: distinct-session funnel by source + consent filtering, self-cleaned). Code merge
   to `main` + deploy still await a user go.
-- 🔒 The Web Pixel **extension deploy** (`shopify app deploy`) + activation + settings is an
-  external step only the app owner can do (LAUNCH_CHECKLIST item 8).
+- ✅ **Web Pixel ACTIVATION built** (branch `phase10-pixel-activate`): deploying the extension
+  only registers it — an app-owned pixel must be created per shop via the Admin API. Added
+  `client.activateWebPixel` (create→update, idempotent via a stored `shops.web_pixel_id`,
+  migration `0016`), `src/pixel/activate.ts` (scope gate + ingest-URL settings), `POST
+  /app/api/pixel/activate`, and a best-effort hook in the OAuth install callback. **Scope-gated
+  like Phase 6**: needs `write_pixels` + `read_customer_events` (degrades to `missing_scope`).
+  Mock-verified at $0 (`test/pixel.test.ts` +scope-gate pure +1 DB-gated activation e2e).
+- 🔒 To actually collect data the app owner must: (a) add `read_customer_events,write_pixels`
+  to `SHOPIFY_SCOPES` + the `shopify.app.toml` (already updated) → `shopify app deploy` →
+  merchant **re-consent**; (b) apply migration `0016`; (c) the pixel auto-activates on
+  (re)install, or call `POST /app/api/pixel/activate`. See LAUNCH_CHECKLIST item 8.
 - ⬜ Follow-ups: surface attribution in the `/app` UI (Phase 12); add-to-cart funnel step;
   optional server-pixel path for higher-fidelity checkout events.
 
@@ -481,9 +490,12 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 4. ✅ Railway `worker` + `scheduler` services + `JOB_QUEUE_ENABLED=1` — **done 2026-06-21**.
 5. 🔒 Email provider + verified domain (Phase 8 send lands in Phase 11; logger until then).
 6. 🔒 Stripe products/prices/webhook/portal (live) — needs KYC + Phase 11.
-7. 🔒 Web Pixel extension deploy — Phase 10 build **done** (ingest + classifier + attribution +
-   the extension in `extensions/ai-referral-pixel/`); still needs `shopify app deploy` +
-   activation + settings (Ingest URL) by the app owner, and migration `0015` applied.
+7. 🔒 Web Pixel extension deploy + activation — Phase 10 build **done** (ingest + classifier +
+   attribution + the extension in `extensions/ai-referral-pixel/` + `webPixelCreate` activation,
+   all scope-gated). Migrations `0015` (live) + `0016` (pending). To collect data the app owner
+   must: add `read_customer_events,write_pixels` to scopes + `shopify app deploy` + merchant
+   re-consent + apply `0016`; the pixel then auto-activates on (re)install or via
+   `POST /app/api/pixel/activate`.
 8. 🔒 OpenAI product-feed onboarding/eligibility — Phase 9 build **done** (generate/validate/
    score/export); still needs OpenAI merchant approval + `FEED_DELIVERY_ENABLED=1` + a
    delivery endpoint to actually submit. Generating/exporting a feed never submits it.
@@ -491,6 +503,13 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 Phase 10 activation (branch `phase10-pixel-activate`, off `main`): built
+  `webPixelCreate`/`webPixelUpdate` activation (deploying the extension only registers it; an
+  app-owned pixel must be created per shop). Scope-gated (`write_pixels`+`read_customer_events`),
+  idempotent via `shops.web_pixel_id` (migration `0016`), auto-runs on install + `POST
+  /app/api/pixel/activate`. `npm test` **101 pass / 22 skipped / 0 fail**; typecheck clean.
+  `shopify.app.toml` scopes updated (⚠️ re-consent on next deploy). Migration `0016` apply + DB
+  e2e + merge/deploy + `shopify app deploy` await a user go.
 - 2026-06-21 Phase 10 DEPLOY: `phase10-pixel` fast-forwarded into `main` (`9caab20..b7e1184`)
   and pushed → Railway auto-deployed. `/healthz` flipped to `b7e1184`; `/healthz/deep` green
   (db ok, jobQueueEnabled, scheduler + new `b7e1184-svc` worker heartbeating). Public ingest

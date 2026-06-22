@@ -23,6 +23,10 @@ export interface ShopifyClient {
   exchangeCode(shop: string, code: string): Promise<TokenExchange>;
   /** Register the app + compliance webhooks. Returns the topics registered. */
   registerWebhooks(shop: string, accessToken: string): Promise<string[]>;
+  /** Create (or update, when `existingId` is known) the app-owned Web Pixel with the
+   *  given settings JSON. Idempotent at the caller via the stored id. Needs the
+   *  write_pixels + read_customer_events scopes. Returns the WebPixel gid. */
+  activateWebPixel(shop: string, accessToken: string, settings: string, existingId?: string): Promise<{ id: string }>;
 }
 
 const MANDATORY_TOPICS = [
@@ -43,6 +47,9 @@ class MockClient implements ShopifyClient {
   }
   async registerWebhooks(): Promise<string[]> {
     return MANDATORY_TOPICS; // pretend success — exercised end-to-end without Shopify
+  }
+  async activateWebPixel(shop: string, _accessToken: string, _settings: string, existingId?: string): Promise<{ id: string }> {
+    return { id: existingId ?? `gid://shopify/WebPixel/mock-${shop}` };
   }
 }
 
@@ -77,6 +84,29 @@ class LiveClient implements ShopifyClient {
       else console.error(`[shopify] webhook register ${topic} failed: HTTP ${res.status}`);
     }
     return registered;
+  }
+  async activateWebPixel(shop: string, accessToken: string, settings: string, existingId?: string): Promise<{ id: string }> {
+    // settings is a JSON string matching the extension's settings schema.
+    const isUpdate = Boolean(existingId);
+    const op = isUpdate ? "webPixelUpdate" : "webPixelCreate";
+    const query = isUpdate
+      ? `mutation a($id: ID!, $wp: WebPixelInput!){ webPixelUpdate(id: $id, webPixel: $wp){ webPixel { id } userErrors { field message code } } }`
+      : `mutation a($wp: WebPixelInput!){ webPixelCreate(webPixel: $wp){ webPixel { id } userErrors { field message code } } }`;
+    const variables = isUpdate ? { id: existingId, wp: { settings } } : { wp: { settings } };
+    const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`${op} failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const json = (await res.json()) as { data?: Record<string, { webPixel?: { id?: string }; userErrors?: Array<{ message?: string }> }> };
+    const payload = json.data?.[op];
+    const errs = payload?.userErrors ?? [];
+    if (errs.length) throw new Error(`${op} userErrors: ${errs.map((e) => e.message).join("; ")}`);
+    const id = payload?.webPixel?.id;
+    if (!id) throw new Error(`${op} returned no web pixel id`);
+    return { id };
   }
 }
 

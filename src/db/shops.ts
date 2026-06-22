@@ -12,6 +12,7 @@ export interface ShopRow {
   plan: string | null;
   installed_at: string;
   uninstalled_at: string | null;
+  web_pixel_id: string | null;
 }
 
 export async function upsertShop(shopDomain: string, opts: { scopes?: string; status?: string } = {}): Promise<void> {
@@ -30,6 +31,11 @@ export async function upsertShop(shopDomain: string, opts: { scopes?: string; st
 export async function getShop(shopDomain: string): Promise<ShopRow | null> {
   const { rows } = await pgQuery<ShopRow>("select * from shops where shop_domain = $1", [shopDomain]);
   return rows[0] ?? null;
+}
+
+/** Record the app-owned Web Pixel id (Phase 10) so re-activation updates in place. */
+export async function setWebPixelId(shopDomain: string, webPixelId: string): Promise<void> {
+  await pgQuery("update shops set web_pixel_id = $2, updated_at = now() where shop_domain = $1", [shopDomain, webPixelId]);
 }
 
 /** Encrypt + store an offline access token for a shop. */

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { classifyAiReferrer, referrerHost } from "../src/pixel/referrer.js";
 import { parsePixelEvent, toLandingPath, PIXEL_EVENT_TYPES } from "../src/pixel/event.js";
+import { hasPixelScope, pixelSettings, REQUIRED_PIXEL_SCOPES } from "../src/pixel/activate.js";
 
 // ---- AI-referrer classification (the core IP) ------------------------------
 test("classifyAiReferrer identifies each assistant by host", () => {
@@ -78,6 +79,20 @@ test("PIXEL_EVENT_TYPES is the funnel set", () => {
   assert.deepEqual([...PIXEL_EVENT_TYPES], ["session_start", "product_viewed", "checkout_started", "checkout_completed"]);
 });
 
+// ---- Web Pixel activation gate ---------------------------------------------
+test("hasPixelScope requires BOTH write_pixels and read_customer_events", () => {
+  assert.equal(hasPixelScope("read_products,read_customer_events,write_pixels"), true);
+  assert.equal(hasPixelScope("read_products,write_pixels"), false); // missing read_customer_events
+  assert.equal(hasPixelScope("read_products"), false);
+  assert.equal(hasPixelScope(null), false);
+  assert.deepEqual([...REQUIRED_PIXEL_SCOPES], ["read_customer_events", "write_pixels"]);
+});
+
+test("pixelSettings emits the ingest endpoint as JSON", () => {
+  const s = JSON.parse(pixelSettings());
+  assert.ok(typeof s.ingest_url === "string" && s.ingest_url.endsWith("/api/pixel/ingest"));
+});
+
 // ---- DB-gated: ingest → directional attribution funnel ---------------------
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
 
@@ -111,5 +126,39 @@ test("attribution computes a distinct-session funnel per AI source (consent-filt
     assert.deepEqual(a.totals, { sessions: 3, productViews: 2, checkouts: 1 });
   } finally {
     await pgQuery("delete from pixel_events where shop_domain=$1", [shop]);
+  }
+});
+
+// Web Pixel activation against the MOCK Shopify client (no real store needed).
+const RUN_ACT = RUN_DB && process.env.SHOPIFY_MODE === "mock" && Boolean(process.env.APP_ENCRYPTION_KEY);
+test("activatePixelForShop activates with scopes (idempotent) and refuses without", { skip: !RUN_ACT }, async () => {
+  const { upsertShop, storeCredentials, getShop } = await import("../src/db/shops.js");
+  const { activatePixelForShop } = await import("../src/pixel/activate.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const ok = `pixact-ok-${Date.now()}.myshopify.com`;
+  const no = `pixact-no-${Date.now()}.myshopify.com`;
+  try {
+    // Granted both pixel scopes → activates; mock client returns an id; stored on the shop.
+    await upsertShop(ok, { status: "active", scopes: "read_products,read_customer_events,write_pixels" });
+    await storeCredentials(ok, "mock_token", "read_products,read_customer_events,write_pixels");
+    const r1 = await activatePixelForShop(ok);
+    assert.equal(r1.activated, true);
+    assert.ok(r1.webPixelId);
+    assert.equal((await getShop(ok))!.web_pixel_id, r1.webPixelId);
+    const r2 = await activatePixelForShop(ok); // idempotent: same id (update path)
+    assert.equal(r2.webPixelId, r1.webPixelId);
+
+    // Missing scopes → refused, nothing stored.
+    await upsertShop(no, { status: "active", scopes: "read_products" });
+    await storeCredentials(no, "mock_token", "read_products");
+    const r3 = await activatePixelForShop(no);
+    assert.equal(r3.activated, false);
+    assert.equal(r3.reason, "missing_scope");
+    assert.equal((await getShop(no))!.web_pixel_id, null);
+  } finally {
+    for (const s of [ok, no]) {
+      await pgQuery("delete from shop_credentials where shop_domain=$1", [s]);
+      await pgQuery("delete from shops where shop_domain=$1", [s]);
+    }
   }
 });

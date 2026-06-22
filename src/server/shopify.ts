@@ -11,6 +11,7 @@ import {
   saveOAuthState, storeCredentials, upsertShop, webhookSeen,
 } from "../db/shops.js";
 import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
+import { activatePixelForShop } from "../pixel/activate.js";
 
 // Shopify OAuth + webhook routes (Phase 2). Disabled (503) until configured; in
 // SHOPIFY_MODE=mock the whole flow runs end-to-end with no real Shopify.
@@ -143,6 +144,15 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
     console.error(`[shopify] webhook registration failed for ${shop}:`, (err as Error).message);
   }
   await audit(shop, "system", "install", "shop", null, { scope, webhooks: topics.length });
+
+  // 4b) best-effort: activate the AI-referral Web Pixel (Phase 10). No-op unless the
+  //     write_pixels + read_customer_events scopes were granted — degrades gracefully.
+  try {
+    const act = await activatePixelForShop(shop);
+    if (!act.activated) console.log(`[shopify] web pixel not activated for ${shop}: ${act.reason}`);
+  } catch (err) {
+    console.error(`[shopify] web pixel activation failed for ${shop}:`, (err as Error).message);
+  }
 
   // 5) shop session cookie (signed) → onboarding
   res.cookie(SHOP_COOKIE, signShop(shop), {

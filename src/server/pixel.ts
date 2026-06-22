@@ -6,6 +6,7 @@ import { getShop } from "../db/shops.js";
 import { parsePixelEvent } from "../pixel/event.js";
 import { classifyAiReferrer } from "../pixel/referrer.js";
 import { attribution, insertPixelEvent } from "../db/pixel.js";
+import { activatePixelForShop } from "../pixel/activate.js";
 
 // Phase 10 — AI-referral pixel API.
 //   POST /api/pixel/ingest        PUBLIC beacon from the storefront Web Pixel (CORS).
@@ -101,6 +102,29 @@ export async function ingestHandler(req: Request, res: Response): Promise<void> 
   } catch (err) {
     console.error(`[pixel] insert failed: ${(err as Error).message}`);
     res.status(202).json({ ok: true, stored: false, reason: "unavailable" });
+  }
+}
+
+/** POST /app/api/pixel/activate — create/update the shop's app-owned Web Pixel so the
+ *  deployed extension actually runs. Scope-gated (write_pixels + read_customer_events). */
+export async function activateHandler(req: Request, res: Response): Promise<void> {
+  const shop = shopOf(req);
+  try {
+    const r = await activatePixelForShop(shop);
+    if (r.activated) {
+      res.json(r);
+      return;
+    }
+    if (r.reason === "missing_scope") {
+      res.status(409).json({
+        ...r,
+        message: `Reconnect the app granting ${r.neededScopes!.join(", ")} to activate the AI-referral pixel.`,
+      });
+      return;
+    }
+    res.status(422).json(r);
+  } catch (err) {
+    res.status(502).json({ activated: false, error: (err as Error).message });
   }
 }
 

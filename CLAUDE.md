@@ -439,8 +439,15 @@ it undercounts; surfaced as a floor). Generating data needs the extension deploy
 - `migrations/0015_pixel.sql` (`pixel_events`; additive). `extensions/ai-referral-pixel/`
   (`shopify.extension.toml` with `customer_privacy.analytics=true` platform consent gate;
   `src/index.js` persists the original AI referrer in sessionStorage so later funnel events stay
-  attributed) — **the owner-deployed artifact (`shopify app deploy`)**. `test/pixel.test.ts`
-  (10 pure + 1 DB-gated). **Migration `0015` apply + DB e2e + merge/deploy + extension deploy
+  attributed) — **the owner-deployed artifact (`shopify app deploy`)**.
+- **Activation** (`src/pixel/activate.ts` + `client.activateWebPixel`): deploying the extension
+  only REGISTERS it — an app-owned pixel must be created per shop via `webPixelCreate` (then
+  `webPixelUpdate`, idempotent via `shops.web_pixel_id`, migration `0016`) with the ingest URL as
+  settings. **Scope-gated like Phase 6 write_products**: needs `write_pixels` +
+  `read_customer_events` (else `missing_scope`). Auto-runs best-effort on OAuth install + `POST
+  /app/api/pixel/activate`. `shopify.app.toml` scopes updated (⚠️ re-consent on deploy).
+- `test/pixel.test.ts` (12 pure + 2 DB-gated). **Phase 10 ingest/attribution are LIVE; activation
+  (branch `phase10-pixel-activate`) + migration `0016` + the scope change/`shopify app deploy`
   await a user go.**
 
 **Phase 12 (Experience redesign — the embedded `/app` UI) is built on branch `phase12-app-ui`**
