@@ -396,13 +396,14 @@ strip referrers, so it undercounts — surfaced as a floor).
 - ✅ **Migration `0015` APPLIED to Supabase (2026-06-21); DB-gated e2e PASSED** (11/11 against
   the live DB: distinct-session funnel by source + consent filtering, self-cleaned). Code merge
   to `main` + deploy still await a user go.
-- ✅ **Web Pixel ACTIVATION built** (branch `phase10-pixel-activate`): deploying the extension
-  only registers it — an app-owned pixel must be created per shop via the Admin API. Added
-  `client.activateWebPixel` (create→update, idempotent via a stored `shops.web_pixel_id`,
-  migration `0016`), `src/pixel/activate.ts` (scope gate + ingest-URL settings), `POST
-  /app/api/pixel/activate`, and a best-effort hook in the OAuth install callback. **Scope-gated
-  like Phase 6**: needs `write_pixels` + `read_customer_events` (degrades to `missing_scope`).
-  Mock-verified at $0 (`test/pixel.test.ts` +scope-gate pure +1 DB-gated activation e2e).
+- ✅ **Web Pixel ACTIVATION built + LIVE** (merged + deployed 2026-06-21, commit `bfa0dac`;
+  migration `0016` applied; `POST /app/api/pixel/activate` returns 401 = registered/gated):
+  deploying the extension only registers it — an app-owned pixel must be created per shop via the
+  Admin API. Added `client.activateWebPixel` (create→update, idempotent via a stored
+  `shops.web_pixel_id`), `src/pixel/activate.ts` (scope gate + ingest-URL settings), the activate
+  endpoint, and a best-effort hook in the OAuth install callback. **Scope-gated like Phase 6**:
+  needs `write_pixels` + `read_customer_events` (degrades to `missing_scope`). Verified by the
+  full serial DB suite (116 pass / 0 fail).
 - 🔒 To actually collect data the app owner must: (a) add `read_customer_events,write_pixels`
   to `SHOPIFY_SCOPES` + the `shopify.app.toml` (already updated) → `shopify app deploy` →
   merchant **re-consent**; (b) apply migration `0016`; (c) the pixel auto-activates on
@@ -459,10 +460,11 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
-## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `b7e1184`)
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-21, commit `bfa0dac`)
 **Phases 1–10 + 12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
-- **All 15 migrations applied** to Supabase (`0001`–`0015`; `0015_pixel` applied 2026-06-21).
+- **All 16 migrations applied** to Supabase (`0001`–`0016`; `0015_pixel` + `0016_pixel_activation`
+  applied 2026-06-21).
 - **Multi-process is LIVE:** one image, three Railway services via `PROCESS_MODE` dispatch
   (`src/start.ts`). `web` (the site + API) + `worker` + `scheduler` all deployed and
   **heartbeating** (`/healthz/deep`). `JOB_QUEUE_ENABLED=1` on web → durable queue + scheduled
@@ -503,6 +505,12 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
 10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
 
 ## Verification log
+- 2026-06-21 Phase 10 activation DEPLOY: migration `0016` applied; full serial DB suite
+  (`RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`) **116 pass / 7 skipped / 0 fail** against
+  live Supabase (incl. the pixel activation e2e; `shops.web_pixel_id` add caused no regression).
+  `phase10-pixel-activate` fast-forwarded into `main` (`1ef104e..bfa0dac`) + pushed → deployed.
+  `/healthz`=`bfa0dac`; `/healthz/deep` green; `POST /app/api/pixel/activate`→401 (registered).
+  Data collection still needs the scope change + `shopify app deploy` + re-consent (external).
 - 2026-06-21 Phase 10 activation (branch `phase10-pixel-activate`, off `main`): built
   `webPixelCreate`/`webPixelUpdate` activation (deploying the extension only registers it; an
   app-owned pixel must be created per shop). Scope-gated (`write_pixels`+`read_customer_events`),
