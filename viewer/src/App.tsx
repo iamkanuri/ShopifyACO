@@ -7,6 +7,9 @@ import { ScanPage } from "./pages/ScanPage";
 import { AdminPage } from "./pages/AdminPage";
 import { ThanksPage } from "./pages/ThanksPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
+import { TermsPage } from "./pages/TermsPage";
+import { SupportPage } from "./pages/SupportPage";
+import { DataDeletionPage } from "./pages/DataDeletionPage";
 import { IndexListPage } from "./pages/IndexListPage";
 import { IndexLeaderboardPage } from "./pages/IndexLeaderboardPage";
 import { Footer } from "./components/Footer";
@@ -24,7 +27,8 @@ export function App() {
   if (isApp) return <div className="app app-embedded"><AppShell /></div>;
   // On result/confirmation pages the acquisition CTAs are redundant — keep the
   // header minimal (brand only) so the page's own content carries the next step.
-  const minimalHeader = path.startsWith("/report/") || path === "/thanks" || path === "/privacy";
+  const legalPaths = ["/privacy", "/terms", "/support", "/data-deletion"];
+  const minimalHeader = path.startsWith("/report/") || path === "/thanks" || legalPaths.includes(path);
 
   let page: React.ReactNode;
   if (path.startsWith("/report/")) page = <ReportPage runId={decodeURIComponent(path.split("/")[2] ?? "")} />;
@@ -35,6 +39,9 @@ export function App() {
   else if (path === "/admin") page = <AdminPage />;
   else if (path === "/thanks") page = <ThanksPage />;
   else if (path === "/privacy") page = <PrivacyPage />;
+  else if (path === "/terms") page = <TermsPage />;
+  else if (path === "/support") page = <SupportPage />;
+  else if (path === "/data-deletion") page = <DataDeletionPage />;
   else page = <LandingPage />;
 
   const active = (p: string) => (path === p ? "active" : "");

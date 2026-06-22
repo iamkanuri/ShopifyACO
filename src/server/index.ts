@@ -130,7 +130,7 @@ app.get("/robots.txt", (req, res) => {
 });
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
-  const paths = ["/", "/demo", "/scan", "/privacy", "/index"];
+  const paths = ["/", "/demo", "/scan", "/privacy", "/terms", "/support", "/index"];
   try {
     for (const idx of await listCategoryIndexes()) paths.push(`/index/${idx.slug}`);
   } catch {
@@ -318,15 +318,24 @@ app.post("/app/api/billing/portal", shopMw, wrap(billingPortalHandler));
 // --- public runtime config (NO secrets; service-role key never sent) -------
 app.get("/api/config", (req, res) => {
   const plans = PLANS.map((p) => ({ ...p, stripeUrl: STRIPE_BY_PLAN[p.id] ?? null }));
+  const base = baseUrl(req);
   res.json({
     brandName: ENV.publicBrandName,
-    baseUrl: baseUrl(req),
+    baseUrl: base,
     contactEmail: ENV.contactEmail,
     tagline: TAGLINE,
     demoNote: DEMO_NOTE,
     plans,
     miniPrompts: MINI_PROMPTS,
     fullReportPrompts: SCAN_MODES.deep.prompts,
+    // Ready-to-paste legal/support URLs for the Shopify App Store listing (in-app pages).
+    legal: {
+      privacyUrl: `${base}/privacy`,
+      termsUrl: `${base}/terms`,
+      supportUrl: `${base}/support`,
+      dataDeletionUrl: `${base}/data-deletion`,
+      supportEmail: ENV.contactEmail || null,
+    },
   });
 });
 

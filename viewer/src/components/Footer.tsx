@@ -12,8 +12,9 @@ export function Footer() {
         <nav className="foot-links">
           <Link to="/index">Index</Link>
           <Link to="/demo">Demo</Link>
-          <Link to="/scan">Run a scan</Link>
           <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
+          <Link to="/support">Support</Link>
           {contactEmail && <a href={`mailto:${contactEmail}`}>Contact</a>}
         </nav>
       </div>
