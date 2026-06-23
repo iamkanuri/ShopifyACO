@@ -90,6 +90,21 @@ const ALLOWED_EVENTS = new Set([
 // Stripe Payment Link per plan id (URLs only).
 const STRIPE_BY_PLAN: Record<string, string | undefined> = ENV.stripe;
 
+// Harden the PUBLIC analytics beacon: accept only a shallow object of short primitive
+// values (no nesting/arrays) so a valid event name can't be used to inject large/deep
+// junk JSON into the events table. Legit client events carry small primitive fields.
+function sanitizeEventMeta(meta: unknown): Record<string, unknown> | null {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const out: Record<string, unknown> = {};
+  let n = 0;
+  for (const [k, v] of Object.entries(meta as Record<string, unknown>)) {
+    if (n++ >= 20 || typeof k !== "string" || k.length > 64) continue; // cap key count + length
+    if (v == null || typeof v === "number" || typeof v === "boolean") out[k] = v;
+    else if (typeof v === "string") out[k] = v.slice(0, 256); // primitives only — drop nested objects/arrays
+  }
+  return out;
+}
+
 const keys = ENV.keys;
 const app = express();
 if (ENV.isProd) app.set("trust proxy", 1);
@@ -118,6 +133,10 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  // Cross-origin isolation: the app navigates top-level (OAuth/Stripe redirects, no
+  // popups), so COOP same-origin is safe and severs any cross-origin window.opener link.
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   if (ENV.isProd) res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   next();
 });
@@ -538,7 +557,8 @@ app.post(
   wrap(async (req, res) => {
     const { name, run_id, metadata } = (req.body ?? {}) as { name?: string; run_id?: string; metadata?: unknown };
     if (!name || !ALLOWED_EVENTS.has(name)) return res.status(400).json({ error: "Unknown event." });
-    await insertEvent(name, run_id, metadata);
+    const runId = typeof run_id === "string" ? run_id.slice(0, 128) : undefined;
+    await insertEvent(name, runId, sanitizeEventMeta(metadata));
     res.json({ ok: true });
   }),
 );
