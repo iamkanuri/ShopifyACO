@@ -1,6 +1,7 @@
 import { Link, usePath } from "../router";
 import { useConfig } from "../config";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { ConnectShopify } from "../components/ConnectShopify";
 import { getSchedules } from "./appApi";
 import { useLoaded } from "./ui";
 import { Dashboard } from "./Dashboard";
@@ -69,7 +70,7 @@ export function AppShell() {
       <main className="al-main">
         {demo && !probe.loading && (
           <div className="al-connect">
-            You're viewing <b>sample data</b>. <a href="/api/shopify/install">Connect your Shopify store</a> to see your real AI visibility.
+            You're viewing <b>sample data</b>. <ConnectShopify className="as-link al-connect-link" label="Connect your Shopify store" /> to see your real AI visibility.
           </div>
         )}
         {screen}

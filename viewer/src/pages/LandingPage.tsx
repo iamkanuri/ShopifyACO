@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, navigate } from "../router";
 import { useConfig } from "../config";
+import { ConnectShopify } from "../components/ConnectShopify";
 
 export function LandingPage() {
   const { miniPrompts } = useConfig();
@@ -35,7 +36,7 @@ export function LandingPage() {
           </button>
         </form>
         <div className="hero-ctas">
-          <a className="hero-connect" href="/api/shopify/install">Connect Shopify</a>
+          <ConnectShopify className="as-link hero-connect" label="Connect Shopify" />
           <Link className="hero-seeapp" to="/app">See the app →</Link>
         </div>
         <div className="hero-trust">Free · {miniPrompts} shopper prompts across 3 AI assistants · results by email</div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useConfig } from "../config";
+import { ConnectShopify } from "../components/ConnectShopify";
 import { getSchedules, updateSchedule } from "./appApi";
 import { CADENCE_OPTIONS } from "./constants";
 import { DemoBadge, StatePane, useLoaded } from "./ui";
@@ -26,7 +27,7 @@ export function Settings({ connected }: { connected: boolean }) {
         <div className="card al-setrow">
           <div><div className="al-set-k">Status</div><div className={connected ? "al-ok" : "al-gapmark"}>{connected ? "Connected" : "Not connected (demo)"}</div></div>
           <div><div className="al-set-k">Scopes</div><div className="muted">read_products</div></div>
-          {!connected && <a className="btn btn-primary" href="/api/shopify/install">Connect Shopify</a>}
+          {!connected && <ConnectShopify className="btn btn-primary" label="Connect Shopify" />}
         </div>
         <p className="muted al-fineprint">Write-back (Fix Studio apply) requests <code>write_products</code> only when you enable it — least privilege.</p>
       </div>
