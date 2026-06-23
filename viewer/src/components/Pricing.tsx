@@ -12,6 +12,13 @@ const CTA_EVENT: Record<string, string> = {
 // Monitoring isn't fulfillable yet — until a Stripe URL exists it's a waitlist.
 const isWaitlist = (p: Plan) => p.id === "monitoring" && !p.stripeUrl;
 
+// Set the fulfillment expectation RIGHT at the buy button (not just in the feature list)
+// so a buyer knows BEFORE paying that these are hand-delivered by email, not instant.
+const DELIVERY_NOTE: Record<string, string> = {
+  full_report: "Reviewed by hand and emailed within 24 hours during beta — not an instant download.",
+  founder_beta: "Founder-reviewed and delivered by email during beta — not instant.",
+};
+
 export function Pricing({ runId, currentPlanId, email }: { runId?: string; currentPlanId?: string; email?: string }) {
   const { plans } = useConfig();
   const [modalPlan, setModalPlan] = useState<{ id: string; name: string; waitlist: boolean } | null>(null);
@@ -68,9 +75,12 @@ export function Pricing({ runId, currentPlanId, email }: { runId?: string; curre
                 ))}
               </ul>
               {p.cta ? (
-                <button className={`btn ${waitlist ? "" : "btn-primary"}`} onClick={() => onCta(p)}>
-                  {ctaLabel}
-                </button>
+                <>
+                  <button className={`btn ${waitlist ? "" : "btn-primary"}`} onClick={() => onCta(p)}>
+                    {ctaLabel}
+                  </button>
+                  {!waitlist && DELIVERY_NOTE[p.id] && <p className="plan-deliver">{DELIVERY_NOTE[p.id]}</p>}
+                </>
               ) : currentPlanId === p.id ? (
                 <div className="plan-current">You're on this</div>
               ) : (

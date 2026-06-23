@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import type { MerchantAnalysis, RunResults } from "../types";
-import { fmtUsd } from "../types";
 import { trackEvent } from "../api";
 import { ScorePanel } from "../components/ScorePanel";
 import { StatTiles } from "../components/StatTiles";
@@ -62,7 +61,6 @@ export function Report({
           </span>
         ))}
         <span className="chip">{a.basedOnResponses} answers analyzed</span>
-        <span className="chip">{fmtUsd(a.totalCostUsd)} spend</span>
         {failedEntries.map(([e, n]) => (
           <span className="chip warn" key={`fail-${e}`} title="These calls errored and are excluded from the rates below">
             <span className="dot" /> {eng(e)} · {n} failed
