@@ -14,6 +14,7 @@ import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
 import { installHandler, callbackHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
+import { normalizeShopDomain } from "../shopify/domain.js";
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
 import { applyHandler, approveHandler, dismissHandler, listFixesHandler, proposeHandler, rollbackHandler } from "./fixes.js";
@@ -111,30 +112,38 @@ if (ENV.isProd) app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
 // --- security headers (every response) -------------------------------------
-// The app serves its own bundle (script-src 'self' — no inline/eval), uses inline
-// style attributes + Google Fonts (style/font allowances), and only talks to its
-// own /api. Stripe checkout is a top-level redirect to Stripe's domain, so no
-// Stripe origins are needed here. frame-ancestors 'none' blocks clickjacking.
-const CSP = [
+// Strict CSP. Everything stays 'self' except: Google Fonts (style/font), and
+// app-bridge.js in script-src so Shopify App Bridge can load inside the embedded iframe.
+// `frame-ancestors` is the ONLY per-request directive: when Shopify loads the app embedded
+// it passes ?shop=<store>.myshopify.com, and we allow EXACTLY that store + admin.shopify.com
+// to frame us. The shop value is strictly validated (normalizeShopDomain → only canonical
+// <name>.myshopify.com), so it can't inject into the header; no wildcards (Shopify rejects
+// them). With no valid shop we deny all framing. X-Frame-Options can't express an allowlist
+// (DENY/SAMEORIGIN only) and would block the embed regardless of CSP — so it's set ONLY on
+// the non-embedded (deny) path, where it's pure defense-in-depth and never conflicts.
+const CSP_BASE = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
   "img-src 'self' data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "script-src 'self'",
+  "script-src 'self' https://cdn.shopify.com/shopifycloud/app-bridge.js",
   "connect-src 'self'",
   "form-action 'self'",
-].join("; ");
-app.use((_req: Request, res: Response, next: NextFunction) => {
-  res.setHeader("Content-Security-Policy", CSP);
+];
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const shop = normalizeShopDomain(typeof req.query.shop === "string" ? req.query.shop : undefined);
+  const frameAncestors = shop
+    ? `frame-ancestors https://${shop} https://admin.shopify.com`
+    : "frame-ancestors 'none'";
+  res.setHeader("Content-Security-Policy", [...CSP_BASE, frameAncestors].join("; "));
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
+  if (!shop) res.setHeader("X-Frame-Options", "DENY"); // allowlist not expressible in X-FO; deny path only
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
-  // Cross-origin isolation: the app navigates top-level (OAuth/Stripe redirects, no
-  // popups), so COOP same-origin is safe and severs any cross-origin window.opener link.
+  // COOP is processed only for TOP-LEVEL documents; it is ignored when the page is framed,
+  // so it does not interfere with the Shopify embed while still hardening standalone pages.
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   if (ENV.isProd) res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
