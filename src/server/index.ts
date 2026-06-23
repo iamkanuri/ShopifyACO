@@ -812,11 +812,13 @@ function serveIndex(req: Request, res: Response) {
       return res.status(503).send("App not built. Run `npm run build`.");
     }
   }
-  // App Bridge is injected ONLY on the embedded /app surface, and only when a Shopify API
-  // key is configured. Loading it on the public marketing site can redirect visitors into
-  // Shopify admin — so the marketing pages get an empty string here.
+  // App Bridge is injected ONLY when Shopify itself is loading the embedded app — i.e. an
+  // /app route WITH Shopify's embed params (host/shop) AND a configured API key. App Bridge
+  // can redirect the top window into admin if it loads outside the iframe, so a DIRECT visit
+  // to /app (no params) deliberately gets none — preserving the public demo-fallback there.
+  const fromShopify = Boolean(req.query.host || req.query.shop);
   const appBridge =
-    req.path.startsWith("/app") && ENV.shopify.apiKey
+    req.path.startsWith("/app") && fromShopify && ENV.shopify.apiKey
       ? `<meta name="shopify-api-key" content="${escapeHtml(ENV.shopify.apiKey)}" />\n    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`
       : "";
   let html = indexTemplate
