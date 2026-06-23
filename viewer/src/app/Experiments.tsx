@@ -52,9 +52,9 @@ function StartPanel({ onStarted }: { onStarted: () => void }) {
   return (
     <div className="card al-generate" style={{ marginBottom: 18 }}>
       <div className="al-measure-grid">
-        <label className="al-field"><span className="al-set-k">Brand</span><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Caraway" /></label>
-        <label className="al-field"><span className="al-set-k">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="ceramic cookware" /></label>
-        <label className="al-field"><span className="al-set-k">Competitors</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="GreenPan, Our Place" /></label>
+        <label className="al-field"><span className="al-set-k">Brand</span><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Olipop" /></label>
+        <label className="al-field"><span className="al-set-k">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="prebiotic soda" /></label>
+        <label className="al-field"><span className="al-set-k">Competitors</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="Poppi, Culture Pop" /></label>
         <label className="al-field"><span className="al-set-k">What did you change?</span><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Added review schema" /></label>
       </div>
       <div className="al-measure-actions">

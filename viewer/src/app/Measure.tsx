@@ -45,9 +45,9 @@ export function Measure() {
 
       <div className="card al-measure">
         <div className="al-measure-grid">
-          <label className="al-field"><span className="al-set-k">Brand</span><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Caraway" /></label>
-          <label className="al-field"><span className="al-set-k">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="non-toxic ceramic cookware" /></label>
-          <label className="al-field al-measure-wide"><span className="al-set-k">Competitors (comma-separated)</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="GreenPan, Our Place, All-Clad" /></label>
+          <label className="al-field"><span className="al-set-k">Brand</span><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Olipop" /></label>
+          <label className="al-field"><span className="al-set-k">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="prebiotic soda" /></label>
+          <label className="al-field al-measure-wide"><span className="al-set-k">Competitors (comma-separated)</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="Poppi, Culture Pop, Health-Ade" /></label>
         </div>
         <div className="al-measure-actions">
           <button className="btn btn-primary" disabled={busy} onClick={run}>{busy ? "Running…" : "Run benchmark (free preview)"}</button>

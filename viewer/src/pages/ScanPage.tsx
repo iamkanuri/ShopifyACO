@@ -316,7 +316,7 @@ export function ScanPage() {
           <h3>Your store</h3>
           <div className="form-grid">
             <Field label="Brand name *">
-              <input value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} placeholder="Caraway" />
+              <input value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} placeholder="Olipop" />
             </Field>
             <Field label="Category *">
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="nonstick cookware" />

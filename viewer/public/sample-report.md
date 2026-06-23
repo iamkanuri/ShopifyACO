@@ -1,54 +1,53 @@
-# AI Visibility Report — Caraway
+# AI Visibility Report — Olipop
 
-**Category:** nonstick cookware
-**Run:** LIVE · openai, gemini, perplexity · 13 prompts × 3 engines = 39 calls
-**Generated:** 2026-06-11T03:46:28.541Z
+**Category:** prebiotic soda
+**Run:** LIVE · openai, gemini, perplexity · 16 prompts × 3 engines = 48 calls
+**Generated:** 2026-06-23T04:07:52.985Z
 
-## AI Visibility Score: 24/100
+## AI Visibility Score: 67/100
 
-> **AI assistants know Caraway — but rarely choose it.**
+> **AI assistants know Olipop — but rarely choose it.**
 
-`Standard scan` · **Strong signal** (based on 39 grounded responses)
+`Standard scan` · **Strong signal** (based on 48 grounded responses)
 
 _These are single-scan, small-sample rates. AI assistant answers vary run-to-run; treat figures as directional signal, not settled fact. Multi-run aggregation is on the roadmap._
 
 | Component | Weight | Value | Points | Detail |
 |---|---|---|---|---|
-| Recommendation rate | 50% | 8% | 3.8 | Explicitly recommended in 3/39 grounded answers. |
-| Mention rate | 20% | 31% | 6.2 | Mentioned at all in 12/39 grounded answers. |
-| Rank quality when listed | 15% | 54% | 8.1 | Average list position 3.3 when ranked (lower is better). |
-| Competitive win rate | 15% | 41% | 6.2 | A competitor out-ranked the brand in 23/39 answers. |
+| Recommendation rate | 50% | 48% | 24.0 | Explicitly recommended in 23/48 grounded answers. |
+| Mention rate | 20% | 85% | 17.1 | Mentioned at all in 41/48 grounded answers. |
+| Rank quality when listed | 15% | 88% | 13.2 | Average list position 1.6 when ranked (lower is better). |
+| Competitive win rate | 15% | 83% | 12.5 | A competitor out-ranked the brand in 8/48 answers. |
 
 > Formula: `score = 100 × (0.50·recommendationRate + 0.20·mentionRate + 0.15·rankQuality + 0.15·competitiveWinRate)`
 
 ## Executive insight
 
-Across 39 grounded answers in this scan, AI assistants know Caraway (mentioned 31% (12/39)) but rarely choose it (recommended 8% (3/39)). All-Clad is the biggest direct competitor in Non-toxic / ceramic queries, recommended 2.0× more often in this scan. openai is the weakest engine for Caraway. Caraway is absent from high-intent buying queries: Budget / under-price, Wedding / gift, First apartment / starter, Alternatives to a competitor.
+Across 48 grounded answers in this scan, AI assistants know Olipop (mentioned 85% (41/48)) but rarely choose it (recommended 48% (23/48)). openai is the weakest engine for Olipop.
 
 ## Executive summary
 
-- **Caraway** was mentioned in **31%** of answers and explicitly **recommended in 8%**.
-- That ranks **#3 of 6** by mention rate (brand + 5 competitors).
-- Top competitor by recommendation rate: **All-Clad** (33% recommended, 49% mentioned).
+- **Olipop** was mentioned in **85%** of answers and explicitly **recommended in 48%**.
+- That ranks **#1 of 5** by mention rate (brand + 4 competitors).
+- Top competitor by recommendation rate: **Poppi** (23% recommended, 73% mentioned).
 
 ## Grounding status
 
 | Engine | Model | Grounding | Calls | Errors |
 |---|---|---|---|---|
-| perplexity | sonar | ✅ web_grounded | 13 | 0 |
-| openai | gpt-4o | ✅ web_grounded | 13 | 0 |
-| gemini | gemini-2.5-flash | ✅ web_grounded | 13 | 0 |
+| perplexity | sonar | ✅ web_grounded | 16 | 0 |
+| openai | gpt-4o | ✅ web_grounded | 16 | 0 |
+| gemini | gemini-2.5-flash | ✅ web_grounded | 16 | 0 |
 
 ## Share of voice — mention rate vs recommendation rate
 
 | Brand | Mention rate | Recommendation rate | Avg list rank |
 |---|---|---|---|
-| **Caraway** (you) | 31% (12/39) | 8% (3/39) | 3.3 |
-| Our Place | 8% (3/39) | 0% (0/39) | 4.0 |
-| HexClad | 8% (3/39) | 0% (0/39) | — |
-| Made In | 18% (7/39) | 8% (3/39) | 2.3 |
-| GreenPan | 33% (13/39) | 10% (4/39) | 3.3 |
-| All-Clad | 49% (19/39) | 33% (13/39) | 1.8 |
+| **Olipop** (you) | 85% (41/48) | 48% (23/48) | 1.6 |
+| Poppi | 73% (35/48) | 23% (11/48) | 2.7 |
+| Culture Pop | 33% (16/48) | 2% (1/48) | 4.2 |
+| Health-Ade | 27% (13/48) | 6% (3/48) | 2.8 |
+| Spindrift | 10% (5/48) | 4% (2/48) | 3.8 |
 
 ## Per-engine breakdown
 
@@ -56,257 +55,159 @@ Across 39 grounded answers in this scan, AI assistants know Caraway (mentioned 3
 
 | Brand | Mention rate | Recommendation rate | Avg list rank |
 |---|---|---|---|
-| **Caraway** (you) | 31% (4/13) | 15% (2/13) | 3.7 |
-| Our Place | 0% (0/13) | 0% (0/13) | — |
-| HexClad | 8% (1/13) | 0% (0/13) | — |
-| Made In | 23% (3/13) | 15% (2/13) | 1.7 |
-| GreenPan | 38% (5/13) | 8% (1/13) | 2.8 |
-| All-Clad | 62% (8/13) | 38% (5/13) | 2.0 |
+| **Olipop** (you) | 94% (15/16) | 69% (11/16) | 1.7 |
+| Poppi | 81% (13/16) | 50% (8/16) | 2.9 |
+| Culture Pop | 44% (7/16) | 6% (1/16) | 3.0 |
+| Health-Ade | 13% (2/16) | 0% (0/16) | 4.0 |
+| Spindrift | 13% (2/16) | 6% (1/16) | 9.0 |
 
 ### openai
 
 | Brand | Mention rate | Recommendation rate | Avg list rank |
 |---|---|---|---|
-| **Caraway** (you) | 23% (3/13) | 0% (0/13) | 2.3 |
-| Our Place | 15% (2/13) | 0% (0/13) | 4.0 |
-| HexClad | 8% (1/13) | 0% (0/13) | — |
-| Made In | 15% (2/13) | 8% (1/13) | 2.5 |
-| GreenPan | 31% (4/13) | 15% (2/13) | 2.5 |
-| All-Clad | 46% (6/13) | 31% (4/13) | 1.3 |
+| **Olipop** (you) | 81% (13/16) | 25% (4/16) | 1.6 |
+| Poppi | 69% (11/16) | 13% (2/16) | 2.8 |
+| Culture Pop | 25% (4/16) | 0% (0/16) | 3.0 |
+| Health-Ade | 44% (7/16) | 13% (2/16) | 2.4 |
+| Spindrift | 19% (3/16) | 6% (1/16) | 2.0 |
 
 ### gemini
 
 | Brand | Mention rate | Recommendation rate | Avg list rank |
 |---|---|---|---|
-| **Caraway** (you) | 38% (5/13) | 8% (1/13) | 3.8 |
-| Our Place | 8% (1/13) | 0% (0/13) | 4.0 |
-| HexClad | 8% (1/13) | 0% (0/13) | — |
-| Made In | 15% (2/13) | 0% (0/13) | 4.0 |
-| GreenPan | 31% (4/13) | 8% (1/13) | 5.3 |
-| All-Clad | 38% (5/13) | 31% (4/13) | 2.2 |
+| **Olipop** (you) | 81% (13/16) | 50% (8/16) | 1.6 |
+| Poppi | 69% (11/16) | 6% (1/16) | 2.4 |
+| Culture Pop | 31% (5/16) | 0% (0/16) | 5.8 |
+| Health-Ade | 25% (4/16) | 6% (1/16) | 3.0 |
+| Spindrift | 0% (0/16) | 0% (0/16) | — |
 
 ## Per-prompt × engine results
 
-| Prompt | Engine | Caraway | Competitors mentioned | Top competitor |
+| Prompt | Engine | Olipop | Competitors mentioned | Top competitor |
 |---|---|---|---|---|
-| what is the best nonstick cookware set for everyd… | perplexity | mentioned | 1 | All-Clad (recommended) |
-| what is the best nonstick cookware set for everyd… | openai | absent | 1 | All-Clad (mentioned_neutral) |
-| what is the best nonstick cookware set for everyd… | gemini | absent | 0 | — |
-| what is the best nonstick cookware set for an ind… | openai | absent | 2 | All-Clad (recommended) |
-| what is the best nonstick cookware set for an ind… | perplexity | absent | 1 | All-Clad (recommended) |
-| what is the best nonstick cookware set for an ind… | gemini | mentioned | 2 | All-Clad (recommended) |
-| what is the best nonstick cookware set for a begi… | openai | absent | 0 | — |
-| what is the best nonstick cookware set for a begi… | perplexity | absent | 2 | All-Clad (recommended) |
-| what is the best nonstick cookware set for a begi… | gemini | absent | 1 | All-Clad (recommended) |
-| recommend a nonstick cookware brand under $200 | openai | absent | 0 | — |
-| recommend a nonstick cookware brand under $200 | perplexity | absent | 0 | — |
-| recommend a nonstick cookware brand under $400 | openai | absent | 0 | — |
-| recommend a nonstick cookware brand under $200 | gemini | absent | 0 | — |
-| recommend a nonstick cookware brand under $400 | perplexity | absent | 1 | GreenPan (mentioned_neutral) |
-| best non-toxic cookware brands right now | openai | mentioned | 3 | GreenPan (recommended) |
-| recommend a nonstick cookware brand under $400 | gemini | absent | 0 | — |
-| best non-toxic cookware brands right now | perplexity | recommended #1 | 3 | Made In (mentioned_neutral) |
-| I'm replacing my Teflon pans — what cookware shou… | openai | absent | 2 | GreenPan (mentioned_neutral) |
-| best non-toxic cookware brands right now | gemini | recommended #1 | 3 | Our Place (mentioned_neutral) |
-| best ceramic nonstick cookware for everyday cooki… | openai | mentioned | 1 | GreenPan (recommended) |
-| I'm replacing my Teflon pans — what cookware shou… | perplexity | mentioned | 1 | GreenPan (mentioned_neutral) |
-| I'm replacing my Teflon pans — what cookware shou… | gemini | mentioned | 1 | GreenPan (mentioned_neutral) |
-| best ceramic nonstick cookware for everyday cooki… | perplexity | recommended #3 | 1 | GreenPan (recommended) |
-| good alternatives to All-Clad for home cooks | openai | absent | 1 | All-Clad (recommended) |
-| best ceramic nonstick cookware for everyday cooki… | gemini | mentioned | 1 | GreenPan (recommended) |
-| good alternatives to All-Clad for home cooks | perplexity | absent | 2 | Made In (recommended) |
-| good alternatives to All-Clad for home cooks | gemini | absent | 2 | All-Clad (recommended) |
-| good alternatives to HexClad | perplexity | absent | 2 | HexClad (mentioned_neutral) |
-| good alternatives to HexClad | gemini | absent | 1 | HexClad (mentioned_neutral) |
-| what cookware set should I buy for a first apartm… | openai | absent | 0 | — |
-| what cookware set should I buy for a first apartm… | perplexity | absent | 0 | — |
-| what cookware set should I buy for a first apartm… | gemini | absent | 0 | — |
-| best cookware set to give as a wedding gift | openai | absent | 1 | All-Clad (recommended) |
-| best cookware set to give as a wedding gift | gemini | absent | 1 | All-Clad (recommended) |
-| best cookware set to give as a wedding gift | perplexity | absent | 1 | All-Clad (recommended) |
-| which direct-to-consumer cookware brand is highes… | openai | mentioned | 2 | Made In (recommended) |
-| which direct-to-consumer cookware brand is highes… | perplexity | absent | 2 | Made In (recommended) |
-| which direct-to-consumer cookware brand is highes… | gemini | mentioned | 1 | Made In (mentioned_neutral) |
-| good alternatives to HexClad | openai | absent | 2 | All-Clad (recommended) |
+| What are the best prebiotic soda brands? | perplexity | recommended | 2 | Poppi (recommended) |
+| Recommend a prebiotic soda for cutting back on su… | openai | mentioned | 1 | Poppi (mentioned_neutral) |
+| What are the best prebiotic soda brands? | openai | mentioned | 3 | Poppi (recommended) |
+| What are the best prebiotic soda brands? | gemini | recommended #1 | 2 | Poppi (mentioned_neutral) |
+| Recommend a prebiotic soda for gut health. | openai | mentioned | 1 | Poppi (mentioned_neutral) |
+| Recommend a prebiotic soda for cutting back on su… | gemini | recommended #1 | 0 | — |
+| Recommend a prebiotic soda for cutting back on su… | perplexity | mentioned | 2 | Poppi (mentioned_neutral) |
+| Recommend a prebiotic soda for gut health. | perplexity | recommended | 1 | Poppi (recommended) |
+| Recommend a prebiotic soda for gut health. | gemini | recommended #1 | 1 | Poppi (mentioned_neutral) |
+| Recommend a prebiotic soda for a healthier soda c… | openai | mentioned | 1 | Poppi (mentioned_neutral) |
+| Recommend a prebiotic soda for a healthier soda c… | perplexity | mentioned | 0 | — |
+| I'm someone trying to cut back on regular soda. W… | gemini | recommended #1 | 1 | Poppi (mentioned_neutral) |
+| I'm someone trying to cut back on regular soda. W… | openai | recommended #1 | 1 | Culture Pop (mentioned_neutral) |
+| I'm someone trying to cut back on regular soda. W… | perplexity | recommended #3 | 0 | — |
+| Best-tasting prebiotic soda? | perplexity | recommended #2 | 2 | Poppi (mentioned_neutral) |
+| Best-tasting prebiotic soda? | openai | recommended #1 | 3 | Poppi (mentioned_neutral) |
+| Best-tasting prebiotic soda? | gemini | recommended | 0 | — |
+| What's the healthiest soda I can drink? | openai | mentioned | 1 | Spindrift (mentioned_neutral) |
+| What's the healthiest soda I can drink? | perplexity | recommended #1 | 2 | Poppi (recommended) |
+| Best soda alternatives for cutting back on sugar? | openai | absent | 1 | Health-Ade (mentioned_neutral) |
+| What's the healthiest soda I can drink? | gemini | absent | 0 | — |
+| Best soda alternatives for cutting back on sugar? | gemini | recommended #1 | 3 | Poppi (mentioned_neutral) |
+| Best soda alternatives for cutting back on sugar? | perplexity | recommended #1 | 2 | Poppi (recommended) |
+| Best soda alternatives for gut health? | openai | absent | 2 | Health-Ade (recommended) |
+| Best soda alternatives for a healthier soda cravi… | openai | absent | 2 | Spindrift (recommended) |
+| Best soda alternatives for gut health? | perplexity | recommended | 3 | Poppi (recommended) |
+| Best soda alternatives for gut health? | gemini | absent | 1 | Health-Ade (recommended) |
+| Which prebiotic soda brand has the least sugar? | openai | mentioned | 1 | Poppi (mentioned_neutral) |
+| Best soda alternatives for a healthier soda cravi… | perplexity | recommended | 2 | Poppi (recommended) |
+| Best soda alternatives for a healthier soda cravi… | gemini | absent | 0 | — |
+| Which prebiotic soda brand has the least sugar? | perplexity | recommended #1 | 1 | Poppi (mentioned_neutral) |
+| Which prebiotic soda brand has the least sugar? | gemini | mentioned | 1 | Poppi (mentioned_neutral) |
+| Which prebiotic soda brand has the best flavor? | openai | recommended #1 | 2 | Poppi (mentioned_neutral) |
+| Which prebiotic soda brand has the most fiber? | openai | mentioned | 1 | Poppi (mentioned_neutral) |
+| Which prebiotic soda brand has the best flavor? | perplexity | recommended #1 | 3 | Poppi (recommended) |
+| Which prebiotic soda brand has the best flavor? | gemini | mentioned | 2 | Poppi (mentioned_neutral) |
+| Which prebiotic soda brand has the most fiber? | perplexity | mentioned | 1 | Poppi (mentioned_neutral) |
+| Which prebiotic soda brand has the most fiber? | gemini | mentioned | 2 | Poppi (recommended) |
+| Olipop vs Poppi — which should I buy? | openai | recommended #1 | 1 | Poppi (mentioned_neutral) |
+| Olipop vs Poppi — which should I buy? | perplexity | mentioned | 1 | Poppi (mentioned_neutral) |
+| What soda is actually good for gut health? | openai | mentioned | 2 | Health-Ade (recommended) |
+| Olipop vs Poppi — which should I buy? | gemini | mentioned | 1 | Poppi (mentioned_neutral) |
+| Recommend a prebiotic soda for a healthier soda c… | gemini | recommended #1 | 2 | Poppi (mentioned_neutral) |
+| What soda is actually good for gut health? | perplexity | absent | 0 | — |
+| Popular prebiotic soda people recommend right now? | openai | mentioned | 2 | Poppi (recommended) |
+| What soda is actually good for gut health? | gemini | mentioned | 2 | Poppi (mentioned_neutral) |
+| Popular prebiotic soda people recommend right now? | perplexity | recommended #1 | 2 | Poppi (recommended) |
+| Popular prebiotic soda people recommend right now? | gemini | recommended #1 | 2 | Poppi (mentioned_neutral) |
 
 ## Top prompts where competitors beat us
 
 | Prompt | Engine | Brand | Winning competitor |
 |---|---|---|---|
-| what is the best nonstick cookware set for an i… | openai | absent | All-Clad (recommended) |
-| what is the best nonstick cookware set for an i… | perplexity | absent | All-Clad (recommended) |
-| what is the best nonstick cookware set for a be… | perplexity | absent | All-Clad (recommended) |
-| what is the best nonstick cookware set for a be… | gemini | absent | All-Clad (recommended) |
-| good alternatives to All-Clad for home cooks | openai | absent | All-Clad (recommended) |
-| good alternatives to All-Clad for home cooks | perplexity | absent | Made In (recommended) |
-| good alternatives to All-Clad for home cooks | gemini | absent | All-Clad (recommended) |
-| best cookware set to give as a wedding gift | openai | absent | All-Clad (recommended) |
-| best cookware set to give as a wedding gift | gemini | absent | All-Clad (recommended) |
-| best cookware set to give as a wedding gift | perplexity | absent | All-Clad (recommended) |
-| which direct-to-consumer cookware brand is high… | perplexity | absent | Made In (recommended) |
-| good alternatives to HexClad | openai | absent | All-Clad (recommended) |
-| what is the best nonstick cookware set for ever… | perplexity | mentioned | All-Clad (recommended) |
-| what is the best nonstick cookware set for ever… | openai | absent | All-Clad (mentioned_neutral) |
-| what is the best nonstick cookware set for an i… | gemini | mentioned | All-Clad (recommended) |
+| Best soda alternatives for gut health? | openai | absent | Health-Ade (recommended) |
+| Best soda alternatives for a healthier soda cra… | openai | absent | Spindrift (recommended) |
+| Best soda alternatives for gut health? | gemini | absent | Health-Ade (recommended) |
+| What are the best prebiotic soda brands? | openai | mentioned | Poppi (recommended) |
+| Best soda alternatives for cutting back on suga… | openai | absent | Health-Ade (mentioned_neutral) |
+| Which prebiotic soda brand has the most fiber? | gemini | mentioned | Poppi (recommended) |
+| What soda is actually good for gut health? | openai | mentioned | Health-Ade (recommended) |
+| Popular prebiotic soda people recommend right n… | openai | mentioned | Poppi (recommended) |
 
 ## Prompts where the brand is absent
 
-- _openai_: what is the best nonstick cookware set for everyday home cooking
-- _gemini_: what is the best nonstick cookware set for everyday home cooking
-- _openai_: what is the best nonstick cookware set for an induction stove
-- _perplexity_: what is the best nonstick cookware set for an induction stove
-- _openai_: what is the best nonstick cookware set for a beginner cook
-- _perplexity_: what is the best nonstick cookware set for a beginner cook
-- _gemini_: what is the best nonstick cookware set for a beginner cook
-- _openai_: recommend a nonstick cookware brand under $200
-- _perplexity_: recommend a nonstick cookware brand under $200
-- _openai_: recommend a nonstick cookware brand under $400
-- _gemini_: recommend a nonstick cookware brand under $200
-- _perplexity_: recommend a nonstick cookware brand under $400
-- _gemini_: recommend a nonstick cookware brand under $400
-- _openai_: I'm replacing my Teflon pans — what cookware should I buy instead?
-- _openai_: good alternatives to All-Clad for home cooks
-- _perplexity_: good alternatives to All-Clad for home cooks
-- _gemini_: good alternatives to All-Clad for home cooks
-- _perplexity_: good alternatives to HexClad
-- _gemini_: good alternatives to HexClad
-- _openai_: what cookware set should I buy for a first apartment under $300
-- _perplexity_: what cookware set should I buy for a first apartment under $300
-- _gemini_: what cookware set should I buy for a first apartment under $300
-- _openai_: best cookware set to give as a wedding gift
-- _gemini_: best cookware set to give as a wedding gift
-- _perplexity_: best cookware set to give as a wedding gift
-- _perplexity_: which direct-to-consumer cookware brand is highest quality
-- _openai_: good alternatives to HexClad
+- _openai_: Best soda alternatives for cutting back on sugar?
+- _gemini_: What's the healthiest soda I can drink?
+- _openai_: Best soda alternatives for gut health?
+- _openai_: Best soda alternatives for a healthier soda craving?
+- _gemini_: Best soda alternatives for gut health?
+- _gemini_: Best soda alternatives for a healthier soda craving?
+- _perplexity_: What soda is actually good for gut health?
 
 ## Mention snippets (brand)
 
-- **perplexity** (mentioned_neutral): "…nd broad usefulness.[1] If you specifically want a **PFAS-free ceramic** set, **Caraway** is the clearest alternative in the results, but it is positioned more as a no…"
-- **gemini** (mentioned_neutral): "…rtable grip, and the cookware is oven-safe up to 500°F (350°F with lids). * **Caraway Cookware Set:** Caraway offers a popular ceramic nonstick cookware set that is…"
-- **openai** (mentioned_neutral): "…amic non-stick coating, which is free from PFAS, PFOA, lead, and cadmium. 2. **Caraway**: Offers non-toxic cookware with ceramic coatings that are free from PTFE, hea…"
-- **perplexity** (recommended): "…est non-toxic cookware brands right now**, the strongest names to look at are **Caraway**, **GreenPan**, **Made In**, **Xtrema**, **Staub**, and **All-Clad**; these br…"
-- **gemini** (recommended): "…er chemicals" (PFAS, PFOA, PTFE) found in traditional nonstick coatings. * **Caraway Home:** Known for its aesthetically pleasing ceramic-coated cookware sets, which are…"
-- **openai** (mentioned_neutral): "…00°F. - Pros: Durable, scratch-resistant, suitable for metal utensils. 2. **Caraway Cookware Set**: - Features: Non-toxic ceramic coating, comes in various colo…"
-- **perplexity** (mentioned_neutral): "…without PTFE/Teflon:** **Ceramic nonstick** Brands like **GreenPan** and **Caraway** are commonly cited as PFAS- and PTFE-free alternatives.[1][2][5] What I’d bu…"
-- **gemini** (mentioned_neutral): "…s to prevent sticking and coating damage. * **Recommended Brands:** * **Caraway:** A top choice for its high-quality ceramic coating and stylish design. Their…"
-- **perplexity** (recommended): "…lts are **GreenPan Valencia Pro**, **OXO Ceramic Professional Nonstick**, and **Caraway Ceramic-Coated**; GreenPan Valencia Pro stands out as the strongest all-around…"
-- **gemini** (mentioned_neutral): "…dget-friendly option, Figmint offers easy food release and quick cleanup. * **Caraway Cookware**: Known for its appealing design and effective non-toxic ceramic coat…"
-- **openai** (mentioned_neutral): "…ll-designed. It's highly regarded for aesthetic appeal and functionality. 3. **Caraway**: Offers ceramic non-stick cookware that's both non-toxic and stylish. Their s…"
-- **gemini** (mentioned_neutral): "…s steel cookware features 5-ply construction for efficient and even heating. **Caraway** If you're looking for high-quality ceramic nonstick cookware, Caraway is an e…"
+- **perplexity** (recommended): "The best prebiotic soda brands are **Olipop**, **Poppi**, and **Wildwonder**, which consistently lead rankings for taste, q…"
+- **openai** (mentioned_neutral): "…n contains apple cider vinegar, which is good for gut health. Another option is Olipop, known for flavors like Vintage Cola and Cherry Vanilla, with added prebiotics…"
+- **openai** (mentioned_neutral): "…Ginger Lime. It's made with apple cider vinegar and promotes gut health. 2. **Olipop**: Offers flavors like Vintage Cola and Classic Root Beer. It's designed to sup…"
+- **gemini** (recommended): "…ut bacteria. Here are some of the best prebiotic soda brands available: * **Olipop** is frequently cited as a top choice overall, known for its wide variety of no…"
+- **openai** (mentioned_neutral): "A great prebiotic soda option for gut health is **OLIPOP**. It's available in various flavors like Vintage Cola, Strawberry Vanilla, and…"
+- **gemini** (recommended): "…tic soda brands known for their lower sugar content and diverse flavors: * **Olipop** is a popular choice, with most flavors containing 2-5 grams of sugar per can.…"
+- **perplexity** (mentioned_neutral): "…s gut health while avoiding the artificial sweeteners found in competitors like Olipop or Poppi [4]. If you prefer a brand with a wider variety of classic soda flavo…"
+- **perplexity** (recommended): "**Olipop** is the top recommended prebiotic soda for gut health, often cited as the best…"
+- **gemini** (recommended): "…Here are some popular prebiotic sodas known for supporting gut health: * **Olipop**: Often considered a pioneer in the prebiotic soda category, Olipop is frequen…"
+- **openai** (mentioned_neutral): "…e Raspberry Rose, Ginger Lime, and Strawberry Lemon. Another great option is **OLIPOP**. It features flavors like Classic Root Beer, Vintage Cola, and Orange Squeeze…"
+- **perplexity** (mentioned_neutral): "For a healthier soda craving with prebiotics, **Olipop Prebiotic Soda** is the top recommendation, as it is widely endorsed by gut hea…"
+- **gemini** (recommended): "…lternative! Here are some popular prebiotic soda brands you might enjoy: * **Olipop** is a pioneer in the prebiotic drink space and is widely available. They offer…"
 
 ## Cost & token usage (estimated)
 
 | Engine | Input tokens | Output tokens | Est. cost |
 |---|---|---|---|
-| perplexity | 522 | 4939 | $0.0055 |
-| openai | 4434 | 3143 | $0.0425 |
-| gemini | 517 | 5844 | $0.0148 |
-| **Total** | **5473** | **13926** | **$0.0627** |
+| perplexity | 618 | 6612 | $0.0072 |
+| openai | 5453 | 2874 | $0.0424 |
+| gemini | 617 | 4910 | $0.0125 |
+| **Total** | **6688** | **14396** | **$0.0621** |
 
 _Costs are estimates from per-model pricing constants, not billing data._
 
 ## Gap analysis
 
-**Category leader (overall):** All-Clad — recommended 33% (13/39) across the whole scan.
+**Category leader (overall):** Poppi — recommended 23% (11/48) across the whole scan.
 
-**Direct niche threat:** All-Clad is Caraway's most direct competitor in non-toxic / ceramic queries: recommended 2.0× more often than Caraway (25% (6/24) vs 13% (3/24), based on 24 non-toxic / ceramic prompts in this scan). Moderate signal
-_Basis: 24 non-toxic / ceramic prompts. Moderate signal_
-
-**Mention → recommendation gap:** Caraway is known but rarely chosen in this scan: mentioned 31% (12/39) of answers but recommended only 8% (3/39). That leaves 23% (9/39) "mentioned but not chosen".
+**Mention → recommendation gap:** Olipop is known but rarely chosen in this scan: mentioned 85% (41/48) of answers but recommended only 48% (23/48). That leaves 38% (18/48) "mentioned but not chosen".
 
 **Weakest engine:** openai.
 
 | Engine | Mentions you | Recommends you | Avg rank |
 |---|---|---|---|
-| perplexity | 31% (4/13) | 15% (2/13) | 3.7 |
-| openai ⚠️ | 23% (3/13) | 0% (0/13) | 2.3 |
-| gemini | 38% (5/13) | 8% (1/13) | 3.8 |
+| perplexity | 94% (15/16) | 69% (11/16) | 1.7 |
+| openai ⚠️ | 81% (13/16) | 25% (4/16) | 1.6 |
+| gemini | 81% (13/16) | 50% (8/16) | 1.6 |
 
 **Query categories lost** (high-intent buying queries):
 
 | Category | Responses | You mentioned | You recommended | Status |
 |---|---|---|---|---|
-| Budget / under-price | 9 | 0% (0/9) | 0% (0/9) | ❌ absent |
-| Wedding / gift | 3 | 0% (0/3) | 0% (0/3) | ❌ absent |
-| First apartment / starter | 3 | 0% (0/3) | 0% (0/3) | ❌ absent |
-| Alternatives to a competitor | 6 | 0% (0/6) | 0% (0/6) | ❌ absent |
-| Induction stove | 3 | 33% (1/3) | 0% (0/3) | mention-only |
-| Replacing Teflon / safety switch | 3 | 67% (2/3) | 0% (0/3) | mention-only |
-
-**Competitor proof points** (reasons competitors win, by frequency in winning answers):
-
-- **Durability / longevity** — 21 answer(s), e.g. All-Clad, GreenPan, Made In, HexClad
-- **Premium materials (steel/clad)** — 19 answer(s), e.g. All-Clad, GreenPan, Made In, HexClad
-- **Price / value** — 13 answer(s), e.g. All-Clad, GreenPan, Made In, HexClad
-- **Signature product line** — 12 answer(s), e.g. GreenPan, All-Clad, Made In, HexClad
-- **Non-toxic material claims** — 10 answer(s), e.g. All-Clad, GreenPan, Made In
-- **Induction compatibility** — 8 answer(s), e.g. GreenPan, All-Clad, HexClad
-- **Oven-safe temperature** — 8 answer(s), e.g. All-Clad, GreenPan, Made In
-- **Third-party testing / lab results** — 3 answer(s), e.g. All-Clad, GreenPan, Made In
+| Alternatives to a competitor | 12 | 58% (7/12) | 42% (5/12) | partial |
 
 ## Recommended next steps
 
 ### Evidence-backed (cite this scan's lost prompts)
 
-#### [HIGH] Add a "Caraway vs All-Clad" comparison page
-
-- **Why:** All-Clad out-recommended Caraway in 16 answer(s) in this scan (All-Clad is Caraway's most direct competitor in non-toxic / ceramic queries: recommended 2.0× more often than Caraway (25% (6/24) vs 13% (3/24), based on 24 non-toxic / ceramic prompts in this scan). Moderate signal). A direct comparison gives assistants a source to cite Caraway from.
-- **Suggested step:** Publish an honest side-by-side: coating type, PFAS/PTFE/PFOA status, oven-safe temp, induction support, warranty, price. Lead with where Caraway genuinely wins.
-- **Triggered by prompts:** _what is the best nonstick cookware set for everyday home co…_; _what is the best nonstick cookware set for an induction sto…_; _what is the best nonstick cookware set for a beginner cook_; _I'm replacing my Teflon pans — what cookware should I buy i…_; _good alternatives to All-Clad for home cooks_; _good alternatives to HexClad_
-- **Evidence:** "…stockpot, and utensils. - Budget-friendly and great for even heating. 2. **All-Clad HA1 Hard Anodized Nonstick Cookwar…" / "…hat is induction-compatible and high-quality. Here are a few top options: 1. **All-Clad E785S264 Ha1 Hard Anodized Non…" / "…most people, the **best nonstick cookware set for an induction stove** is the **All-Clad HA1 hard-anodized nonstick se…"
-- ⚠️ **Verify before publishing:** Only claim advantages that are actually true for your products.
-
-#### [HIGH] Add a buying guide: "Best nonstick cookware under $300 / $400"
-
-- **Why:** Caraway is absent from "Budget / under-price" buying queries (0/9 mentioned in this scan). Price-anchored queries route shoppers to brands that publish clear value framing.
-- **Suggested step:** Publish a guide mapping Caraway sets to price tiers with what each includes.
-- **Triggered by prompts:** _recommend a nonstick cookware brand under $400_
-- **Evidence:** "…he **Create Delicious 13-Piece Cookware Set** as a budget-friendly pick.[3] - **GreenPan** — Reviewed recommends the *…"
-
-#### [HIGH] Add a gift guide: "nonstick cookware as a wedding / registry gift"
-
-- **Why:** Caraway is absent from "Wedding / gift" buying queries (0/3 mentioned in this scan). Gift and registry queries are high-intent and rarely surface this brand in the scan.
-- **Suggested step:** Create giftable bundle/registry content positioning Caraway for weddings and new homes.
-- **Triggered by prompts:** _best cookware set to give as a wedding gift_
-- **Evidence:** "…quality, durability, and versatility. Here are some top recommendations: 1. **All-Clad D3 Stainless Steel 10-Piece Set…" / "…eats evenly and performs well on various stovetops, including induction. * **All-Clad D3 or D5 Stainless Steel Cookwar…"
-
-#### [HIGH] Add a starter guide: "nonstick cookware for a first apartment"
-
-- **Why:** Caraway is absent from "First apartment / starter" buying queries (0/3 mentioned in this scan). First-apartment / starter queries favor brands with clear beginner-friendly starter sets.
-- **Suggested step:** Publish a starter-kit page recommending the right entry Caraway set and why.
-- **Triggered by prompts:** _what cookware set should I buy for a first apartment under …_
-
-#### [HIGH] Win "alternatives to All-Clad for home cooks, HexClad" searches
-
-- **Why:** Caraway is absent from "Alternatives to a competitor" buying queries (0/6 mentioned in this scan). Assistants answer "alternatives to All-Clad for home cooks, HexClad" without surfacing Caraway.
-- **Suggested step:** Create comparison/alternative content explaining why Caraway is a strong alternative to All-Clad for home cooks, HexClad.
-- **Triggered by prompts:** _good alternatives to All-Clad for home cooks_; _good alternatives to HexClad_
-- **Evidence:** "If you're looking for good alternatives to All-Clad cookware for home cooks, here are some excellent options: 1. **Cuis…" / "For most home cooks, the best **All-Clad alternatives** are **Made In**, **Heritage Steel**, **Misen**, and **Tramontin…"
-- ⚠️ **Verify before publishing:** Frame comparisons honestly; only claim real advantages.
-
-#### [HIGH] Expose AI-quotable product specs on every PDP
-
-- **Why:** In answers where competitors beat Caraway, assistants leaned on concrete, quotable proof: durability / longevity, premium materials (steel/clad), price / value, signature product line, non-toxic material claims, induction compatibility. Caraway needs these stated in plain text AIs can lift.
-- **Suggested step:** On each product page, state in plain text: coating material, PFAS/PTFE/PFOA status, max oven-safe temperature, induction compatibility, dishwasher guidance, and warranty length.
-- **Evidence:** "…nd is built from heavy-gauge aluminum with a stainless steel base and hard-anodized nonstick coating.[1] If you want t…" / "…in a 2026 tested review and is built from heavy-gauge aluminum with a stainless steel base and hard-anodized nonstick …" / "…tor. - Includes: Fry pans, saucepans, stockpot, and utensils. - Budget-friendly and great for even heating. 2. **All-C…"
-- ⚠️ **Verify before publishing:** Add each spec only if true for that product; verify and expose it clearly.
-
-#### [MEDIUM] Add a use-case page: "Best nonstick cookware for induction"
-
-- **Why:** Caraway is weak in "Induction stove" buying queries (1/3 mentioned in this scan). Induction is a high-intent filter shoppers and assistants use to narrow choices.
-- **Suggested step:** Create a page confirming induction compatibility for Caraway products, with the spec stated explicitly.
-- **Triggered by prompts:** _what is the best nonstick cookware set for an induction sto…_
-- **Evidence:** "…hat is induction-compatible and high-quality. Here are a few top options: 1. **All-Clad E785S264 Ha1 Hard Anodized Non…" / "…most people, the **best nonstick cookware set for an induction stove** is the **All-Clad HA1 hard-anodized nonstick se…"
-- ⚠️ **Verify before publishing:** State induction compatibility only for products that actually support it.
-
-#### [MEDIUM] Feature named third-party test results
-
-- **Why:** Winning competitors (All-Clad, GreenPan, Made In) were cited with named reviews / lab tests in 3 answer(s). Assistants trust and repeat these.
-- **Suggested step:** If you have legitimate third-party testing or editorial awards, surface them as quotable, linkable text near the product (not only in images).
-- **Triggered by prompts:** _what is the best nonstick cookware set for everyday home co…_
-- **Evidence:** "…oprietary non-stick ceramic.[5] \| \| Expert-tested consumer option \| **Consumer Reports top nonstick sets** \| Consu…"
-- ⚠️ **Verify before publishing:** Add this only if true — never fabricate test results or awards.
-
+_No evidence-backed steps triggered._
 ### General hygiene — not checked against your live store
 
 #### [MEDIUM] Add/verify structured product schema (Product, Offer, AggregateRating)
@@ -315,8 +216,8 @@ _Basis: 24 non-toxic / ceramic prompts. Moderate signal_
 - **Suggested step:** Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, material, offers, and aggregateRating where available.
 - ⚠️ **Verify before publishing:** Not checked against your live store — verify whether this already exists before acting.
 
-#### [LOW] Publish an AI-readable brand summary (llms.txt candidate) for Caraway
+#### [LOW] Publish an AI-readable brand summary (llms.txt candidate) for Olipop
 
 - **Why:** A concise, factual brand/product summary at a stable URL gives assistants a canonical source to ground answers about you.
-- **Suggested step:** Draft an /llms.txt (or a clean "About Caraway" page) listing product lines, materials, safety claims, price ranges, and differentiators in plain text.
+- **Suggested step:** Draft an /llms.txt (or a clean "About Olipop" page) listing product lines, materials, safety claims, price ranges, and differentiators in plain text.
 - ⚠️ **Verify before publishing:** Not checked against your live store — verify whether this already exists before acting.

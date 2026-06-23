@@ -60,82 +60,82 @@ const p = (successes: number, n: number): Proportion => {
 };
 
 export const DEMO = {
-  shop: "caraway-demo.myshopify.com",
-  brand: "Caraway",
-  category: "non-toxic ceramic cookware",
+  shop: "olipop-demo.myshopify.com",
+  brand: "Olipop",
+  category: "prebiotic soda",
 
   dashboard: {
-    score: 41, // /100 AI visibility score
-    recommendationRate: p(3, 60),
-    mentionRate: p(20, 60),
+    score: 67, // /100 AI visibility score (real scan, 2026-06-23)
+    recommendationRate: p(23, 48),
+    mentionRate: p(41, 48),
     shareOfVoice: [
-      { key: "All-Clad", share: 0.31 },
-      { key: "GreenPan", share: 0.24 },
-      { key: "Caraway", share: 0.12 },
-      { key: "Our Place", share: 0.10 },
+      { key: "Olipop", share: 0.48 },
+      { key: "Poppi", share: 0.23 },
+      { key: "Health-Ade", share: 0.06 },
+      { key: "Culture Pop", share: 0.02 },
     ],
     weakestEngine: "ChatGPT",
-    topThreat: "GreenPan",
-    lastRunAt: "2026-06-20T15:00:00Z",
-    openFindings: 5,
-    pendingFixes: 3,
+    topThreat: "Poppi",
+    lastRunAt: "2026-06-22T15:00:00Z",
+    openFindings: 4,
+    pendingFixes: 2,
     openAlerts: 1,
   },
 
   findings: <AppFindingRow[]>[
     {
       id: 1, kind: "evidence_backed", signal: "reviews", intent: "comparison",
-      prompt_text: "best ceramic non-toxic sauté pan?", engine: "openai", winning_competitor: "GreenPan",
-      ai_answer_snippet: "For non-toxic ceramic, GreenPan's Valencia Pro is the top pick — it's been tested by America's Test Kitchen and has thousands of strong reviews.",
-      citations: ["https://greenpan.us/products/valencia-pro", "https://www.americastestkitchen.com/reviews"],
+      prompt_text: "What are the best prebiotic soda brands?", engine: "openai", winning_competitor: "Poppi",
+      ai_answer_snippet: "Poppi is a standout in the category — it's heavily reviewed, leans into bold fruit-forward flavors, and is frequently called out for taste.",
+      citations: ["https://drinkpoppi.com", "https://www.healthline.com/nutrition/prebiotic-soda"],
       merchant_gap: ["No review count / rating in structured data (AggregateRating)"],
-      competitor_advantage: ["Exposes 3,284 reviews at 4.7★ in AggregateRating schema"],
-      confidence_level: "moderate", basis_n: 8,
-      limits: "Based on 8 lost responses in this scan. AI answers vary run-to-run, and a competitor exposing this signal is correlation, not proof of cause. Verify the effect with a follow-up benchmark.",
+      competitor_advantage: ["Poppi exposes review counts + average rating in machine-readable schema"],
+      confidence_level: "moderate", basis_n: 9,
+      limits: "Based on 9 ChatGPT answers in this scan where Poppi was chosen over you. AI answers vary run-to-run, and a competitor exposing this signal is correlation, not proof of cause. Verify with a follow-up benchmark.",
       recommended_intervention: "Publish Product + AggregateRating JSON-LD reflecting your real, verifiable review counts and average rating.",
-      expected_mechanism: "Assistants frequently cite ratings and review volume as a decision factor and preferentially draw from pages that expose them in machine-readable schema. Making your real review data visible MAY raise the chance you're surfaced and cited. Mechanism, not a guarantee.",
+      expected_mechanism: "Assistants frequently cite ratings and review volume as a decision factor and preferentially draw from pages that expose them in machine-readable schema. Making your real review data visible MAY raise the chance ChatGPT surfaces and recommends you. Mechanism, not a guarantee.",
     },
     {
-      id: 2, kind: "evidence_backed", signal: "shipping", intent: "budget",
-      prompt_text: "non-toxic cookware set with free shipping under $400?", engine: "perplexity", winning_competitor: "Our Place",
-      ai_answer_snippet: "Our Place's Always Pan set ships free and falls under $400, making it an easy recommendation here.",
-      citations: ["https://fromourplace.com/products/always-pan"],
-      merchant_gap: ["Shipping terms are not in the Offer (no shippingDetails)"],
-      competitor_advantage: ["Declares free shipping in OfferShippingDetails"],
-      confidence_level: "directional", basis_n: 4,
-      limits: "Based on 4 lost responses in this scan; treat as a directional hypothesis and re-verify.",
-      recommended_intervention: "Add OfferShippingDetails to your Offer schema so shipping cost/speed is machine-readable.",
-      expected_mechanism: "Buyer-intent answers often compare shipping; assistants can only weigh terms they can read. Structuring yours MAY make you eligible for shipping-sensitive answers — a mechanism to test, not a promised lift.",
+      id: 2, kind: "evidence_backed", signal: "health_claims", intent: "use_case",
+      prompt_text: "What's the healthiest soda I can drink?", engine: "openai", winning_competitor: "Health-Ade",
+      ai_answer_snippet: "For gut health, options like Health-Ade and Poppi often come up for their probiotic/prebiotic positioning and clearly stated benefits.",
+      citations: ["https://health-ade.com", "https://www.eatingwell.com"],
+      merchant_gap: ["Prebiotic fiber + nutrition facts aren't in structured data; health framing is thin on the indexed page"],
+      competitor_advantage: ["Competitors state the health benefit prominently on indexable pages"],
+      confidence_level: "directional", basis_n: 5,
+      limits: "Based on 5 health-intent answers in this scan; treat as a directional hypothesis and re-verify.",
+      recommended_intervention: "Surface your prebiotic-fiber content + nutrition facts in structured data and clear on-page copy.",
+      expected_mechanism: "Health-intent answers weigh benefits the assistant can read. Making yours explicit + machine-readable MAY make you eligible for ‘healthiest soda’ answers — a mechanism to test, not a promised lift.",
     },
     {
       id: 3, kind: "general_hygiene", signal: "indexable", intent: null, prompt_text: null, engine: null,
       winning_competitor: null, ai_answer_snippet: null, citations: [],
-      merchant_gap: ["Product page is set to noindex (excluded from indexing)"],
+      merchant_gap: ["Several flavor pages have no Product structured data"],
       competitor_advantage: [],
       confidence_level: "directional", basis_n: 0,
       limits: "General readiness item, not checked against a specific lost query. Best practice for machine readability.",
-      recommended_intervention: "Remove the noindex directive so the product page can be indexed and retrieved.",
-      expected_mechanism: "Content excluded from indexing generally cannot be retrieved or cited by assistants that rely on indexed sources. Necessary, though not on its own sufficient.",
+      recommended_intervention: "Add Product JSON-LD to each flavor page (name, brand, offers, identifiers).",
+      expected_mechanism: "Structured product data is the most machine-readable form of your catalog; assistants preferentially draw from pages that expose it. Necessary, though not on its own sufficient.",
     },
   ],
 
   proposals: <AppProposalRow[]>[
     {
       id: 11, kind: "write_products", target: "seo.description", label: "Backfill the SEO description from the product description",
-      current_value: null, proposed_value: "Caraway non-toxic ceramic sauté pan — naturally slick, PTFE & PFAS-free coating, oven-safe to 550°F.",
+      current_value: null, proposed_value: "Olipop Vintage Cola — a prebiotic soda with plant fiber and botanicals, just 2–3g sugar, classic cola taste.",
       rationale: "The SEO description is empty; it's a primary machine-readable summary. This only reuses your existing product description.",
       status: "proposed", evidence: { mechanism: "Exposes a clean machine-readable summary assistants and search can quote." },
     },
     {
       id: 12, kind: "copy_ready", target: "jsonld:Product", label: "Add Product structured data (built from your catalog)",
-      current_value: null, proposed_value: '<script type="application/ld+json">\n{\n  "@context": "https://schema.org",\n  "@type": "Product",\n  "name": "Ceramic Sauté Pan",\n  "brand": { "@type": "Brand", "name": "Caraway" }\n}\n</script>',
-      rationale: "Add Product JSON-LD (name, brand, offers, identifiers) to the product page.",
+      current_value: null, proposed_value: '<script type="application/ld+json">\n{\n  "@context": "https://schema.org",\n  "@type": "Product",\n  "name": "Olipop Vintage Cola",\n  "brand": { "@type": "Brand", "name": "Olipop" }\n}\n</script>',
+      rationale: "Add Product JSON-LD (name, brand, offers, identifiers) to the flavor page.",
       status: "proposed", evidence: { mechanism: "Structured product data is the most machine-readable form of your catalog." },
     },
     {
       id: 13, kind: "copy_ready", target: "guidance:reviews", label: "Add review structured data (fill in your REAL counts)",
       current_value: null, proposed_value: '"aggregateRating": {\n  "@type": "AggregateRating",\n  "ratingValue": "<YOUR_AVERAGE_RATING>",\n  "reviewCount": "<YOUR_REVIEW_COUNT>"\n}',
-      rationale: "Publish AggregateRating reflecting your real, verifiable review counts.",
+      rationale: "Publish AggregateRating reflecting your real, verifiable review counts — the signal Poppi wins on in ChatGPT.",
       status: "applied", evidence: { mechanism: "Assistants cite ratings/volume as a decision factor." },
     },
   ],
@@ -144,12 +144,12 @@ export const DEMO = {
     {
       id: 21, verdict: "improved", primary_metric: "recommendationRate", verification_run_id: 142,
       result: {
-        primary: { metric: "recommendationRate", baseline: p(3, 60), current: p(11, 60), diff: 0.133, diffCiLow: 0.04, diffCiHigh: 0.23, verdict: "improved" },
+        primary: { metric: "recommendationRate", baseline: p(23, 48), current: p(33, 48), diff: 0.21, diffCiLow: 0.02, diffCiHigh: 0.39, verdict: "improved" },
         secondary: [
-          { metric: "mentionRate", baseline: p(20, 60), current: p(28, 60), verdict: "inconclusive" },
-          { metric: "topChoiceRate", baseline: p(1, 60), current: p(4, 60), verdict: "inconclusive" },
+          { metric: "mentionRate", baseline: p(41, 48), current: p(43, 48), verdict: "inconclusive" },
+          { metric: "topChoiceRate", baseline: p(9, 48), current: p(15, 48), verdict: "inconclusive" },
         ],
-        comparability: [{ code: "low_power", message: "Small sample (n=60 on the primary metric). At this size only a large effect is detectable." }],
+        comparability: [{ code: "low_power", message: "Small sample (n=48 on the primary metric). At this size only a large effect is detectable." }],
         caveats: [
           "Association, not proof: a change measured alongside your intervention is not causal evidence. Confounders (assistant model updates, retrieval/index refreshes, competitor changes, run-to-run variance) can move these numbers on their own.",
           "The measured increase on recommendationRate is the best estimate from this pair; the true effect lies within the reported CI and should be re-confirmed on a later run before being treated as durable.",
@@ -159,9 +159,9 @@ export const DEMO = {
     {
       id: 22, verdict: "inconclusive", primary_metric: "recommendationRate", verification_run_id: 151,
       result: {
-        primary: { metric: "recommendationRate", baseline: p(11, 60), current: p(12, 60), diff: 0.017, diffCiLow: -0.11, diffCiHigh: 0.14, verdict: "inconclusive" },
-        secondary: [{ metric: "mentionRate", baseline: p(28, 60), current: p(29, 60), verdict: "inconclusive" }],
-        comparability: [{ code: "low_power", message: "Small sample (n=60). An 'inconclusive' result likely reflects low power, not a confirmed null." }],
+        primary: { metric: "recommendationRate", baseline: p(33, 48), current: p(34, 48), diff: 0.02, diffCiLow: -0.16, diffCiHigh: 0.20, verdict: "inconclusive" },
+        secondary: [{ metric: "mentionRate", baseline: p(43, 48), current: p(43, 48), verdict: "inconclusive" }],
+        comparability: [{ code: "low_power", message: "Small sample (n=48). An 'inconclusive' result likely reflects low power, not a confirmed null." }],
         caveats: ['"Inconclusive" means no change was detectable at this sample size — NOT proof the intervention had no effect. Add prompts/repetitions for more power, then re-verify.'],
       },
     },
@@ -170,27 +170,27 @@ export const DEMO = {
   pendingExperiment: <AppExperimentRow>{
     id: 23, verdict: "pending", primary_metric: "recommendationRate", verification_run_id: null,
     result: {
-      primary: { metric: "recommendationRate", baseline: p(12, 60), current: p(0, 0), diff: null, diffCiLow: 0, diffCiHigh: 0, verdict: "pending" },
+      primary: { metric: "recommendationRate", baseline: p(34, 48), current: p(0, 0), diff: null, diffCiLow: 0, diffCiHigh: 0, verdict: "pending" },
       secondary: [], comparability: [], caveats: [],
     },
   },
 
   schedules: <AppScheduleRow[]>[
-    { id: 31, kind: "benchmark", cadence: "weekly", enabled: true, next_run_at: "2026-06-28T15:00:00Z", last_run_at: "2026-06-21T15:00:00Z" },
+    { id: 31, kind: "benchmark", cadence: "weekly", enabled: true, next_run_at: "2026-06-29T15:00:00Z", last_run_at: "2026-06-22T15:00:00Z" },
   ],
 
   alerts: <AppAlertRow[]>[
     {
-      id: 41, type: "competitor_overtake", severity: "warning", metric: "shareOfVoice",
-      title: "All-Clad overtook you in share of voice",
-      detail: "You led share of voice in the use-case cohort last run; this run All-Clad leads. Share of voice is recommendation-weighted and varies between runs — corroborate before acting.",
-      status: "open", created_at: "2026-06-21T15:05:00Z",
+      id: 41, type: "threshold", severity: "warning", metric: "recommendationRate",
+      title: "ChatGPT recommends Olipop only 25% of the time",
+      detail: "Perplexity recommends you 69% and Gemini 50%, but ChatGPT just 25% — your biggest engine gap. Engine results vary run-to-run; corroborate before acting.",
+      status: "open", created_at: "2026-06-22T15:05:00Z",
     },
   ],
 
   runs: <AppRunRow[]>[
-    { id: 142, tier: "monitoring", status: "completed", observation_count: 86, cost_usd: 0.04, prompt_count: 12, started_at: "2026-06-21T15:00:00Z" },
-    { id: 131, tier: "monitoring", status: "completed", observation_count: 84, cost_usd: 0.04, prompt_count: 12, started_at: "2026-06-14T15:00:00Z" },
+    { id: 142, tier: "monitoring", status: "completed", observation_count: 240, cost_usd: 0.06, prompt_count: 16, started_at: "2026-06-22T15:00:00Z" },
+    { id: 131, tier: "monitoring", status: "completed", observation_count: 234, cost_usd: 0.06, prompt_count: 16, started_at: "2026-06-15T15:00:00Z" },
   ],
 
   billing: <AppBilling>{
@@ -212,12 +212,12 @@ export const DEMO = {
   },
 
   catalog: {
-    total: 7, lastSyncAt: "2026-06-21T14:50:00Z",
+    total: 8, lastSyncAt: "2026-06-22T14:50:00Z",
     products: <AppProductRow[]>[
-      { product_gid: "gid://shopify/Product/1001", title: "Ceramic Sauté Pan", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: "Caraway Ceramic Sauté Pan", seo_description: null, variant_count: 4, metafield_count: 2 },
-      { product_gid: "gid://shopify/Product/1002", title: "Fry Pan", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 4, metafield_count: 1 },
-      { product_gid: "gid://shopify/Product/1003", title: "Dutch Oven", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: "Caraway Dutch Oven", seo_description: "Non-toxic enameled Dutch oven.", variant_count: 5, metafield_count: 3 },
-      { product_gid: "gid://shopify/Product/1004", title: "Cookware Set", vendor: "Caraway", product_type: "Cookware", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 6, metafield_count: 0 },
+      { product_gid: "gid://shopify/Product/1001", title: "Vintage Cola", vendor: "Olipop", product_type: "Prebiotic Soda", status: "ACTIVE", seo_title: "Olipop Vintage Cola", seo_description: null, variant_count: 2, metafield_count: 2 },
+      { product_gid: "gid://shopify/Product/1002", title: "Strawberry Vanilla", vendor: "Olipop", product_type: "Prebiotic Soda", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 2, metafield_count: 1 },
+      { product_gid: "gid://shopify/Product/1003", title: "Classic Root Beer", vendor: "Olipop", product_type: "Prebiotic Soda", status: "ACTIVE", seo_title: "Olipop Classic Root Beer", seo_description: "Prebiotic root beer with plant fiber, 2–3g sugar.", variant_count: 2, metafield_count: 3 },
+      { product_gid: "gid://shopify/Product/1004", title: "Cherry Cola", vendor: "Olipop", product_type: "Prebiotic Soda", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 2, metafield_count: 0 },
     ],
   },
 };

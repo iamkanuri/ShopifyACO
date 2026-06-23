@@ -1,0 +1,35 @@
+{
+  "brand": {
+    "name": "Olipop",
+    "storeUrl": "https://drinkolipop.com",
+    "aliases": ["OLIPOP", "Olipop", "Oli Pop"],
+    "products": ["Vintage Cola", "Classic Root Beer", "Strawberry Vanilla", "Cherry Cola"]
+  },
+  "category": "prebiotic soda",
+  "competitors": [
+    { "name": "Poppi", "storeUrl": "https://drinkpoppi.com", "aliases": ["Poppi", "Poppi Soda"] },
+    { "name": "Culture Pop", "storeUrl": "https://culturepopsoda.com", "aliases": ["Culture Pop"] },
+    { "name": "Health-Ade", "storeUrl": "https://health-ade.com", "aliases": ["Health-Ade", "Health Ade"] },
+    { "name": "Spindrift", "storeUrl": "https://spindriftfresh.com", "aliases": ["Spindrift"] }
+  ],
+  "buyerPersona": "someone trying to cut back on regular soda",
+  "priceRange": "",
+  "placeholderValues": {
+    "use_case": ["cutting back on sugar", "gut health", "a healthier soda craving"],
+    "feature": ["the least sugar", "the best flavor", "the most fiber"]
+  },
+  "promptTemplates": [
+    "What are the best {category} brands?",
+    "Recommend a {category} for {use_case}.",
+    "I'm {buyerPersona}. Which {category} should I try?",
+    "Best-tasting {category}?",
+    "What's the healthiest soda I can drink?",
+    "Best soda alternatives for {use_case}?",
+    "Which {category} brand has {feature}?",
+    "Olipop vs Poppi — which should I buy?",
+    "What soda is actually good for gut health?",
+    "Popular {category} people recommend right now?"
+  ],
+  "engines": ["openai", "gemini", "perplexity"],
+  "concurrency": 4
+}
