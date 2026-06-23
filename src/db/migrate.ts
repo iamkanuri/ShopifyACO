@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import pg from "pg";
 import { ENV } from "../server/env.js";
+import { pgSslConfig } from "./pg.js";
 
 // Owns the schema lifecycle. Runs every migrations/*.sql not yet applied, in
 // order, each in a transaction, tracked in schema_migrations. Idempotent — safe
@@ -24,7 +25,7 @@ async function main(): Promise<void> {
 
   const client = new pg.Client({
     connectionString: ENV.databaseUrl,
-    ssl: { rejectUnauthorized: false }, // Supabase requires SSL
+    ssl: pgSslConfig(ENV.databaseUrl), // SSL for cloud Supabase; off for a local dev Postgres
     connectionTimeoutMillis: 15_000, // fail fast instead of hanging the boot
   });
 

@@ -496,12 +496,17 @@ token palette. Preview-verified (vite) end-to-end with zero console errors.
 
 **Phase 12 status: core authenticated IA built + preview-verified; demoable now via fixtures.**
 
-### Phase 13 — Security, privacy & quality ⬜ (continuous)
-> **Known item — dev/prod DB isolation:** local dev shares the production Supabase project,
-> so local **live** runs write into prod tables (`benchmark_runs`/`spend_days`/…) and show up in
-> prod `/healthz` + count against the prod spend cap (observed 2026-06-21: a $0.0439 local
-> benchmark run appeared as prod `spendTodayDbUsd`). Fix = a separate dev/staging Supabase
-> (LAUNCH_CHECKLIST §11). Until then, run local work in mock mode ($0, no costly prod-DB writes).
+### Phase 13 — Security, privacy & quality 🟡 (continuous; hardening increments shipped)
+> **✅ dev/prod DB isolation — DONE 2026-06-22.** Local dev now runs against a **local Supabase
+> stack** (CLI + Docker), so it no longer touches the production database. Prod stays on the
+> hosted project (Railway, unchanged); local `.env` → `127.0.0.1` (prod values preserved in the
+> gitignored `.env.prod.bak`). `pgSslConfig()` disables SSL for localhost only. All 17 migrations
+> applied locally + DB suite **145/145** against local. See LAUNCH_CHECKLIST §11.
+>
+> **Shipped hardening increments:** per-IP rate limit on `/app/api/*`; `/healthz/deep` error
+> redaction; `/api/events` metadata sanitizer; COOP + cross-domain headers; spoof-resistant
+> `clientIp()` (Railway `X-Envoy-External-Address`); embedded-app session-token verification
+> (`src/shopify/sessionToken.ts`) + dynamic per-shop `frame-ancestors`.
 Token encryption+rotation, OAuth state/HMAC, webhook verify/idempotency, shop isolation,
 CSRF, secure cookies/headers, rate limits, SSRF, prompt-injection, output schema validation,
 secret redaction, data export/deletion, compliance webhooks, audit logging, least privilege.
@@ -561,7 +566,8 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
    score/export); still needs OpenAI merchant approval + `FEED_DELIVERY_ENABLED=1` + a
    delivery endpoint to actually submit. Generating/exporting a feed never submits it.
 9. 🔒 Legal/support/data-deletion URLs for app review.
-10. ⏸️ Separate dev/prod Supabase (hygiene, LAUNCH_CHECKLIST §11) — intentionally skipped for now.
+10. ✅ Separate dev/prod database (LAUNCH_CHECKLIST §11) — **done 2026-06-22** via a local
+    Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
 - 2026-06-22 Phase 11 DEPLOY: migration `0017` applied to Supabase; full serial DB suite

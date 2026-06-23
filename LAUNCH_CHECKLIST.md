@@ -137,20 +137,26 @@ MODE**; going live needs KYC + an explicit go.
 - ☐ Test the install/uninstall/compliance-webhook flows on the dev store.
 - ☐ Submit the app for Shopify review.
 
-## 11. Separate dev and prod databases (Phase 13 — data isolation)
-**Why:** local/dev currently points `DATABASE_URL`/`SUPABASE_URL` at the SAME Supabase
-project as production, so a live test run on a laptop writes into prod's `benchmark_runs`/
-`spend_days`/etc. — dev activity then shows up in prod `/healthz` metrics and counts against
-the prod `DAILY_SPEND_CAP_USD`. (Observed 2026-06-21: a $0.0439 local benchmark verification
-run surfaced as prod `spendTodayDbUsd`.)
-- ☐ Create a **separate Supabase project** (or at minimum a separate database/branch) for dev/staging.
-- ☐ Point local `.env` `DATABASE_URL` + `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` at the dev project;
-  keep prod values only on the Railway service. Run `npm run migrate` against the dev project too.
-- ☐ Until then, treat any local **live** (non-mock) run as production data + spend, and prefer
-  `--mock` / `SHOPIFY_MODE=mock` / `CRAWLER_MODE=mock` locally (all $0, no prod-DB writes that cost).
-- Note: run the **DB-gated** test suite serially — `RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`
-  (`--test-concurrency=1`). The parallel `npm test` can exceed the shared Supabase pooler's
-  connection headroom and flake; `test:db` is deterministic. (Pure tests: plain `npm test`.)
+## 11. Separate dev and prod databases (Phase 13 — data isolation) — ✅ DONE 2026-06-22
+**Resolved via a local Supabase stack** (Supabase CLI + Docker), so local dev no longer
+touches the production database at all. Prod stays on the hosted Supabase project (Railway
+env, unchanged); local `.env` points at the local stack.
+- ☑ **Local stack:** `npx supabase init` + `npx supabase start` (Docker). Local `.env`:
+  `SUPABASE_URL=http://127.0.0.1:54321`, `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres`,
+  `SUPABASE_SERVICE_ROLE_KEY=<local demo key from \`npx supabase status\`>`. Prod values are
+  preserved locally in `.env.prod.bak` (gitignored) and remain authoritative on Railway.
+- ☑ `pgSslConfig()` (`src/db/pg.ts`, used by `pg.ts` + `migrate.ts`) auto-disables SSL for a
+  localhost DB (the local Postgres speaks plaintext); cloud connections keep SSL on — prod
+  behavior unchanged.
+- ☑ `npm run migrate` applied all 17 migrations to the fresh local DB; full DB-gated suite
+  **145/145** against local (`RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`).
+- **Day-to-day:** start the stack with `npx supabase start`, stop with `npx supabase stop`,
+  browse it at Studio `http://127.0.0.1:54323`. NOTE: our schema lives in `migrations/` +
+  `migrate.ts` (NOT the CLI's `supabase/migrations/`), so after a fresh `start` run
+  `npm run migrate` — don't rely on `supabase db reset`. The `supabase/` dir is gitignored.
+- To run something locally against PROD on purpose (rare), temporarily restore `.env.prod.bak`.
+- Note: run the **DB-gated** suite serially — `RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`
+  (`--test-concurrency=1`). (Pure tests: plain `npm test`.)
 
 ---
 Each phase's code checks for its env at boot and surfaces a clear not-configured state; see

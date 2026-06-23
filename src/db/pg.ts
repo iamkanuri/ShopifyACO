@@ -13,11 +13,23 @@ export function hasPg(): boolean {
   return Boolean(ENV.databaseUrl);
 }
 
+/**
+ * SSL config for a Postgres connection. Supabase **cloud** requires SSL, but a **local**
+ * dev Postgres (localhost — e.g. the Supabase CLI stack) speaks plaintext and rejects an
+ * SSL handshake. Detect localhost / `sslmode=disable` and turn SSL off there; everything
+ * else (prod) keeps SSL on. Lets dev point at a local DB without touching prod behavior.
+ */
+export function pgSslConfig(connectionString: string | undefined): false | { rejectUnauthorized: boolean } {
+  const s = (connectionString ?? "").toLowerCase();
+  const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(s) || s.includes("sslmode=disable");
+  return isLocal ? false : { rejectUnauthorized: false };
+}
+
 function getPool(): pg.Pool {
   if (!pool) {
     pool = new pg.Pool({
       connectionString: ENV.databaseUrl,
-      ssl: { rejectUnauthorized: false }, // Supabase requires SSL
+      ssl: pgSslConfig(ENV.databaseUrl),
       max: Number(process.env.PG_POOL_MAX ?? 8),
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 15_000,

@@ -18,6 +18,9 @@ runs/
 runs/leads.jsonl
 leads.jsonl
 
+# local Supabase CLI dev stack (we manage schema via migrations/ + migrate.ts, not the CLI)
+supabase/
+
 # logs / os
 *.log
 .DS_Store
