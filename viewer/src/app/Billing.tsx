@@ -30,6 +30,7 @@ export function Billing() {
   const b = useLoaded<AppBilling>(() => getBilling(), []);
   const [portalBusy, setPortalBusy] = useState(false);
   const [portalErr, setPortalErr] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null); // plan card the user clicked
   const data = b.data;
 
   async function manage() {
@@ -85,9 +86,18 @@ export function Billing() {
 
             <div className="section">
               <h2>Plans</h2>
+              {/* The ring follows the card you CLICK (selection feedback); the "Current"
+                  chip always marks the plan you're actually on. Default selection = current. */}
               <div className="grid al-plangrid">
-                {data.plans.map((pl) => (
-                  <div key={pl.id} className={`card al-plan2 ${pl.current ? "al-plan-current" : ""}`}>
+                {(() => { const ringId = picked ?? data.plans.find((p) => p.current)?.id; return data.plans.map((pl) => (
+                  <div
+                    key={pl.id}
+                    className={`card al-plan2 al-plan-pick ${pl.id === ringId ? "al-plan-current" : ""}`}
+                    onClick={() => setPicked(pl.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(pl.id); } }}
+                  >
                     <div className="al-plan2-name">{pl.name}{pl.current && <span className="al-demo" style={{ marginLeft: 6 }}>Current</span>}</div>
                     <div className="al-plan2-price">{pl.price}<span className="muted">{pl.cadence ? ` ${pl.cadence}` : ""}</span></div>
                     <p className="muted">{pl.blurb}</p>
@@ -101,7 +111,7 @@ export function Billing() {
                       <span className="muted al-fineprint">Checkout link not configured yet.</span>
                     )}
                   </div>
-                ))}
+                )); })()}
               </div>
             </div>
           </>

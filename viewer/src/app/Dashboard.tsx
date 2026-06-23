@@ -13,8 +13,15 @@ export function Dashboard({ demo }: { demo: boolean }) {
     <div>
       <div className="al-page-head">
         <div>
-          <h2>Dashboard <DemoBadge show={demo} /></h2>
-          <p className="muted">AI shopping visibility for <b>{DEMO.brand}</b> · {DEMO.category}</p>
+          <h2>Dashboard</h2>
+          {/* The dashboard numbers are still the Caraway SAMPLE (not yet wired to a live
+              store), so we label the example store prominently + always — never imply
+              these are the viewer's own results. Make this conditional once it's wired. */}
+          <p className="al-sample-line">
+            <span className="al-sample-tag">Sample</span>
+            Example store <b>{DEMO.brand}</b> · {DEMO.category} — a preview of your dashboard.{" "}
+            {demo && "Connect your store to see your own numbers."}
+          </p>
         </div>
         <Link to="/app/evidence" className="btn btn-primary">See why you're losing →</Link>
       </div>

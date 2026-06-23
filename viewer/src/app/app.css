@@ -25,6 +25,10 @@
 .al-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .al-page-head h2 { font-size: 22px; margin: 0 0 3px; letter-spacing: -0.01em; text-transform: none; color: var(--ink); }
 .al-page-head p { margin: 0; font-size: 13px; max-width: 620px; }
+/* prominent "this is sample data for <store>" line so the demo's subject is unmissable */
+.al-sample-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 680px; }
+.al-sample-line b { color: var(--ink); }
+.al-sample-tag { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--warn); background: var(--warn-soft); border: 1px solid rgba(203,163,92,0.3); padding: 3px 8px; border-radius: 999px; align-self: center; }
 .al-head-actions { display: flex; gap: 8px; flex: none; }
 
 .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
@@ -76,6 +80,7 @@
 .al-loopstep { display: flex; flex-direction: column; gap: 3px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); text-decoration: none; color: var(--ink); }
 .al-loopstep:hover { border-color: var(--ink-2); }
 .al-loopstep.cta { border-color: var(--border-strong); }
+.al-loopstep.cta:hover { border-color: var(--ink-2); } /* the cta border was overriding :hover */
 .al-loopstep-n { font-size: 11px; font-weight: 800; color: var(--ink-3); }
 .al-loopstep.done .al-loopstep-n { color: var(--good); }
 .al-loopstep-label { font-size: 14px; font-weight: 700; }
@@ -197,6 +202,8 @@
 
 /* billing */
 .al-plan-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.al-plan-pick { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.al-plan-pick:hover { border-color: var(--ink-2); }
 .al-plan-feats { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 5px; }
 .al-plan-feats li { font-size: 12px; color: var(--ink-2); padding-left: 16px; position: relative; }
 .al-plan-feats li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
