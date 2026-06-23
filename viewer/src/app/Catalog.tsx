@@ -2,6 +2,8 @@ import { useState } from "react";
 import { getCatalog, getCatalogStatus, syncCatalog } from "./appApi";
 import { DemoBadge, StatePane, useLoaded } from "./ui";
 
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // Catalog: the synced product data the benchmarks + fixes operate on. Reads are free
 // (Shopify Admin API), so syncing never spends money. We surface machine-readability
 // gaps (missing SEO) right here so the merchant sees what the diagnosis acts on.
@@ -10,14 +12,48 @@ export function Catalog() {
   const s = useLoaded(() => getCatalogStatus(), []);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [noteTone, setNoteTone] = useState<"ok" | "info" | "err">("info");
+  const say = (text: string, tone: "ok" | "info" | "err" = "info") => { setNote(text); setNoteTone(tone); };
   const products = c.data?.products ?? [];
+  const demo = c.demo; // showing sample data (no store connected)
+  const total = c.data?.total ?? products.length;
+
+  // Poll the status endpoint until the background sync reports done (bounded). Returns
+  // true if it completed, false if we gave up waiting (the worker is still finishing).
+  async function waitForSync(maxMs = 30_000): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      await delay(2000);
+      const st = await getCatalogStatus();
+      const status = st.data?.lastSync?.status;
+      if (status === "completed" || status === "failed") return true;
+    }
+    return false;
+  }
 
   async function sync() {
+    if (busy) return; // guard against spam-clicks while a sync is in flight
     setBusy(true); setNote("");
-    const r = await syncCatalog();
-    setBusy(false);
-    setNote(r.ok ? "Sync started — products refresh in the background." : r.error ?? "Connect your store to sync.");
-    if (r.ok) { c.reload(); s.reload(); }
+    try {
+      if (demo) {
+        // No real store connected — illustrate the capability on the sample catalog.
+        // Clearly a demo (the "Demo data" badge is right here); we never imply a real pull.
+        await delay(1500);
+        say(`Synced ${total} sample products · just now (demo)`, "ok");
+        return;
+      }
+      // Connected store → real pull. In prod the queue runs it in the background, so keep
+      // the button disabled and poll until it finishes instead of freeing up immediately.
+      say("Syncing your Shopify catalog…", "info");
+      const r = await syncCatalog();
+      if (!r.ok) { say(r.error ?? "Couldn't start the sync. Try again.", "err"); return; }
+      const queued = Boolean((r.data as { queued?: boolean } | undefined)?.queued);
+      const done = queued ? await waitForSync() : true; // inline runs already finished
+      c.reload(); s.reload();
+      say(done ? "Catalog synced." : "Sync is running — your products will refresh shortly.", done ? "ok" : "info");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const lastSync = s.data?.lastSync?.finished_at;
@@ -32,7 +68,7 @@ export function Catalog() {
         </div>
         <button className="btn" disabled={busy} onClick={sync}>{busy ? "Syncing…" : "Sync now"}</button>
       </div>
-      {note && <div className="al-note ok" style={{ marginBottom: 16 }}>{note}</div>}
+      {note && <div className={`al-note ${noteTone}`} style={{ marginBottom: 16 }}>{note}</div>}
 
       <StatePane loading={c.loading} empty={products.length === 0} emptyText="No products yet. Sync your Shopify catalog to begin.">
         <div className="card al-table-wrap">

@@ -124,6 +124,7 @@
 .al-note { font-size: 12.5px; padding: 8px 11px; border-radius: 8px; margin-top: 10px; }
 .al-note.ok { background: var(--good-soft); color: var(--good); }
 .al-note.err { background: var(--bad-soft); color: var(--bad); }
+.al-note.info { background: var(--surface-2); color: var(--ink-2); }
 
 /* experiments */
 .al-exp { padding: 18px; }
