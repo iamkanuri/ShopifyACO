@@ -5,10 +5,18 @@ import { countRunsByEmailToday, countRunsByIpToday, sumSpendTodayUsd } from "../
 
 // Abuse + spend protection. These are the deployment TODOs made real.
 
-// ---- client IP (Railway sits behind a proxy; trust X-Forwarded-For) --------
+// ---- client IP (spoof-resistant behind Railway's edge proxy) ---------------
+// Railway's edge (Envoy) sets X-Envoy-External-Address to the REAL external client IP —
+// a single, trusted value the client cannot forge (Envoy sanitizes inbound x-envoy-*
+// headers at the edge). Prefer it. Fall back to Express's proxy-aware req.ip, then the raw
+// socket (local dev). We deliberately do NOT trust the leftmost X-Forwarded-For entry: it
+// is client-controlled, so using it would let an attacker evade per-IP rate limits or
+// poison another visitor's abuse counts by forging the header. For a legitimate client the
+// Envoy value equals what XFF would have been, so normal rate-limiting behavior is unchanged.
 export function clientIp(req: Request): string {
-  const xff = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
-  return xff || req.ip || req.socket.remoteAddress || "unknown";
+  const envoy = (req.headers["x-envoy-external-address"] as string | undefined)?.trim();
+  if (envoy) return envoy;
+  return req.ip || req.socket.remoteAddress || "unknown";
 }
 
 /** Privacy-preserving IP fingerprint for storage + per-IP daily counts. */
