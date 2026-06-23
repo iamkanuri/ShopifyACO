@@ -4,6 +4,7 @@ import { ENV, hasShopify } from "./env.js";
 import { normalizeShopDomain, isValidShopDomain } from "../shopify/domain.js";
 import { verifyOAuthHmac, verifyWebhookHmac, webhookHmac } from "../shopify/hmac.js";
 import { buildAuthorizeUrl, generateState, redirectUri } from "../shopify/oauth.js";
+import { verifySessionToken } from "../shopify/sessionToken.js";
 import { getShopifyClient, effectiveSecret, effectiveSecrets } from "../shopify/client.js";
 import { safeEqualStr } from "../shopify/crypto.js";
 import {
@@ -49,10 +50,26 @@ export function shopOf(req: Request): string {
   return (req as Request & { shopDomain?: string }).shopDomain!;
 }
 
-/** Shop-scoped authorization for /app/* merchant routes. Sets req.shopDomain. */
+/**
+ * Resolve the shop from a Shopify App Bridge session token, when present. Embedded apps
+ * run in a third-party iframe where the SameSite cookie isn't sent, so the UI sends a
+ * Bearer token instead. Returns null when there's no token / it doesn't verify (the caller
+ * then falls back to the signed cookie used for direct, non-embedded access).
+ */
+function shopFromSessionToken(req: Request): string | null {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith("Bearer ")) return null;
+  const secrets = effectiveSecrets();
+  if (!secrets.length || !ENV.shopify.apiKey) return null;
+  const verdict = verifySessionToken(auth.slice(7).trim(), secrets, ENV.shopify.apiKey);
+  return verdict.ok ? verdict.shop : null;
+}
+
+/** Shop-scoped authorization for /app/* merchant routes. Sets req.shopDomain. Accepts an
+ *  App Bridge session token (embedded) OR the signed shop cookie (direct access). */
 export async function requireShop(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const shop = verifyShopCookie(readCookie(req, SHOP_COOKIE));
+    const shop = shopFromSessionToken(req) ?? verifyShopCookie(readCookie(req, SHOP_COOKIE));
     if (!shop) {
       res.status(401).json({ error: "Not connected. Install the app from Shopify.", code: "no_shop_session" });
       return;

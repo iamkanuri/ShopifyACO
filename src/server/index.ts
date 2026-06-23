@@ -812,10 +812,18 @@ function serveIndex(req: Request, res: Response) {
       return res.status(503).send("App not built. Run `npm run build`.");
     }
   }
+  // App Bridge is injected ONLY on the embedded /app surface, and only when a Shopify API
+  // key is configured. Loading it on the public marketing site can redirect visitors into
+  // Shopify admin — so the marketing pages get an empty string here.
+  const appBridge =
+    req.path.startsWith("/app") && ENV.shopify.apiKey
+      ? `<meta name="shopify-api-key" content="${escapeHtml(ENV.shopify.apiKey)}" />\n    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>`
+      : "";
   let html = indexTemplate
     .replaceAll("__BRAND_NAME__", escapeHtml(ENV.publicBrandName))
     .replaceAll("__DESC__", escapeHtml(TAGLINE))
-    .replaceAll("__BASE_URL__", escapeHtml(baseUrl(req)));
+    .replaceAll("__BASE_URL__", escapeHtml(baseUrl(req)))
+    .replaceAll("__APP_BRIDGE__", appBridge);
 
   // Category index pages get a shareable, category-specific title + OG title.
   const m = req.path.match(/^\/index\/([a-z0-9-]+)/);

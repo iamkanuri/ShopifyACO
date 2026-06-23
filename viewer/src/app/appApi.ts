@@ -7,9 +7,23 @@ import { DEMO, type AppAlertRow, type AppBilling, type AppExperimentRow, type Ap
 
 export interface Loaded<T> { data: T; demo: boolean; error?: string }
 
+// App Bridge (loaded server-side only on /app routes) exposes a global `shopify`. When the
+// app runs embedded in Shopify admin's iframe the SameSite cookie isn't sent, so we attach
+// a short-lived session token (Authorization: Bearer) the server verifies. Outside the embed
+// `shopify` is absent and the signed cookie is used instead — same code path either way.
+async function withAuth(headers: Record<string, string>): Promise<Record<string, string>> {
+  try {
+    const token = await (window as unknown as { shopify?: { idToken?: () => Promise<string> } }).shopify?.idToken?.();
+    if (token) return { ...headers, Authorization: `Bearer ${token}` };
+  } catch {
+    /* not embedded, or App Bridge couldn't mint a token — fall back to the cookie */
+  }
+  return headers;
+}
+
 async function load<T>(url: string, fallback: T): Promise<Loaded<T>> {
   try {
-    const res = await fetch(url, { headers: { accept: "application/json" } });
+    const res = await fetch(url, { headers: await withAuth({ accept: "application/json" }) });
     if (res.status === 401 || res.status === 503) return { data: fallback, demo: true };
     if (!res.ok) return { data: fallback, demo: true, error: `HTTP ${res.status}` };
     return { data: (await res.json()) as T, demo: false };
@@ -20,7 +34,7 @@ async function load<T>(url: string, fallback: T): Promise<Loaded<T>> {
 
 async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; data?: T; error?: string; demo?: boolean }> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: await withAuth({ "content-type": "application/json" }), body: JSON.stringify(body) });
     if (res.status === 401) return { ok: false, demo: true, error: "Connect your store to perform this action." };
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: (data as { error?: string }).error ?? `HTTP ${res.status}` };
