@@ -570,6 +570,22 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Embedded install via TOKEN EXCHANGE (branch `phase14-dashboard-live`): built the
+  embedded-app install handshake so flipping `embedded=true` works. On a merchant's first embedded
+  load App Bridge mints a session token but no shop row exists (Shopify managed install never hits
+  our OAuth callback) → `requireShop` 401s. New PUBLIC `POST /api/shopify/token`
+  (`tokenExchangeHandler`, authenticated by the session token itself, NOT requireShop) verifies the
+  token and swaps it for an OFFLINE access token via RFC-8693 token exchange
+  (`ShopifyClient.exchangeSessionToken`, mock+live), then persists the install through the shared
+  `completeInstall` helper (refactored OUT of `callbackHandler` so classic-OAuth + token-exchange
+  behave identically: encrypted creds, webhooks, audit, pixel activation). Idempotent (already-
+  installed shop just refreshes; self-heals missing creds). Client (`appApi.ts`) makes it transparent:
+  on a 401 it does a one-time, deduped token-exchange bootstrap then retries the request; non-embedded
+  visitors fall through to the demo path unchanged. `npm test` 124/0; **full DB suite 152 pass / 0
+  fail / 0 skipped** (with `APP_ENCRYPTION_KEY` set → the Shopify/catalog/fixes/token-exchange DB
+  e2e all run, incl. the token-exchange e2e: bad-token→401, valid→install, idempotent). Typecheck +
+  viewer build clean. security-review + code-review high: clean. **Still requires the external
+  `embedded=true` flip + `shopify app deploy` + REAL in-admin testing — not merged/deployed.**
 - 2026-06-25 Dashboard live-data wiring (branch `phase14-dashboard-live`, off `main`): closed the
   Phase-12 holdout where `/app` Dashboard rendered the Olipop SAMPLE for everyone. New shop-scoped
   `GET /app/api/dashboard` (`src/server/dashboard.ts`, behind `requireShop`) computes the merchant's

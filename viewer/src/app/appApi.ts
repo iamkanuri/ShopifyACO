@@ -11,19 +11,48 @@ export interface Loaded<T> { data: T; demo: boolean; error?: string }
 // app runs embedded in Shopify admin's iframe the SameSite cookie isn't sent, so we attach
 // a short-lived session token (Authorization: Bearer) the server verifies. Outside the embed
 // `shopify` is absent and the signed cookie is used instead — same code path either way.
+function appBridge(): { idToken?: () => Promise<string> } | undefined {
+  return (window as unknown as { shopify?: { idToken?: () => Promise<string> } }).shopify;
+}
+async function idToken(): Promise<string | null> {
+  try { return (await appBridge()?.idToken?.()) ?? null; } catch { return null; }
+}
 async function withAuth(headers: Record<string, string>): Promise<Record<string, string>> {
+  const token = await idToken();
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+}
+
+// Embedded install handshake. On a merchant's FIRST embedded load there's a valid App
+// Bridge session token but no shop row yet (Shopify's managed install never hits our OAuth
+// callback), so /app/api/* returns 401. We do a one-time token-exchange bootstrap
+// (POST /api/shopify/token) which installs the shop server-side, then retry the request.
+// Deduped across concurrent calls; success is cached for the page's lifetime, a failure
+// resets so a later call can retry. Non-embedded (no token) → returns false → demo path.
+let sessionBootstrap: Promise<boolean> | null = null;
+async function doBootstrap(): Promise<boolean> {
+  const token = await idToken();
+  if (!token) return false;
   try {
-    const token = await (window as unknown as { shopify?: { idToken?: () => Promise<string> } }).shopify?.idToken?.();
-    if (token) return { ...headers, Authorization: `Bearer ${token}` };
+    const res = await fetch(`/api/shopify/token`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    return res.ok;
   } catch {
-    /* not embedded, or App Bridge couldn't mint a token — fall back to the cookie */
+    return false;
   }
-  return headers;
+}
+function ensureSession(): Promise<boolean> {
+  if (sessionBootstrap) return sessionBootstrap;
+  const p = doBootstrap();
+  sessionBootstrap = p;
+  p.then((ok) => { if (!ok) sessionBootstrap = null; }).catch(() => { sessionBootstrap = null; });
+  return p;
 }
 
 async function load<T>(url: string, fallback: T): Promise<Loaded<T>> {
   try {
-    const res = await fetch(url, { headers: await withAuth({ accept: "application/json" }) });
+    let res = await fetch(url, { headers: await withAuth({ accept: "application/json" }) });
+    if (res.status === 401 && (await ensureSession())) {
+      res = await fetch(url, { headers: await withAuth({ accept: "application/json" }) });
+    }
     if (res.status === 401 || res.status === 503) return { data: fallback, demo: true };
     if (!res.ok) return { data: fallback, demo: true, error: `HTTP ${res.status}` };
     return { data: (await res.json()) as T, demo: false };
@@ -34,7 +63,9 @@ async function load<T>(url: string, fallback: T): Promise<Loaded<T>> {
 
 async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; data?: T; error?: string; demo?: boolean }> {
   try {
-    const res = await fetch(url, { method: "POST", headers: await withAuth({ "content-type": "application/json" }), body: JSON.stringify(body) });
+    const send = async () => fetch(url, { method: "POST", headers: await withAuth({ "content-type": "application/json" }), body: JSON.stringify(body) });
+    let res = await send();
+    if (res.status === 401 && (await ensureSession())) res = await send();
     if (res.status === 401) return { ok: false, demo: true, error: "Connect your store to perform this action." };
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: (data as { error?: string }).error ?? `HTTP ${res.status}` };

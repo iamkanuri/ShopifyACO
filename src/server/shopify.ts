@@ -8,7 +8,7 @@ import { verifySessionToken } from "../shopify/sessionToken.js";
 import { getShopifyClient, effectiveSecret, effectiveSecrets } from "../shopify/client.js";
 import { safeEqualStr } from "../shopify/crypto.js";
 import {
-  audit, consumeOAuthState, getShop, markUninstalled, recordInstallation,
+  audit, consumeOAuthState, getAccessToken, getShop, markUninstalled, recordInstallation,
   saveOAuthState, storeCredentials, upsertShop, webhookSeen,
 } from "../db/shops.js";
 import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
@@ -113,6 +113,32 @@ export async function installHandler(req: Request, res: Response): Promise<void>
   res.redirect(buildAuthorizeUrl(shop, state));
 }
 
+/** Persist an install: encrypt+store the offline token, mark the shop active, register
+ *  webhooks (best-effort), audit, and activate the Web Pixel (best-effort). Shared by the
+ *  classic OAuth callback and the embedded token-exchange path so both behave identically.
+ *  `source` distinguishes them in installations/audit ("install" | "install_token_exchange"). */
+async function completeInstall(shop: string, accessToken: string, scope: string, source: string): Promise<void> {
+  await upsertShop(shop, { scopes: scope, status: "active" });
+  await storeCredentials(shop, accessToken, scope);
+  await recordInstallation(shop, source, scope);
+  let topics: string[] = [];
+  try {
+    topics = await getShopifyClient().registerWebhooks(shop, accessToken);
+  } catch (err) {
+    console.error(`[shopify] webhook registration failed for ${shop}:`, (err as Error).message);
+  }
+  await audit(shop, "system", source, "shop", null, { scope, webhooks: topics.length });
+
+  // Best-effort: activate the AI-referral Web Pixel (Phase 10). No-op unless the
+  // write_pixels + read_customer_events scopes were granted — degrades gracefully.
+  try {
+    const act = await activatePixelForShop(shop);
+    if (!act.activated) console.log(`[shopify] web pixel not activated for ${shop}: ${act.reason}`);
+  } catch (err) {
+    console.error(`[shopify] web pixel activation failed for ${shop}:`, (err as Error).message);
+  }
+}
+
 // ---- callback: verify, exchange code, encrypt+store, register webhooks -----
 export async function callbackHandler(req: Request, res: Response): Promise<void> {
   if (!hasShopify()) {
@@ -149,34 +175,60 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
     return;
   }
 
-  // 4) exchange + persist (encrypted)
+  // 4) exchange + persist (encrypted) — shared with the embedded token-exchange path.
   const client = getShopifyClient();
   const { accessToken, scope } = await client.exchangeCode(shop, code);
-  await upsertShop(shop, { scopes: scope, status: "active" });
-  await storeCredentials(shop, accessToken, scope);
-  await recordInstallation(shop, "install", scope);
-  let topics: string[] = [];
-  try {
-    topics = await client.registerWebhooks(shop, accessToken);
-  } catch (err) {
-    console.error(`[shopify] webhook registration failed for ${shop}:`, (err as Error).message);
-  }
-  await audit(shop, "system", "install", "shop", null, { scope, webhooks: topics.length });
-
-  // 4b) best-effort: activate the AI-referral Web Pixel (Phase 10). No-op unless the
-  //     write_pixels + read_customer_events scopes were granted — degrades gracefully.
-  try {
-    const act = await activatePixelForShop(shop);
-    if (!act.activated) console.log(`[shopify] web pixel not activated for ${shop}: ${act.reason}`);
-  } catch (err) {
-    console.error(`[shopify] web pixel activation failed for ${shop}:`, (err as Error).message);
-  }
+  await completeInstall(shop, accessToken, scope, "install");
 
   // 5) shop session cookie (signed) → onboarding
   res.cookie(SHOP_COOKIE, signShop(shop), {
     httpOnly: true, secure: ENV.isProd, sameSite: "lax", maxAge: 30 * 24 * 3600 * 1000, path: "/",
   });
   res.redirect("/app");
+}
+
+// ---- token exchange: embedded install handshake (no redirect) --------------
+/**
+ * POST /api/shopify/token — the EMBEDDED install path. When an embedded app first loads in
+ * the Shopify admin iframe (managed install), App Bridge mints a session token but no shop
+ * row exists yet, so requireShop 401s. The UI then calls this endpoint with the session
+ * token (Authorization: Bearer); we verify it and exchange it for an offline access token
+ * (RFC 8693 token exchange) — completing the install with no OAuth redirect. Authenticated
+ * by the session token itself, NOT requireShop. Idempotent: an already-installed shop just
+ * refreshes (no redundant exchange).
+ */
+export async function tokenExchangeHandler(req: Request, res: Response): Promise<void> {
+  if (!hasShopify()) {
+    res.status(503).json({ error: "Shopify integration not configured.", code: "shopify_not_configured" });
+    return;
+  }
+  const auth = req.headers.authorization;
+  const token = auth && auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const verdict = verifySessionToken(token, effectiveSecrets(), ENV.shopify.apiKey);
+  if (!verdict.ok) {
+    res.status(401).json({ error: "Invalid or missing session token.", code: "bad_session_token" });
+    return;
+  }
+  const shop = verdict.shop;
+
+  try {
+    const existing = await getShop(shop);
+    const installed = existing && existing.status !== "uninstalled" ? await getAccessToken(shop) : null;
+    if (installed) {
+      await upsertShop(shop, { status: "active" }); // keep the session fresh; no redundant exchange
+    } else {
+      const { accessToken, scope } = await getShopifyClient().exchangeSessionToken(shop, token);
+      await completeInstall(shop, accessToken, scope, "install_token_exchange");
+    }
+    // Also set the signed cookie so any later NON-embedded request authenticates too.
+    res.cookie(SHOP_COOKIE, signShop(shop), {
+      httpOnly: true, secure: ENV.isProd, sameSite: "lax", maxAge: 30 * 24 * 3600 * 1000, path: "/",
+    });
+    res.json({ ok: true, shop, newInstall: !installed });
+  } catch (err) {
+    console.error(`[shopify] token exchange failed for ${shop}:`, (err as Error).message);
+    res.status(502).json({ error: "Token exchange failed.", code: "token_exchange_failed" });
+  }
 }
 
 // ---- webhooks: HMAC-verified, idempotent, audited (RAW body) ---------------

@@ -13,7 +13,7 @@ import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/libr
 import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
-import { installHandler, callbackHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
+import { installHandler, callbackHandler, tokenExchangeHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
 import { normalizeShopDomain } from "../shopify/domain.js";
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
@@ -277,6 +277,9 @@ app.get("/healthz/deep", async (_req, res) => {
 // --- Shopify OAuth: install + callback (Phase 2) ---------------------------
 app.get("/api/shopify/install", wrap(installHandler));
 app.get("/api/shopify/callback", wrap(callbackHandler));
+// Embedded install via token exchange (no redirect): the App Bridge session token is
+// swapped for an offline token. Authenticated by the token itself (not requireShop).
+app.post("/api/shopify/token", wrap(tokenExchangeHandler));
 
 // --- Catalog API (Phase 3, shop-scoped). Shopify reads are free. -----------
 const shopMw = (req: Request, res: Response, next: NextFunction) => requireShop(req, res, next).catch(next);

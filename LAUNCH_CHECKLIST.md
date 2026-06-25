@@ -36,6 +36,14 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
   `products/delete`, `shop/update` → same webhooks URL.
 - ☐ Set env: `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_APP_URL`, `SHOPIFY_SCOPES`,
   `SHOPIFY_API_VERSION` (use the current stable GraphQL Admin API version).
+- ☐ **Activate embedded mode (when ready to run inside the Shopify admin iframe):** the code is
+  built — dynamic per-shop CSP `frame-ancestors`, App Bridge injection on `/app` (host/shop param),
+  session-token API auth, AND the **embedded install handshake via token exchange**
+  (`POST /api/shopify/token`, transparent client bootstrap). To turn it on: flip `embedded = true`
+  in `shopify.app.toml` → `shopify app deploy` → load the app in the dev-store admin and test
+  install → framed load → an `/app/api/*` call authing via the Bearer token. No new env var. (The
+  token-exchange path is the most-likely-correct embedded install flow but is only fully proven by
+  real in-admin testing — report any handshake error and it'll be fixed.)
 
 ## 3. Database (all phases)
 - ☐ Apply migrations: `npm run migrate` locally (hits `DATABASE_URL`) and automatically at

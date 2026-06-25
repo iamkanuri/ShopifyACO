@@ -504,6 +504,16 @@ them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extend
   (the CLI and dashboard scores can't diverge). Falls back to the labeled sample ONLY on 401 (no
   shop session); a connected shop with no run yet sees a "run your first benchmark" state, never
   sample numbers. Read-only — no migration.
+- **Embedded install via TOKEN EXCHANGE is built** (same branch; needed before `embedded=true`).
+  Embedded apps use Shopify managed install, which never hits our OAuth callback — so the first
+  framed load has a valid App Bridge session token but no shop row, and `requireShop` 401s. New
+  PUBLIC `POST /api/shopify/token` (`tokenExchangeHandler`, authed by the session token itself, not
+  `requireShop`) verifies the token and exchanges it for an offline access token (RFC 8693,
+  `ShopifyClient.exchangeSessionToken`), persisting via the shared `completeInstall` helper (factored
+  out of `callbackHandler` so classic OAuth + token exchange behave identically). `appApi.ts` makes
+  it transparent: on a 401 it does a one-time deduped bootstrap then retries. Idempotent; mock+live.
+  ⚠️ Still needs the external `embedded=true` flip + `shopify app deploy` + REAL in-admin testing to
+  confirm the handshake (the build is the most-likely-correct path, but only live testing proves it).
 
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 

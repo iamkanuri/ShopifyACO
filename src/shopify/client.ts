@@ -31,6 +31,10 @@ export interface TokenExchange {
 export interface ShopifyClient {
   mode: "live" | "mock";
   exchangeCode(shop: string, code: string): Promise<TokenExchange>;
+  /** Token exchange (embedded install): swap a VERIFIED App Bridge session token for an
+   *  offline access token for the already-granted scopes — no OAuth redirect. Used by the
+   *  embedded install handshake (Shopify managed install + token exchange). */
+  exchangeSessionToken(shop: string, sessionToken: string): Promise<TokenExchange>;
   /** Register the app + compliance webhooks. Returns the topics registered. */
   registerWebhooks(shop: string, accessToken: string): Promise<string[]>;
   /** Create (or update, when `existingId` is known) the app-owned Web Pixel with the
@@ -55,6 +59,9 @@ class MockClient implements ShopifyClient {
   async exchangeCode(shop: string, code: string): Promise<TokenExchange> {
     return { accessToken: `mock_offline_token::${shop}::${code.slice(0, 8)}`, scope: ENV.shopify.scopes.join(",") };
   }
+  async exchangeSessionToken(shop: string): Promise<TokenExchange> {
+    return { accessToken: `mock_offline_token::${shop}::texch`, scope: ENV.shopify.scopes.join(",") };
+  }
   async registerWebhooks(): Promise<string[]> {
     return MANDATORY_TOPICS; // pretend success — exercised end-to-end without Shopify
   }
@@ -75,6 +82,28 @@ class LiveClient implements ShopifyClient {
     if (!res.ok) throw new Error(`token exchange failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
     const json = (await res.json()) as { access_token?: string; scope?: string };
     if (!json.access_token) throw new Error("token exchange returned no access_token");
+    return { accessToken: json.access_token, scope: json.scope ?? ENV.shopify.scopes.join(",") };
+  }
+  async exchangeSessionToken(shop: string, sessionToken: string): Promise<TokenExchange> {
+    // OAuth 2.0 Token Exchange (RFC 8693) — Shopify's embedded-app install path. The
+    // subject_token is the App Bridge session token (already signature-verified by us
+    // before this call); we request an OFFLINE access token so background sync works.
+    const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        client_id: ENV.shopify.apiKey,
+        client_secret: ENV.shopify.apiSecret,
+        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+        subject_token: sessionToken,
+        subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+        requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`session token exchange failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const json = (await res.json()) as { access_token?: string; scope?: string };
+    if (!json.access_token) throw new Error("session token exchange returned no access_token");
     return { accessToken: json.access_token, scope: json.scope ?? ENV.shopify.scopes.join(",") };
   }
   async registerWebhooks(shop: string, accessToken: string): Promise<string[]> {
