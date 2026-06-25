@@ -69,6 +69,16 @@ test("aggregate computes rates, SoV, and per-answer win/loss with CIs", () => {
   assert.equal(m.winLoss.responses, 2);
 });
 
+test("aggregate: citation-backed rate is n=0 (not a fabricated 0/1) when never mentioned", () => {
+  const obs: ObservationLike[] = [
+    { responseId: "r1", engine: "openai", targetBrand: "Rival", recommendationStatus: "recommended", rank: 1, promptText: "best pan?", citations: ["x"] },
+  ];
+  const m = aggregate(obs, "Caraway"); // Caraway never appears
+  assert.equal(m.mentionRate.n, 0);
+  assert.equal(m.citationBackedRate.n, 0);
+  assert.equal(m.citationBackedRate.rate, null);
+});
+
 // ---- DB-gated: self-serve shop benchmark (mock engines, $0) -----------------
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
 test("runShopBenchmark builds a cohort, runs it (mock), and lists the run for the shop", { skip: !RUN_DB }, async () => {

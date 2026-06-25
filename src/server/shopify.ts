@@ -19,20 +19,28 @@ import { activatePixelForShop } from "../pixel/activate.js";
 
 const SHOP_COOKIE = "al_shop";
 
-function cookieSecret(): string {
-  return effectiveSecret() ?? ENV.appEncryptionKey ?? "al-shop-cookie";
+// Fail CLOSED: no hard-coded fallback secret. Without a real secret (Shopify client
+// secret or APP_ENCRYPTION_KEY) we refuse to sign or accept cookies, so a misconfigured
+// deploy can't be tricked by a cookie forged against a guessable key. In practice
+// hasShopify() guarantees a secret on every OAuth/token path, so signing never fails there.
+function cookieSecret(): string | undefined {
+  return effectiveSecret() ?? ENV.appEncryptionKey ?? undefined;
 }
 function signShop(shop: string): string {
-  const sig = createHmac("sha256", cookieSecret()).update(shop).digest("hex");
+  const secret = cookieSecret();
+  if (!secret) throw new Error("cannot sign shop cookie: no shop secret configured");
+  const sig = createHmac("sha256", secret).update(shop).digest("hex");
   return `${shop}.${sig}`;
 }
 function verifyShopCookie(value: string | undefined): string | null {
   if (!value) return null;
+  const secret = cookieSecret();
+  if (!secret) return null; // no secret → no cookie auth (fail closed)
   const i = value.lastIndexOf(".");
   if (i < 0) return null;
   const shop = value.slice(0, i);
   const sig = value.slice(i + 1);
-  const expected = createHmac("sha256", cookieSecret()).update(shop).digest("hex");
+  const expected = createHmac("sha256", secret).update(shop).digest("hex");
   return safeEqualStr(sig, expected) && isValidShopDomain(shop) ? shop : null;
 }
 function readCookie(req: Request, name: string): string | undefined {

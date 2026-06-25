@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { shopOf } from "./shopify.js";
 import { getBenchmark } from "../db/benchmarks.js";
 import { getExperiment, listExperiments, listInterventions } from "../db/experiments.js";
+import { getProposal } from "../db/fixes.js";
+import { productExists } from "../db/catalog.js";
 import { captureBaseline, planIntervention, runVerification, startVerification } from "../experiments/execute.js";
 
 // Shop-scoped Experiments API (Phase 7). requireShop sets req.shopDomain; every
@@ -27,10 +29,30 @@ export async function planHandler(req: Request, res: Response): Promise<void> {
     return;
   }
   const primaryMetric = typeof req.body?.primaryMetric === "string" && METRICS.has(req.body.primaryMetric) ? req.body.primaryMetric : undefined;
+
+  // Tenant isolation for the optional links: a proposal/product attached to the
+  // intervention must belong to THIS shop (don't let a request reference another
+  // tenant's rows, which later joins/write-backs would trust).
+  const proposalId = req.body?.proposalId != null ? Number(req.body.proposalId) : null;
+  if (proposalId != null) {
+    if (!Number.isInteger(proposalId)) {
+      res.status(400).json({ error: "proposalId must be a number." });
+      return;
+    }
+    const proposal = await getProposal(proposalId);
+    if (!proposal || proposal.shop_domain !== shop) {
+      res.status(404).json({ error: "Proposal not found for this shop." });
+      return;
+    }
+  }
+  const productGid = typeof req.body?.productGid === "string" ? req.body.productGid : null;
+  if (productGid != null && !(await productExists(shop, productGid))) {
+    res.status(404).json({ error: "Product not found for this shop." });
+    return;
+  }
+
   const out = await planIntervention(shop, {
-    benchmarkId, kind, description,
-    proposalId: req.body?.proposalId != null ? Number(req.body.proposalId) : null,
-    productGid: typeof req.body?.productGid === "string" ? req.body.productGid : null,
+    benchmarkId, kind, description, proposalId, productGid,
     primaryMetric: primaryMetric as never,
   });
   res.json({ ...out, primaryMetric: primaryMetric ?? "recommendationRate" });

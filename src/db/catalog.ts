@@ -98,6 +98,11 @@ export async function countProducts(shop: string): Promise<number> {
   const { rows } = await pgQuery<{ n: string }>("select count(*)::int n from products where shop_domain=$1", [shop]);
   return Number(rows[0]?.n ?? 0);
 }
+/** True if a product GID belongs to this shop's catalog (tenant-ownership check). */
+export async function productExists(shop: string, productGid: string): Promise<boolean> {
+  const { rows } = await pgQuery("select 1 from products where shop_domain=$1 and product_gid=$2 limit 1", [shop, productGid]);
+  return rows.length > 0;
+}
 export async function listProducts(shop: string, opts: { q?: string; limit?: number; offset?: number } = {}): Promise<Array<Record<string, unknown>>> {
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   const offset = Math.max(0, opts.offset ?? 0);

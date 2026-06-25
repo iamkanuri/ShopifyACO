@@ -95,7 +95,10 @@ export async function saveFeedVersion(
   items: PersistItem[],
 ): Promise<{ versionId: number; version: number }> {
   return pgTx(async (c) => {
-    await c.query("select id from feeds where id=$1 and shop_domain=$2 for update", [feedId, shop]);
+    // Lock the parent feed AND confirm it belongs to this shop before inserting a version
+    // (defense in depth — never write a version for a missing/other-tenant feed).
+    const lock = await c.query("select id from feeds where id=$1 and shop_domain=$2 for update", [feedId, shop]);
+    if (!lock.rowCount) throw new Error("feed not found for this shop");
     const { rows: vr } = await c.query<{ next: string }>(
       "select coalesce(max(version),0)+1 as next from feed_versions where feed_id=$1",
       [feedId],

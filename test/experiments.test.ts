@@ -70,6 +70,33 @@ test("caveats never claim causation and flag inconclusive honestly", () => {
 
 // ---- DB-gated: full matched baseline → verification e2e (mock engines, $0) --
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
+
+test("planHandler refuses a proposal owned by another shop (tenant isolation)", { skip: !RUN_DB }, async () => {
+  const { createBenchmark } = await import("../src/db/benchmarks.js");
+  const { createProposal } = await import("../src/db/fixes.js");
+  const { planHandler } = await import("../src/server/experiments.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shopA = `expa-${Date.now()}.myshopify.com`;
+  const shopB = `expb-${Date.now()}.myshopify.com`;
+  const benchmarkId = await createBenchmark(shopA, "v", "verification", { brand: { name: "C" }, category: "c", competitors: [], prompts: [{ text: "q" }], engines: ["openai"] } as never);
+  try {
+    const proposalId = await createProposal(shopB, null, null, {
+      productGid: "gid://shopify/Product/1", kind: "write_products", target: "seo.description",
+      label: "x", currentValue: null, proposedValue: "y", basedOn: null, rationale: "t", evidence: {},
+    });
+    const res = { code: 0, payload: null as unknown, status(c: number) { this.code = c; return this; }, json(b: unknown) { this.payload = b; return this; } };
+    const req = { shopDomain: shopA, body: { benchmarkId, description: "d", proposalId }, params: {}, query: {} } as never;
+    await planHandler(req, res as never);
+    assert.equal(res.code, 404);
+    assert.equal((res.payload as { error: string }).error, "Proposal not found for this shop.");
+  } finally {
+    await pgQuery("delete from fix_proposals where shop_domain=$1", [shopB]);
+    await pgQuery("delete from interventions where shop_domain=$1", [shopA]);
+    await pgQuery("delete from experiments where shop_domain=$1", [shopA]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
+});
 test("plan → captureBaseline → runVerification persists a CI-backed verdict (mock)", { skip: !RUN_DB }, async () => {
   const { createBenchmark } = await import("../src/db/benchmarks.js");
   const { planIntervention, captureBaseline, runVerification } = await import("../src/experiments/execute.js");

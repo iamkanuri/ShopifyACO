@@ -45,7 +45,6 @@ export function aggregate(observations: ObservationLike[], merchantBrand: string
   const topChoice = mine.filter((o) => o.rank === 1).length;
   const ranks = mine.map((o) => o.rank).filter((r): r is number => typeof r === "number" && r > 0);
   const citationBacked = mine.filter((o) => isMentioned(o.recommendationStatus) && Array.isArray(o.citations) && o.citations.length > 0).length;
-  const mentionedCount = Math.max(1, mentioned);
 
   // Prompt coverage: of distinct prompts, in how many was the merchant mentioned ≥once.
   const promptsAll = new Set(mine.map((o) => norm(o.promptText)));
@@ -90,7 +89,9 @@ export function aggregate(observations: ObservationLike[], merchantBrand: string
     topChoiceRate: proportion(topChoice, n),
     avgPosition: mean(ranks),
     promptCoverage: proportion(promptsCovered.size, promptsAll.size),
-    citationBackedRate: proportion(citationBacked, mentionedCount),
+    // Denominator is the mentions (citation-backed among mentions); n=0 when never
+    // mentioned — proportion() reports rate=null, not a fabricated 0/1.
+    citationBackedRate: proportion(citationBacked, mentioned),
     shareOfVoice: shareOfVoice(recCounts),
     byEngine,
     engineDivergence: engineDivergence(rateByEngine),

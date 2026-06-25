@@ -196,6 +196,16 @@ test("JSON is an array; JSONL is one record per line; undefined keys dropped", (
 // ---- DB-gated end-to-end ---------------------------------------------------
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
 
+test("saveFeedVersion refuses a feed that isn't this shop's (locked-row guard)", { skip: !RUN_DB }, async () => {
+  const { saveFeedVersion } = await import("../src/db/feeds.js");
+  // A missing/other-tenant feed id → the FOR UPDATE lock returns no row → throw before
+  // any version is written (meta/items are never read on this path).
+  await assert.rejects(
+    saveFeedVersion(`feedguard-${Date.now()}.myshopify.com`, 999_999_999, {} as never, []),
+    /feed not found/,
+  );
+});
+
 test("generateFeed maps the synced catalog → versioned snapshot + readiness + export", { skip: !RUN_DB }, async () => {
   const { upsertProduct } = await import("../src/db/catalog.js");
   const { upsertFeed, getFeedVersion, getFeedRecords, listFeedVersions } = await import("../src/db/feeds.js");

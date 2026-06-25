@@ -68,7 +68,9 @@ export async function ingestHandler(req: Request, res: Response): Promise<void> 
   // → degrade to a no-op 202 rather than 500 (the beacon must not break the storefront).
   try {
     const shop = await getShop(ev.shop);
-    if (!shop) {
+    if (!shop || shop.status === "uninstalled") {
+      // Unknown OR uninstalled — don't accept beacons (avoids contaminating attribution
+      // for a shop that removed the app). Same opaque reason either way (public surface).
       res.status(202).json({ ok: true, stored: false, reason: "unknown_shop" });
       return;
     }

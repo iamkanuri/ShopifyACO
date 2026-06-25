@@ -577,6 +577,22 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Codex deep-review P2 quick-wins (branch `fix/codex-p2-quick`, off `main`): five
+  data-integrity / hardening fixes. **(P2-6)** `citationBackedRate` now uses the real mention count
+  as denominator (`proportion(citationBacked, mentioned)`) → honest `n=0`/`rate=null` when never
+  mentioned, instead of a fabricated `0/1`. **(P2-2)** the public pixel ingest rejects shops whose
+  status is `uninstalled` (not just unknown) so a removed app can't keep feeding attribution.
+  **(P2-1)** the signed-shop-cookie secret no longer falls back to a hard-coded `"al-shop-cookie"` —
+  it FAILS CLOSED (no secret ⇒ refuse to sign/accept cookies; `hasShopify()` guarantees a real secret
+  on every OAuth/token path). **(P2-7)** `planHandler` (experiments) verifies any `proposalId` /
+  `productGid` belongs to the calling shop (`getProposal` + new `productExists`) before linking them.
+  **(P2-8)** `saveFeedVersion` checks the `FOR UPDATE` lock returned a row before inserting a version
+  (no version for a missing/other-tenant feed). No migration. New tests: citation `n=0` (pure,
+  `benchmarks.test.ts`), feed-lock guard (`feeds.test.ts`), cross-tenant proposal 404
+  (`experiments.test.ts`). `npm test` 131/0; **full DB suite 163/0/0**. Typecheck clean.
+  security-review (net improvement) + code-review high: clean. (P2-1/P2-2 are one-line hardening
+  mirroring existing guards — verified by review; the pixel handler path is env-gated so it has no
+  isolated unit test.)
 - 2026-06-25 Codex deep-review P1 batch (branch `fix/codex-p1-batch`, off `main`): fixed the four
   trust-critical findings from the external review. **(P1-1)** A live benchmark that fails AFTER paid
   engine calls now reconciles the real spend instead of releasing the reservation to $0 — new
