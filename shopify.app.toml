@@ -7,9 +7,11 @@
 client_id = "f3df315c44ae47b0f6e0ffd6453a965d"
 
 name = "AI Visibility"
-# Non-embedded: our Phase-2 OAuth flow hosts /app on our own domain (not in an
-# admin iframe). Keep false so the classic authorization-code redirect works.
-embedded = false
+# Embedded: the app runs inside the Shopify admin iframe. Install uses Shopify managed
+# install + token exchange (POST /api/shopify/token); App Bridge supplies session tokens
+# for /app/api auth. Takes effect on the next `shopify app deploy`. The classic OAuth
+# redirect (/api/shopify/callback) is retained as a fallback for non-embedded access.
+embedded = true
 application_url = "https://lens.thirdocular.com/app"
 
 [access_scopes]
