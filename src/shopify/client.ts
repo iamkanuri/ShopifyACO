@@ -109,14 +109,16 @@ class LiveClient implements ShopifyClient {
   async registerWebhooks(shop: string, accessToken: string): Promise<string[]> {
     const endpoint = `${ENV.shopify.appUrl}/api/shopify/webhooks`;
     const registered: string[] = [];
+    // callbackUrl is passed as a typed GraphQL variable (not string-interpolated). The
+    // topic stays inline because it's a GraphQL enum from a fixed allowlist, not input.
+    const query = `mutation reg($url: URL!) { webhookSubscriptionCreate(topic: TOPIC_PLACEHOLDER,
+      webhookSubscription: { callbackUrl: $url, format: JSON }) {
+      webhookSubscription { id } userErrors { message } } }`;
     for (const topic of MANDATORY_TOPICS) {
-      const query = `mutation { webhookSubscriptionCreate(topic: ${topic},
-        webhookSubscription: { callbackUrl: "${endpoint}", format: JSON }) {
-        webhookSubscription { id } userErrors { message } } }`;
       const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
         method: "POST",
         headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: query.replace("TOPIC_PLACEHOLDER", topic), variables: { url: endpoint } }),
         signal: AbortSignal.timeout(15_000),
       });
       if (res.ok) registered.push(topic);

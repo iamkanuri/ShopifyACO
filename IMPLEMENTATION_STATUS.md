@@ -577,6 +577,18 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Codex deep-review P3 + docs (branch `fix/codex-p3-docs`, off `main`): the polish/
+  hardening tail. **(P3-1)** the Stripe webhook now returns 500 (→ Stripe retry) if the
+  idempotency-ledger write fails after processing, instead of swallowing + 200 (reprocess is
+  idempotent, so the retry is safe) — strengthens webhook idempotency on the live $29 path.
+  **(P3-2)** the billing-portal return URL no longer falls back to the spoofable `Host` header in
+  production (configured `STRIPE_PORTAL_RETURN_URL`/`PUBLIC_BASE_URL` only; dev keeps the host
+  fallback; prod with neither → 503). **(P3-3)** `registerWebhooks` passes the callback URL as a
+  typed GraphQL `$url` variable instead of string-interpolating it (topic stays inline — it's a
+  fixed enum). **(P3-4)** the README was rewritten from the stale "tonight / localhost-only / rotate
+  the secret" CLI framing to an accurate production map pointing at `IMPLEMENTATION_STATUS.md`.
+  No migration. `npm test` 132/0; billing DB suite 13/0 (the $29 happy path is unchanged + covered).
+  Typecheck clean. security + code-review high: clean (all three are net hardening).
 - 2026-06-25 Codex deep-review P2 involved (branch `fix/codex-p2-involved`, off `main`): the three
   larger P2 findings. **(P2-4)** `/api/prompts/suggest` + `/api/store/infer` now call
   `spendAllows(SUGGEST_COST_CAP_USD)` and 429 BEFORE the paid OpenAI call (a burst can no longer

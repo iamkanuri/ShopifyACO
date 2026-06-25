@@ -14,10 +14,14 @@ import { PLANS } from "../pricing.js";
 // catalogue; the portal action opens Stripe's hosted billing portal. Stripe stays in
 // TEST mode — going live is a credentials-only swap (KYC-gated), no code change.
 
-function returnUrl(req: Request): string {
+// The Stripe portal redirects the merchant back here, so never derive it from the
+// spoofable Host header in production — require a configured URL. Dev keeps the host
+// fallback for convenience; prod with neither configured returns null → 503.
+function returnUrl(req: Request): string | null {
   if (ENV.stripePortalReturnUrl) return ENV.stripePortalReturnUrl;
-  const base = ENV.publicBaseUrl ?? `${req.protocol}://${req.get("host")}`;
-  return `${base}/app/settings`;
+  if (ENV.publicBaseUrl) return `${ENV.publicBaseUrl}/app/settings`;
+  if (!ENV.isProd) return `${req.protocol}://${req.get("host")}/app/settings`;
+  return null;
 }
 
 /** GET /app/api/billing — effective plan, usage vs limits, and the plan catalogue. */
@@ -55,8 +59,13 @@ export async function billingStatusHandler(req: Request, res: Response): Promise
 /** POST /app/api/billing/portal — open the Stripe billing portal for this shop. */
 export async function billingPortalHandler(req: Request, res: Response): Promise<void> {
   const shop = shopOf(req);
+  const ret = returnUrl(req);
+  if (!ret) {
+    res.status(503).json({ error: "Billing portal return URL is not configured.", code: "not_configured" });
+    return;
+  }
   const customerId = hasPg() ? await stripeCustomerForShop(shop) : null;
-  const result = await createPortalSession(customerId, returnUrl(req));
+  const result = await createPortalSession(customerId, ret);
   if (!result.ok) {
     const status = result.code === "not_configured" ? 503 : result.code === "no_customer" ? 409 : 502;
     res.status(status).json({ error: result.error, code: result.code });

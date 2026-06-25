@@ -238,7 +238,12 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
       try {
         await recordBillingEvent(event.id, event.type);
       } catch (err) {
+        // The event WAS processed, but the idempotency ledger write failed — if we 200'd,
+        // a later duplicate would reprocess. Return 500 so Stripe retries; processStripeEvent
+        // + the entity upserts are idempotent, so the retry re-runs safely and re-records.
         console.error(`[stripe] failed to record billing event ${event.id}: ${(err as Error).message}`);
+        res.status(500).json({ received: false, error: "ledger_write_failed" });
+        return;
       }
     }
     res.json({ received: true });
