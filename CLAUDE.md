@@ -361,8 +361,11 @@ into reviewable proposals and applies approved ones to the store.
   placeholdered AggregateRating/shipping/return/FAQ templates the merchant fills with real numbers.
 - `migrations/0011_fixes.sql` (`fix_proposals` + `findings.signal`; additive). Shop-scoped API
   `src/server/fixes.ts` (`/app/api/fixes/propose|…/{approve,apply,rollback,dismiss}`, tenant-isolated).
-  `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **Live writes need
-  `SHOPIFY_SCOPES=…,write_products` + merchant re-consent + a user go.**
+  `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **`write_products` is now in
+  the default scopes (`shopify.app.toml` + `SHOPIFY_SCOPES`, 2026-06-25) so one-click apply is
+  enabled** — but going live still needs `SHOPIFY_SCOPES` set on Railway → `shopify app deploy` →
+  merchant re-consent → a **dev-store live-write test** (apply + rollback a real SEO edit) before
+  relying on it for a real merchant (the live write path has never run against a real store).
 
 **Phase 7 (Experiments & verification — "prove whether it worked") is built on branch
 `phase7-experiments`** (off `main`), mock-verified at $0. **The differentiator.** A matched pair

@@ -25,11 +25,14 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
 - ☐ App URLs:
   - App URL: `https://lens.thirdocular.com/app`
   - Allowed redirection (OAuth callback) URL: `https://lens.thirdocular.com/api/shopify/callback`
-- ☐ **Scopes (least privilege):** start with `read_products`. Add `write_products` only when
-  enabling approved write-back (Phase 6) — set `SHOPIFY_SCOPES=read_products,write_products` and
-  have each merchant **re-consent** (re-install) so the new scope is granted; Fix Studio's apply
-  path refuses to write until `write_products` is present on the shop. Do **not** add
-  customer/order scopes.
+- ☑ **Scopes:** `read_products,read_customer_events,write_pixels,write_products` (in
+  `shopify.app.toml` as of 2026-06-25). `write_products` enables Fix Studio one-click apply (SEO
+  title/description backfill only; gated by approval + conflict check + rollback). To go live with
+  it: (1) set `SHOPIFY_SCOPES=read_products,read_customer_events,write_pixels,write_products` on the
+  Railway **web** service, (2) `shopify app deploy`, (3) merchant **re-consent** (reinstall granting
+  write), (4) **TEST on the dev store first** — in Fix Studio approve + Apply an SEO-title fix to a
+  dev-store product, confirm it changed in admin, then Rollback and confirm it restored (the live
+  write path has never run against a real store). Do **not** add customer/order scopes.
 - ☐ **Mandatory compliance webhooks** (GDPR): `customers/data_request`, `customers/redact`,
   `shop/redact` → all point to `https://lens.thirdocular.com/api/shopify/webhooks`.
 - ☐ **App webhooks:** `app/uninstalled`, `products/create`, `products/update`,

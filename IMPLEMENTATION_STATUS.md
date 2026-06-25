@@ -577,6 +577,17 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Enable `write_products` for Fix Studio one-click apply (branch
+  `feat/write-products-scope`, off `main`): added `write_products` to `shopify.app.toml` scopes +
+  `SHOPIFY_SCOPES` (.env.example fixed — it was stale at just `read_products`). The apply path was
+  already built + gated (`hasWriteScope` checks the shop's GRANTED scope → approval → live re-read
+  conflict check → snapshot → `productUpdate` → audit; conflict-checked rollback) — only the scope
+  grant was missing. Auto-write is limited to SEO title/description backfill (exact reformats);
+  copy_ready (JSON-LD/review schema) is never auto-written. No code change; `test/fixes.test.ts` 7/7
+  (apply/rollback/conflict/scope lifecycle). ⚠️ Going live needs: `SHOPIFY_SCOPES` updated on
+  Railway → `shopify app deploy` → merchant **re-consent** (reinstall with write granted) → and a
+  **dev-store live-write test** (apply + rollback a real SEO edit on the dev store) BEFORE relying on
+  it for a real merchant — the live write path has never run against a real store. Not deployed.
 - 2026-06-25 Codex deep-review UX/a11y (branch `fix/codex-ux-a11y`, off `main`): the UI tail.
   **(dedup)** `/scan` "Suggest more with AI" dedupes against the freshly-ensured prompt list
   (`base`), not the possibly-stale `prompts` state. **(validation)** the scan CTA is disabled with an

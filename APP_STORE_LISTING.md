@@ -55,9 +55,12 @@ All point to `https://lens.thirdocular.com/api/shopify/webhooks`:
 `customers/data_request`, `customers/redact`, `shop/redact` (mandatory) +
 `app/uninstalled`, `products/create|update|delete`, `shop/update`.
 
-## Scopes (least privilege)
-`read_products` baseline. `read_customer_events`, `write_pixels` for AI-referral attribution
-(Web Pixel). `write_products` only when a merchant enables Fix Studio write-back (re-consent).
+## Scopes
+`read_products` (catalog), `read_customer_events` + `write_pixels` (AI-referral Web Pixel
+attribution), and `write_products` (Fix Studio one-click apply). `write_products` is used
+**only** for the merchant-approved SEO title/description backfill — gated by explicit
+approval, a live re-read conflict check, a rollback snapshot, and an audit log. Structured-
+data fixes (JSON-LD, review schema) are copy-ready (one-click copy), never auto-written.
 
 ---
 

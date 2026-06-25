@@ -15,11 +15,13 @@ embedded = true
 application_url = "https://lens.thirdocular.com/app"
 
 [access_scopes]
-# Least privilege. write_products is added only for merchant-approved writes (Phase 6).
-# read_customer_events + write_pixels are required to activate the AI-referral Web Pixel
-# (Phase 10, webPixelCreate). ⚠️ Adding scopes triggers merchant RE-CONSENT on the next
-# `shopify app deploy` + reinstall. Keep SHOPIFY_SCOPES on the server in sync with this.
-scopes = "read_products,read_customer_events,write_pixels"
+# read_customer_events + write_pixels: AI-referral Web Pixel (Phase 10, webPixelCreate).
+# write_products: Fix Studio one-click apply (Phase 6) — the ONLY store-mutating scope,
+# used solely for the gated SEO title/description backfill (approval + re-read conflict
+# check + snapshot/rollback + audit). copy_ready fixes are never auto-written.
+# ⚠️ Adding scopes triggers merchant RE-CONSENT on the next `shopify app deploy` + reinstall.
+# Keep SHOPIFY_SCOPES on the server (Railway) in sync with this.
+scopes = "read_products,read_customer_events,write_pixels,write_products"
 
 [auth]
 redirect_urls = [
