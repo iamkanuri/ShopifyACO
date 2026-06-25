@@ -47,17 +47,34 @@ function ensureSession(): Promise<boolean> {
   return p;
 }
 
+// Are we in a CONNECTED merchant context (embedded, or a prior call already succeeded)?
+// Used to tell a genuine no-session PREVIEW (show the labeled sample cleanly) apart from a
+// real backend failure for a connected store (must surface an error, never silently pass
+// fixtures off as live — that would mask outages/regressions). Set once a call succeeds.
+let knownConnected = false;
+function inMerchantContext(): boolean {
+  return knownConnected || Boolean(appBridge());
+}
+
 async function load<T>(url: string, fallback: T): Promise<Loaded<T>> {
   try {
     let res = await fetch(url, { headers: await withAuth({ accept: "application/json" }) });
     if (res.status === 401 && (await ensureSession())) {
       res = await fetch(url, { headers: await withAuth({ accept: "application/json" }) });
     }
-    if (res.status === 401 || res.status === 503) return { data: fallback, demo: true };
-    if (!res.ok) return { data: fallback, demo: true, error: `HTTP ${res.status}` };
-    return { data: (await res.json()) as T, demo: false };
+    if (res.ok) {
+      knownConnected = true;
+      return { data: (await res.json()) as T, demo: false };
+    }
+    // A genuine no-session preview (401/503 and NOT a merchant context) → clean sample.
+    // Anything else (a connected merchant's failure, or any 5xx) → sample BUT flagged with
+    // an error so the UI shows "live data unavailable", not a silent demo.
+    if ((res.status === 401 || res.status === 503) && !inMerchantContext()) {
+      return { data: fallback, demo: true };
+    }
+    return { data: fallback, demo: true, error: `HTTP ${res.status}` };
   } catch {
-    return { data: fallback, demo: true };
+    return { data: fallback, demo: true, error: inMerchantContext() ? "network error" : undefined };
   }
 }
 
@@ -69,6 +86,7 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; data?
     if (res.status === 401) return { ok: false, demo: true, error: "Connect your store to perform this action." };
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: (data as { error?: string }).error ?? `HTTP ${res.status}` };
+    knownConnected = true;
     return { ok: true, data: data as T };
   } catch (e) {
     return { ok: false, error: (e as Error).message };

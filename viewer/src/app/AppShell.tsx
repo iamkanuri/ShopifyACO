@@ -38,6 +38,9 @@ export function AppShell() {
   // One probe drives the global connect banner; screens still show their own badge.
   const probe = useLoaded(() => getSchedules(), []);
   const demo = probe.demo;
+  // demo + an error means we're in a connected/merchant context but the live call failed —
+  // show an honest "live data unavailable" state, not the "connect your store" preview.
+  const liveError = demo && Boolean(probe.error);
 
   let screen: React.ReactNode;
   if (sub === "catalog") screen = <Catalog />;
@@ -60,8 +63,8 @@ export function AppShell() {
           ))}
         </nav>
         <div className="al-side-foot">
-          <div className={`al-conn ${demo ? "demo" : "live"}`}>
-            <span className="al-dot" /> {demo ? "Demo data" : "Store connected"}
+          <div className={`al-conn ${liveError ? "err" : demo ? "demo" : "live"}`}>
+            <span className="al-dot" /> {liveError ? "Live data unavailable" : demo ? "Demo data" : "Store connected"}
           </div>
           <ThemeToggle />
         </div>
@@ -69,9 +72,15 @@ export function AppShell() {
 
       <main className="al-main">
         {demo && !probe.loading && (
-          <div className="al-connect">
-            You're viewing <b>sample data</b>. <ConnectShopify className="as-link al-connect-link" label="Connect your Shopify store" /> to see your real AI visibility.
-          </div>
+          liveError ? (
+            <div className="al-connect al-connect-err">
+              We couldn't load your live data, so you're seeing <b>sample data</b>. This is an error (not your real results) — please retry shortly. <span className="muted">({probe.error})</span>
+            </div>
+          ) : (
+            <div className="al-connect">
+              You're viewing <b>sample data</b>. <ConnectShopify className="as-link al-connect-link" label="Connect your Shopify store" /> to see your real AI visibility.
+            </div>
+          )
         )}
         {screen}
       </main>

@@ -577,6 +577,21 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Codex deep-review P2 involved (branch `fix/codex-p2-involved`, off `main`): the three
+  larger P2 findings. **(P2-4)** `/api/prompts/suggest` + `/api/store/infer` now call
+  `spendAllows(SUGGEST_COST_CAP_USD)` and 429 BEFORE the paid OpenAI call (a burst can no longer
+  spend past the daily cap before it's recorded). **(P2-5)** `ModelPrice` gains an approximate
+  `fixedPerCallUsd` (grounded-search/request fee) included in `estimateMaxCost` (the
+  reservation/worst-case path ONLY — actuals from token counts are unchanged, so reported costs and
+  the live mini-scan cap math aren't inflated; mini worst-case stays well under $0.50). **(P2-3)** the
+  embedded `/app` demo fallback is now HONEST: `appApi` distinguishes a genuine no-session preview
+  (401/503 + not a merchant context → clean labeled sample) from a real failure for a connected store
+  (any 5xx, or any failure once App Bridge is present / a call has succeeded → sample BUT flagged with
+  an error). `DemoBadge` + the AppShell banner/status + the Dashboard render a distinct red "Live data
+  unavailable" state (vs the amber "Demo data / connect") so a backend outage can't masquerade as a
+  clean demo. No migration. New tests: `estimateMaxCost` includes the fixed fee + `fixedCostPerCall`
+  (pure). `npm test` 132/0. Typecheck + viewer build clean; **preview-verified both the clean-demo
+  (amber) and failure (red) states**. security-review (P2-4 net hardening) + code-review high: clean.
 - 2026-06-25 Codex deep-review P2 quick-wins (branch `fix/codex-p2-quick`, off `main`): five
   data-integrity / hardening fixes. **(P2-6)** `citationBackedRate` now uses the real mention count
   as denominator (`proportion(citationBacked, mentioned)`) → honest `n=0`/`rate=null` when never

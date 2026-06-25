@@ -15,6 +15,7 @@ export function Dashboard() {
 
   const env = dash.data!;        // AppDashboard — live (connected) or demo fallback
   const demo = dash.demo;        // true → no shop session, showing the labeled sample
+  const liveError = demo && Boolean(dash.error); // connected but the live call failed
   const connected = !demo;
 
   // Connected, but no completed benchmark yet → guide them to run the first one. Never
@@ -30,7 +31,12 @@ export function Dashboard() {
       <div className="al-page-head">
         <div>
           <h2>Dashboard</h2>
-          {demo ? (
+          {liveError ? (
+            <p className="al-sample-line">
+              <span className="al-sample-tag al-sample-tag-err">Sample</span>
+              Couldn't load your live dashboard — showing example data. This is an error, not your results; please retry. <span className="muted">({dash.error})</span>
+            </p>
+          ) : demo ? (
             <p className="al-sample-line">
               <span className="al-sample-tag">Sample</span>
               Example store <b>{brand}</b> · {category} — a preview of your dashboard.{" "}
@@ -109,7 +115,7 @@ export function Dashboard() {
       </div>
 
       <div className="section">
-        <h2>Open alerts <DemoBadge show={alerts.demo} /></h2>
+        <h2>Open alerts <DemoBadge show={alerts.demo} error={alerts.error} /></h2>
         <StateList loading={alerts.loading} items={alerts.data?.alerts ?? []} empty="No open alerts — your visibility is steady.">
           {(alerts.data?.alerts ?? []).map((a) => (
             <div key={a.id} className="card al-alert">

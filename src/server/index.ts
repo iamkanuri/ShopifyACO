@@ -411,6 +411,10 @@ app.post(
     if (!rateLimit(`suggest:${clientIp(req)}`, 5, 60_000)) {
       return res.status(429).json({ error: "Too many suggestions — try again shortly." });
     }
+    // Reserve against the global daily cap BEFORE the paid OpenAI call (worst case = the
+    // per-call cap), so a burst can't spend past the cap before we record it.
+    const budget = await spendAllows(SUGGEST_COST_CAP_USD);
+    if (!budget.ok) return res.status(429).json({ error: `Daily AI budget reached ($${budget.capUsd}). Try again later.`, capReached: true });
     const result = await suggestPrompts(form, keys.openai);
     recordSpend(result.costUsd); // count toward the global daily cap
     if (result.costUsd > SUGGEST_COST_CAP_USD) {
@@ -430,6 +434,9 @@ app.post(
     if (!rateLimit(`infer:${clientIp(req)}`, 8, 60_000)) {
       return res.status(429).json({ error: "Too many lookups — try again shortly." });
     }
+    // Reserve against the global daily cap BEFORE the paid OpenAI call.
+    const budget = await spendAllows(SUGGEST_COST_CAP_USD);
+    if (!budget.ok) return res.status(429).json({ error: `Daily AI budget reached ($${budget.capUsd}). Try again later.`, capReached: true });
     const result = await inferStore(store, keys.openai);
     recordSpend(result.costUsd); // count toward the global daily cap
     if (result.costUsd > SUGGEST_COST_CAP_USD) {

@@ -15,17 +15,27 @@ export const MODELS = {
 export interface ModelPrice {
   inputPerM: number;
   outputPerM: number;
+  /** Approximate FIXED per-call fee (web-search / grounding request charge) that token
+   *  pricing doesn't capture. Conservative, approximate estimates — used only to keep
+   *  worst-case spend ESTIMATES/RESERVATIONS from running too low (grounded shopping
+   *  queries are exactly where search fees bite). Refine when exact metadata is known. */
+  fixedPerCallUsd?: number;
 }
 
 /** Approximate public pricing (USD / 1M tokens). Keep in sync with MODELS. */
 export const PRICING: Record<string, ModelPrice> = {
-  "gpt-4o": { inputPerM: 2.5, outputPerM: 10 },
-  "gemini-2.5-flash": { inputPerM: 0.3, outputPerM: 2.5 },
+  "gpt-4o": { inputPerM: 2.5, outputPerM: 10, fixedPerCallUsd: 0.02 },
+  "gemini-2.5-flash": { inputPerM: 0.3, outputPerM: 2.5, fixedPerCallUsd: 0.01 },
   // Perplexity sonar also bills per-request for web search; tokens are the bulk.
-  sonar: { inputPerM: 1, outputPerM: 1 },
+  sonar: { inputPerM: 1, outputPerM: 1, fixedPerCallUsd: 0.005 },
   "claude-opus-4-8": { inputPerM: 5, outputPerM: 25 },
   mock: { inputPerM: 0, outputPerM: 0 },
 };
+
+/** Approximate fixed per-call fee (grounded-search/request charge), 0 if none/mock. */
+export function fixedCostPerCall(model: string): number {
+  return PRICING[model]?.fixedPerCallUsd ?? 0;
+}
 
 /** Max output tokens we request per call — also drives worst-case cost estimate. */
 export const MAX_OUTPUT_TOKENS = 700;

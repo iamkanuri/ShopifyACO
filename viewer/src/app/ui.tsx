@@ -24,8 +24,10 @@ export function useLoaded<T>(fn: () => Promise<Loaded<T>>, deps: unknown[] = [])
   return { data, loading, demo, error, reload: () => setNonce((n) => n + 1) };
 }
 
-export function DemoBadge({ show }: { show: boolean }) {
+export function DemoBadge({ show, error }: { show: boolean; error?: string }) {
   if (!show) return null;
+  // A connected store whose live request failed must NOT look like a clean demo — say so.
+  if (error) return <span className="al-demo al-demo-err" title={`Couldn't load live data — showing sample (${error})`}>Live data unavailable</span>;
   return <span className="al-demo" title="Sample data — connect your store to see live results">Demo data</span>;
 }
 
