@@ -28,3 +28,6 @@ Thumbs.db
 
 # Local code-review artifacts (keep out of the public repo)
 shopifyaco_deep_review_*.md
+
+# App Store listing assets (screenshots/icon) — uploaded to the Partner dashboard, not code
+listing-assets/
