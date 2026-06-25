@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { applyFix, approveFix, dismissFix, getCatalog, getFixes, proposeFixes } from "./appApi";
+import { applyFix, approveFix, dismissFix, getCatalog, getFixes, proposeFixes, rollbackFix } from "./appApi";
 import { DemoBadge, KindTag, StatePane, useLoaded } from "./ui";
 
 // Fix Studio: evidence-backed proposals. write_products are auto-applied (gated:
@@ -61,6 +61,8 @@ export function Fixes() {
                     <button className="btn" disabled={busy === p.id} onClick={() => act(p.id, approveFix, "Approved — ready to apply.")}>Approve</button>
                   ) : p.status === "approved" ? (
                     <button className="btn btn-primary" disabled={busy === p.id} onClick={() => act(p.id, applyFix, "Applied to your store (reversible).")}>Apply to store</button>
+                  ) : p.status === "applied" ? (
+                    <button className="btn" disabled={busy === p.id} onClick={() => act(p.id, rollbackFix, "Rolled back — restored the previous value.")}>Rollback</button>
                   ) : null
                 ) : (
                   <button className="btn" onClick={() => { navigator.clipboard?.writeText(p.proposed_value); setNote({ id: p.id, text: "Copied — paste into your theme.", ok: true }); }}>Copy snippet</button>

@@ -577,6 +577,13 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Fix Studio **Rollback button** (branch `fix/fixstudio-rollback-button`, off `main`):
+  the server `/app/api/fixes/:id/rollback` + the "reversible" apply path existed and were tested
+  (7/7), but the UI never rendered a rollback control — an `applied` write_products proposal showed
+  no action button, making the "reversible" promise unclickable. Added `rollbackFix` to `appApi.ts`
+  + a **Rollback** button on applied proposals in `Fixes.tsx`. Surfaced during the live dev-store
+  write test (apply confirmed against a real Shopify product — SEO Page title set — then needed a UI
+  rollback). Viewer build + typecheck clean. No backend change.
 - 2026-06-25 Enable `write_products` for Fix Studio one-click apply (branch
   `feat/write-products-scope`, off `main`): added `write_products` to `shopify.app.toml` scopes +
   `SHOPIFY_SCOPES` (.env.example fixed — it was stale at just `read_products`). The apply path was

@@ -143,6 +143,7 @@ export const runBenchmark = (body: { brand: string; category: string; competitor
 // ---- writes ----------------------------------------------------------------
 export const approveFix = (id: number) => post(`/app/api/fixes/${id}/approve`, {});
 export const applyFix = (id: number) => post(`/app/api/fixes/${id}/apply`, {});
+export const rollbackFix = (id: number) => post(`/app/api/fixes/${id}/rollback`, {});
 export const dismissFix = (id: number) => post(`/app/api/fixes/${id}/dismiss`, {});
 export const acknowledgeAlert = (id: number) => post(`/app/api/alerts/${id}/acknowledge`, {});
 export const syncCatalog = () => post(`/app/api/catalog/sync`, {});
