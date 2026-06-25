@@ -97,6 +97,15 @@ export async function listAlerts(shop: string, opts: { status?: string; limit?: 
   return rows;
 }
 
+/** Count alerts for a shop (optionally filtered by status, e.g. 'open'). */
+export async function countAlerts(shop: string, opts: { status?: string } = {}): Promise<number> {
+  const { rows } = await pgQuery<{ n: string }>(
+    "select count(*)::int as n from alerts where shop_domain=$1 and ($2::text is null or status=$2)",
+    [shop, opts.status ?? null],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
 export async function acknowledgeAlert(shop: string, id: number): Promise<number> {
   const { rowCount } = await pgQuery(
     "update alerts set status='acknowledged', acknowledged_at=now() where id=$1 and shop_domain=$2 and status='open'",

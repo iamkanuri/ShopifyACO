@@ -48,7 +48,7 @@ export function AppShell() {
   else if (sub === "monitoring") screen = <Monitoring />;
   else if (sub === "billing") screen = <Billing />;
   else if (sub === "settings") screen = <Settings connected={!demo} />;
-  else screen = <Dashboard demo={demo} />;
+  else screen = <Dashboard />;
 
   return (
     <div className="al-shell">

@@ -61,6 +61,15 @@ export async function listProposals(shop: string, opts: { runId?: number; status
   return rows;
 }
 
+/** Count fix proposals for a shop (optionally filtered by status, e.g. 'proposed'). */
+export async function countProposals(shop: string, opts: { status?: string } = {}): Promise<number> {
+  const { rows } = await pgQuery<{ n: string }>(
+    "select count(*)::int as n from fix_proposals where shop_domain=$1 and ($2::text is null or status=$2)",
+    [shop, opts.status ?? null],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
 /** Apply a status transition + optional fields. Returns the updated row count. */
 export async function updateProposal(
   id: number,

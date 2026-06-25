@@ -25,6 +25,7 @@ import { registerFeedJobs } from "../feeds/generate.js";
 import { activateHandler, attributionHandler, ingestHandler, ingestPreflightHandler } from "./pixel.js";
 import { billingPortalHandler, billingStatusHandler } from "./billing.js";
 import { listBenchmarksHandler, runBenchmarkHandler } from "./benchmarks.js";
+import { dashboardHandler } from "./dashboard.js";
 import { registerCatalogJobs } from "../catalog/sync.js";
 import { registerDiagnosisJobs } from "../diagnosis/execute.js";
 import { registerExperimentJobs } from "../experiments/execute.js";
@@ -317,6 +318,11 @@ registerExperimentJobs();
 //     Runs default to mock ($0); a live run (engine spend) needs explicit { live: true }.
 app.post("/app/api/benchmarks/run", shopMw, wrap(runBenchmarkHandler));
 app.get("/app/api/benchmarks", shopMw, wrap(listBenchmarksHandler));
+
+// --- Dashboard API (shop-scoped). The connected merchant's OWN home metrics computed
+//     from their latest completed run + findings/proposals/alerts. hasData=false until
+//     they've run a benchmark; the client falls back to the labeled sample only on 401.
+app.get("/app/api/dashboard", shopMw, wrap(dashboardHandler));
 
 // --- Monitoring & alerts API (Phase 8, shop-scoped). Recurring schedules + alerts.
 //     Runs default to mock ($0); the scheduler enqueues live only if MONITORING_LIVE=1.

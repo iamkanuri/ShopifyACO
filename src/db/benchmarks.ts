@@ -68,6 +68,30 @@ export async function listRunsForShop(shop: string, limit = 20): Promise<Array<R
   return rows;
 }
 
+export interface LatestRun {
+  id: number;
+  benchmark_id: number | null;
+  tier: string;
+  status: string;
+  observation_count: number;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+/** The most recent completed run for a shop (drives the dashboard). null if none yet. */
+export async function getLatestCompletedRun(shop: string): Promise<LatestRun | null> {
+  const { rows } = await pgQuery<{ id: string; benchmark_id: string | null; tier: string; status: string; observation_count: number; started_at: string | null; finished_at: string | null }>(
+    `select id, benchmark_id, tier, status, observation_count, started_at, finished_at
+       from benchmark_runs
+      where shop_domain=$1 and status='completed'
+      order by coalesce(finished_at, started_at) desc nulls last
+      limit 1`,
+    [shop],
+  );
+  const r = rows[0];
+  return r ? { ...r, id: Number(r.id), benchmark_id: r.benchmark_id != null ? Number(r.benchmark_id) : null } : null;
+}
+
 export async function createRun(benchmarkId: number, shop: string | null, tier: string, engines: string[], promptCount: number, repetitions: number): Promise<number> {
   const { rows } = await pgQuery<{ id: string }>(
     "insert into benchmark_runs (benchmark_id, shop_domain, tier, status, engines, prompt_count, repetitions) values ($1,$2,$3,'running',$4,$5,$6) returning id",

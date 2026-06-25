@@ -1,4 +1,4 @@
-import { DEMO, type AppAlertRow, type AppBilling, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type Proportion } from "./fixtures";
+import { DEMO, type AppAlertRow, type AppBilling, type AppDashboard, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type Proportion } from "./fixtures";
 
 // Client for the authenticated /app/api/* surface. Every call tries the live API; if
 // there's no shop session (401) or the backend is unavailable, it transparently falls
@@ -43,6 +43,14 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; data?
     return { ok: false, error: (e as Error).message };
   }
 }
+
+// The connected merchant's own dashboard. Falls back to the labeled Olipop sample only
+// when there's no shop session (401) or the backend is unavailable — never to imply the
+// sample is the merchant's. `connected:false` marks the fallback explicitly.
+const DEMO_DASHBOARD: AppDashboard = {
+  connected: false, hasData: true, brand: DEMO.brand, category: DEMO.category, runId: null, data: DEMO.dashboard,
+};
+export const getDashboard = () => load<AppDashboard>(`/app/api/dashboard`, DEMO_DASHBOARD);
 
 // ---- reads -----------------------------------------------------------------
 export const getFindings = (runId?: number) =>

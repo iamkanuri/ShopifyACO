@@ -33,6 +33,28 @@ export interface AppAlertRow { id: number; type: string; severity: string; metri
 export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
 export interface AppRunRow { id: number; tier: string; status: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
 
+export interface AppDashboardData {
+  score: number;
+  scoreComponents?: Array<{ key: string; label: string; weight: number; value: number; contribution: number }>;
+  recommendationRate: Proportion;
+  mentionRate: Proportion;
+  shareOfVoice: Array<{ key: string; share: number }>;
+  weakestEngine: string | null;
+  topThreat: string | null;
+  lastRunAt: string | null;
+  openFindings: number;
+  pendingFixes: number;
+  openAlerts: number;
+}
+export interface AppDashboard {
+  connected: boolean;
+  hasData: boolean;
+  brand: string;
+  category: string;
+  runId: number | null;
+  data: AppDashboardData | null;
+}
+
 export interface AppPlanLimits { benchmarksPerMonth: number; monitoringSchedules: number; feeds: number; }
 export interface AppEntitlement {
   id: string; label: string; status: string; active: boolean; source: string; tier: number; recurring: boolean;

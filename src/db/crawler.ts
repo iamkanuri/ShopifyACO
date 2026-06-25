@@ -71,6 +71,15 @@ export async function listFindings(shop: string, opts: { runId?: number; limit?:
   return rows;
 }
 
+/** Count findings for a shop (optionally scoped to one run). */
+export async function countFindings(shop: string, opts: { runId?: number } = {}): Promise<number> {
+  const { rows } = await pgQuery<{ n: string }>(
+    "select count(*)::int as n from findings where shop_domain=$1 and ($2::bigint is null or run_id=$2)",
+    [shop, opts.runId ?? null],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
 export async function listCrawlPages(shop: string, runId: number): Promise<Array<Record<string, unknown>>> {
   const { rows } = await pgQuery(
     `select role, brand, url, final_url, ok, http_status, error, robots_index, injection_flag, injection_terms,

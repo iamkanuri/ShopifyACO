@@ -1,4 +1,5 @@
 import { compareProportions, engineDivergence, mean, proportion, shareOfVoice, type Comparison, type MeanMetric, type Proportion } from "./stats.js";
+import { SCORE_WEIGHTS } from "../analysis/score.js";
 
 // Pure aggregation: a set of observations → benchmark metrics, each with a sample
 // size and confidence interval. One observation = one engine answer's assessment of
@@ -95,6 +96,43 @@ export function aggregate(observations: ObservationLike[], merchantBrand: string
     engineDivergence: engineDivergence(rateByEngine),
     winLoss: { responses, wins, losses, winRate: proportion(wins, responses) },
   };
+}
+
+// AI Visibility Score from aggregated metrics — the SAME documented, deterministic
+// formula as src/analysis/score.ts (the CLI path), expressed over benchmark metrics so
+// a connected merchant's dashboard score is computed identically:
+//
+//   score = 100 × (0.50·recommendationRate + 0.20·mentionRate
+//                  + 0.15·rankQuality + 0.15·competitiveStanding)
+//
+//   rankQuality        = avgPosition==null ? 0.5 : clamp01(1 − (avgPos−1)/5)
+//   competitiveStanding = responses>0 ? 1 − losses/responses : 0.5
+//                         (share of answers where no competitor out-recommended you)
+//
+// Never a black box: components are returned so the UI can show why.
+export interface ScoreBreakdown {
+  score: number;
+  components: Array<{ key: string; label: string; weight: number; value: number; contribution: number }>;
+}
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+export function scoreFromMetrics(m: BenchmarkMetrics): ScoreBreakdown {
+  const rec = m.recommendationRate.rate ?? 0;
+  const mention = m.mentionRate.rate ?? 0;
+  const avgRank = m.avgPosition.mean;
+  const rankValue = avgRank == null ? 0.5 : clamp01(1 - (avgRank - 1) / 5);
+  const compValue = m.winLoss.responses > 0 ? 1 - m.winLoss.losses / m.winLoss.responses : 0.5;
+
+  const w = SCORE_WEIGHTS; // single source of truth (src/analysis/score.ts)
+  const components = [
+    { key: "recommendation", label: "Recommendation rate", weight: w.recommendation, value: rec },
+    { key: "mention", label: "Mention rate", weight: w.mention, value: mention },
+    { key: "rank", label: "Rank quality when listed", weight: w.rank, value: rankValue },
+    { key: "win", label: "Competitive standing", weight: w.win, value: compValue },
+  ].map((c) => ({ ...c, contribution: c.weight * c.value * 100 }));
+
+  return { score: Math.round(components.reduce((s, c) => s + c.contribution, 0)), components };
 }
 
 /** Baseline vs verification comparison on recommendation rate (the headline metric). */

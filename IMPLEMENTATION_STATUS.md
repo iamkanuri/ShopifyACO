@@ -570,6 +570,21 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Dashboard live-data wiring (branch `phase14-dashboard-live`, off `main`): closed the
+  Phase-12 holdout where `/app` Dashboard rendered the Olipop SAMPLE for everyone. New shop-scoped
+  `GET /app/api/dashboard` (`src/server/dashboard.ts`, behind `requireShop`) computes the merchant's
+  OWN home metrics from their latest completed run — score (via the new `scoreFromMetrics`, sharing
+  the single-source `SCORE_WEIGHTS` from `analysis/score.ts`), rec/mention rates with CIs, share of
+  voice, weakest engine, top in-niche threat, the 5-step loop counts (findings/proposals/alerts), and
+  open alerts. `appApi.getDashboard()` + `Dashboard.tsx` use it when connected, fall back to the
+  labeled sample ONLY on 401 (no shop session), and show a "run your first benchmark" state for a
+  connected shop with no run yet. New additive DB helpers: `getLatestCompletedRun`, `countFindings`,
+  `countProposals`, `countAlerts` (all parameterized + shop-scoped). NO migration (read-only over
+  existing tables). `npm test` **124 pass / 0 fail**; full serial DB suite **144 pass / 0 fail / 7
+  skipped** against the LOCAL Supabase stack (incl. a dashboard e2e: no-run→hasData:false, then a
+  mock $0 run→real metrics). Typecheck + `vite build` clean; preview-verified both the demo-fallback
+  and connected render paths. `/security-review` clean; `/code-review high` → 1 finding (duplicated
+  score weights) fixed via `SCORE_WEIGHTS`. **Not merged/deployed — awaits a user go.**
 - 2026-06-22 Phase 11 DEPLOY: migration `0017` applied to Supabase; full serial DB suite
   (`RUN_DB_TESTS=1 SHOPIFY_MODE=mock npm run test:db`) **136 pass / 0 fail / 0 skipped** against
   live Supabase (incl. the billing lifecycle e2e: idempotent checkout, full-refund revoke,

@@ -495,6 +495,15 @@ them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extend
   **Connect Shopify** CTA. `npm --prefix viewer run build` green; preview-verified all 5 screens +
   responsive. Components are prop-driven so they lift cleanly. (Pre-existing viewer `tsc` errors in
   `Report`/`IndexLeaderboard` are unrelated; the ship path is `vite build`/esbuild.)
+- **Dashboard now wired to REAL per-merchant data** (branch `phase14-dashboard-live`, off `main`;
+  built + tested, not yet merged/deployed). The Dashboard was the last screen showing the Olipop
+  SAMPLE to everyone; it now loads shop-scoped `GET /app/api/dashboard` (`src/server/dashboard.ts`,
+  behind `requireShop`) computing the merchant's own score/rates(CI)/SoV/weakest-engine/top-threat/
+  loop-counts/alerts from their latest completed run. Score uses `scoreFromMetrics` (benchmarks/
+  metrics.ts) which shares the single-source `SCORE_WEIGHTS` exported from `src/analysis/score.ts`
+  (the CLI and dashboard scores can't diverge). Falls back to the labeled sample ONLY on 401 (no
+  shop session); a connected shop with no run yet sees a "run your first benchmark" state, never
+  sample numbers. Read-only — no migration.
 
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 

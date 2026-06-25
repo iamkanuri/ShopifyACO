@@ -15,12 +15,17 @@ import { avg, detOf, detScore, grounded, rate } from "./util.js";
 //   Competitive win rate  weight 0.15   value = 1 − (responses_a_competitor_beats_us / responses)
 // ---------------------------------------------------------------------------
 
-const WEIGHTS = {
+// The single source of truth for the AI Visibility Score weights. Both the CLI path
+// (computeVisibilityScore over PromptEngineResult[]) and the benchmark path
+// (scoreFromMetrics in benchmarks/metrics.ts over BenchmarkMetrics) consume these so the
+// documented formula can never silently diverge between the two.
+export const SCORE_WEIGHTS = {
   recommendation: 0.5,
   mention: 0.2,
   rank: 0.15,
   win: 0.15,
 } as const;
+const WEIGHTS = SCORE_WEIGHTS;
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
