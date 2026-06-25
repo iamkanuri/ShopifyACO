@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // "Connect Shopify" trigger. The install endpoint needs to know WHICH store, so instead of
 // linking straight to /api/shopify/install (which 400s with a raw error when there's no
@@ -20,6 +20,14 @@ export function ConnectShopify({ className = "", label = "Connect Shopify" }: { 
   const [value, setValue] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
+  // a11y: close the dialog on Escape while it's open.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const shop = normalizeShop(value);
@@ -35,9 +43,9 @@ export function ConnectShopify({ className = "", label = "Connect Shopify" }: { 
       <button type="button" className={className} onClick={() => setOpen(true)}>{label}</button>
       {open && (
         <div className="modal-overlay" onClick={() => setOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="connect-title" onClick={(e) => e.stopPropagation()}>
             <button className="modal-x" onClick={() => setOpen(false)} aria-label="Close">×</button>
-            <h3>Connect your Shopify store</h3>
+            <h3 id="connect-title">Connect your Shopify store</h3>
             <p className="muted">Enter your store's address — we'll send you to Shopify to approve a read-only connection.</p>
             <form onSubmit={submit}>
               <input

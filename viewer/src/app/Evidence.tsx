@@ -12,14 +12,16 @@ export function Evidence() {
   const f = useLoaded(() => getFindings(runId), [runId]);
   const findings = f.data?.findings ?? [];
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
 
   async function runDiagnosis() {
     if (!runId) return;
-    setBusy(true); setNote("");
+    setBusy(true); setNote(null);
     const r = await diagnose(runId);
     setBusy(false);
-    setNote(r.ok ? "Diagnosis complete." : r.demo ? "Connect your store to diagnose a live run." : r.error ?? "Diagnosis failed.");
+    if (r.ok) setNote({ text: "Diagnosis complete.", tone: "ok" });
+    else if (r.demo) setNote({ text: "Connect your store to diagnose a live run.", tone: "info" });
+    else setNote({ text: r.error ?? "Diagnosis failed.", tone: "err" });
     if (r.ok) f.reload();
   }
 
@@ -35,7 +37,7 @@ export function Evidence() {
           <Link to={`/app/fixes${runId ? `?run=${runId}` : ""}`} className="btn">Turn into fixes →</Link>
         </div>
       </div>
-      {note && <div className="al-note ok" style={{ marginBottom: 16 }}>{note}</div>}
+      {note && <div className={`al-note ${note.tone}`} style={{ marginBottom: 16 }}>{note.text}</div>}
 
       <StatePane loading={f.loading} empty={findings.length === 0} emptyText={runId ? "No findings for this run yet — click Run diagnosis to crawl competitors and diagnose the gap." : "No findings yet. Run a benchmark, then diagnose it."}>
         <div className="grid">

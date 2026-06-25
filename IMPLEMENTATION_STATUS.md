@@ -577,6 +577,18 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Codex deep-review UX/a11y (branch `fix/codex-ux-a11y`, off `main`): the UI tail.
+  **(dedup)** `/scan` "Suggest more with AI" dedupes against the freshly-ensured prompt list
+  (`base`), not the possibly-stale `prompts` state. **(validation)** the scan CTA is disabled with an
+  inline reason when zero engines or (after customizing) zero prompts are selected, instead of
+  failing server-side. **(a11y)** both modals (ConnectShopify + the scan confirm) get
+  `role="dialog"`/`aria-modal`/`aria-labelledby` + Escape-to-close; the icon-only remove buttons
+  (competitor/prompt) get `aria-label`s. **(notes)** Evidence + Fix Studio status notes are now
+  toned — `ok`(green)/`info`(neutral, demo-denied)/`err`(red) — instead of always rendering green
+  even on failure. No backend/migration. Typecheck (changed files) + viewer build clean;
+  preview-verified `/scan` renders with no console errors. code-review high: clean. **Deferred (not
+  bugs):** exposing the live-run action in Measure (Codex UI #7) is a spend/product decision; the
+  landing-hero rewrite (UI #1) is subjective — both left for a deliberate call, not bundled here.
 - 2026-06-25 Codex deep-review P3 + docs (branch `fix/codex-p3-docs`, off `main`): the polish/
   hardening tail. **(P3-1)** the Stripe webhook now returns 500 (→ Stripe retry) if the
   idempotency-ledger write fails after processing, instead of swallowing + 200 (reprocess is

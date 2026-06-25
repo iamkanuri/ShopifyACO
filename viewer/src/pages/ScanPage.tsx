@@ -64,6 +64,14 @@ export function ScanPage() {
   const [progress, setProgress] = useState<string[]>([]);
   const inferred = useRef(false);
 
+  // a11y: close the confirm dialog on Escape while it's open.
+  useEffect(() => {
+    if (!showConfirm) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowConfirm(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showConfirm]);
+
   const enabledEngines = Object.entries(engines).filter(([, v]) => v).map(([k]) => k);
   const selected = prompts.filter((p) => p.selected);
   const estMaxCost = useMemo(
@@ -186,7 +194,9 @@ export function ScanPage() {
         setSuggestErr(`Couldn't get AI suggestions: ${sErr}`);
         return;
       }
-      const existing = new Set(prompts.map((p) => p.text.toLowerCase()));
+      // Dedupe against `base` (the freshly-ensured list), not the possibly-stale `prompts`
+      // state — otherwise a suggestion duplicating a just-generated prompt slips through.
+      const existing = new Set(base.map((p) => p.text.toLowerCase()));
       const added = extra
         .filter((t) => !existing.has(t.toLowerCase()))
         .map((t) => ({ category: "ai_suggested", text: t, selected: false }));
@@ -341,7 +351,7 @@ export function ScanPage() {
                 value={c.storeUrl ?? ""}
                 onChange={(e) => updateComp(i, { storeUrl: e.target.value })}
               />
-              <button className="btn icon" onClick={() => setCompetitors(competitors.filter((_, j) => j !== i))}>
+              <button className="btn icon" aria-label="Remove competitor" onClick={() => setCompetitors(competitors.filter((_, j) => j !== i))}>
                 ×
               </button>
             </div>
@@ -391,6 +401,7 @@ export function ScanPage() {
                     <span className="ptext">{p.text}</span>
                     <button
                       className="btn icon"
+                      aria-label="Remove prompt"
                       onClick={(e) => {
                         e.preventDefault();
                         setPrompts(prompts.filter((_, j) => j !== i));
@@ -431,6 +442,12 @@ export function ScanPage() {
           Over the ${MINI_CAP.toFixed(2)} mini-scan cap. Deselect prompts or engines in “Customize prompts”.
         </div>
       )}
+      {enabledEngines.length === 0 && (
+        <div className="banner-error">Select at least one AI assistant (in “Customize prompts”) to run a scan.</div>
+      )}
+      {prompts.length > 0 && selected.length === 0 && (
+        <div className="banner-error">Select at least one prompt to run a scan.</div>
+      )}
       {error && <div className="banner-error">{error}</div>}
 
       {/* Honeypot: hidden from real users; bots fill every field and get rejected. */}
@@ -452,7 +469,7 @@ export function ScanPage() {
       <div className="scan-actions">
         <button
           className="btn btn-primary lg"
-          disabled={busy === "inferring" || busy === "generating" || busy === "starting" || overCap}
+          disabled={busy === "inferring" || busy === "generating" || busy === "starting" || overCap || enabledEngines.length === 0 || (prompts.length > 0 && selected.length === 0)}
           onClick={openConfirm}
         >
           {busy === "inferring" ? "Detecting…" : busy === "generating" ? "Preparing…" : "Run free scan →"}
@@ -464,8 +481,8 @@ export function ScanPage() {
 
       {showConfirm && (
         <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Run a live scan?</h3>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(e) => e.stopPropagation()}>
+            <h3 id="confirm-title">Run a live scan?</h3>
             <p className="muted">
               AisleLens will ask{" "}
               <b>{selected.length} realistic shopper {selected.length === 1 ? "question" : "questions"}</b> across{" "}

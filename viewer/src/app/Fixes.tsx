@@ -84,15 +84,17 @@ function GeneratePanel({ runId, onCreated }: { runId: number; onCreated: () => v
   const products = cat.data?.products ?? [];
   const [gid, setGid] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
   const chosen = gid || products[0]?.product_gid || "";
 
   async function generate() {
     if (!chosen) return;
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(null);
     const r = await proposeFixes(runId, chosen);
     setBusy(false);
-    setMsg(r.ok ? `Generated ${(r.data as { created?: number })?.created ?? ""} proposal(s).` : r.demo ? "Connect your store to generate fixes for a product." : r.error ?? "Could not generate.");
+    if (r.ok) setMsg({ text: `Generated ${(r.data as { created?: number })?.created ?? ""} proposal(s).`, tone: "ok" });
+    else if (r.demo) setMsg({ text: "Connect your store to generate fixes for a product.", tone: "info" });
+    else setMsg({ text: r.error ?? "Could not generate.", tone: "err" });
     if (r.ok) onCreated();
   }
 
@@ -108,7 +110,7 @@ function GeneratePanel({ runId, onCreated }: { runId: number; onCreated: () => v
         </select>
         <button className="btn btn-primary" disabled={busy || !chosen} onClick={generate}>{busy ? "Generating…" : "Generate"}</button>
       </div>
-      {msg && <div className="al-note ok" style={{ marginTop: 12 }}>{msg}</div>}
+      {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 12 }}>{msg.text}</div>}
     </div>
   );
 }
