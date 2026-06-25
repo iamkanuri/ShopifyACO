@@ -73,21 +73,32 @@ export interface Comparison {
   verdict: ChangeVerdict;
 }
 
+// Minimum per-arm sample size before we'll call a direction. Matches the documented
+// "Moderate signal" confidence tier (n>=12); below it we stay inconclusive even if the
+// interval excludes 0, so tiny samples never produce false certainty / cry-wolf alerts.
+export const MIN_COMPARE_N = 12;
+
 /** Compare two proportions (baseline vs verification). Verdict is "inconclusive"
- *  ("no evidence of change") unless the 95% CI of the difference excludes 0 — so we
- *  never report a regression/improvement that the sample size can't support. */
+ *  ("no evidence of change") unless the 95% CI of the difference excludes 0 AND both
+ *  arms have enough data — so we never report a regression/improvement the sample can't
+ *  support. The difference interval uses Newcombe's method (combining the two Wilson
+ *  intervals), which — unlike a Wald SE — never collapses to zero width at extreme
+ *  proportions (e.g. 0/3 vs 3/3 no longer yields a [1,1] "certain" interval). */
 export function compareProportions(baseSucc: number, baseN: number, curSucc: number, curN: number, z = Z95): Comparison {
   const baseline = proportion(baseSucc, baseN, z);
   const current = proportion(curSucc, curN, z);
   if (baseN <= 0 || curN <= 0) {
     return { baseline, current, diff: null, diffCiLow: 0, diffCiHigh: 0, verdict: "inconclusive" };
   }
-  const p1 = baseSucc / baseN;
-  const p2 = curSucc / curN;
-  const diff = p2 - p1;
-  const se = Math.sqrt((p1 * (1 - p1)) / baseN + (p2 * (1 - p2)) / curN);
-  const lo = diff - z * se;
-  const hi = diff + z * se;
-  const verdict: ChangeVerdict = lo > 0 ? "improved" : hi < 0 ? "regressed" : "inconclusive";
+  const pB = baseSucc / baseN;
+  const pC = curSucc / curN;
+  const diff = pC - pB;
+  // Newcombe (1998) method 10 for the difference of independent proportions, using the
+  // per-arm Wilson bounds already computed above (current = arm "C", baseline = arm "B").
+  const lo = diff - Math.sqrt((pC - current.ciLow) ** 2 + (baseline.ciHigh - pB) ** 2);
+  const hi = diff + Math.sqrt((current.ciHigh - pC) ** 2 + (pB - baseline.ciLow) ** 2);
+  const enoughN = baseN >= MIN_COMPARE_N && curN >= MIN_COMPARE_N;
+  const verdict: ChangeVerdict =
+    !enoughN ? "inconclusive" : lo > 0 ? "improved" : hi < 0 ? "regressed" : "inconclusive";
   return { baseline, current, diff, diffCiLow: lo, diffCiHigh: hi, verdict };
 }

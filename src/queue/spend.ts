@@ -43,8 +43,8 @@ export async function reserveSpend(runId: string | undefined, estimateUsd: numbe
 /** Reconcile a reservation to its real cost: move estimate→actual on the day counter. */
 export async function reconcileSpend(reservationId: number, actualUsd: number): Promise<void> {
   await pgTx(async (c) => {
-    const { rows } = await c.query<{ estimate_usd: string; status: string }>(
-      "select estimate_usd, status from spend_reservations where id = $1 for update",
+    const { rows } = await c.query<{ estimate_usd: string; status: string; day: string }>(
+      "select estimate_usd, status, day from spend_reservations where id = $1 for update",
       [reservationId],
     );
     const row = rows[0];
@@ -54,9 +54,12 @@ export async function reconcileSpend(reservationId: number, actualUsd: number): 
       "update spend_reservations set actual_usd = $1, status = 'reconciled', updated_at = now() where id = $2",
       [actualUsd, reservationId],
     );
+    // Settle on the reservation's OWN day, not current_date — a run reserved before
+    // midnight and reconciled after must release/charge the day it reserved against,
+    // or the daily-cap buckets drift (yesterday stays locked, today over-charged).
     await c.query(
-      "update spend_days set reserved_usd = greatest(0, reserved_usd - $1), actual_usd = actual_usd + $2, updated_at = now() where day = current_date",
-      [estimate, actualUsd],
+      "update spend_days set reserved_usd = greatest(0, reserved_usd - $1), actual_usd = actual_usd + $2, updated_at = now() where day = $3",
+      [estimate, actualUsd, row.day],
     );
   });
 }
@@ -64,6 +67,14 @@ export async function reconcileSpend(reservationId: number, actualUsd: number): 
 /** Release a reservation that never spent (job failed/cancelled before any cost). */
 export async function releaseSpend(reservationId: number): Promise<void> {
   await reconcileSpend(reservationId, 0);
+}
+
+/** Settle a reservation after a FAILED run: if paid calls already happened, reconcile the
+ *  real spend so it still counts against the cap; only fully release when nothing was spent.
+ *  (Releasing a partially-spent run would silently undercount real provider spend.) */
+export async function settleFailedReservation(reservationId: number, spentUsd: number): Promise<void> {
+  if (spentUsd > 0) await reconcileSpend(reservationId, spentUsd);
+  else await releaseSpend(reservationId);
 }
 
 /** Today's committed+held spend (DB-authoritative). */

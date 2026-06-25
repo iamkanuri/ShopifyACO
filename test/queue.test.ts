@@ -146,3 +146,46 @@ dbTest("spend reservation is atomic and reconciles to net-zero", async () => {
   assert.ok(ok.reservationId);
   await reconcileSpend(ok.reservationId!, 0); // release → no real spend recorded
 });
+
+// P1-1: a run that fails AFTER paid calls must reconcile the real spend (so it still
+// counts against the cap), not release-to-zero.
+dbTest("settleFailedReservation reconciles partial spend; releases only when $0 spent", async () => {
+  const { reserveSpend, settleFailedReservation } = await import("../src/queue/spend.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const runId = `test-fail-${Date.now()}`;
+  try {
+    const spent = await reserveSpend(runId, 0.01, 1_000_000);
+    assert.ok(spent.reservationId);
+    await settleFailedReservation(spent.reservationId!, 0.004); // paid calls happened before the throw
+    const a = await pgQuery<{ actual_usd: string; status: string }>("select actual_usd, status from spend_reservations where id=$1", [spent.reservationId]);
+    assert.equal(a.rows[0]!.status, "reconciled");
+    assert.equal(Number(a.rows[0]!.actual_usd), 0.004);
+
+    const none = await reserveSpend(runId, 0.01, 1_000_000);
+    await settleFailedReservation(none.reservationId!, 0); // nothing spent → released
+    const b = await pgQuery<{ actual_usd: string }>("select actual_usd from spend_reservations where id=$1", [none.reservationId]);
+    assert.equal(Number(b.rows[0]!.actual_usd), 0);
+  } finally {
+    await pgQuery("delete from spend_reservations where run_id=$1", [runId]);
+  }
+});
+
+// P1-2: reconciliation must settle on the reservation's OWN day, not current_date —
+// otherwise a run crossing midnight corrupts both days' cap buckets.
+dbTest("reconcileSpend settles on the reservation's own day, not current_date", async () => {
+  const { reconcileSpend } = await import("../src/queue/spend.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const day = "1990-06-15"; // fixed past day — won't collide with real spend rows
+  try {
+    await pgQuery("insert into spend_days (day, reserved_usd, actual_usd) values ($1, 5, 0) on conflict (day) do update set reserved_usd=5, actual_usd=0", [day]);
+    const ins = await pgQuery<{ id: string }>("insert into spend_reservations (day, run_id, estimate_usd, status) values ($1,'past',5,'active') returning id", [day]);
+    const id = Number(ins.rows[0]!.id);
+    await reconcileSpend(id, 3);
+    const sd = await pgQuery<{ reserved_usd: string; actual_usd: string }>("select reserved_usd, actual_usd from spend_days where day=$1", [day]);
+    assert.equal(Number(sd.rows[0]!.reserved_usd), 0); // 5 estimate released on the right day
+    assert.equal(Number(sd.rows[0]!.actual_usd), 3);   // real spend recorded on the right day
+    await pgQuery("delete from spend_reservations where id=$1", [id]);
+  } finally {
+    await pgQuery("delete from spend_days where day=$1", [day]);
+  }
+});

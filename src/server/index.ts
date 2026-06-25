@@ -64,6 +64,7 @@ import {
   getResults,
   getStatus,
   isBusy,
+  isValidRunId,
   newRunId,
   readProgress,
   releaseLock,
@@ -522,7 +523,8 @@ app.post(
 app.get(
   "/api/scan/:runId/status",
   wrap(async (req, res) => {
-    const runId = String(req.params.runId);
+    const runId = req.params.runId;
+    if (!isValidRunId(runId)) return res.status(404).json({ error: "Unknown run." });
     const status = await getStatus(runId);
     if (!status) return res.status(404).json({ error: "Unknown run." });
     res.json({ ...status, progress: (await readProgress(runId)).split("\n").filter(Boolean).slice(-40) });
@@ -532,14 +534,16 @@ app.get(
 app.get(
   "/api/runs/:runId",
   wrap(async (req, res) => {
-    const results = (await getResults(String(req.params.runId))) as Record<string, unknown> | null;
+    if (!isValidRunId(req.params.runId)) return res.status(404).json({ error: "Results not ready." });
+    const results = (await getResults(req.params.runId)) as Record<string, unknown> | null;
     if (!results) return res.status(404).json({ error: "Results not ready." });
     res.json(redactRun(results));
   }),
 );
 
 app.get("/api/runs/:runId/report.md", (req, res) => {
-  const path = resolve(join(runDir(String(req.params.runId)), "report.md"));
+  if (!isValidRunId(req.params.runId)) return res.status(404).send("Report not ready.");
+  const path = resolve(join(runDir(req.params.runId), "report.md"));
   if (!existsSync(path)) return res.status(404).send("Report not ready.");
   res.type("text/markdown").sendFile(path);
 });

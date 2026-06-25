@@ -577,6 +577,22 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Codex deep-review P1 batch (branch `fix/codex-p1-batch`, off `main`): fixed the four
+  trust-critical findings from the external review. **(P1-1)** A live benchmark that fails AFTER paid
+  engine calls now reconciles the real spend instead of releasing the reservation to $0 — new
+  `settleFailedReservation` in `src/queue/spend.ts`, wired into `executeBenchmark`'s catch. **(P1-2)**
+  `reconcileSpend` settles on the reservation's OWN `day` (read from `spend_reservations`), not
+  `current_date`, so a run crossing midnight no longer corrupts both days' cap buckets. **(P1-3)**
+  `compareProportions` (used by experiments verification + monitoring alerts) replaced the Wald
+  difference SE — which collapsed to a zero-width "certain" interval at extremes (`0/3 vs 3/3` →
+  `[1,1]`) — with **Newcombe's** method over the two Wilson intervals, plus a `MIN_COMPARE_N=12`
+  per-arm floor (the documented "Moderate" tier) so tiny samples stay inconclusive (no false
+  certainty / cry-wolf). **(P1-4)** Public `:runId` routes (`/api/scan/:id/status`, `/api/runs/:id`,
+  `/api/runs/:id/report.md`) validate the id shape (`isValidRunId`) before any filesystem access, and
+  `runDir` resolves + asserts containment within `DATA_DIR` (defense-in-depth vs `%2F` traversal).
+  No migration. New tests: `test/stats.test.ts` (6 pure) + 2 DB-gated spend tests in
+  `test/queue.test.ts`. `npm test` 130/0; **full DB suite 160/0/0** (monitoring/experiments verdicts
+  unchanged). Typecheck clean. security-review (net improvement) + code-review high: clean.
 - 2026-06-25 Embedded install via TOKEN EXCHANGE (branch `phase14-dashboard-live`): built the
   embedded-app install handshake so flipping `embedded=true` works. On a merchant's first embedded
   load App Bridge mints a session token but no shop row exists (Shopify managed install never hits

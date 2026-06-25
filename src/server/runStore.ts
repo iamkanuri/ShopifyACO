@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import type { Config } from "../types.js";
 import { ENV } from "./env.js";
 
@@ -42,8 +42,23 @@ export function releaseLock(runId: string): void {
   if (activeRunId === runId) activeRunId = null;
 }
 
+// A run id is a timestamp prefix + 80 bits of hex entropy (see newRunId). Public routes
+// take :runId from the URL, so validate the shape before it ever touches the filesystem.
+const RUN_ID_RE = /^\d{8}-\d{6}-[0-9a-f]{20}$/;
+export function isValidRunId(s: unknown): s is string {
+  return typeof s === "string" && RUN_ID_RE.test(s);
+}
+
 export function runDir(runId: string): string {
-  return join(RUNS_DIR, runId);
+  // Defense in depth against path traversal (Express decodes %2F in params): resolve and
+  // confirm the result stays inside RUNS_DIR. Trusted callers pass a newRunId; a malformed
+  // or escaping id throws rather than reading/writing outside the data dir.
+  const root = resolve(RUNS_DIR);
+  const dir = resolve(root, runId);
+  if (dir !== root && !dir.startsWith(root + sep)) {
+    throw new Error("invalid run id");
+  }
+  return dir;
 }
 
 export function newRunId(): string {

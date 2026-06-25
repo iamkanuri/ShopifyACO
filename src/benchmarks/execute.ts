@@ -3,7 +3,7 @@ import { ENV } from "../server/env.js";
 import { buildAdapters } from "../engines/index.js";
 import { detectMentions } from "../detection/index.js";
 import { estimateMaxCost } from "../cli.js";
-import { reserveSpend, reconcileSpend, releaseSpend, recordUsage } from "../queue/spend.js";
+import { reserveSpend, reconcileSpend, settleFailedReservation, recordUsage } from "../queue/spend.js";
 import { aggregateRun, createRun, finishRun, getBenchmark, insertObservation } from "../db/benchmarks.js";
 import type { BenchmarkMetrics } from "./metrics.js";
 import { registerHandler } from "../queue/handlers.js";
@@ -107,7 +107,8 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
     return { runId, observationCount: obsCount, costUsd: totalCost, estimateUsd, metrics: agg.metrics };
   } catch (err) {
     await finishRun(runId, { status: "failed", error: (err as Error).message });
-    if (reservationId) await releaseSpend(reservationId);
+    // Reconcile any spend already incurred before the failure; only release if $0 spent.
+    if (reservationId) await settleFailedReservation(reservationId, totalCost);
     throw err;
   }
 }
