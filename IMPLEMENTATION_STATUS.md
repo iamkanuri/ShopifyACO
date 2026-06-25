@@ -515,10 +515,17 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
-## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-22, commit `6660aa6`)
-**Phases 1–12 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-25, commit `8cf42c1`)
+**Phases 1–14 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
+- **Phase 14 (2026-06-25, commit `8cf42c1`): EMBEDDED MODE + DASHBOARD LIVE-DATA.** The `/app`
+  Dashboard now computes the connected merchant's OWN metrics (`GET /app/api/dashboard`); the embedded
+  install handshake works via RFC-8693 **token exchange** (`POST /api/shopify/token`) — `embedded=true`
+  in `shopify.app.toml`, `shopify app deploy` released, and **verified end-to-end inside the dev-store
+  admin** (clean reinstall → framed load → token exchange → "Store connected"). Phase 13 (continuous
+  security hardening) also live. See the verification log for details.
 - **All 17 migrations applied** to Supabase (`0001`–`0017`; `0017_entitlements` applied 2026-06-22).
+  Phases 12/13/14 added NO migrations (read-only / additive code over existing tables).
 - **Phase 11 (commercial/entitlements) is LIVE** (commit `6660aa6`): config-driven entitlements +
   idempotent Stripe lifecycle (subscription/refund/failed-payment) + billing portal + `/app/billing`.
   **Enforcement stays DORMANT** (`BILLING_ENFORCED` unset) — the plan/usage surface is live, gating is

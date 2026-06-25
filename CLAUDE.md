@@ -227,10 +227,12 @@ process. No Vercel, no CORS.
   they discover their gap → prefilled scan → report → paid). See TODO.md for the
   "claim your brand" and shareable-card extensions.
 
-## ⚠️ Rotate the Shopify secret before any Shopify work
-`imp keys.txt` holds a live **Shopify API secret** that was exposed in plaintext. No
-code reads it (verified), but it MUST be rotated in the Shopify dashboard before any
-Shopify OAuth / App Store work begins.
+## Shopify secret rotation — DONE (2026-06-21)
+The previously-exposed Shopify API secret (formerly in `imp keys.txt`) was **rotated in
+the Partner dashboard on 2026-06-21**; the old value is dead. `SHOPIFY_API_SECRET` (+ a
+`SHOPIFY_API_SECRET_FALLBACK` for rotation grace) are set on Railway and verified live
+(OAuth + token-exchange working). `imp keys.txt` is gitignored and read by no code
+(verified); delete it if it's still lying around locally. No outstanding action.
 
 ## Architecture & conventions
 
@@ -286,6 +288,16 @@ complex sentences — an optional LLM classification pass is the planned upgrade
 A larger "beta → AI-commerce control plane" program is underway. Its phased status,
 architecture decisions, and external blockers live in `IMPLEMENTATION_STATUS.md`;
 external (credential/dashboard) actions live in [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md).
+
+> **STATUS (2026-06-25): Phases 1–14 are all MERGED to `main` and LIVE in production**
+> (commit `8cf42c1`; verify via `GET /healthz`). The per-phase **"built on branch
+> `phaseN-…`"** wording below is **historical** (how each phase was developed) — those
+> branches are merged; do not read them as unshipped. Embedded mode is live + verified
+> in-admin. What's genuinely NOT yet shipped: the App Store *listing submission*
+> (icon/screenshots/submit) and `write_products` live write-back (deferred by design).
+> The authoritative current-state record is the **"LIVE DEPLOYMENT STATE"** block in
+> `IMPLEMENTATION_STATUS.md`.
+
 **Phase 1 (durable job system) is built on branch `phase1-job-system`** but dormant
 relative to the live funnel until a worker service + `JOB_QUEUE_ENABLED=1` are verified:
 - `migrations/0006_jobs.sql` — `jobs` (atomic claim via `FOR UPDATE SKIP LOCKED`,
@@ -534,6 +546,8 @@ single source of truth; update it as items ship.
 - `src/detection/index.ts` — sentiment + LLM classification pass (see above).
 
 ## Security reminder
-`imp keys.txt` in the repo root holds live secrets including a **Shopify API secret**.
-It is gitignored. That secret has been exposed in plaintext — **rotate it before
-production**.
+`imp keys.txt` (gitignored, read by no code) once held a **Shopify API secret** exposed
+in plaintext. That secret was **rotated 2026-06-21** (old value dead) — no outstanding
+action; delete the file if still present locally. Keep all live secrets in env vars only
+(`.env` local / Railway prod); `.env.prod.bak` holds prod creds and is gitignored — never
+commit it or expose it to external tools.

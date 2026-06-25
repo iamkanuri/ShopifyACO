@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "AI Visibility — Web Pixel extension: directional AI-referral attribution.",
   "dependencies": {
-    "@shopify/web-pixels-extension": "^2.0.0"
+    "@shopify/web-pixels-extension": "^2.0.0",
+    "shopify-aco": "file:../.."
   }
 }
