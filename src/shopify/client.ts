@@ -26,15 +26,25 @@ export function effectiveSecrets(): string[] {
 export interface TokenExchange {
   accessToken: string;
   scope: string;
+  /** Expiring offline tokens come with a rotating refresh token (~90d). Absent for mock/legacy. */
+  refreshToken?: string;
+  /** Seconds until the access token expires (~3600). Absent => treat as non-expiring/legacy. */
+  expiresIn?: number;
+  /** Seconds until the refresh token expires (~7776000). */
+  refreshTokenExpiresIn?: number;
 }
 
 export interface ShopifyClient {
   mode: "live" | "mock";
   exchangeCode(shop: string, code: string): Promise<TokenExchange>;
   /** Token exchange (embedded install): swap a VERIFIED App Bridge session token for an
-   *  offline access token for the already-granted scopes — no OAuth redirect. Used by the
-   *  embedded install handshake (Shopify managed install + token exchange). */
+   *  EXPIRING offline access token for the already-granted scopes — no OAuth redirect. Used by
+   *  the embedded install handshake (Shopify managed install + token exchange). */
   exchangeSessionToken(shop: string, sessionToken: string): Promise<TokenExchange>;
+  /** Refresh an expiring offline access token using its (rotating) refresh token. Shopify
+   *  invalidates the old refresh token and returns a NEW access + refresh token pair. Used by
+   *  background paths that have no session token to re-exchange (webhooks, jobs). */
+  refreshAccessToken(shop: string, refreshToken: string): Promise<TokenExchange>;
   /** Register the app + compliance webhooks. Returns the topics registered. */
   registerWebhooks(shop: string, accessToken: string): Promise<string[]>;
   /** Read the scopes the shop ACTUALLY granted, from the live installation. This is the
@@ -58,13 +68,22 @@ const MANDATORY_TOPICS = [
   "SHOP_REDACT",
 ];
 
+// A deterministic mock offline token bundle (expiring), so the storage + refresh lifecycle
+// is exercised end-to-end at $0. expiresIn far in the future => fresh installs never look
+// stale; tests that want the refresh path set access_token_expires_at into the past directly.
+const MOCK_EXPIRES_IN = 3600;
+const MOCK_REFRESH_EXPIRES_IN = 7_776_000;
+
 class MockClient implements ShopifyClient {
   mode = "mock" as const;
   async exchangeCode(shop: string, code: string): Promise<TokenExchange> {
-    return { accessToken: `mock_offline_token::${shop}::${code.slice(0, 8)}`, scope: ENV.shopify.scopes.join(",") };
+    return { accessToken: `mock_offline_token::${shop}::${code.slice(0, 8)}`, scope: ENV.shopify.scopes.join(","), refreshToken: `mock_refresh::${shop}`, expiresIn: MOCK_EXPIRES_IN, refreshTokenExpiresIn: MOCK_REFRESH_EXPIRES_IN };
   }
   async exchangeSessionToken(shop: string): Promise<TokenExchange> {
-    return { accessToken: `mock_offline_token::${shop}::texch`, scope: ENV.shopify.scopes.join(",") };
+    return { accessToken: `mock_offline_token::${shop}::texch`, scope: ENV.shopify.scopes.join(","), refreshToken: `mock_refresh::${shop}`, expiresIn: MOCK_EXPIRES_IN, refreshTokenExpiresIn: MOCK_REFRESH_EXPIRES_IN };
+  }
+  async refreshAccessToken(shop: string): Promise<TokenExchange> {
+    return { accessToken: `mock_offline_token::${shop}::refreshed`, scope: ENV.shopify.scopes.join(","), refreshToken: `mock_refresh::${shop}::r`, expiresIn: MOCK_EXPIRES_IN, refreshTokenExpiresIn: MOCK_REFRESH_EXPIRES_IN };
   }
   async registerWebhooks(): Promise<string[]> {
     return MANDATORY_TOPICS; // pretend success — exercised end-to-end without Shopify
@@ -79,41 +98,88 @@ class MockClient implements ShopifyClient {
   }
 }
 
+// Shopify's offline token responses. `expiring=1` adds expires_in + a rotating refresh_token.
+interface TokenResponse {
+  access_token?: string;
+  scope?: string;
+  expires_in?: number;
+  refresh_token?: string;
+  refresh_token_expires_in?: number;
+}
+function parseTokenResponse(json: TokenResponse): TokenExchange {
+  return {
+    accessToken: json.access_token!,
+    scope: json.scope ?? ENV.shopify.scopes.join(","),
+    refreshToken: json.refresh_token,
+    expiresIn: json.expires_in,
+    refreshTokenExpiresIn: json.refresh_token_expires_in,
+  };
+}
+
 class LiveClient implements ShopifyClient {
   mode = "live" as const;
+  // The OAuth token endpoint is form-encoded (per Shopify docs); `expiring=1` is only honored
+  // as a form param, so all three token calls below post application/x-www-form-urlencoded.
   async exchangeCode(shop: string, code: string): Promise<TokenExchange> {
+    const body = new URLSearchParams({
+      client_id: ENV.shopify.apiKey ?? "",
+      client_secret: ENV.shopify.apiSecret ?? "",
+      code,
+      expiring: "1", // request an EXPIRING offline token (Shopify rejects non-expiring ones)
+    });
     const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ client_id: ENV.shopify.apiKey, client_secret: ENV.shopify.apiSecret, code }),
+      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      body,
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new Error(`token exchange failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-    const json = (await res.json()) as { access_token?: string; scope?: string };
+    const json = (await res.json()) as TokenResponse;
     if (!json.access_token) throw new Error("token exchange returned no access_token");
-    return { accessToken: json.access_token, scope: json.scope ?? ENV.shopify.scopes.join(",") };
+    return parseTokenResponse(json);
   }
   async exchangeSessionToken(shop: string, sessionToken: string): Promise<TokenExchange> {
     // OAuth 2.0 Token Exchange (RFC 8693) — Shopify's embedded-app install path. The
-    // subject_token is the App Bridge session token (already signature-verified by us
-    // before this call); we request an OFFLINE access token so background sync works.
+    // subject_token is the App Bridge session token (already signature-verified by us before
+    // this call); we request an EXPIRING OFFLINE access token (expiring=1) so background sync
+    // works and Shopify accepts it on the Admin API.
+    const body = new URLSearchParams({
+      client_id: ENV.shopify.apiKey ?? "",
+      client_secret: ENV.shopify.apiSecret ?? "",
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      subject_token: sessionToken,
+      subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+      requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+      expiring: "1",
+    });
     const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({
-        client_id: ENV.shopify.apiKey,
-        client_secret: ENV.shopify.apiSecret,
-        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
-        subject_token: sessionToken,
-        subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
-        requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
-      }),
+      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      body,
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new Error(`session token exchange failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-    const json = (await res.json()) as { access_token?: string; scope?: string };
+    const json = (await res.json()) as TokenResponse;
     if (!json.access_token) throw new Error("session token exchange returned no access_token");
-    return { accessToken: json.access_token, scope: json.scope ?? ENV.shopify.scopes.join(",") };
+    return parseTokenResponse(json);
+  }
+  async refreshAccessToken(shop: string, refreshToken: string): Promise<TokenExchange> {
+    const body = new URLSearchParams({
+      client_id: ENV.shopify.apiKey ?? "",
+      client_secret: ENV.shopify.apiSecret ?? "",
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    });
+    const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      body,
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`token refresh failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const json = (await res.json()) as TokenResponse;
+    if (!json.access_token) throw new Error("token refresh returned no access_token");
+    return parseTokenResponse(json);
   }
   async fetchGrantedScopes(shop: string, accessToken: string): Promise<string[]> {
     // The live grant: what the merchant actually approved for THIS installation. Used to

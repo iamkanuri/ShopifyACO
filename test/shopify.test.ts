@@ -6,6 +6,7 @@ import { decryptSecret, encryptSecret, reEncrypt, EncryptionError } from "../src
 import { isValidShopDomain, normalizeShopDomain } from "../src/shopify/domain.js";
 import { verifyOAuthHmac, verifyWebhookHmac, webhookHmac } from "../src/shopify/hmac.js";
 import { chooseScopes, parseScopes, hasScope } from "../src/shopify/scopes.js";
+import { shouldRefreshToken } from "../src/shopify/tokens.js";
 
 const KEY = Buffer.alloc(32, 9).toString("base64");
 const KEY2 = Buffer.alloc(32, 4).toString("base64");
@@ -121,6 +122,17 @@ test("chooseScopes normalizes (de-dupes) whatever source it picks", () => {
   assert.equal(chooseScopes([], "read_products read_products", []), "read_products");
 });
 
+// ---- expiring-token refresh decision (pure) -------------------------------
+test("shouldRefreshToken: stale within buffer → refresh; fresh/unknown → don't", () => {
+  const now = Date.parse("2026-06-26T12:00:00Z");
+  assert.equal(shouldRefreshToken(new Date(now + 3600_000).toISOString(), now), false); // 1h out → fresh
+  assert.equal(shouldRefreshToken(new Date(now + 60_000).toISOString(), now), true);    // 1m out → within 2m buffer
+  assert.equal(shouldRefreshToken(new Date(now - 1000).toISOString(), now), true);       // already expired
+  assert.equal(shouldRefreshToken(null, now), false);       // legacy / non-expiring row
+  assert.equal(shouldRefreshToken(undefined, now), false);
+  assert.equal(shouldRefreshToken("not-a-date", now), false);
+});
+
 // ===========================================================================
 // DB integration — opt-in. Needs DATABASE_URL + APP_ENCRYPTION_KEY. Self-cleaning.
 //   RUN_DB_TESTS=1 SHOPIFY_MODE=mock APP_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))") \
@@ -159,6 +171,35 @@ dbTest("credentials encrypt at rest and round-trip; uninstall clears them", asyn
     assert.equal(await getAccessToken(shop), null);
   } finally {
     await pgQuery("delete from shops where shop_domain = $1", [shop]); // cascades credentials
+  }
+});
+
+// Needs mock mode so the refresh hits the MockClient (no network). Skipped otherwise.
+const dbMockTest = (name: string, fn: () => Promise<void>) =>
+  test(name, { skip: !(RUN_DB && process.env.SHOPIFY_MODE === "mock") }, fn);
+
+dbMockTest("getAccessToken refreshes an expired expiring token (rotating refresh, mock)", async () => {
+  const { upsertShop, storeCredentials, getAccessToken } = await import("../src/db/shops.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `tref-${Date.now()}.myshopify.com`;
+  try {
+    await upsertShop(shop, { scopes: "read_products", status: "active" });
+    // Store an expiring token + refresh token, then force the access token to look stale.
+    await storeCredentials(shop, "stale_token", "read_products", { refreshToken: "mock_refresh::x", expiresIn: 3600, refreshTokenExpiresIn: 7_776_000 });
+    await pgQuery("update shop_credentials set access_token_expires_at = now() - interval '1 minute' where shop_domain=$1", [shop]);
+
+    // getAccessToken sees it as stale and refreshes via the mock client (…::refreshed).
+    const tok = await getAccessToken(shop);
+    assert.match(tok ?? "", /::refreshed$/);
+
+    // The refresh is persisted: a fresh future expiry + a rotated refresh token are stored.
+    const { rows } = await pgQuery<{ access_token_expires_at: string; refresh_token_enc: string }>(
+      "select access_token_expires_at, refresh_token_enc from shop_credentials where shop_domain=$1", [shop]);
+    assert.ok(Date.parse(rows[0].access_token_expires_at) > Date.now(), "expiry refreshed into the future");
+    assert.ok(rows[0].refresh_token_enc, "rotated refresh token stored");
+  } finally {
+    await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
   }
 });
 

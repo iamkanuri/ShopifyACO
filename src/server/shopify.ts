@@ -5,7 +5,7 @@ import { normalizeShopDomain, isValidShopDomain } from "../shopify/domain.js";
 import { verifyOAuthHmac, verifyWebhookHmac, webhookHmac } from "../shopify/hmac.js";
 import { buildAuthorizeUrl, generateState, redirectUri } from "../shopify/oauth.js";
 import { verifySessionToken } from "../shopify/sessionToken.js";
-import { getShopifyClient, effectiveSecret, effectiveSecrets } from "../shopify/client.js";
+import { getShopifyClient, effectiveSecret, effectiveSecrets, type TokenExchange } from "../shopify/client.js";
 import { safeEqualStr } from "../shopify/crypto.js";
 import { chooseScopes, parseScopes, hasScope } from "../shopify/scopes.js";
 import {
@@ -144,15 +144,16 @@ async function resolveGrantedScopes(shop: string, accessToken: string, exchangeS
  *  webhooks (best-effort), audit, and activate the Web Pixel (best-effort). Shared by the
  *  classic OAuth callback and the embedded token-exchange path so both behave identically.
  *  `source` distinguishes them in installations/audit ("install" | "install_token_exchange"). */
-async function completeInstall(shop: string, accessToken: string, scope: string, source: string): Promise<void> {
+async function completeInstall(shop: string, tok: TokenExchange, source: string): Promise<void> {
   // Record the REAL granted scopes (not just what exchange reported) so the write gate is accurate.
-  const granted = await resolveGrantedScopes(shop, accessToken, scope);
+  const granted = await resolveGrantedScopes(shop, tok.accessToken, tok.scope);
   await upsertShop(shop, { scopes: granted, status: "active" });
-  await storeCredentials(shop, accessToken, granted);
+  // Persist the access token + its rotating refresh token + expiries (expiring offline tokens).
+  await storeCredentials(shop, tok.accessToken, granted, { refreshToken: tok.refreshToken, expiresIn: tok.expiresIn, refreshTokenExpiresIn: tok.refreshTokenExpiresIn });
   await recordInstallation(shop, source, granted);
   let topics: string[] = [];
   try {
-    topics = await getShopifyClient().registerWebhooks(shop, accessToken);
+    topics = await getShopifyClient().registerWebhooks(shop, tok.accessToken);
   } catch (err) {
     console.error(`[shopify] webhook registration failed for ${shop}:`, (err as Error).message);
   }
@@ -206,8 +207,8 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
 
   // 4) exchange + persist (encrypted) — shared with the embedded token-exchange path.
   const client = getShopifyClient();
-  const { accessToken, scope } = await client.exchangeCode(shop, code);
-  await completeInstall(shop, accessToken, scope, "install");
+  const tok = await client.exchangeCode(shop, code);
+  await completeInstall(shop, tok, "install");
 
   // 5) shop session cookie (signed) → onboarding
   res.cookie(SHOP_COOKIE, signShop(shop), {
@@ -251,17 +252,17 @@ export async function tokenExchangeHandler(req: Request, res: Response): Promise
       // each embedded load keeps a currently-valid token on file. Graceful: a transient exchange
       // failure keeps the shop active on its existing token rather than locking it out.
       try {
-        const { accessToken, scope } = await getShopifyClient().exchangeSessionToken(shop, token);
-        const granted = await resolveGrantedScopes(shop, accessToken, scope);
-        await storeCredentials(shop, accessToken, granted);
+        const tok = await getShopifyClient().exchangeSessionToken(shop, token);
+        const granted = await resolveGrantedScopes(shop, tok.accessToken, tok.scope);
+        await storeCredentials(shop, tok.accessToken, granted, { refreshToken: tok.refreshToken, expiresIn: tok.expiresIn, refreshTokenExpiresIn: tok.refreshTokenExpiresIn });
         await upsertShop(shop, { scopes: granted, status: "active" });
       } catch (err) {
         console.error(`[shopify] offline-token refresh failed for ${shop}:`, (err as Error).message);
         await upsertShop(shop, { status: "active" });
       }
     } else {
-      const { accessToken, scope } = await getShopifyClient().exchangeSessionToken(shop, token);
-      await completeInstall(shop, accessToken, scope, "install_token_exchange");
+      const tok = await getShopifyClient().exchangeSessionToken(shop, token);
+      await completeInstall(shop, tok, "install_token_exchange");
     }
     // Also set the signed cookie so any later NON-embedded request authenticates too.
     res.cookie(SHOP_COOKIE, signShop(shop), {

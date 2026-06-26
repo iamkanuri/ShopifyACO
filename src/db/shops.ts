@@ -1,6 +1,8 @@
 import { pgQuery } from "./pg.js";
 import { ENV } from "../server/env.js";
 import { decryptSecret, encryptSecret } from "../shopify/crypto.js";
+import { getShopifyClient } from "../shopify/client.js";
+import { shouldRefreshToken } from "../shopify/tokens.js";
 
 // Persistence for Shopify multi-tenancy (Phase 2). Tokens are stored only as
 // AES-256-GCM blobs; getAccessToken decrypts on read. All writes are shop-scoped.
@@ -38,31 +40,67 @@ export async function setWebPixelId(shopDomain: string, webPixelId: string): Pro
   await pgQuery("update shops set web_pixel_id = $2, updated_at = now() where shop_domain = $1", [shopDomain, webPixelId]);
 }
 
-/** Encrypt + store an offline access token for a shop. */
-export async function storeCredentials(shopDomain: string, accessToken: string, scope: string): Promise<void> {
+/** Encrypt + store an offline access token (and its rotating refresh token + expiries, for
+ *  expiring tokens) for a shop. Omit the token fields for legacy/non-expiring tokens. */
+export async function storeCredentials(
+  shopDomain: string,
+  accessToken: string,
+  scope: string,
+  opts: { refreshToken?: string | null; expiresIn?: number | null; refreshTokenExpiresIn?: number | null } = {},
+): Promise<void> {
   const enc = encryptSecret(accessToken, ENV.appEncryptionKey!);
+  const refreshEnc = opts.refreshToken ? encryptSecret(opts.refreshToken, ENV.appEncryptionKey!) : null;
+  const expiresAt = opts.expiresIn ? new Date(Date.now() + opts.expiresIn * 1000).toISOString() : null;
+  const refreshExpiresAt = opts.refreshTokenExpiresIn ? new Date(Date.now() + opts.refreshTokenExpiresIn * 1000).toISOString() : null;
   await pgQuery(
-    `insert into shop_credentials (shop_domain, access_token_enc, scope, encryption_version, updated_at)
-       values ($1, $2, $3, 'v1', now())
+    `insert into shop_credentials
+       (shop_domain, access_token_enc, refresh_token_enc, scope, access_token_expires_at, refresh_token_expires_at, encryption_version, updated_at)
+       values ($1, $2, $3, $4, $5, $6, 'v1', now())
      on conflict (shop_domain) do update
-       set access_token_enc = excluded.access_token_enc, scope = excluded.scope,
+       set access_token_enc = excluded.access_token_enc,
+           refresh_token_enc = excluded.refresh_token_enc,
+           scope = excluded.scope,
+           access_token_expires_at = excluded.access_token_expires_at,
+           refresh_token_expires_at = excluded.refresh_token_expires_at,
            encryption_version = 'v1', updated_at = now()`,
-    [shopDomain, enc, scope],
+    [shopDomain, enc, refreshEnc, scope, expiresAt, refreshExpiresAt],
   );
 }
 
-/** Decrypt + return a shop's access token, or null if missing/undecryptable. */
+/** Decrypt + return a shop's access token, or null if missing/undecryptable. Expiring tokens
+ *  are refreshed in place when stale (Shopify rejects expired/non-expiring tokens) using the
+ *  rotating refresh token — so background paths (webhooks, jobs) without a session token to
+ *  re-exchange keep working. A refresh failure falls back to the current token (the caller
+ *  surfaces any resulting auth error rather than us masking it). */
 export async function getAccessToken(shopDomain: string): Promise<string | null> {
-  const { rows } = await pgQuery<{ access_token_enc: string }>(
-    "select access_token_enc from shop_credentials where shop_domain = $1",
+  const { rows } = await pgQuery<{ access_token_enc: string; refresh_token_enc: string | null; access_token_expires_at: string | null; scope: string | null }>(
+    "select access_token_enc, refresh_token_enc, access_token_expires_at, scope from shop_credentials where shop_domain = $1",
     [shopDomain],
   );
-  if (!rows[0]) return null;
+  const row = rows[0];
+  if (!row) return null;
+  let token: string;
   try {
-    return decryptSecret(rows[0].access_token_enc, ENV.appEncryptionKey!);
+    token = decryptSecret(row.access_token_enc, ENV.appEncryptionKey!);
   } catch (err) {
     console.error(`[shops] token decrypt failed for ${shopDomain}:`, (err as Error).message);
     return null;
+  }
+  // Fresh, or nothing to refresh with → return as-is. (Concurrency note: the refresh token
+  // rotates, so two simultaneous refreshes for one shop would conflict; in practice the
+  // embedded app re-exchanges on load and background jobs are serialized per shop, so this
+  // path is hit rarely and singly.)
+  if (!shouldRefreshToken(row.access_token_expires_at) || !row.refresh_token_enc) return token;
+  try {
+    const refreshToken = decryptSecret(row.refresh_token_enc, ENV.appEncryptionKey!);
+    const fresh = await getShopifyClient().refreshAccessToken(shopDomain, refreshToken);
+    await storeCredentials(shopDomain, fresh.accessToken, fresh.scope || row.scope || "", {
+      refreshToken: fresh.refreshToken, expiresIn: fresh.expiresIn, refreshTokenExpiresIn: fresh.refreshTokenExpiresIn,
+    });
+    return fresh.accessToken;
+  } catch (err) {
+    console.error(`[shops] token refresh failed for ${shopDomain}:`, (err as Error).message);
+    return token;
   }
 }
 
