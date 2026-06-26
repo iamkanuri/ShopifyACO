@@ -110,10 +110,46 @@ test("apply lifecycle: approve → conflict-checked apply → rollback (mock)", 
     const afterApply = await getProposal(id);
     assert.equal(afterApply!.status, "applied");
     assert.equal((afterApply!.applied_snapshot as { before: string }).before, "SEO desc 1");
+    // The post-write value the store actually holds is captured for an accurate rollback check.
+    assert.equal((afterApply!.applied_snapshot as { applied: string }).applied, "New, better SEO description");
 
     // Rollback restores the snapshot (reread now reflects our applied value → no conflict).
     const rolled = await rollbackProposal(shop, id, "merchant");
     assert.equal(rolled.ok, true);
+    assert.equal(rolled.status, "rolled_back");
+  } finally {
+    __resetMockWrites();
+    await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
+  }
+});
+
+test("rollback compares against the post-apply value, not the raw proposal (normalization)", { skip: !gate }, async () => {
+  const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
+  const { createProposal, updateProposal } = await import("../src/db/fixes.js");
+  const { rollbackProposal } = await import("../src/fixes/apply.js");
+  const { __resetMockWrites } = await import("../src/fixes/source.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `fixnorm-${Date.now()}.myshopify.com`;
+  const gid = "gid://shopify/Product/1001"; // mock seoDescription = "SEO desc 1"
+  __resetMockWrites();
+  try {
+    await upsertShop(shop, { status: "active", scopes: "read_products,write_products" });
+    await storeCredentials(shop, "mock_token", "read_products,write_products");
+    // An applied proposal whose proposed_value DIFFERS from what the store actually holds
+    // (simulating Shopify normalizing the SEO value on write). applied = the live store value.
+    const id = await createProposal(shop, null, null, {
+      productGid: gid, kind: "write_products", target: "seo.description", label: "x",
+      currentValue: null, proposedValue: "raw value we SENT (pre-normalization)", basedOn: null, rationale: "t", evidence: {},
+    });
+    await updateProposal(id, { status: "applied", appliedSnapshot: { field: "seoDescription", before: null, applied: "SEO desc 1" }, markApplied: true });
+
+    // The OLD check (compare to proposed_value) would wrongly flag a conflict here; the fix
+    // compares to snap.applied (= the live value) → a clean rollback.
+    const rolled = await rollbackProposal(shop, id, "merchant");
+    assert.equal(rolled.ok, true, rolled.detail);
     assert.equal(rolled.status, "rolled_back");
   } finally {
     __resetMockWrites();

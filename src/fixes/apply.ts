@@ -99,7 +99,7 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
   }
 
   // Snapshot before-state for rollback, then write.
-  const snapshot = { field, target: p.target, before: liveValue };
+  const snapshot: { field: WritableField; target: string; before: string | null; applied?: string | null } = { field, target: p.target, before: liveValue };
   try {
     const input = buildProductInput(p.product_gid, field, p.proposed_value);
     const result = await productUpdate(shop, token, input);
@@ -107,6 +107,17 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
       const detail = result.userErrors.map((e) => e.message).join("; ") || "productUpdate reported no success";
       await updateProposal(id, { status: "failed", error: detail });
       return { ok: false, status: "failed", detail };
+    }
+    // Record what the store ACTUALLY holds after the write. Shopify normalizes SEO fields (it
+    // can trim, re-encode, or report a value equal to the page default differently than we
+    // sent it), so the stored value often isn't byte-identical to proposed_value. Rollback
+    // compares against THIS (via the same read path), so only a genuine later merchant edit —
+    // not Shopify's own normalization — counts as a conflict.
+    try {
+      const after = await rereadProduct(shop, token, p.product_gid);
+      snapshot.applied = (after?.[field] as string | null) ?? null;
+    } catch {
+      snapshot.applied = p.proposed_value; // best effort if the verify re-read fails
     }
     await updateProposal(id, { status: "applied", appliedSnapshot: snapshot, markApplied: true, error: null });
     await audit(shop, actor, "fix_applied", "product", { target: p.target, before: liveValue }, { after: p.proposed_value });
@@ -123,7 +134,7 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
   const p = await loadOwned(shop, id);
   if (!p) return NOT_FOUND;
   if (p.status !== "applied") return { ok: false, status: "rejected", detail: `only an applied proposal can be rolled back (is '${p.status}')` };
-  const snap = p.applied_snapshot as { field?: WritableField; before?: string | null } | null;
+  const snap = p.applied_snapshot as { field?: WritableField; before?: string | null; applied?: string | null } | null;
   if (!snap?.field || !p.product_gid) return { ok: false, status: "rejected", detail: "no rollback snapshot" };
 
   const token = await getAccessToken(shop);
@@ -135,12 +146,16 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
   } catch (err) {
     return { ok: false, status: "failed", detail: (err as Error).message };
   }
-  // Only roll back if the field still holds the value WE wrote (else the merchant
-  // changed it after us — don't overwrite their newer edit).
+  // Only roll back if the field still holds what WE left it as (else the merchant edited it
+  // after us — don't overwrite their newer edit). Compare against the value the store actually
+  // held right after apply (snap.applied), NOT the raw proposed value: Shopify normalizes SEO
+  // fields, so proposed_value rarely matches the stored form byte-for-byte. Fall back to
+  // proposed_value for snapshots written before snap.applied existed.
   const liveValue = (live?.[snap.field] as string | null) ?? null;
-  if ((liveValue ?? "") !== (p.proposed_value ?? "")) {
-    await updateProposal(id, { status: "conflict", error: "value changed after apply; rollback would clobber a newer edit" });
-    return { ok: false, status: "conflict", conflict: true, detail: "the field changed after we applied it; rollback aborted." };
+  const expected = snap.applied !== undefined ? snap.applied : (p.proposed_value ?? null);
+  if ((liveValue ?? "") !== (expected ?? "")) {
+    await updateProposal(id, { status: "conflict", error: `value changed after apply (live: ${truncErr(liveValue)}, expected: ${truncErr(expected)})` });
+    return { ok: false, status: "conflict", conflict: true, detail: `the field changed after we applied it; rollback aborted. (live: "${truncErr(liveValue)}", expected: "${truncErr(expected)}")` };
   }
 
   try {
