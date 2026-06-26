@@ -53,8 +53,19 @@ export async function fetchProduct(shop: string, token: string, productGid: stri
     body: JSON.stringify({ query: SINGLE_PRODUCT_QUERY, variables: { id: productGid } }),
     signal: AbortSignal.timeout(15_000),
   });
-  if (!res.ok) throw new Error(`product fetch failed: HTTP ${res.status}`);
-  const json = (await res.json()) as { data?: { product?: Record<string, unknown> | null } };
+  // Surface Shopify's reason verbatim (it explains 403s: scope/approval/version), mirroring
+  // fetchProductsPage. Without the body a 403 is undiagnosable from the UI.
+  if (!res.ok) throw new Error(`product fetch failed: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+  const json = (await res.json()) as {
+    data?: { product?: Record<string, unknown> | null };
+    errors?: Array<{ message?: string; extensions?: { code?: string } }>;
+  };
+  // A 200 with a GraphQL error (e.g. ACCESS_DENIED for a missing scope) must NOT be silently
+  // treated as "product not found" — that would mislabel a permissions problem as a deletion.
+  if (json.errors?.length) {
+    const e = json.errors[0];
+    throw new Error(`product query error: ${e?.extensions?.code ?? ""} ${e?.message ?? "unknown"}`.trim());
+  }
   return json.data?.product ?? null;
 }
 
