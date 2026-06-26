@@ -244,11 +244,21 @@ export async function tokenExchangeHandler(req: Request, res: Response): Promise
     const existing = await getShop(shop);
     const installed = existing && existing.status !== "uninstalled" ? await getAccessToken(shop) : null;
     if (installed) {
-      // Keep the session fresh; no redundant token exchange. Also re-sync the recorded
-      // scopes from the live grant so an earlier under-recorded install (a partial exchange
-      // `scope`) self-heals on the next embedded load — no reinstall needed to unblock writes.
-      const granted = await resolveGrantedScopes(shop, installed, existing?.scopes);
-      await upsertShop(shop, { scopes: granted, status: "active" });
+      // Re-exchange to REFRESH the offline token, then re-sync scopes. Shopify now rejects
+      // non-expiring legacy tokens AND issues EXPIRING offline tokens via token exchange, so a
+      // stored token eventually lapses — and requireShop can't see that (the shop row still
+      // looks valid), so the 401-triggered bootstrap would never fire to recover. Refreshing on
+      // each embedded load keeps a currently-valid token on file. Graceful: a transient exchange
+      // failure keeps the shop active on its existing token rather than locking it out.
+      try {
+        const { accessToken, scope } = await getShopifyClient().exchangeSessionToken(shop, token);
+        const granted = await resolveGrantedScopes(shop, accessToken, scope);
+        await storeCredentials(shop, accessToken, granted);
+        await upsertShop(shop, { scopes: granted, status: "active" });
+      } catch (err) {
+        console.error(`[shopify] offline-token refresh failed for ${shop}:`, (err as Error).message);
+        await upsertShop(shop, { status: "active" });
+      }
     } else {
       const { accessToken, scope } = await getShopifyClient().exchangeSessionToken(shop, token);
       await completeInstall(shop, accessToken, scope, "install_token_exchange");

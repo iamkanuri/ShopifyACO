@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { Link, usePath } from "../router";
 import { useConfig } from "../config";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ConnectShopify } from "../components/ConnectShopify";
-import { getSchedules } from "./appApi";
+import { getSchedules, primeSession } from "./appApi";
 import { useLoaded } from "./ui";
 import { Dashboard } from "./Dashboard";
 import { Evidence } from "./Evidence";
@@ -35,6 +36,9 @@ export function AppShell() {
   const path = usePath();
   const { brandName } = useConfig();
   const sub = path.replace(/^\/app\/?/, "").split("/")[0] ?? "";
+  // Refresh the embedded offline token on load (Shopify offline tokens now expire — a stored
+  // token would otherwise silently lapse and break Admin API calls like Fix Studio apply).
+  useEffect(() => { primeSession(); }, []);
   // One probe drives the global connect banner; screens still show their own badge.
   const probe = useLoaded(() => getSchedules(), []);
   const demo = probe.demo;

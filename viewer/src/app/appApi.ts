@@ -47,6 +47,18 @@ function ensureSession(): Promise<boolean> {
   return p;
 }
 
+/**
+ * Proactively refresh the embedded session on app load. Shopify offline tokens now EXPIRE
+ * (and legacy non-expiring tokens are rejected), so the server must re-exchange the App Bridge
+ * session token for a fresh offline token periodically. Relying on a 401 to trigger that fails
+ * once a token lapses but the shop row still looks valid (requireShop passes, no 401 fires).
+ * Running the bootstrap once on mount keeps a currently-valid token on file. No-op outside the
+ * Shopify admin iframe (no App Bridge → no session token).
+ */
+export function primeSession(): void {
+  if (appBridge()) void ensureSession();
+}
+
 // Are we in a CONNECTED merchant context (embedded, or a prior call already succeeded)?
 // Used to tell a genuine no-session PREVIEW (show the labeled sample cleanly) apart from a
 // real backend failure for a connected store (must surface an error, never silently pass
