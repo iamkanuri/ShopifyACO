@@ -13,7 +13,7 @@ import { generatePrompts, miniScanPrompts, type ScanForm } from "../prompts/libr
 import { suggestPrompts } from "./suggest.js";
 import { inferStore } from "./infer.js";
 import { checkEngineKeys } from "./healthcheck.js";
-import { installHandler, callbackHandler, tokenExchangeHandler, webhookHandler, shopifyStatus, requireShop } from "./shopify.js";
+import { installHandler, callbackHandler, tokenExchangeHandler, webhookHandler, shopifyStatus, shopInfoHandler, requireShop } from "./shopify.js";
 import { normalizeShopDomain } from "../shopify/domain.js";
 import { triggerSyncHandler, syncStatusHandler, listProductsHandler } from "./catalog.js";
 import { diagnoseHandler, findingsHandler, pagesHandler } from "./evidence.js";
@@ -327,6 +327,9 @@ app.get("/app/api/benchmarks", shopMw, wrap(listBenchmarksHandler));
 //     from their latest completed run + findings/proposals/alerts. hasData=false until
 //     they've run a benchmark; the client falls back to the labeled sample only on 401.
 app.get("/app/api/dashboard", shopMw, wrap(dashboardHandler));
+
+// --- Connected-shop info (scopes/plan/status) for the Settings screen.
+app.get("/app/api/shop", shopMw, wrap(shopInfoHandler));
 
 // --- Monitoring & alerts API (Phase 8, shop-scoped). Recurring schedules + alerts.
 //     Runs default to mock ($0); the scheduler enqueues live only if MONITORING_LIVE=1.

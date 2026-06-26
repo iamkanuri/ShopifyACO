@@ -28,6 +28,7 @@ export interface AppExperimentRow {
 }
 export interface Proportion { successes: number; n: number; rate: number | null; ciLow: number; ciHigh: number; }
 
+export interface AppShopInfo { shop: string; status: string; plan: string | null; scopes: string[]; writeProducts: boolean; }
 export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; }
 export interface AppAlertRow { id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string; }
 export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
@@ -231,6 +232,11 @@ export const DEMO = {
       { id: "monitoring", name: "Weekly monitoring", price: "$49", cadence: "/mo", blurb: "Track and defend your AI share of voice.", features: ["Automatic weekly scans", "Share-of-voice trends", "Alerts on new lost prompts"], limits: { benchmarksPerMonth: 60, monitoringSchedules: 5, feeds: 10 }, tier: 2, stripeUrl: null, current: false },
       { id: "founder_beta", name: "Founder beta", price: "$99", cadence: "beta", blurb: "5 deep scans + direct founder review.", features: ["5 deep scans", "Founder review", "Shape the product"], limits: { benchmarksPerMonth: 100, monitoringSchedules: 10, feeds: 25 }, tier: 3, stripeUrl: null, current: false },
     ],
+  },
+
+  shopInfo: <AppShopInfo>{
+    shop: "olipop-demo.myshopify.com", status: "active", plan: null,
+    scopes: ["read_products", "read_customer_events", "write_pixels", "write_products"], writeProducts: true,
   },
 
   catalog: {

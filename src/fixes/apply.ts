@@ -3,6 +3,7 @@ import { getAccessToken, getShop, audit } from "../db/shops.js";
 import { getProposal, updateProposal, type ProposalRow } from "../db/fixes.js";
 import { writableField, type WritableField } from "./propose.js";
 import { buildProductInput, productUpdate, rereadProduct } from "./source.js";
+import { hasScope } from "../shopify/scopes.js";
 
 // ===========================================================================
 // Fix Studio write-back engine (Phase 6). The ONLY place this app mutates a
@@ -25,10 +26,10 @@ export interface ApplyOutcome {
 }
 
 /** write_products requires the granted scope. (mock simulates a granted store but we
- *  still honor the shop's recorded scopes so the gate is exercised honestly.) */
+ *  still honor the shop's recorded scopes so the gate is exercised honestly.) Delegates to
+ *  the canonical scope parser so this gate can't drift from what Settings reports. */
 export function hasWriteScope(scopes: string | null | undefined): boolean {
-  if (!scopes) return false;
-  return scopes.split(/[,\s]+/).map((s) => s.trim()).includes("write_products");
+  return hasScope(scopes, "write_products");
 }
 
 /** Load a proposal and confirm it belongs to this shop (tenant isolation). */

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useConfig } from "../config";
 import { ConnectShopify } from "../components/ConnectShopify";
-import { getSchedules, updateSchedule } from "./appApi";
+import { getSchedules, getShopInfo, updateSchedule } from "./appApi";
 import { CADENCE_OPTIONS } from "./constants";
 import { DemoBadge, StatePane, useLoaded } from "./ui";
 
@@ -10,7 +10,9 @@ import { DemoBadge, StatePane, useLoaded } from "./ui";
 export function Settings({ connected }: { connected: boolean }) {
   const { plans, contactEmail } = useConfig();
   const s = useLoaded(() => getSchedules(), []);
+  const info = useLoaded(() => getShopInfo(), []);
   const schedules = s.data?.schedules ?? [];
+  const scopes = info.data?.scopes ?? [];
   const [busy, setBusy] = useState<number | null>(null);
 
   async function toggle(id: number, enabled: boolean) { setBusy(id); await updateSchedule(id, { enabled }); setBusy(null); s.reload(); }
@@ -26,10 +28,14 @@ export function Settings({ connected }: { connected: boolean }) {
         <h2>Store connection</h2>
         <div className="card al-setrow">
           <div><div className="al-set-k">Status</div><div className={connected ? "al-ok" : "al-gapmark"}>{connected ? "Connected" : "Not connected (demo)"}</div></div>
-          <div><div className="al-set-k">Scopes</div><div className="muted">read_products</div></div>
+          <div><div className="al-set-k">Scopes</div><div className="muted">{scopes.length ? scopes.join(", ") : info.loading ? "…" : "—"}</div></div>
           {!connected && <ConnectShopify className="btn btn-primary" label="Connect Shopify" />}
         </div>
-        <p className="muted al-fineprint">Write-back (Fix Studio apply) requests <code>write_products</code> only when you enable it — least privilege.</p>
+        <p className="muted al-fineprint">
+          {info.data?.writeProducts
+            ? <>Write-back (Fix Studio apply) is enabled — <code>write_products</code> is granted. Every write is approval-gated, conflict-checked, and reversible.</>
+            : <>Write-back (Fix Studio apply) requests <code>write_products</code> only when you enable it — least privilege.</>}
+        </p>
       </div>
 
       <div className="section">

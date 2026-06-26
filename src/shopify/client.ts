@@ -37,6 +37,10 @@ export interface ShopifyClient {
   exchangeSessionToken(shop: string, sessionToken: string): Promise<TokenExchange>;
   /** Register the app + compliance webhooks. Returns the topics registered. */
   registerWebhooks(shop: string, accessToken: string): Promise<string[]>;
+  /** Read the scopes the shop ACTUALLY granted, from the live installation. This is the
+   *  authoritative grant — the `scope` returned by code/token exchange can under-report,
+   *  which would wrongly block scope-gated writes (Fix Studio). Returns the scope handles. */
+  fetchGrantedScopes(shop: string, accessToken: string): Promise<string[]>;
   /** Create (or update, when `existingId` is known) the app-owned Web Pixel with the
    *  given settings JSON. Idempotent at the caller via the stored id. Needs the
    *  write_pixels + read_customer_events scopes. Returns the WebPixel gid. */
@@ -64,6 +68,11 @@ class MockClient implements ShopifyClient {
   }
   async registerWebhooks(): Promise<string[]> {
     return MANDATORY_TOPICS; // pretend success — exercised end-to-end without Shopify
+  }
+  async fetchGrantedScopes(): Promise<string[]> {
+    // A mock store "granted" exactly the configured scopes — so the gate is exercised
+    // honestly (e.g. write_products present when SHOPIFY_SCOPES includes it).
+    return [...ENV.shopify.scopes];
   }
   async activateWebPixel(shop: string, _accessToken: string, _settings: string, existingId?: string): Promise<{ id: string }> {
     return { id: existingId ?? `gid://shopify/WebPixel/mock-${shop}` };
@@ -105,6 +114,26 @@ class LiveClient implements ShopifyClient {
     const json = (await res.json()) as { access_token?: string; scope?: string };
     if (!json.access_token) throw new Error("session token exchange returned no access_token");
     return { accessToken: json.access_token, scope: json.scope ?? ENV.shopify.scopes.join(",") };
+  }
+  async fetchGrantedScopes(shop: string, accessToken: string): Promise<string[]> {
+    // The live grant: what the merchant actually approved for THIS installation. Used to
+    // record shops.scopes accurately (the exchange `scope` can under-report).
+    const query = `{ currentAppInstallation { accessScopes { handle } } }`;
+    const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`accessScopes query failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const json = (await res.json()) as {
+      data?: { currentAppInstallation?: { accessScopes?: Array<{ handle?: string }> } };
+      errors?: Array<{ message?: string }>;
+    };
+    if (json.errors?.length) throw new Error(`accessScopes query error: ${json.errors[0]?.message ?? "unknown"}`);
+    return (json.data?.currentAppInstallation?.accessScopes ?? [])
+      .map((s) => s.handle?.trim())
+      .filter((h): h is string => Boolean(h));
   }
   async registerWebhooks(shop: string, accessToken: string): Promise<string[]> {
     const endpoint = `${ENV.shopify.appUrl}/api/shopify/webhooks`;

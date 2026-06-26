@@ -1,4 +1,4 @@
-import { DEMO, type AppAlertRow, type AppBilling, type AppDashboard, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type Proportion } from "./fixtures";
+import { DEMO, type AppAlertRow, type AppBilling, type AppDashboard, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type AppShopInfo, type Proportion } from "./fixtures";
 
 // Client for the authenticated /app/api/* surface. Every call tries the live API; if
 // there's no shop session (401) or the backend is unavailable, it transparently falls
@@ -122,6 +122,9 @@ export const startVerification = (body: { brand: string; category: string; compe
   post<{ experimentId: number; baselineRunId: number }>(`/app/api/experiments/start`, body);
 /** Run the AFTER benchmark + compare to the baseline. */
 export const verifyExperiment = (id: number) => post<{ verdict: string }>(`/app/api/experiments/${id}/verify`, {});
+
+/** The connected shop's recorded grant (scopes/plan/status) for the Settings screen. */
+export const getShopInfo = () => load<AppShopInfo>(`/app/api/shop`, DEMO.shopInfo);
 
 export const getSchedules = () => load<{ schedules: AppScheduleRow[] }>(`/app/api/schedules`, { schedules: DEMO.schedules });
 

@@ -3,7 +3,7 @@
 # beacons directional funnel events to the AI Visibility ingest endpoint.
 #
 # Deploy with:  shopify app deploy   (then activate + fill settings in Admin → Customer events)
-api_version = "2025-01"
+api_version = "2026-01"
 
 [[extensions]]
 name = "AI Referral Pixel"

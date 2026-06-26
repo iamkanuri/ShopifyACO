@@ -5,6 +5,7 @@ import { createHmac } from "node:crypto";
 import { decryptSecret, encryptSecret, reEncrypt, EncryptionError } from "../src/shopify/crypto.js";
 import { isValidShopDomain, normalizeShopDomain } from "../src/shopify/domain.js";
 import { verifyOAuthHmac, verifyWebhookHmac, webhookHmac } from "../src/shopify/hmac.js";
+import { chooseScopes, parseScopes, hasScope } from "../src/shopify/scopes.js";
 
 const KEY = Buffer.alloc(32, 9).toString("base64");
 const KEY2 = Buffer.alloc(32, 4).toString("base64");
@@ -82,6 +83,42 @@ test("buildAuthorizeUrl targets the shop with offline scope + state", async () =
   assert.match(url, /state=nonce123/);
   assert.match(url, /redirect_uri=/);
   assert.ok(!/grant_options/.test(url), "offline token: no per-user grant");
+});
+
+// ---- granted-scope resolution (the Fix Studio write-gate fix) -------------
+test("parseScopes splits, trims, and de-dupes", () => {
+  assert.deepEqual(parseScopes("read_products, write_products"), ["read_products", "write_products"]);
+  assert.deepEqual(parseScopes("read_products read_products"), ["read_products"]);
+  assert.deepEqual(parseScopes("  read_products  "), ["read_products"]);
+  assert.deepEqual(parseScopes(null), []);
+  assert.deepEqual(parseScopes(""), []);
+});
+
+test("hasScope detects a granted handle regardless of separators", () => {
+  assert.ok(hasScope("read_products,write_products", "write_products"));
+  assert.ok(hasScope("read_products write_products", "write_products"));
+  assert.ok(!hasScope("read_products", "write_products"));
+  assert.ok(!hasScope(null, "write_products"));
+});
+
+test("chooseScopes prefers the LIVE grant over an under-reporting exchange scope", () => {
+  // The bug: exchange returns only read_products, but the merchant approved write_products.
+  // The live grant must win so the write gate isn't wrongly closed.
+  assert.equal(
+    chooseScopes(["read_products", "write_products"], "read_products", ["read_products"]),
+    "read_products,write_products",
+  );
+});
+
+test("chooseScopes falls back to exchange scope, then configured, when the live read is empty", () => {
+  assert.equal(chooseScopes([], "read_products,write_products", ["read_products"]), "read_products,write_products");
+  assert.equal(chooseScopes([], null, ["read_products", "write_products"]), "read_products,write_products");
+  assert.equal(chooseScopes([], "", ["read_products"]), "read_products");
+});
+
+test("chooseScopes normalizes (de-dupes) whatever source it picks", () => {
+  assert.equal(chooseScopes(["read_products", "read_products"], null, []), "read_products");
+  assert.equal(chooseScopes([], "read_products read_products", []), "read_products");
 });
 
 // ===========================================================================

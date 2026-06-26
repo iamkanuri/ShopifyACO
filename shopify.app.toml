@@ -29,7 +29,7 @@ redirect_urls = [
 ]
 
 [webhooks]
-api_version = "2025-01"
+api_version = "2026-01"
 
   # Mandatory GDPR compliance webhooks (required for app review). Our single
   # endpoint verifies HMAC, dedupes, and audits each topic.

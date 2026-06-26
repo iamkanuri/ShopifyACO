@@ -115,7 +115,7 @@ export const ENV = {
     apiSecretFallback: str(process.env.SHOPIFY_API_SECRET_FALLBACK),
     // Comma/space separated; least-privilege default. write_products added later.
     scopes: (str(process.env.SHOPIFY_SCOPES) ?? "read_products").split(/[,\s]+/).filter(Boolean),
-    apiVersion: str(process.env.SHOPIFY_API_VERSION) ?? "2025-01",
+    apiVersion: str(process.env.SHOPIFY_API_VERSION) ?? "2026-01",
     appUrl: str(process.env.SHOPIFY_APP_URL) ?? str(process.env.PUBLIC_BASE_URL),
     // 'mock' lets us build + test the full flow with no real Shopify credentials.
     mode: (str(process.env.SHOPIFY_MODE) ?? "live") as "live" | "mock",

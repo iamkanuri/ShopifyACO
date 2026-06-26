@@ -7,6 +7,7 @@ import { buildAuthorizeUrl, generateState, redirectUri } from "../shopify/oauth.
 import { verifySessionToken } from "../shopify/sessionToken.js";
 import { getShopifyClient, effectiveSecret, effectiveSecrets } from "../shopify/client.js";
 import { safeEqualStr } from "../shopify/crypto.js";
+import { chooseScopes, parseScopes, hasScope } from "../shopify/scopes.js";
 import {
   audit, consumeOAuthState, getAccessToken, getShop, markUninstalled, recordInstallation,
   saveOAuthState, storeCredentials, upsertShop, webhookSeen,
@@ -121,21 +122,41 @@ export async function installHandler(req: Request, res: Response): Promise<void>
   res.redirect(buildAuthorizeUrl(shop, state));
 }
 
+/**
+ * Resolve the scopes a shop ACTUALLY granted. The `scope` string returned by code/token
+ * exchange can under-report (Shopify has handed back just "read_products" even when the
+ * merchant approved write_products) — and we gate store writes on the recorded scopes, so
+ * an under-report wrongly blocks Fix Studio's one-click apply. We therefore read the live
+ * grant (currentAppInstallation.accessScopes) as the source of truth, falling back to the
+ * exchange scope and then the configured scopes if that read fails. Never throws.
+ */
+async function resolveGrantedScopes(shop: string, accessToken: string, exchangeScope?: string | null): Promise<string> {
+  let live: string[] = [];
+  try {
+    live = await getShopifyClient().fetchGrantedScopes(shop, accessToken);
+  } catch (err) {
+    console.error(`[shopify] could not read granted scopes for ${shop}:`, (err as Error).message);
+  }
+  return chooseScopes(live, exchangeScope, ENV.shopify.scopes);
+}
+
 /** Persist an install: encrypt+store the offline token, mark the shop active, register
  *  webhooks (best-effort), audit, and activate the Web Pixel (best-effort). Shared by the
  *  classic OAuth callback and the embedded token-exchange path so both behave identically.
  *  `source` distinguishes them in installations/audit ("install" | "install_token_exchange"). */
 async function completeInstall(shop: string, accessToken: string, scope: string, source: string): Promise<void> {
-  await upsertShop(shop, { scopes: scope, status: "active" });
-  await storeCredentials(shop, accessToken, scope);
-  await recordInstallation(shop, source, scope);
+  // Record the REAL granted scopes (not just what exchange reported) so the write gate is accurate.
+  const granted = await resolveGrantedScopes(shop, accessToken, scope);
+  await upsertShop(shop, { scopes: granted, status: "active" });
+  await storeCredentials(shop, accessToken, granted);
+  await recordInstallation(shop, source, granted);
   let topics: string[] = [];
   try {
     topics = await getShopifyClient().registerWebhooks(shop, accessToken);
   } catch (err) {
     console.error(`[shopify] webhook registration failed for ${shop}:`, (err as Error).message);
   }
-  await audit(shop, "system", source, "shop", null, { scope, webhooks: topics.length });
+  await audit(shop, "system", source, "shop", null, { scope: granted, webhooks: topics.length });
 
   // Best-effort: activate the AI-referral Web Pixel (Phase 10). No-op unless the
   // write_pixels + read_customer_events scopes were granted — degrades gracefully.
@@ -223,7 +244,11 @@ export async function tokenExchangeHandler(req: Request, res: Response): Promise
     const existing = await getShop(shop);
     const installed = existing && existing.status !== "uninstalled" ? await getAccessToken(shop) : null;
     if (installed) {
-      await upsertShop(shop, { status: "active" }); // keep the session fresh; no redundant exchange
+      // Keep the session fresh; no redundant token exchange. Also re-sync the recorded
+      // scopes from the live grant so an earlier under-recorded install (a partial exchange
+      // `scope`) self-heals on the next embedded load — no reinstall needed to unblock writes.
+      const granted = await resolveGrantedScopes(shop, installed, existing?.scopes);
+      await upsertShop(shop, { scopes: granted, status: "active" });
     } else {
       const { accessToken, scope } = await getShopifyClient().exchangeSessionToken(shop, token);
       await completeInstall(shop, accessToken, scope, "install_token_exchange");
@@ -309,6 +334,22 @@ export async function webhookHandler(req: Request, res: Response): Promise<void>
     // Still 200 — we've recorded receipt; Shopify retries are deduped.
   }
   res.status(200).end();
+}
+
+/** GET /app/api/shop — the connected shop's recorded grant (for the Settings screen). Shows
+ *  the REAL granted scopes and whether write-back is enabled, so the UI never hardcodes a
+ *  scope list that contradicts the actual install. Shop-scoped (behind requireShop). */
+export async function shopInfoHandler(req: Request, res: Response): Promise<void> {
+  const shop = shopOf(req);
+  const row = await getShop(shop);
+  const scopes = parseScopes(row?.scopes);
+  res.json({
+    shop,
+    status: row?.status ?? "unknown",
+    plan: row?.plan ?? null,
+    scopes,
+    writeProducts: hasScope(row?.scopes, "write_products"),
+  });
 }
 
 /** Status for /healthz/deep + admin (no secrets). */
