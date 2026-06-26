@@ -60,7 +60,10 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
   if (!p) return NOT_FOUND;
 
   if (p.kind !== "write_products") return { ok: false, status: "rejected", detail: "only write_products proposals can be applied; copy_ready is manual" };
-  if (p.status !== "approved") return { ok: false, status: "rejected", detail: `proposal must be approved first (is '${p.status}')` };
+  // Allow (re)applying an approved proposal, or RETRYING one that previously failed (e.g. a
+  // transient Shopify error) — without forcing the merchant to regenerate. The conflict
+  // re-read below still protects against clobbering a value that changed in the meantime.
+  if (p.status !== "approved" && p.status !== "failed") return { ok: false, status: "rejected", detail: `proposal must be approved first (is '${p.status}')` };
   const field = writableField(p.target);
   if (!field || !p.product_gid) return { ok: false, status: "rejected", detail: `target '${p.target}' is not directly writable` };
 

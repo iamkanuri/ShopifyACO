@@ -7,6 +7,27 @@ links resolve.
 
 ---
 
+## Shopify form fields — exact character limits (copy/paste)
+
+(All ASCII — no em dashes / smart quotes, so nothing pastes as a garbled character.)
+
+**App introduction** (<=100):
+Are AI assistants recommending your store, or your competitors? Measure it, then fix it.
+
+**App details** (<=500):
+Shoppers increasingly ask ChatGPT, Gemini, and Perplexity what to buy. AisleLens measures whether those assistants recommend your products versus competitors, shows your share of voice, and flags your weakest assistant. It diagnoses why competitors win, tied to the exact buyer prompts you are losing, and proposes reviewable fixes you approve before anything changes (conflict-checked and reversible). Then verify whether it moved the needle, with real statistics. Start free.
+
+**App features** (max 5, <=80 each):
+1. Measure if ChatGPT, Gemini and Perplexity recommend you, with sample sizes.
+2. See your share of voice vs named competitors, and your weakest engine.
+3. Diagnose why competitors win, tied to the exact prompts you are losing.
+4. Apply reviewable SEO fixes: conflict-checked and one-click reversible.
+5. Verify changes with before/after stats; monitor visibility with alerts.
+
+**Demo store URL**: optional. AisleLens runs in the admin (nothing renders on the storefront), so either leave it blank OR use the public demo `https://lens.thirdocular.com/demo` if the field accepts a non-Shopify URL. Do NOT put the password-protected dev store here — give the reviewer the dev store + test steps in the separate review-instructions field.
+
+---
+
 ## App name
 **AisleLens — AI shopping visibility**
 
@@ -31,14 +52,23 @@ never vanity claims. Start free with a quick visibility scan.
 - **Monitor** your visibility on a schedule and get alerted on credible changes (no cry-wolf).
 
 ## Categories
-Primary: Marketing / Store data & analytics. Secondary: Marketing — SEO (AI/answer-engine optimization).
+Primary: **Store data & analytics** (alt: Marketing & conversion). Secondary: **SEO** (AI / answer-engine optimization).
+- **App attributes** (select only what's true): **Marketing & sales** ✓ · **Visuals and reports** ✓ ·
+  **Customer behavior** ~ (only to surface the AI-referral attribution funnel — optional). Skip anything we don't do.
+- **SEO → "what SEO tools can merchants use?"**: **Structured data / schema markup** (JSON-LD: Product,
+  AggregateRating, FAQ) · **Meta titles & descriptions** (SEO title/description backfill) · **content /
+  optimization recommendations**. Do NOT select: sitemaps, redirects, image alt-text, backlinks, page speed.
+- **SEO → "how can merchants monitor performance?"**: **Dashboards & reports** (AI Visibility Score, share of
+  voice) · **scheduled monitoring + alerts** · **before/after verification (confidence intervals)** ·
+  **visibility / share-of-voice tracking over time**.
 
-## Pricing summary (shown on listing)
-- **Free** — quick AI visibility scan + competitor leaderboard.
-- **Full report — $29 one-time** — deeper prompts, gap analysis, fix roadmap.
-- **Weekly monitoring — $49/mo** — recurring scans, share-of-voice trends, alerts.
-- **Founder beta — $99** — deep scans + direct founder review.
-(Stripe is in TEST mode until KYC; prices above match the live plan config.)
+## Pricing — the Shopify App Store listing is FREE
+Shopify requires in-app charges to go through the **Shopify Billing API**, so we list the Shopify app **free**
+and merchants get full value (scan, dashboard, evidence, fixes) at no Shopify charge. The paid plans below run
+on our own web product (`lens.thirdocular.com`, Stripe) — NOT through Shopify — and are **not** part of this
+listing's pricing:
+- Full report $29 · Weekly monitoring $49/mo · Founder beta $99 (web funnel only).
+(Adding in-app paid plans for Shopify merchants later would require building the Shopify Billing API.)
 
 ---
 

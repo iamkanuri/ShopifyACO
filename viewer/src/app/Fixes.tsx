@@ -59,8 +59,8 @@ export function Fixes() {
                 {p.kind === "write_products" ? (
                   p.status === "proposed" ? (
                     <button className="btn" disabled={busy === p.id} onClick={() => act(p.id, approveFix, "Approved — ready to apply.")}>Approve</button>
-                  ) : p.status === "approved" ? (
-                    <button className="btn btn-primary" disabled={busy === p.id} onClick={() => act(p.id, applyFix, "Applied to your store (reversible).")}>Apply to store</button>
+                  ) : (p.status === "approved" || p.status === "failed") ? (
+                    <button className="btn btn-primary" disabled={busy === p.id} onClick={() => act(p.id, applyFix, "Applied to your store (reversible).")}>{p.status === "failed" ? "Retry apply" : "Apply to store"}</button>
                   ) : p.status === "applied" ? (
                     <button className="btn" disabled={busy === p.id} onClick={() => act(p.id, rollbackFix, "Rolled back — restored the previous value.")}>Rollback</button>
                   ) : null

@@ -85,7 +85,9 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; data?
     if (res.status === 401 && (await ensureSession())) res = await send();
     if (res.status === 401) return { ok: false, demo: true, error: "Connect your store to perform this action." };
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) return { ok: false, error: (data as { error?: string }).error ?? `HTTP ${res.status}` };
+    // Surface the server's real reason: handlers return `error` OR `detail` (apply/rollback
+    // use `detail`). Showing a bare "HTTP 422" hid why a fix apply failed.
+    if (!res.ok) return { ok: false, error: (data as { error?: string; detail?: string }).error ?? (data as { detail?: string }).detail ?? `HTTP ${res.status}` };
     knownConnected = true;
     return { ok: true, data: data as T };
   } catch (e) {

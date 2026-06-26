@@ -577,6 +577,13 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
     Supabase stack (CLI + Docker); local dev no longer touches prod. Prod unchanged on Railway.
 
 ## Verification log
+- 2026-06-25 Fix Studio apply hardening (branch `fix/fixstudio-apply-hardening`, off `main`): a live
+  apply that returned a non-conflict failure surfaced only a bare **"HTTP 422"** in the UI — the real
+  reason lives in the handler's `detail` field, which `appApi.post()` discarded. Now `post()` surfaces
+  `error ?? detail`, so the actual cause (scope/productUpdate/throttle/etc.) is shown. Also:
+  `applyProposal` now accepts status **`approved` OR `failed`** so a transient failure can be **retried**
+  without regenerating (the conflict re-read still guards), and Fix Studio shows a **"Retry apply"**
+  button on failed proposals. `test/fixes.test.ts` 7/7; typecheck + viewer build clean. No migration.
 - 2026-06-25 Fix Studio **Rollback button** (branch `fix/fixstudio-rollback-button`, off `main`):
   the server `/app/api/fixes/:id/rollback` + the "reversible" apply path existed and were tested
   (7/7), but the UI never rendered a rollback control — an `applied` write_products proposal showed
