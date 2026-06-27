@@ -24,6 +24,20 @@ export async function insertPixelEvent(e: PixelEventRow): Promise<void> {
   );
 }
 
+/** Delete pixel_events older than `retentionDays` (data-retention purge). pixel_events
+ *  holds personal-data-adjacent fields (referrer host, landing path, salted IP hash), so
+ *  honoring a retention period lets us answer "yes" to Shopify's protected-data retention
+ *  question. Purges on `created_at` (server ingestion time — not client-influenced like
+ *  `occurred_at`). Returns the number of rows removed. */
+export async function purgeExpiredPixelEvents(retentionDays: number): Promise<number> {
+  const days = Math.max(1, Math.trunc(retentionDays));
+  const { rowCount } = await pgQuery(
+    `delete from pixel_events where created_at < now() - make_interval(days => $1::int)`,
+    [days],
+  );
+  return rowCount ?? 0;
+}
+
 export interface AttributionBySource {
   aiSource: string;
   sessions: number;       // distinct sessions that started from this source

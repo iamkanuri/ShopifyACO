@@ -36,6 +36,15 @@ export function PrivacyPage() {
         <li>We don't share your email with third parties beyond what's needed to deliver the service.</li>
       </ul>
 
+      <h3>Data retention</h3>
+      <ul>
+        <li>
+          AI-referral attribution data (the assistant a shopper arrived from, the page they
+          landed on, and a one-way hash of their IP) is retained for <b>90 days</b>, then
+          automatically deleted.
+        </li>
+      </ul>
+
       <h3>Contact</h3>
       <p>
         {contactEmail ? (

@@ -5,6 +5,7 @@ import { hasPg, closePg } from "./db/pg.js";
 import { startHealthServer } from "./health.js";
 import { recoverAbandoned, touchHeartbeat } from "./queue/jobs.js";
 import { runDueSchedules } from "./monitoring/execute.js";
+import { runRetentionPurge } from "./retention/purge.js";
 
 // Scheduler process (PROCESS_MODE=scheduler / `npm run scheduler`). Runs periodic
 // maintenance: recovers abandoned jobs and (in later phases) enqueues due recurring
@@ -20,6 +21,9 @@ async function tick(): Promise<void> {
   // Phase 8: enqueue due monitoring schedules (mock unless MONITORING_LIVE=1).
   const sched = await runDueSchedules({ mock: !ENV.monitoringLive });
   if (sched.processed) console.log(`[scheduler] enqueued ${sched.processed} due schedule(s)`);
+  // Data-retention purge (compliance): once/day, deletes pixel_events past the window.
+  const purge = await runRetentionPurge();
+  if (purge.ran) console.log(`[scheduler] retention purge: removed ${purge.pixelEventsDeleted ?? 0} expired pixel_event(s)`);
   await touchHeartbeat("scheduler", { tickMs: TICK_MS });
 }
 

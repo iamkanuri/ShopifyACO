@@ -10,6 +10,31 @@ Single source of truth for deferred work. Reflects the live beta at
 
 ---
 
+## ✅ DONE (2026-06-27): data-retention purge for pixel_events (protected-data compliance)
+
+**Why:** Shopify's protected-customer-data Step 2 asks "Do you have retention periods that
+make sure personal data isn't kept longer than needed?" — to answer **Yes** truthfully we needed
+an actual retention period on `pixel_events` (referrer host + landing path + salted IP hash),
+which were stored indefinitely. (Encryption at rest/in transit was already a clean Yes:
+TLS + Supabase AES-256 + tokens AES-256-GCM.)
+
+**Shipped** (branch `feat-pixel-retention-purge`):
+1. `purgeExpiredPixelEvents(retentionDays)` (`src/db/pixel.ts`) — `delete from pixel_events
+   where created_at < now() - make_interval(days => $1)`. Purges on `created_at` (server
+   ingestion time, not the client-influenced `occurred_at`); returns the row count.
+2. `src/retention/purge.ts` — `runRetentionPurge()` wired into the **scheduler tick**
+   (`src/scheduler.ts`); self-throttles to **once/day** in-memory, best-effort + logged,
+   no-ops without pg. `PIXEL_RETENTION_DAYS = 90`, kept in sync with /privacy via comment
+   (the viewer bundle can't import from `src/`).
+3. `/privacy` now states: "AI-referral attribution data … is retained for **90 days**, then
+   automatically deleted." (`viewer/src/pages/PrivacyPage.tsx`).
+4. `test/retention.test.ts` — pure throttle tests (3) + DB-gated delete-boundary test, verified
+   against local Supabase (100-day-old row purged, fresh row kept).
+
+The merchant can now answer **Yes** to the retention question. The analytics `events` table was
+left as-is (it holds only the salted IP hash + anonymous funnel metadata — no referrer/landing
+PII-adjacent fields); revisit only if that changes.
+
 ## ✅ DONE (2026-06-20): dark/minimal re-theme + scan redesign
 
 Shipped a **dark, near-black, sleek** rebrand matching thirdocular.com, plus a
