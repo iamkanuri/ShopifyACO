@@ -30,15 +30,17 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
   title/description backfill only; gated by approval + conflict check + rollback). To go live with
   it: (1) set `SHOPIFY_SCOPES=read_products,read_customer_events,write_pixels,write_products` on the
   Railway **web** service, (2) `shopify app deploy`, (3) merchant **re-consent** (reinstall granting
-  write), (4) **TEST on the dev store first** — in Fix Studio approve + Apply an SEO-title fix to a
-  dev-store product, confirm it changed in admin, then Rollback and confirm it restored (the live
-  write path has never run against a real store). Do **not** add customer/order scopes.
+  write), (4) **TEST on the dev store first** — ✅ **PROVEN 2026-06-26**: in Fix Studio approve +
+  Apply an SEO edit to a dev-store product, confirmed it changed in Shopify admin, then Rollback
+  restored it. (Required adopting expiring offline tokens + the `2026-01` API version + live
+  scope recording — see IMPLEMENTATION_STATUS 2026-06-26.) Do **not** add customer/order scopes.
 - ☐ **Mandatory compliance webhooks** (GDPR): `customers/data_request`, `customers/redact`,
   `shop/redact` → all point to `https://lens.thirdocular.com/api/shopify/webhooks`.
 - ☐ **App webhooks:** `app/uninstalled`, `products/create`, `products/update`,
   `products/delete`, `shop/update` → same webhooks URL.
 - ☐ Set env: `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_APP_URL`, `SHOPIFY_SCOPES`,
-  `SHOPIFY_API_VERSION` (use the current stable GraphQL Admin API version).
+  `SHOPIFY_API_VERSION=2026-01` (the current supported GraphQL Admin API version; the old
+  `2025-01` is unsupported and 403'd. Code default is also `2026-01`.).
 - ☐ **Activate embedded mode (when ready to run inside the Shopify admin iframe):** the code is
   built — dynamic per-shop CSP `frame-ancestors`, App Bridge injection on `/app` (host/shop param),
   session-token API auth, AND the **embedded install handshake via token exchange**
@@ -56,7 +58,9 @@ Status: ☐ todo · ☑ done. Order roughly matches the rollout order in IMPLEME
   (Phase 3); `benchmarks`, `observations` (Phase 4); `crawl_pages`, `findings` (Phase 5);
   `fix_proposals` (Phase 6); `interventions`, `experiments` (Phase 7); `schedules`,
   `alerts`, `notifications` (Phase 8); `feeds`, `feed_versions`, `feed_items` (Phase 9); `pixel_events` (Phase 10);
-  `entitlements`, `billing_events` (Phase 11, migration `0017`; + additive `orders` columns). All additive/idempotent.
+  `entitlements`, `billing_events` (Phase 11, migration `0017`; + additive `orders` columns);
+  `shop_credentials` refresh-token + expiry columns (migration `0018`, expiring offline tokens,
+  applied to prod 2026-06-26). All additive/idempotent.
 
 ## 4. Railway services (Phase 1) — ✅ DONE 2026-06-21
 One image, three process modes via `PROCESS_MODE` dispatch (`src/start.ts`). railway.json's
@@ -81,10 +85,14 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 - ☐ Apply migration `0010_crawler.sql` (`crawl_pages`, `findings`) — happens automatically
   with `npm run migrate` / at Railway deploy.
 - ☐ Leave `CRAWLER_MODE=mock` (default) for $0/no-network operation. Set `CRAWLER_MODE=live`
-  only when you want real crawling — it makes **outbound HTTP requests** (no API spend, no new
-  secrets) and is SSRF-hardened (private/link-local/metadata IPs blocked). Tune
-  `CRAWLER_MAX_PAGES/DEPTH/BYTES`, `CRAWLER_TIMEOUT_MS`, `CRAWLER_MAX_REDIRECTS`,
-  `CRAWLER_RESPECT_ROBOTS` as needed. The `evidence_diagnose` job runs on the worker service.
+  on **BOTH the `web` and `worker` services** when you want real crawling — web sets the live
+  default at enqueue, the worker runs the actual fetch (set only one → still mock). It makes
+  **outbound HTTP requests** (no API spend, no new secrets) and is SSRF-hardened (private/
+  link-local/metadata IPs blocked). Tune `CRAWLER_MAX_PAGES/DEPTH/BYTES`, `CRAWLER_TIMEOUT_MS`,
+  `CRAWLER_MAX_REDIRECTS`, `CRAWLER_RESPECT_ROBOTS` as needed. The `evidence_diagnose` job runs on
+  the worker service. (Real engine citations + merchant-page derivation are wired as of 2026-06-26,
+  so live diagnosis crawls both the cited competitors and the merchant's own synced catalog page —
+  run **Catalog → Sync** first so there's an `online_url`.)
 
 ## 6. Email provider (Phase 8)
 - ☐ Choose a provider (e.g. Resend/Postmark/SES). Verify a sending domain (SPF/DKIM/DMARC).

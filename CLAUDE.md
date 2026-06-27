@@ -343,8 +343,12 @@ page + the competitor pages the assistants cited, then diagnosing the structural
   + `evidence_diagnose` queue handler (mock default; `live` opt-in hits the network — gated).
   Shop-scoped API `src/server/evidence.ts` (`/app/api/evidence/diagnose|findings|pages`, each
   verifies run ownership). `test/crawler.test.ts` (20 pure + 1 DB-gated). **Live crawl needs
-  `CRAWLER_MODE=live` + a user go.** Known follow-up: Phase 4 stores `observations.citations`
-  as `[]` — wire real engine citations so live diagnosis auto-derives competitor URLs.
+  `CRAWLER_MODE=live` on BOTH the `web` (sets the live default at enqueue) AND `worker` (runs the
+  fetch) services + a user go.** ✅ **DONE 2026-06-26:** real engine citations are now captured
+  (OpenAI `url_citation` annotations / Gemini `groundingChunks` / Perplexity `citations` —
+  `EngineResult.citations`, `src/engines/citations.ts`) into `observations.citations`, the diagnose
+  route honors `CRAWLER_MODE` as the default, and live diagnosis derives competitor URLs from those
+  citations PLUS the merchant's own page from the synced catalog (`getStorefrontUrl`).
 
 **Phase 6 (Fix Studio — gated, reversible write-back) is built on branch `phase6-fixes`** (off
 `phase5-crawler`), mock-verified end-to-end at $0. It turns diagnosis findings + catalog data

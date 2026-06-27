@@ -200,10 +200,13 @@ makes outbound HTTP requests (spends no API money — gated for the network acce
   `safeFetch` refusal before connect, robots, sanitize/injection, extraction, bounded crawl
   (mock), and diagnosis (mechanism present, no guarantee, hygiene tier). `npm test` 61 pass /
   11 skipped / 0 fail; `npm run typecheck` clean.
-- ⬜ Follow-ups: capture REAL engine citations into `observations.citations` (Phase 4 stores
-  `[]` today) so live diagnosis derives competitor URLs automatically; UI surfaces (Phase 12);
-  optional LLM adjudication over `wrapUntrusted` evidence. Live crawl needs `CRAWLER_MODE=live`
-  + user go (network).
+- ✅ DONE 2026-06-26: capture REAL engine citations into `observations.citations` (was `[]`) —
+  `EngineResult.citations` extracted per provider (`src/engines/citations.ts` + the three
+  adapters), the diagnose route honors `CRAWLER_MODE` as the default, and live diagnosis derives
+  competitor URLs from citations + the merchant's own page from the synced catalog
+  (`getStorefrontUrl`). Live crawl needs `CRAWLER_MODE=live` on **web + worker** + user go (network).
+- ⬜ Follow-ups: UI surfaces (Phase 12, shipped read views); optional LLM adjudication over
+  `wrapUntrusted` evidence.
 
 **Phase 5 status: functionally complete (mock-verified, $0); live crawl gated on user go.**
 
@@ -515,9 +518,28 @@ rollback, OAuth, webhooks. Threaded through every phase, hardened before review 
 
 ---
 
-## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-25, commit `8cf42c1`)
+## 🟢 LIVE DEPLOYMENT STATE (updated 2026-06-26, commit `41dcf65`)
 **Phases 1–14 are merged to `main` and LIVE in production** at https://lens.thirdocular.com.
 Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deploy.
+- **Session 2026-06-26 (App Store submission prep) — shipped + verified:**
+  - **Fix Studio write-back PROVEN end-to-end on the dev store** — install (token exchange) →
+    scope recorded → **apply** an SEO edit (seen in Shopify admin) → **rollback** (restored). This
+    was the App Store submission gate.
+  - **Admin API bumped to `2026-01`** (the stale `2025-01` 403'd); default in `env.ts` +
+    `shopify.app.toml` + the pixel extension.
+  - **EXPIRING offline tokens** adopted (`expiring=1` + rotating refresh-token lifecycle;
+    `getAccessToken` refreshes in place) — Shopify now rejects non-expiring tokens. Form-encoded
+    OAuth token calls. Migration `0018_expiring_tokens` applied (refresh token + expiries on
+    `shop_credentials`).
+  - **Scope recording fixed** — install reads the live `currentAppInstallation.accessScopes`
+    (falls back to configured), so the write gate reflects the real grant. Settings shows it.
+  - **Embedded UX completed:** Measure has a **Run live** benchmark (real spend, cost-capped);
+    Fix Studio **Generate** is self-serve (run selector, no `?run=` needed); **Monitoring** can
+    **create schedules** (was a read-only dead-end).
+  - **Live-evidence pipeline wired:** real engine **citations** captured into observations; the
+    diagnose route honors `CRAWLER_MODE`; live diagnosis crawls cited competitors + the merchant's
+    own catalog page. Needs `CRAWLER_MODE=live` on **web + worker** to activate (env only).
+  - Migrations now `0001`–`0018` (`0018` applied to prod on deploy).
 - **Phase 14 (2026-06-25, commit `8cf42c1`): EMBEDDED MODE + DASHBOARD LIVE-DATA.** The `/app`
   Dashboard now computes the connected merchant's OWN metrics (`GET /app/api/dashboard`); the embedded
   install handshake works via RFC-8693 **token exchange** (`POST /api/shopify/token`) — `embedded=true`
@@ -534,7 +556,9 @@ Verified end-to-end via `/healthz` + `/healthz/deep` + smoke tests on each deplo
   (`src/start.ts`). `web` (the site + API) + `worker` + `scheduler` all deployed and
   **heartbeating** (`/healthz/deep`). `JOB_QUEUE_ENABLED=1` on web → durable queue + scheduled
   monitoring are **running** (recurring runs stay mock/$0 until `MONITORING_LIVE=1`).
-- **Shopify:** live OAuth (`read_products`); API secret **rotated** 2026-06-21.
+- **Shopify:** embedded install via token exchange (expiring offline tokens, API `2026-01`); all
+  four scopes granted on the dev store (`read_products,read_customer_events,write_pixels,write_products`)
+  with **write-back apply/rollback proven** (see 2026-06-26 above); API secret **rotated** 2026-06-21.
 - **The embedded `/app` UI is live** (demo-fallback for non-sessions). Homepage repositioned.
 - **Phase 9 (Product feeds & agentic readiness) is LIVE** (merged + deployed 2026-06-21,
   commit `c178cb4`; `/healthz/deep` green, new worker heartbeating with the `feed_generate`
