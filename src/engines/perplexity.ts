@@ -2,6 +2,7 @@ import type { EngineResult } from "../types.js";
 import type { EngineAdapter } from "./types.js";
 import { MAX_OUTPUT_TOKENS, MODELS, estimateCostUsd } from "./models.js";
 import { SHOPPING_SYSTEM_PROMPT, postJson } from "./http.js";
+import { dedupeHttpUrls } from "./citations.js";
 
 const URL = "https://api.perplexity.ai/chat/completions";
 
@@ -47,6 +48,7 @@ export function createPerplexityAdapter(apiKey: string | undefined): EngineAdapt
           outputTokens,
           costUsd: estimateCostUsd(model, inputTokens ?? 0, outputTokens ?? 0),
         },
+        citations: extractPerplexityCitations(json),
         raw: json,
       };
     },
@@ -56,4 +58,13 @@ export function createPerplexityAdapter(apiKey: string | undefined): EngineAdapt
 interface PerplexityPayload {
   choices?: Array<{ message?: { content?: string } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
+  /** sonar returns its sources as a top-level `citations` URL list and/or `search_results`. */
+  citations?: string[];
+  search_results?: Array<{ url?: string }>;
+}
+
+/** sonar is web-grounded by default and returns sources at the top level. */
+export function extractPerplexityCitations(json: PerplexityPayload): string[] {
+  const fromResults = (json.search_results ?? []).map((s) => s.url);
+  return dedupeHttpUrls([...(json.citations ?? []), ...fromResults]);
 }

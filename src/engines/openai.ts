@@ -2,6 +2,7 @@ import type { EngineResult } from "../types.js";
 import type { EngineAdapter } from "./types.js";
 import { MAX_OUTPUT_TOKENS, MODELS, estimateCostUsd } from "./models.js";
 import { HttpError, SHOPPING_SYSTEM_PROMPT, postJson } from "./http.js";
+import { dedupeHttpUrls } from "./citations.js";
 
 const RESPONSES_URL = "https://api.openai.com/v1/responses";
 const CHAT_URL = "https://api.openai.com/v1/chat/completions";
@@ -46,7 +47,7 @@ export function createOpenAIAdapter(apiKey: string | undefined): EngineAdapter {
         max_output_tokens: MAX_OUTPUT_TOKENS,
       },
     });
-    return toResult(extractResponsesText(json), json.usage, "web_grounded", json);
+    return toResult(extractResponsesText(json), json.usage, "web_grounded", json, extractResponsesCitations(json));
   }
 
   async function ungrounded(prompt: string, signal?: AbortSignal): Promise<EngineResult> {
@@ -72,6 +73,7 @@ export function createOpenAIAdapter(apiKey: string | undefined): EngineAdapter {
     usage: OpenAIUsage | undefined,
     grounding: "web_grounded" | "api_model_only",
     raw: unknown,
+    citations: string[] = [],
   ): EngineResult {
     const inputTokens = usage?.input_tokens ?? usage?.prompt_tokens;
     const outputTokens = usage?.output_tokens ?? usage?.completion_tokens;
@@ -85,6 +87,7 @@ export function createOpenAIAdapter(apiKey: string | undefined): EngineAdapter {
         outputTokens,
         costUsd: estimateCostUsd(model, inputTokens ?? 0, outputTokens ?? 0),
       },
+      citations,
       raw,
     };
   }
@@ -103,9 +106,23 @@ interface ResponsesPayload {
   output_text?: string;
   output?: Array<{
     type: string;
-    content?: Array<{ type: string; text?: string }>;
+    content?: Array<{ type: string; text?: string; annotations?: Array<{ type?: string; url?: string }> }>;
   }>;
   usage?: OpenAIUsage;
+}
+
+/** Web-search citations come back as `url_citation` annotations on the output_text parts. */
+export function extractResponsesCitations(json: ResponsesPayload): string[] {
+  const urls: string[] = [];
+  for (const item of json.output ?? []) {
+    if (item.type !== "message") continue;
+    for (const c of item.content ?? []) {
+      for (const a of c.annotations ?? []) {
+        if (a.type === "url_citation" && a.url) urls.push(a.url);
+      }
+    }
+  }
+  return dedupeHttpUrls(urls);
 }
 
 interface ChatPayload {

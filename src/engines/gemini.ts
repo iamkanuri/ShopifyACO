@@ -2,6 +2,7 @@ import type { EngineResult } from "../types.js";
 import type { EngineAdapter } from "./types.js";
 import { MAX_OUTPUT_TOKENS, MODELS, estimateCostUsd } from "./models.js";
 import { HttpError, SHOPPING_SYSTEM_PROMPT, postJson } from "./http.js";
+import { dedupeHttpUrls } from "./citations.js";
 
 /**
  * Google Gemini adapter.
@@ -60,6 +61,7 @@ export function createGeminiAdapter(apiKey: string | undefined): EngineAdapter {
         outputTokens,
         costUsd: estimateCostUsd(model, inputTokens ?? 0, outputTokens ?? 0),
       },
+      citations: grounded ? extractGeminiCitations(json) : [],
       raw: json,
     };
   }
@@ -68,7 +70,15 @@ export function createGeminiAdapter(apiKey: string | undefined): EngineAdapter {
 interface GeminiPayload {
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
-    groundingMetadata?: unknown;
+    groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string } }> };
   }>;
   usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+}
+
+/** Grounded answers cite sources via groundingMetadata.groundingChunks[].web.uri. (These
+ *  are often Google redirect URLs; the crawler follows + re-validates each hop, so they
+ *  still resolve to the real cited page.) */
+export function extractGeminiCitations(json: GeminiPayload): string[] {
+  const chunks = json.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  return dedupeHttpUrls(chunks.map((ch) => ch.web?.uri));
 }

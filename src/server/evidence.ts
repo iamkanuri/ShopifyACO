@@ -26,8 +26,10 @@ async function ownedRun(req: Request, res: Response): Promise<{ runId: number; b
 }
 
 /** POST /app/api/evidence/diagnose — crawl + diagnose a completed run. Body:
- *  { runId, merchantUrl?, competitorUrls?, live? }. Live crawling hits the network
- *  (opt-in; spends no API money). Queued when the worker is on, else inline. */
+ *  { runId, merchantUrl?, competitorUrls?, live? }. Live crawling hits the network (spends
+ *  no API money). The request may force `live` either way; when it's unspecified the
+ *  deployment default CRAWLER_MODE governs (so CRAWLER_MODE=live makes the UI button run a
+ *  real crawl). Queued when the worker is on, else inline. */
 export async function diagnoseHandler(req: Request, res: Response): Promise<void> {
   const shop = shopOf(req);
   const owned = await ownedRun(req, res);
@@ -39,7 +41,8 @@ export async function diagnoseHandler(req: Request, res: Response): Promise<void
     res.status(400).json({ error: "merchantBrand could not be resolved from the run; pass it explicitly." });
     return;
   }
-  const live = req.body?.live === true;
+  // Explicit request wins; otherwise follow the deployment default (CRAWLER_MODE).
+  const live = req.body?.live === true || (req.body?.live == null && ENV.crawler.mode === "live");
   const merchantUrl = typeof req.body?.merchantUrl === "string" ? req.body.merchantUrl : null;
   const competitorUrls = Array.isArray(req.body?.competitorUrls) ? req.body.competitorUrls.map(String).slice(0, 25) : undefined;
 

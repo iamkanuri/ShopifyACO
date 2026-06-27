@@ -93,7 +93,9 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
               promptText: prompt.text, intent: prompt.intent, engine: adapter.name, model: adapter.model,
               groundingMode: result.groundingMode, targetBrand: det.name, recommendationStatus: det.status,
               rank: det.listRank, evidenceSnippet: det.snippet ?? null,
-              latencyMs, costUsd: det.isOwn ? callCost : 0, citations: [],
+              // Real citation URLs from the grounded answer → Phase-5 live crawl derives the
+              // competitor pages to diagnose from these (was hardcoded []).
+              latencyMs, costUsd: det.isOwn ? callCost : 0, citations: result.citations ?? [],
             });
             obsCount++;
           }

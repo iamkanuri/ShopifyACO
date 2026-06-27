@@ -49,6 +49,9 @@ export interface EngineResult {
   /** The grounding mode ACTUALLY achieved on this call (fallbacks can change it). */
   groundingMode: GroundingMode;
   usage?: EngineUsage;
+  /** Source URLs the assistant cited for this answer (web-grounded calls only). Powers the
+   *  Phase-5 live crawl: the competitor pages to diagnose are derived from these. */
+  citations?: string[];
   /** Raw API payload, retained only when --save-raw is on. */
   raw?: unknown;
   /** Set when the call failed gracefully; text will be "". */
