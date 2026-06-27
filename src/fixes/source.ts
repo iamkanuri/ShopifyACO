@@ -47,11 +47,13 @@ export async function rereadProduct(shop: string, token: string, productGid: str
   return norm;
 }
 
-/** Build a minimal ProductInput for one writable field. */
+/** Build a minimal ProductInput for one writable field. An empty value clears the field with
+ *  `null` (not ""), which is how Shopify reliably removes an SEO override — important for
+ *  rollback, where the original value was empty (a backfill). */
 export function buildProductInput(productGid: string, field: "seoTitle" | "seoDescription" | "descriptionHtml", value: string): Record<string, unknown> {
   switch (field) {
-    case "seoTitle": return { id: productGid, seo: { title: value } };
-    case "seoDescription": return { id: productGid, seo: { description: value } };
+    case "seoTitle": return { id: productGid, seo: { title: value || null } };
+    case "seoDescription": return { id: productGid, seo: { description: value || null } };
     case "descriptionHtml": return { id: productGid, descriptionHtml: value };
   }
 }

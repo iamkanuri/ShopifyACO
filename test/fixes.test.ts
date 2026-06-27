@@ -61,9 +61,12 @@ test("writableField only maps the two SEO targets", () => {
   assert.equal(writableField("guidance:reviews"), null);
 });
 
-test("buildProductInput shapes a minimal ProductInput", () => {
+test("buildProductInput shapes a minimal ProductInput; empty clears with null", () => {
   assert.deepEqual(buildProductInput("gid://x", "seoTitle", "T"), { id: "gid://x", seo: { title: "T" } });
   assert.deepEqual(buildProductInput("gid://x", "seoDescription", "D"), { id: "gid://x", seo: { description: "D" } });
+  // Rollback to an empty original clears the override with null (not "").
+  assert.deepEqual(buildProductInput("gid://x", "seoTitle", ""), { id: "gid://x", seo: { title: null } });
+  assert.deepEqual(buildProductInput("gid://x", "seoDescription", ""), { id: "gid://x", seo: { description: null } });
 });
 
 test("hasWriteScope requires the granted write_products scope", () => {
