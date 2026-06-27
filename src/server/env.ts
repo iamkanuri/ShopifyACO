@@ -121,6 +121,10 @@ export const ENV = {
     scopes: (str(process.env.SHOPIFY_SCOPES) ?? "read_products").split(/[,\s]+/).filter(Boolean),
     apiVersion: str(process.env.SHOPIFY_API_VERSION) ?? "2026-01",
     appUrl: str(process.env.SHOPIFY_APP_URL) ?? str(process.env.PUBLIC_BASE_URL),
+    // The app's URL handle (slug), for the Shopify Managed Pricing page link
+    // (admin.shopify.com/store/{shop}/charges/{appHandle}/pricing_plans). Find it in the
+    // Partner Dashboard. Unset → the in-app "Manage plan" button degrades to a note.
+    appHandle: str(process.env.SHOPIFY_APP_HANDLE),
     // 'mock' lets us build + test the full flow with no real Shopify credentials.
     mode: (str(process.env.SHOPIFY_MODE) ?? "live") as "live" | "mock",
   },

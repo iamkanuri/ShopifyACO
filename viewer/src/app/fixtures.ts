@@ -70,7 +70,8 @@ export interface AppBilling {
   plan: AppEntitlement;
   usage: { benchmarksLast30d: number; monitoringSchedules: number; feeds: number };
   enforced: boolean;
-  portal: { available: boolean };
+  /** Shopify Managed Pricing page (compliant upgrade/manage). Null until configured. */
+  managedPricingUrl: string | null;
   plans: AppPlanCard[];
 }
 
@@ -225,7 +226,7 @@ export const DEMO = {
     },
     usage: { benchmarksLast30d: 2, monitoringSchedules: 0, feeds: 1 },
     enforced: false,
-    portal: { available: false },
+    managedPricingUrl: null,
     plans: [
       { id: "free_mini", name: "Free mini scan", price: "$0", cadence: "", blurb: "See if AI assistants know you.", features: ["5 buyer-intent prompts", "3 engines", "Visibility score + competitor leaderboard"], limits: { benchmarksPerMonth: 3, monitoringSchedules: 0, feeds: 1 }, tier: 0, stripeUrl: null, current: true },
       { id: "full_report", name: "Full report", price: "$29", cadence: "one-time", blurb: "The complete picture + how to fix it.", features: ["25+ prompts", "Competitor gap + lost-prompt analysis", "Fix roadmap + report"], limits: { benchmarksPerMonth: 25, monitoringSchedules: 0, feeds: 3 }, tier: 1, stripeUrl: null, current: false },

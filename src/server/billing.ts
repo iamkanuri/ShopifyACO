@@ -8,6 +8,7 @@ import { createPortalSession } from "../billing/portal.js";
 import { stripeCustomerForShop } from "../db/entitlements.js";
 import { hasPg } from "../db/pg.js";
 import { PLANS } from "../pricing.js";
+import { managedPricingUrl } from "../shopify/managedPricing.js";
 
 // Shop-scoped Billing & entitlements API (Phase 11). requireShop sets req.shopDomain.
 // Read surfaces the merchant's effective plan, usage vs limits, and the upgrade
@@ -29,15 +30,17 @@ export async function billingStatusHandler(req: Request, res: Response): Promise
   const shop = shopOf(req);
   const eff = await entitlementForShop(shop);
   const usage = hasPg() ? await shopUsage(shop) : { benchmarksLast30d: 0, monitoringSchedules: 0, feeds: 0 };
-  const customerId = hasPg() ? await stripeCustomerForShop(shop) : null;
 
   // Plan catalogue: display copy (pricing.ts) merged with capability limits (entitlements).
+  // NOTE: for the EMBEDDED Shopify app we must NOT expose off-platform (Stripe) checkout links
+  // — App Store req 1.2. Charging Shopify-installed merchants goes through Shopify Managed
+  // Pricing (the managedPricingUrl below). Stripe links stay in the public web funnel only.
   const plans = PLANS.map((p) => {
     const ent = planEntitlement(p.id);
     return {
       id: p.id, name: p.name, price: p.price, cadence: p.cadence, blurb: p.blurb,
       features: p.features, limits: ent.limits, tier: ent.tier,
-      stripeUrl: ENV.stripe[p.id] ?? null,
+      stripeUrl: null,
       current: samePlan(p.id, eff.plan),
     };
   });
@@ -51,7 +54,9 @@ export async function billingStatusHandler(req: Request, res: Response): Promise
     },
     usage,
     enforced: ENV.billing.enforced,
-    portal: { available: Boolean(ENV.stripeSecretKey) && Boolean(customerId) },
+    // Shopify Managed Pricing page (compliant upgrade/manage path). Null until SHOPIFY_APP_HANDLE
+    // is set. The legacy Stripe portal is no longer surfaced in the embedded app.
+    managedPricingUrl: managedPricingUrl(shop),
     plans,
   });
 }

@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { getBilling, openBillingPortal } from "./appApi";
 import type { AppBilling } from "./fixtures";
+import { getBilling } from "./appApi";
 import { DemoBadge, StatePane, useLoaded } from "./ui";
 
-// Billing & entitlements (Phase 11). Shows the merchant's effective plan, usage vs the
-// plan's limits, a Manage-billing action (Stripe portal), and the upgrade catalogue.
-// Honest by construction: when enforcement is dormant we SAY so; the portal button
-// reflects whether a billing account actually exists.
+// Billing & entitlements (Phase 11) for Shopify-installed merchants. Charges go through
+// Shopify MANAGED PRICING (App Store req 1.2 — no off-platform/Stripe checkout in the
+// embedded app). We show the current plan + usage and link to Shopify's hosted plan page
+// to upgrade/manage. The Stripe flow remains for the public web funnel only.
 
 const cap = (n: number) => (n < 0 ? "∞" : String(n));
 const pctOf = (used: number, limit: number) => (limit < 0 ? 0 : limit === 0 ? (used > 0 ? 100 : 0) : Math.min(100, Math.round((used / limit) * 100)));
@@ -28,18 +27,11 @@ function StatusPill({ status, active }: { status: string; active: boolean }) {
 
 export function Billing() {
   const b = useLoaded<AppBilling>(() => getBilling(), []);
-  const [portalBusy, setPortalBusy] = useState(false);
-  const [portalErr, setPortalErr] = useState<string | null>(null);
-  const [picked, setPicked] = useState<string | null>(null); // plan card the user clicked
   const data = b.data;
-
-  async function manage() {
-    setPortalBusy(true); setPortalErr(null);
-    const r = await openBillingPortal();
-    setPortalBusy(false);
-    if (r.ok && (r.data as { url?: string })?.url) window.location.href = (r.data as { url: string }).url;
-    else setPortalErr(r.error ?? "Couldn't open the billing portal.");
-  }
+  const pricingUrl = data?.managedPricingUrl ?? null;
+  // Shopify's plan page is top-level (admin.shopify.com) — break out of the app iframe.
+  const openPricing = () => { if (pricingUrl) window.open(pricingUrl, "_top"); };
+  const isPaid = (data?.plan.tier ?? 0) > 0;
 
   return (
     <div>
@@ -56,20 +48,20 @@ export function Billing() {
                   <div className="al-set-k">Current plan</div>
                   <div className="al-plan2-name" style={{ fontSize: 16 }}>{data.plan.label} <StatusPill status={data.plan.status} active={data.plan.active} /></div>
                   <div className="muted al-fineprint">
-                    {data.plan.source === "default" ? "Free tier — no billing account yet." : `via ${data.plan.source}`}
+                    {data.plan.source === "default" ? "Free tier." : `via ${data.plan.source}`}
                     {data.plan.currentPeriodEnd && (data.plan.recurring || data.plan.cancelAtPeriodEnd)
                       ? ` · ${data.plan.cancelAtPeriodEnd ? "access ends" : "renews"} ${new Date(data.plan.currentPeriodEnd).toLocaleDateString()}`
                       : ""}
                   </div>
                 </div>
                 <div>
-                  <button className="btn btn-primary" disabled={!data.portal.available || portalBusy} onClick={manage}>
-                    {portalBusy ? "Opening…" : "Manage billing"}
+                  <button className="btn btn-primary" disabled={!pricingUrl} onClick={openPricing}>
+                    {isPaid ? "Manage plan" : "Upgrade to Pro"}
                   </button>
-                  {!data.portal.available && <div className="muted al-fineprint">{data.demo ? "Connect your store to manage billing." : "Available after your first purchase."}</div>}
+                  {!pricingUrl && <div className="muted al-fineprint">{b.demo ? "Connect your store to manage your plan." : "Plan management opens in Shopify."}</div>}
                 </div>
               </div>
-              {portalErr && <p className="al-gapmark al-fineprint">{portalErr}</p>}
+              <p className="muted al-fineprint">Plans are billed through Shopify. {isPaid ? "Manage or cancel from Shopify's plan page." : "Pro unlocks unlimited live benchmarks, Fix Studio apply, experiments and monitoring."}</p>
               {!data.enforced && (
                 <p className="muted al-fineprint">Plan limits below are shown for transparency. Enforcement is not active yet — nothing is blocked.</p>
               )}
@@ -81,37 +73,6 @@ export function Billing() {
                 <Meter label="Benchmark runs" used={data.usage.benchmarksLast30d} limit={data.plan.limits.benchmarksPerMonth} />
                 <Meter label="Monitoring schedules" used={data.usage.monitoringSchedules} limit={data.plan.limits.monitoringSchedules} />
                 <Meter label="Product feeds" used={data.usage.feeds} limit={data.plan.limits.feeds} />
-              </div>
-            </div>
-
-            <div className="section">
-              <h2>Plans</h2>
-              {/* The ring follows the card you CLICK (selection feedback); the "Current"
-                  chip always marks the plan you're actually on. Default selection = current. */}
-              <div className="grid al-plangrid">
-                {(() => { const ringId = picked ?? data.plans.find((p) => p.current)?.id; return data.plans.map((pl) => (
-                  <div
-                    key={pl.id}
-                    className={`card al-plan2 al-plan-pick ${pl.id === ringId ? "al-plan-current" : ""}`}
-                    onClick={() => setPicked(pl.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(pl.id); } }}
-                  >
-                    <div className="al-plan2-name">{pl.name}{pl.current && <span className="al-demo" style={{ marginLeft: 6 }}>Current</span>}</div>
-                    <div className="al-plan2-price">{pl.price}<span className="muted">{pl.cadence ? ` ${pl.cadence}` : ""}</span></div>
-                    <p className="muted">{pl.blurb}</p>
-                    <ul className="al-plan-feats">
-                      {pl.features.slice(0, 4).map((f, i) => <li key={i}>{f}</li>)}
-                    </ul>
-                    {!pl.current && pl.tier > data.plan.tier && pl.stripeUrl && (
-                      <a className="btn btn-primary" href={pl.stripeUrl}>Upgrade</a>
-                    )}
-                    {!pl.current && pl.tier > data.plan.tier && !pl.stripeUrl && (
-                      <span className="muted al-fineprint">Checkout link not configured yet.</span>
-                    )}
-                  </div>
-                )); })()}
               </div>
             </div>
           </>
