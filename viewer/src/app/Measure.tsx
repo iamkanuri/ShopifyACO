@@ -15,13 +15,14 @@ export function Measure() {
   const [result, setResult] = useState<RunBenchmarkResult | null>(null);
   const [err, setErr] = useState("");
 
-  async function run() {
+  async function run(live: boolean) {
     setErr(""); setResult(null);
     if (!brand.trim() || !category.trim()) { setErr("Brand and category are required."); return; }
+    if (live && !window.confirm("Run a LIVE benchmark? This makes real AI calls across ChatGPT, Gemini and Perplexity (cost-capped). Continue?")) return;
     setBusy(true);
-    const r = await runBenchmark({ brand: brand.trim(), category: category.trim(), competitors: competitors.split(",").map((s) => s.trim()).filter(Boolean) });
+    const r = await runBenchmark({ brand: brand.trim(), category: category.trim(), competitors: competitors.split(",").map((s) => s.trim()).filter(Boolean), live });
     setBusy(false);
-    if (r.demo) { setErr("Connect your store to run a live benchmark. This is a preview."); return; }
+    if (r.demo) { setErr("Open the app from the Shopify admin (Apps → AI Visibility) to run against your store."); return; }
     if (!r.ok) { setErr(r.error ?? "Run failed."); return; }
     setResult(r);
     runs.reload();
@@ -50,12 +51,14 @@ export function Measure() {
           <label className="al-field al-measure-wide"><span className="al-set-k">Competitors (comma-separated)</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="Poppi, Culture Pop, Health-Ade" /></label>
         </div>
         <div className="al-measure-actions">
-          <button className="btn btn-primary" disabled={busy} onClick={run}>{busy ? "Running…" : "Run benchmark (free preview)"}</button>
-          <span className="muted al-fineprint" style={{ margin: 0 }}>Deterministic preview, $0. Live runs are gated + cost-capped.</span>
+          <button className="btn btn-primary" disabled={busy} onClick={() => run(false)}>{busy ? "Running…" : "Run preview (free)"}</button>
+          <button className="btn" disabled={busy} onClick={() => run(true)}>{busy ? "Running…" : "Run live"}</button>
+          <span className="muted al-fineprint" style={{ margin: 0 }}>Preview is deterministic, $0. Live runs make real AI calls (cost-capped).</span>
         </div>
         {err && <div className="al-note err" style={{ marginTop: 12 }}>{err}</div>}
         {result?.ok && (
           <div className="al-measure-result">
+            <div className="al-measure-stat"><span className="al-set-k">Mode</span><b>{result.mode === "live" ? "Live" : "Preview"}</b></div>
             <div className="al-measure-stat"><span className="al-set-k">Recommendation rate</span>{result.recommendationRate ? <Pct p={result.recommendationRate} /> : "—"}</div>
             <div className="al-measure-stat"><span className="al-set-k">Mention rate</span>{result.mentionRate ? <Pct p={result.mentionRate} /> : "—"}</div>
             <div className="al-measure-stat"><span className="al-set-k">Observations</span><b>{result.observationCount}</b></div>

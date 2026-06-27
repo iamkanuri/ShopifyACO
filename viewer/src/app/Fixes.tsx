@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { applyFix, approveFix, dismissFix, getCatalog, getFixes, proposeFixes, rollbackFix } from "./appApi";
+import { applyFix, approveFix, dismissFix, getBenchmarks, getCatalog, getFixes, proposeFixes, rollbackFix } from "./appApi";
 import { DemoBadge, KindTag, StatePane, useLoaded } from "./ui";
 
 // Fix Studio: evidence-backed proposals. write_products are auto-applied (gated:
@@ -30,7 +30,7 @@ export function Fixes() {
         </div>
       </div>
 
-      {runId && <GeneratePanel runId={runId} onCreated={() => f.reload()} />}
+      <GeneratePanel pinnedRunId={runId} onCreated={() => f.reload()} />
 
       <StatePane loading={f.loading} empty={proposals.length === 0} emptyText="No proposals yet. Generate fixes from a diagnosed run.">
         <div className="grid">
@@ -79,23 +79,28 @@ export function Fixes() {
   );
 }
 
-// Generate proposals for one product from a diagnosed run's findings. Writes nothing
-// to the store — it only drafts reviewable proposals.
-function GeneratePanel({ runId, onCreated }: { runId: number; onCreated: () => void }) {
+// Generate proposals for one product from a run's findings (+ catalog data). Writes
+// nothing to the store — it only drafts reviewable proposals. Available on its own (pick a
+// recent run) OR pinned to a specific run when arrived at via Evidence's "Turn into fixes".
+function GeneratePanel({ pinnedRunId, onCreated }: { pinnedRunId?: number; onCreated: () => void }) {
   const cat = useLoaded(() => getCatalog(), []);
+  const runsL = useLoaded(() => getBenchmarks(), []);
   const products = cat.data?.products ?? [];
+  const runs = (runsL.data?.runs ?? []).filter((r) => r.status === "completed");
   const [gid, setGid] = useState("");
+  const [runSel, setRunSel] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
   const chosen = gid || products[0]?.product_gid || "";
+  const runId = pinnedRunId ?? (runSel ? Number(runSel) : runs[0]?.id);
 
   async function generate() {
-    if (!chosen) return;
+    if (!chosen || !runId) return;
     setBusy(true); setMsg(null);
     const r = await proposeFixes(runId, chosen);
     setBusy(false);
     if (r.ok) setMsg({ text: `Generated ${(r.data as { created?: number })?.created ?? ""} proposal(s).`, tone: "ok" });
-    else if (r.demo) setMsg({ text: "Connect your store to generate fixes for a product.", tone: "info" });
+    else if (r.demo) setMsg({ text: "Open the app from the Shopify admin to generate fixes for your products.", tone: "info" });
     else setMsg({ text: r.error ?? "Could not generate.", tone: "err" });
     if (r.ok) onCreated();
   }
@@ -104,14 +109,21 @@ function GeneratePanel({ runId, onCreated }: { runId: number; onCreated: () => v
     <div className="card al-generate">
       <div className="al-generate-main">
         <div>
-          <div className="al-set-k">Generate fixes for a product · run #{runId}</div>
-          <p className="muted" style={{ margin: "3px 0 0", fontSize: 12.5 }}>Drafts evidence-backed proposals from this run's findings. Reviewable — nothing is written to your store.</p>
+          <div className="al-set-k">Generate fixes for a product{pinnedRunId ? ` · run #${pinnedRunId}` : ""}</div>
+          <p className="muted" style={{ margin: "3px 0 0", fontSize: 12.5 }}>Drafts proposals from a run's findings + your catalog. Reviewable — nothing is written to your store. Diagnose a run first (Evidence) for evidence-backed fixes; SEO backfills work from any run.</p>
         </div>
+        {!pinnedRunId && (
+          <select className="al-generate-select" value={runSel} disabled={busy || runs.length === 0} onChange={(e) => setRunSel(e.target.value)}>
+            <option value="">{runs.length ? `Latest run (#${runs[0]?.id})` : "No runs yet"}</option>
+            {runs.map((r) => <option key={r.id} value={r.id}>Run #{r.id} · {new Date(r.started_at).toLocaleDateString()}</option>)}
+          </select>
+        )}
         <select className="al-generate-select" value={chosen} disabled={busy || products.length === 0} onChange={(e) => setGid(e.target.value)}>
           {products.map((p) => <option key={p.product_gid} value={p.product_gid}>{p.title}</option>)}
         </select>
-        <button className="btn btn-primary" disabled={busy || !chosen} onClick={generate}>{busy ? "Generating…" : "Generate"}</button>
+        <button className="btn btn-primary" disabled={busy || !chosen || !runId} onClick={generate}>{busy ? "Generating…" : "Generate"}</button>
       </div>
+      {!runId && <div className="al-note info" style={{ marginTop: 12 }}>Run a benchmark first (Measure), then generate fixes here.</div>}
       {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 12 }}>{msg.text}</div>}
     </div>
   );
