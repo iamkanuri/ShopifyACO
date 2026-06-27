@@ -164,5 +164,7 @@ export const rollbackFix = (id: number) => post(`/app/api/fixes/${id}/rollback`,
 export const dismissFix = (id: number) => post(`/app/api/fixes/${id}/dismiss`, {});
 export const acknowledgeAlert = (id: number) => post(`/app/api/alerts/${id}/acknowledge`, {});
 export const syncCatalog = () => post(`/app/api/catalog/sync`, {});
+/** Create a recurring monitoring schedule for a benchmark (re-runs on the cadence, alerts on credible change). */
+export const createSchedule = (body: { kind?: string; benchmarkId: number; cadence: string }) => post<{ id: number }>(`/app/api/schedules`, body);
 export const updateSchedule = (id: number, body: { cadence?: string; enabled?: boolean }) => post(`/app/api/schedules/${id}`, body);
 export const runSchedule = (id: number) => post(`/app/api/schedules/${id}/run`, {});
