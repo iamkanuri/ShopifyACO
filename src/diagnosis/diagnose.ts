@@ -194,8 +194,11 @@ export function diagnose(input: DiagnoseInput): Finding[] {
   const losses = findLosses(observations, merchantBrand);
   const findings: Finding[] = [];
 
-  // If a merchant page was attempted but couldn't be crawled, say so explicitly —
-  // an empty result must not be mistaken for "no gaps found".
+  // EVERY gap finding (evidence-backed AND hygiene) is confirmed against the merchant's own
+  // crawled page — by design, we never report a gap we couldn't verify on your side. So if
+  // there's no usable merchant page, the result would be silently empty; say so explicitly
+  // instead, with the two distinct causes: (a) a URL was found but the crawl failed, or
+  // (b) no product URL could be resolved at all (catalog not synced / product not published).
   if (merchantPage && !merchantPage.ok) {
     findings.push({
       kind: "general_hygiene",
@@ -208,6 +211,19 @@ export function diagnose(input: DiagnoseInput): Finding[] {
       limits: "Diagnosis could not assess the merchant page itself, so structural gaps are unknown — this is a fetch/availability problem, not a clean bill of health.",
       recommendedIntervention: "Make the product page publicly reachable (HTTP 200, not blocked by robots.txt or noindex) so it can be assessed and indexed by assistants.",
       expectedMechanism: "A page that cannot be retrieved cannot be evaluated, indexed, or cited. Reachability is a precondition for visibility — necessary, though not on its own sufficient.",
+    });
+  } else if (!merchantPage) {
+    findings.push({
+      kind: "general_hygiene",
+      signal: "reachability",
+      intent: null, promptText: null, engine: null, merchantBrand,
+      winningCompetitor: null, aiAnswerSnippet: null, citations: [],
+      merchantGap: ["No store product page was available to assess, so no gap analysis could run."],
+      competitorAdvantage: [],
+      confidenceLevel: "directional", basisN: 0,
+      limits: "Nothing on your side was assessed — this is a setup gap, NOT a clean bill of health and NOT 'no gaps found'.",
+      recommendedIntervention: "Sync your catalog (Catalog → Sync) and ensure the product is PUBLISHED to the Online Store sales channel so it has a public URL the diagnosis can crawl and compare to the competitors your answers cited.",
+      expectedMechanism: "Findings are confirmed against your OWN page before they're reported (so the tool never fabricates a gap). Without a reachable, published product page there's nothing to compare — making the page available is the precondition for any diagnosis.",
     });
   }
 

@@ -275,6 +275,17 @@ test("diagnose flags an un-crawlable merchant page instead of reporting it clean
   assert.equal(findings.filter((f) => f.kind === "evidence_backed").length, 0, "no evidence findings without a merchant baseline");
 });
 
+test("diagnose explains (not silently empties) when no merchant page could be resolved", () => {
+  // merchantPage null = no product URL (catalog not synced / product unpublished). Both
+  // evidence-backed AND hygiene findings need the merchant page, so the result would be
+  // empty — it must instead say WHY, with the sync/publish remedy.
+  const findings = diagnose({ merchantBrand: "MyBrand", observations: lossObs(), merchantPage: null, competitorPages: new Map() });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]!.kind, "general_hygiene");
+  assert.match(findings[0]!.merchantGap.join(" "), /no store product page was available/i);
+  assert.match(findings[0]!.recommendedIntervention, /sync your catalog|published/i);
+});
+
 test("diagnose returns no evidence findings when there is no competitive loss", async () => {
   const [merchant] = await crawlSeeds([MOCK_MERCHANT_URL]);
   const won: DiagnosisObservation[] = [
