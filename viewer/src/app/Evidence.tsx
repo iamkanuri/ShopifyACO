@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { diagnose, getFindings } from "./appApi";
+import { diagnose, getBenchmarks, getFindings } from "./appApi";
+import type { AppFindingRow } from "./fixtures";
 import { ConfidenceBadge, DemoBadge, KindTag, StatePane, useLoaded } from "./ui";
 import { Link } from "../router";
 
@@ -8,8 +9,18 @@ import { Link } from "../router";
 // MECHANISM — always hedged, never a guaranteed outcome. When arrived at with ?run=,
 // it can trigger the Phase-5 diagnosis for that run.
 export function Evidence() {
-  const runId = Number(new URLSearchParams(window.location.search).get("run")) || undefined;
-  const f = useLoaded(() => getFindings(runId), [runId]);
+  // Reached with ?run= (from Measure / Fix Studio) pins that run; from the sidebar we default
+  // to the latest completed run + offer a selector. The findings endpoint REQUIRES a runId, so
+  // calling it without one 400s → the UI would otherwise fall back to the demo sample.
+  const urlRun = Number(new URLSearchParams(window.location.search).get("run")) || undefined;
+  const runsL = useLoaded(() => getBenchmarks(), []);
+  const completed = (runsL.data?.runs ?? []).filter((r) => r.status === "completed");
+  const [sel, setSel] = useState("");
+  const runId = urlRun ?? (sel ? Number(sel) : completed[0]?.id);
+  const f = useLoaded<{ findings: AppFindingRow[] }>(
+    () => (runId ? getFindings(runId) : Promise.resolve({ data: { findings: [] }, demo: false })),
+    [runId],
+  );
   const findings = f.data?.findings ?? [];
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
@@ -33,13 +44,19 @@ export function Evidence() {
           <p className="muted">Why AI assistants pick competitors over you — tied to the exact queries you lost.{runId ? ` Run #${runId}.` : ""}</p>
         </div>
         <div className="al-head-actions">
+          {!urlRun && completed.length > 0 && (
+            <select className="al-generate-select" value={sel} disabled={busy} onChange={(e) => setSel(e.target.value)}>
+              <option value="">{`Latest run (#${completed[0]?.id})`}</option>
+              {completed.map((r) => <option key={r.id} value={r.id}>Run #{r.id} · {new Date(r.started_at).toLocaleDateString()}</option>)}
+            </select>
+          )}
           {runId && <button className="btn" disabled={busy} onClick={runDiagnosis}>{busy ? "Diagnosing…" : "Run diagnosis"}</button>}
           <Link to={`/app/fixes${runId ? `?run=${runId}` : ""}`} className="btn">Turn into fixes →</Link>
         </div>
       </div>
       {note && <div className={`al-note ${note.tone}`} style={{ marginBottom: 16 }}>{note.text}</div>}
 
-      <StatePane loading={f.loading} empty={findings.length === 0} emptyText={runId ? "No findings for this run yet — click Run diagnosis to crawl competitors and diagnose the gap." : "No findings yet. Run a benchmark, then diagnose it."}>
+      <StatePane loading={f.loading} empty={findings.length === 0} emptyText={runId ? "No findings for this run yet — click Run diagnosis to crawl competitors and diagnose the gap." : "Run a benchmark first (Measure), then diagnose it here."}>
         <div className="grid">
           {findings.map((finding) => (
             <div key={finding.id} className="card al-finding">
