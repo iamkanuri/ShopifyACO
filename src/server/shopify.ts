@@ -14,6 +14,7 @@ import {
 } from "../db/shops.js";
 import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
 import { activatePixelForShop } from "../pixel/activate.js";
+import { syncShopifyEntitlement } from "../billing/shopifyEntitlement.js";
 
 // Shopify OAuth + webhook routes (Phase 2). Disabled (503) until configured; in
 // SHOPIFY_MODE=mock the whole flow runs end-to-end with no real Shopify.
@@ -167,6 +168,9 @@ async function completeInstall(shop: string, tok: TokenExchange, source: string)
   } catch (err) {
     console.error(`[shopify] web pixel activation failed for ${shop}:`, (err as Error).message);
   }
+
+  // Mirror the Shopify Managed Pricing subscription into entitlements (free on first install).
+  await syncShopifyEntitlement(shop);
 }
 
 // ---- callback: verify, exchange code, encrypt+store, register webhooks -----
@@ -256,6 +260,7 @@ export async function tokenExchangeHandler(req: Request, res: Response): Promise
         const granted = await resolveGrantedScopes(shop, tok.accessToken, tok.scope);
         await storeCredentials(shop, tok.accessToken, granted, { refreshToken: tok.refreshToken, expiresIn: tok.expiresIn, refreshTokenExpiresIn: tok.refreshTokenExpiresIn });
         await upsertShop(shop, { scopes: granted, status: "active" });
+        await syncShopifyEntitlement(shop); // keep the merchant's plan current on each embedded load
       } catch (err) {
         console.error(`[shopify] offline-token refresh failed for ${shop}:`, (err as Error).message);
         await upsertShop(shop, { status: "active" });

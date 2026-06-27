@@ -7,6 +7,7 @@ import {
 } from "../src/billing/entitlements.js";
 import { gateFeature, gateLimit } from "../src/billing/enforce.js";
 import { isFullRefund, isPaidPlan, planFromSubscription, priceToPlan, unixToIso } from "../src/billing/provision.js";
+import { storeHandle, planFromShopify, managedPricingUrl } from "../src/shopify/managedPricing.js";
 
 // Phase 11 — entitlements + billing lifecycle. Pure tests cover the config-driven plan
 // model, grant resolution, the Stripe→entitlement mappings, and the (pure) enforcement
@@ -130,7 +131,38 @@ test("gates allow freely when enforcement is OFF, block when ON", () => {
 });
 
 // ---- DB-gated lifecycle (needs migration 0017 applied) ---------------------
+// ---- Shopify Managed Pricing (channel for Shopify-installed merchants) ------
+test("managed pricing helpers: store handle, plan mapping, URL gating", () => {
+  assert.equal(storeHandle("acme.myshopify.com"), "acme");
+  assert.equal(planFromShopify("Pro"), "pro");
+  assert.equal(planFromShopify("Pro monthly"), "pro");
+  assert.equal(planFromShopify("Free"), "free");
+  assert.equal(planFromShopify(null), "free");
+  // URL is null until SHOPIFY_APP_HANDLE is configured (unset in the test env).
+  assert.equal(managedPricingUrl("acme.myshopify.com"), null);
+});
+
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
+
+test("shopify entitlement upsert: one row per shop; resolves pro then downgrades to free", { skip: !RUN_DB }, async () => {
+  const { upsertShopifyEntitlement, listEntitlementsForShop } = await import("../src/db/entitlements.js");
+  const { entitlementForShop } = await import("../src/billing/enforce.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `bill-${Date.now()}.myshopify.com`;
+  try {
+    await upsertShopifyEntitlement(shop, "pro", "active", null);
+    let shopifyRows = (await listEntitlementsForShop(shop)).filter((r) => r.source === "shopify");
+    assert.equal(shopifyRows.length, 1);
+    assert.equal((await entitlementForShop(shop)).plan, "pro");
+    // Downgrade updates the SAME row (no duplicate).
+    await upsertShopifyEntitlement(shop, "free", "active", null);
+    shopifyRows = (await listEntitlementsForShop(shop)).filter((r) => r.source === "shopify");
+    assert.equal(shopifyRows.length, 1);
+    assert.equal((await entitlementForShop(shop)).plan, "free");
+  } finally {
+    await pgQuery("delete from entitlements where shop_domain=$1", [shop]);
+  }
+});
 
 test("billing-event ledger dedupes by event id", { skip: !RUN_DB }, async () => {
   const { billingEventSeen, recordBillingEvent } = await import("../src/db/entitlements.js");

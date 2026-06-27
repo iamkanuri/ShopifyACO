@@ -51,6 +51,9 @@ export interface ShopifyClient {
    *  authoritative grant — the `scope` returned by code/token exchange can under-report,
    *  which would wrongly block scope-gated writes (Fix Studio). Returns the scope handles. */
   fetchGrantedScopes(shop: string, accessToken: string): Promise<string[]>;
+  /** Read the shop's current active app subscription (Shopify Managed Pricing), or null when
+   *  the merchant is on the free plan. Drives entitlement provisioning for the Shopify channel. */
+  fetchActiveSubscription(shop: string, accessToken: string): Promise<{ name: string; status: string; currentPeriodEnd: string | null } | null>;
   /** Create (or update, when `existingId` is known) the app-owned Web Pixel with the
    *  given settings JSON. Idempotent at the caller via the stored id. Needs the
    *  write_pixels + read_customer_events scopes. Returns the WebPixel gid. */
@@ -92,6 +95,9 @@ class MockClient implements ShopifyClient {
     // A mock store "granted" exactly the configured scopes — so the gate is exercised
     // honestly (e.g. write_products present when SHOPIFY_SCOPES includes it).
     return [...ENV.shopify.scopes];
+  }
+  async fetchActiveSubscription(): Promise<{ name: string; status: string; currentPeriodEnd: string | null } | null> {
+    return null; // mock store = free plan (no active subscription)
   }
   async activateWebPixel(shop: string, _accessToken: string, _settings: string, existingId?: string): Promise<{ id: string }> {
     return { id: existingId ?? `gid://shopify/WebPixel/mock-${shop}` };
@@ -200,6 +206,25 @@ class LiveClient implements ShopifyClient {
     return (json.data?.currentAppInstallation?.accessScopes ?? [])
       .map((s) => s.handle?.trim())
       .filter((h): h is string => Boolean(h));
+  }
+  async fetchActiveSubscription(shop: string, accessToken: string): Promise<{ name: string; status: string; currentPeriodEnd: string | null } | null> {
+    const query = `{ currentAppInstallation { activeSubscriptions { name status currentPeriodEnd } } }`;
+    const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`activeSubscriptions query failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const json = (await res.json()) as {
+      data?: { currentAppInstallation?: { activeSubscriptions?: Array<{ name?: string; status?: string; currentPeriodEnd?: string | null }> } };
+      errors?: Array<{ message?: string }>;
+    };
+    if (json.errors?.length) throw new Error(`activeSubscriptions query error: ${json.errors[0]?.message ?? "unknown"}`);
+    const subs = json.data?.currentAppInstallation?.activeSubscriptions ?? [];
+    // Prefer an ACTIVE subscription; fall back to whatever's first (e.g. pending/declined → treated as inactive upstream).
+    const sub = subs.find((s) => (s.status ?? "").toUpperCase() === "ACTIVE") ?? subs[0];
+    return sub ? { name: sub.name ?? "", status: sub.status ?? "", currentPeriodEnd: sub.currentPeriodEnd ?? null } : null;
   }
   async registerWebhooks(shop: string, accessToken: string): Promise<string[]> {
     const endpoint = `${ENV.shopify.appUrl}/api/shopify/webhooks`;

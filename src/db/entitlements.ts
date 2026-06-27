@@ -159,6 +159,23 @@ export async function refundEntitlementByPaymentIntent(paymentIntent: string): P
   return rowCount ?? 0;
 }
 
+// ---- Shopify Managed Pricing channel --------------------------------------
+/** Upsert the single Shopify-channel entitlement for a shop (one row per shop, source
+ *  'shopify', updated in place as the plan changes). Keyed by the partial unique index
+ *  on (shop_domain) where source='shopify' (migration 0019). */
+export async function upsertShopifyEntitlement(
+  shop: string, plan: string, status: string, currentPeriodEnd: string | null,
+): Promise<void> {
+  await pgQuery(
+    `insert into entitlements (shop_domain, plan, status, source, current_period_end, metadata)
+       values ($1,$2,$3,'shopify',$4,'{}'::jsonb)
+     on conflict (shop_domain) where source = 'shopify' do update set
+       plan = excluded.plan, status = excluded.status,
+       current_period_end = excluded.current_period_end, updated_at = now()`,
+    [shop, plan, status, currentPeriodEnd],
+  );
+}
+
 // ---- reads -----------------------------------------------------------------
 export async function listEntitlementsForShop(shop: string): Promise<EntitlementRow[]> {
   const { rows } = await pgQuery("select * from entitlements where shop_domain = $1 order by created_at desc", [shop]);
