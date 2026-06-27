@@ -20,17 +20,23 @@ test("planEntitlement resolves known plans and falls back to free", () => {
   assert.ok(planEntitlement("founder_beta").tier > planEntitlement("full_report").tier);
 });
 
-test("free tier gates paid features; paid plans unlock them — no prices in the model", () => {
+test("free tier: metered REAL runs + evidence, write-back/monitoring still gated — no prices in the model", () => {
   const free = effectiveEntitlement(null);
   assert.equal(free.plan, "free");
-  assert.equal(hasFeature(free, "live_benchmarks"), false);
-  assert.equal(hasFeature(free, "monitoring"), false);
-  assert.equal(hasFeature(free, "evidence"), true); // mock diagnosis is $0 → free-tier ok
-  const mon = effectiveEntitlement({ plan: "monitoring", status: "active" });
-  assert.equal(hasFeature(mon, "live_benchmarks"), true);
-  assert.equal(hasFeature(mon, "monitoring"), true);
+  // Free now runs REAL benchmarks, metered by the per-month cap (not a mock tier).
+  assert.equal(hasFeature(free, "live_benchmarks"), true);
+  assert.equal(free.entitlement.limits.benchmarksPerMonth, 2);
+  assert.equal(hasFeature(free, "fixes"), false); // store write-back is paid
+  assert.equal(hasFeature(free, "monitoring"), false); // recurring monitoring is paid
+  assert.equal(hasFeature(free, "evidence"), true);
+  // The Shopify Managed Pricing "Pro" plan unlocks everything paid, unlimited runs.
+  const pro = effectiveEntitlement({ plan: "pro", status: "active" });
+  assert.equal(hasFeature(pro, "live_benchmarks"), true);
+  assert.equal(hasFeature(pro, "fixes"), true);
+  assert.equal(hasFeature(pro, "monitoring"), true);
+  assert.equal(pro.entitlement.limits.benchmarksPerMonth, -1); // unlimited
   // The entitlement object never carries a price.
-  assert.equal((mon.entitlement as unknown as Record<string, unknown>).price, undefined);
+  assert.equal((pro.entitlement as unknown as Record<string, unknown>).price, undefined);
 });
 
 // ---- grant resolution (the lifecycle's read side) --------------------------
@@ -107,18 +113,19 @@ test("unixToIso converts seconds; isFullRefund only on a full refund; isPaidPlan
 test("gates allow freely when enforcement is OFF, block when ON", () => {
   const free = effectiveEntitlement(null);
   // off → always allowed (reports enforced:false)
-  assert.equal(gateFeature(free, "live_benchmarks", false).allowed, true);
-  assert.equal(gateFeature(free, "live_benchmarks", false).enforced, false);
-  // on → blocked with an upgrade reason + code
-  const denied = gateFeature(free, "live_benchmarks", true);
+  assert.equal(gateFeature(free, "fixes", false).allowed, true);
+  assert.equal(gateFeature(free, "fixes", false).enforced, false);
+  // on → blocked with an upgrade reason + code (write-back is paid-only)
+  const denied = gateFeature(free, "fixes", true);
   assert.equal(denied.allowed, false);
   assert.equal(denied.code, "feature_not_in_plan");
-  assert.equal(denied.needed?.feature, "live_benchmarks");
-  // a feature the plan HAS is allowed even when enforced
+  assert.equal(denied.needed?.feature, "fixes");
+  // features the plan HAS are allowed even when enforced (free runs real, just metered)
   assert.equal(gateFeature(free, "evidence", true).allowed, true);
-  // limits: free benchmarksPerMonth=3
-  assert.equal(gateLimit(free, "benchmarksPerMonth", 2, true).allowed, true);
-  assert.equal(gateLimit(free, "benchmarksPerMonth", 3, true).allowed, false);
+  assert.equal(gateFeature(free, "live_benchmarks", true).allowed, true);
+  // limits: free benchmarksPerMonth=2 → the 3rd run in a 30-day window is blocked
+  assert.equal(gateLimit(free, "benchmarksPerMonth", 1, true).allowed, true);
+  assert.equal(gateLimit(free, "benchmarksPerMonth", 2, true).allowed, false);
   assert.equal(gateLimit(free, "benchmarksPerMonth", 3, false).allowed, true); // off → allowed
 });
 

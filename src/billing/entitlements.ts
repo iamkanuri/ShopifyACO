@@ -60,8 +60,19 @@ function feats(on: Feature[]): Record<Feature, boolean> {
 const PLAN_ENTITLEMENTS: Record<string, PlanEntitlement> = {
   free: {
     plan: "free", label: "Free", tier: 0, recurring: false,
-    features: feats(["evidence", "attribution"]),
-    limits: { benchmarksPerMonth: 3, monitoringSchedules: 0, feeds: 1 },
+    // Free gets a small number of REAL (metered) benchmark runs — no mock-data tier.
+    // The benchmarksPerMonth cap + the global daily spend cap bound the API cost.
+    features: feats(["evidence", "live_benchmarks", "attribution"]),
+    limits: { benchmarksPerMonth: 2, monitoringSchedules: 0, feeds: 1 },
+  },
+  // Shopify Managed Pricing channel: a single recurring "Pro" plan unlocks everything
+  // paid. The Shopify plan handle `pro` maps here (the public/Stripe tiers above remain
+  // for the web funnel). tier sits above the one-time full_report; only ever held by a
+  // Shopify-installed merchant, so it never co-resolves with the Stripe plans.
+  pro: {
+    plan: "pro", label: "Pro", tier: 2, recurring: true,
+    features: feats(["evidence", "live_benchmarks", "fixes", "experiments", "monitoring", "feeds", "attribution"]),
+    limits: { benchmarksPerMonth: -1, monitoringSchedules: 10, feeds: 25 },
   },
   full_report: {
     plan: "full_report", label: "Full report", tier: 1, recurring: false,
