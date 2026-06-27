@@ -27,13 +27,38 @@ export function Evidence() {
 
   async function runDiagnosis() {
     if (!runId) return;
-    setBusy(true); setNote(null);
+    setBusy(true);
+    setNote({ text: "Diagnosing — crawling the competitors your answers cited. This runs in the background and can take 30–60s…", tone: "info" });
     const r = await diagnose(runId);
+    if (!r.ok) {
+      setBusy(false);
+      setNote(r.demo
+        ? { text: "Connect your store from the Shopify admin to diagnose a live run.", tone: "info" }
+        : { text: r.error ?? "Diagnosis failed.", tone: "err" });
+      return;
+    }
+    // When the durable queue is on, diagnosis runs ASYNC on the worker — the response is just
+    // "queued", findings aren't ready yet. Poll until they land (ignoring any transient demo
+    // fallback) instead of falsely reporting "complete" against an empty screen.
+    if (!(r.data as { queued?: boolean } | undefined)?.queued) {
+      setBusy(false); setNote({ text: "Diagnosis complete.", tone: "ok" }); f.reload();
+      return;
+    }
+    const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    for (let i = 0; i < 18; i++) { // ~90s
+      await sleep(5000);
+      const fr = await getFindings(runId);
+      const count = fr.demo ? 0 : (fr.data?.findings?.length ?? 0);
+      if (count > 0) {
+        setBusy(false);
+        setNote({ text: `Diagnosis complete — ${count} finding${count === 1 ? "" : "s"}.`, tone: "ok" });
+        f.reload();
+        return;
+      }
+    }
     setBusy(false);
-    if (r.ok) setNote({ text: "Diagnosis complete.", tone: "ok" });
-    else if (r.demo) setNote({ text: "Connect your store to diagnose a live run.", tone: "info" });
-    else setNote({ text: r.error ?? "Diagnosis failed.", tone: "err" });
-    if (r.ok) f.reload();
+    setNote({ text: "Diagnosis finished. If no findings appear, this run had no clear evidence-backed gap — re-run the live benchmark for more cited answers, or your brand may already be well-covered for these prompts.", tone: "info" });
+    f.reload();
   }
 
   return (
