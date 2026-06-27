@@ -84,6 +84,29 @@ dbTest("upsertProduct is deterministic and prunes removed variants", async () =>
   }
 });
 
+dbTest("getStorefrontUrl returns a live product's public URL (skips archived/empty)", async () => {
+  const { upsertProduct, getStorefrontUrl } = await import("../src/db/catalog.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `caturl-${Date.now()}.myshopify.com`;
+  try {
+    assert.equal(await getStorefrontUrl(shop), null); // nothing synced yet
+
+    // An ARCHIVED product with a URL must not be chosen.
+    const archived = normalizeProduct({ ...RAW, id: `gid://shopify/Product/${Date.now()}1`, status: "ARCHIVED", onlineStoreUrl: "https://shop.example.com/products/archived" })!;
+    await upsertProduct(shop, archived);
+    assert.equal(await getStorefrontUrl(shop), null);
+
+    // An active product with a public URL is returned.
+    const active = normalizeProduct({ ...RAW, id: `gid://shopify/Product/${Date.now()}2`, status: "ACTIVE", onlineStoreUrl: "https://shop.example.com/products/live" })!;
+    await upsertProduct(shop, active);
+    assert.equal(await getStorefrontUrl(shop), "https://shop.example.com/products/live");
+  } finally {
+    for (const t of ["product_variants", "product_collections", "collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+  }
+});
+
 // Full mock sync — needs SHOPIFY_MODE=mock + APP_ENCRYPTION_KEY.
 const RUN_SYNC = RUN_DB && process.env.SHOPIFY_MODE === "mock" && Boolean(process.env.APP_ENCRYPTION_KEY);
 test("full mock catalog sync pulls + upserts 7 products (idempotent)", { skip: !RUN_SYNC }, async () => {

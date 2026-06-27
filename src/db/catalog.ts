@@ -103,6 +103,19 @@ export async function productExists(shop: string, productGid: string): Promise<b
   const { rows } = await pgQuery("select 1 from products where shop_domain=$1 and product_gid=$2 limit 1", [shop, productGid]);
   return rows.length > 0;
 }
+
+/** A representative storefront URL for the shop — the most-recently-updated synced product
+ *  page that has a public URL. Used to crawl the merchant's OWN page during diagnosis when
+ *  the benchmark didn't carry one. Null if nothing usable is synced. */
+export async function getStorefrontUrl(shop: string): Promise<string | null> {
+  const { rows } = await pgQuery<{ online_url: string | null }>(
+    `select online_url from products
+       where shop_domain=$1 and online_url is not null and online_url <> '' and coalesce(status,'') <> 'ARCHIVED'
+       order by updated_at desc nulls last limit 1`,
+    [shop],
+  );
+  return rows[0]?.online_url ?? null;
+}
 export async function listProducts(shop: string, opts: { q?: string; limit?: number; offset?: number } = {}): Promise<Array<Record<string, unknown>>> {
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   const offset = Math.max(0, opts.offset ?? 0);

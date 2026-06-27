@@ -5,6 +5,7 @@ import { validateUrl } from "../crawler/ssrf.js";
 import { diagnose, findLosses, summarizeFindings, type Finding } from "./diagnose.js";
 import { clearFindings, getDiagnosisObservations, savePage, saveFinding } from "../db/crawler.js";
 import { getBenchmark } from "../db/benchmarks.js";
+import { getStorefrontUrl } from "../db/catalog.js";
 import type { CrawledPage } from "../crawler/crawl.js";
 import { MOCK_COMPETITOR_URL, MOCK_MERCHANT_URL } from "../crawler/fixtures.js";
 
@@ -65,6 +66,12 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
   if (!merchantUrl && opts.benchmarkId != null) {
     const bench = await getBenchmark(opts.benchmarkId);
     merchantUrl = bench?.config.brand.storeUrl ?? bench?.config.brand.products?.[0] ?? null;
+  }
+  // Last resort (live only): the connected shop's own storefront, from a synced product page —
+  // so a form-based benchmark (no storeUrl in its config) still crawls the merchant side, not
+  // just competitors. Mock uses its fixture below.
+  if (!merchantUrl && !mock && opts.shopDomain) {
+    merchantUrl = await getStorefrontUrl(opts.shopDomain);
   }
   let competitorUrls = opts.competitorUrls ?? [...new Set(losses.flatMap((l) => l.citations))];
 
