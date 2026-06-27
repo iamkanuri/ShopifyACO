@@ -60,48 +60,55 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
   const groundingModes: Record<string, string> = {};
 
   try {
+    // Build the full work list, then run the (slow, web-grounded) engine calls with BOUNDED
+    // CONCURRENCY instead of strictly sequentially — a mini live run drops from minutes to tens
+    // of seconds. JS is single-threaded, so the shared accumulators below mutate safely between
+    // awaits. Each call is hard-capped (covering the adapter's grounded→ungrounded fallback) so
+    // one slow engine can't stall the whole run.
+    const tasks: Array<{ pi: number; prompt: (typeof prompts)[number]; rep: number; adapter: (typeof adapters)[number] }> = [];
     for (let pi = 0; pi < prompts.length; pi++) {
-      const prompt = prompts[pi]!;
       for (let rep = 0; rep < repetitions; rep++) {
-        for (const adapter of adapters) {
-          const t0 = Date.now();
-          let result;
-          try {
-            result = await adapter.generate(prompt.text);
-          } catch (err) {
-            result = { engine: adapter.name, model: adapter.model, text: "", groundingMode: "unknown" as const, error: (err as Error).message };
-          }
-          const latencyMs = Date.now() - t0;
-          modelVersions[adapter.name] = adapter.model;
-          groundingModes[adapter.name] = result.groundingMode;
-          const callCost = result.usage?.costUsd ?? 0;
-          totalCost += callCost;
-          if (!mock && callCost > 0) {
-            await recordUsage({ runId: String(runId), engine: adapter.name, model: adapter.model, costUsd: callCost, promptTokens: result.usage?.inputTokens, completionTokens: result.usage?.outputTokens });
-          }
-
-          const responseId = `${runId}-${pi}-${rep}-${adapter.name}`;
-          // On error, record a single own-brand not_mentioned row so the attempt still
-          // counts in the denominator (honest sample size).
-          const detections = result.error
-            ? [{ name: c.brand.name, isOwn: true, status: "not_mentioned" as const, listRank: null, snippet: undefined }]
-            : detectMentions(result.text, cfg);
-
-          for (const det of detections) {
-            await insertObservation({
-              runId, benchmarkId, shopDomain: bench.shop_domain, responseId,
-              promptText: prompt.text, intent: prompt.intent, engine: adapter.name, model: adapter.model,
-              groundingMode: result.groundingMode, targetBrand: det.name, recommendationStatus: det.status,
-              rank: det.listRank, evidenceSnippet: det.snippet ?? null,
-              // Real citation URLs from the grounded answer → Phase-5 live crawl derives the
-              // competitor pages to diagnose from these (was hardcoded []).
-              latencyMs, costUsd: det.isOwn ? callCost : 0, citations: result.citations ?? [],
-            });
-            obsCount++;
-          }
-        }
+        for (const adapter of adapters) tasks.push({ pi, prompt: prompts[pi]!, rep, adapter });
       }
     }
+
+    await mapPool(tasks, ENV.benchmarkConcurrency, async ({ pi, prompt, rep, adapter }) => {
+      const t0 = Date.now();
+      let result;
+      try {
+        result = await adapter.generate(prompt.text, AbortSignal.timeout(PER_CALL_TIMEOUT_MS));
+      } catch (err) {
+        result = { engine: adapter.name, model: adapter.model, text: "", groundingMode: "unknown" as const, error: (err as Error).message };
+      }
+      const latencyMs = Date.now() - t0;
+      modelVersions[adapter.name] = adapter.model;
+      groundingModes[adapter.name] = result.groundingMode;
+      const callCost = result.usage?.costUsd ?? 0;
+      totalCost += callCost;
+      if (!mock && callCost > 0) {
+        await recordUsage({ runId: String(runId), engine: adapter.name, model: adapter.model, costUsd: callCost, promptTokens: result.usage?.inputTokens, completionTokens: result.usage?.outputTokens });
+      }
+
+      const responseId = `${runId}-${pi}-${rep}-${adapter.name}`;
+      // On error, record a single own-brand not_mentioned row so the attempt still
+      // counts in the denominator (honest sample size).
+      const detections = result.error
+        ? [{ name: c.brand.name, isOwn: true, status: "not_mentioned" as const, listRank: null, snippet: undefined }]
+        : detectMentions(result.text, cfg);
+
+      for (const det of detections) {
+        await insertObservation({
+          runId, benchmarkId, shopDomain: bench.shop_domain, responseId,
+          promptText: prompt.text, intent: prompt.intent, engine: adapter.name, model: adapter.model,
+          groundingMode: result.groundingMode, targetBrand: det.name, recommendationStatus: det.status,
+          rank: det.listRank, evidenceSnippet: det.snippet ?? null,
+          // Real citation URLs from the grounded answer → Phase-5 live crawl derives the
+          // competitor pages to diagnose from these (was hardcoded []).
+          latencyMs, costUsd: det.isOwn ? callCost : 0, citations: result.citations ?? [],
+        });
+        obsCount++;
+      }
+    });
 
     await finishRun(runId, { status: "completed", observationCount: obsCount, costUsd: totalCost, modelVersions, groundingModes });
     if (reservationId) await reconcileSpend(reservationId, totalCost);
@@ -113,6 +120,19 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
     if (reservationId) await settleFailedReservation(reservationId, totalCost);
     throw err;
   }
+}
+
+/** Per-call hard cap covering the adapter's grounded→ungrounded fallback, so one slow engine
+ *  can't stall the whole run. (The HTTP layer also times out each individual fetch at 45s.) */
+const PER_CALL_TIMEOUT_MS = 40_000;
+
+/** Run `fn` over `items` with at most `limit` calls in flight at once. */
+async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    for (let i = next++; i < items.length; i = next++) await fn(items[i]!);
+  });
+  await Promise.all(workers);
 }
 
 /** Register the queue handler so benchmarks can run on the worker. */

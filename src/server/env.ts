@@ -45,6 +45,10 @@ export const ENV = {
   supabaseServiceRoleKey: str(process.env.SUPABASE_SERVICE_ROLE_KEY),
   databaseUrl: str(process.env.DATABASE_URL),
 
+  // How many engine calls a benchmark issues at once. Web-grounded calls are slow, so a
+  // strictly sequential mini run took minutes; bounded concurrency cuts it to tens of seconds.
+  benchmarkConcurrency: Math.max(1, Number(process.env.BENCHMARK_CONCURRENCY ?? 6)),
+
   // Spend / storage.
   dailySpendCapUsd: Number(process.env.DAILY_SPEND_CAP_USD ?? 10),
   // Where result files live. On Railway this is the volume mount path (e.g. /data).
