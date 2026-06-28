@@ -6,7 +6,7 @@
 
 ## AI Visibility Score: 67/100
 
-> **AI assistants know Olipop — but rarely choose it.**
+> **AI assistants mention Olipop more than they recommend it.**
 
 `Standard scan` · **Strong signal** (based on 48 grounded responses)
 
@@ -23,7 +23,7 @@ _These are single-scan, small-sample rates. AI assistant answers vary run-to-run
 
 ## Executive insight
 
-Across 48 grounded answers in this scan, AI assistants know Olipop (mentioned 85% (41/48)) but rarely choose it (recommended 48% (23/48)). openai is the weakest engine for Olipop.
+Across 48 grounded answers in this scan, AI assistants mention Olipop (85% (41/48)) more often than they recommend it (48% (23/48)). ChatGPT is the weakest engine for Olipop.
 
 ## Executive summary
 
@@ -187,15 +187,15 @@ _Costs are estimates from per-model pricing constants, not billing data._
 
 **Category leader (overall):** Poppi — recommended 23% (11/48) across the whole scan.
 
-**Mention → recommendation gap:** Olipop is known but rarely chosen in this scan: mentioned 85% (41/48) of answers but recommended only 48% (23/48). That leaves 38% (18/48) "mentioned but not chosen".
+**Mention → recommendation gap:** Olipop is mentioned more often than it's recommended in this scan: mentioned 85% (41/48) of answers but recommended 48% (23/48). That leaves 38% (18/48) "mentioned but not chosen".
 
-**Weakest engine:** openai.
+**Weakest engine:** ChatGPT.
 
 | Engine | Mentions you | Recommends you | Avg rank |
 |---|---|---|---|
-| perplexity | 94% (15/16) | 69% (11/16) | 1.7 |
-| openai ⚠️ | 81% (13/16) | 25% (4/16) | 1.6 |
-| gemini | 81% (13/16) | 50% (8/16) | 1.6 |
+| Perplexity | 94% (15/16) | 69% (11/16) | 1.7 |
+| ChatGPT ⚠️ | 81% (13/16) | 25% (4/16) | 1.6 |
+| Gemini | 81% (13/16) | 50% (8/16) | 1.6 |
 
 **Query categories lost** (high-intent buying queries):
 

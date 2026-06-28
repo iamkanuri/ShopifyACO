@@ -117,7 +117,7 @@ export const DEMO = {
   findings: <AppFindingRow[]>[
     {
       id: 1, kind: "evidence_backed", signal: "reviews", intent: "comparison",
-      prompt_text: "What are the best prebiotic soda brands?", engine: "openai", winning_competitor: "Poppi",
+      prompt_text: "What are the best prebiotic soda brands?", engine: "ChatGPT", winning_competitor: "Poppi",
       ai_answer_snippet: "Poppi is a standout in the category — it's heavily reviewed, leans into bold fruit-forward flavors, and is frequently called out for taste.",
       citations: ["https://drinkpoppi.com", "https://www.healthline.com/nutrition/prebiotic-soda"],
       merchant_gap: ["No review count / rating in structured data (AggregateRating)"],
@@ -129,7 +129,7 @@ export const DEMO = {
     },
     {
       id: 2, kind: "evidence_backed", signal: "health_claims", intent: "use_case",
-      prompt_text: "What's the healthiest soda I can drink?", engine: "openai", winning_competitor: "Health-Ade",
+      prompt_text: "What's the healthiest soda I can drink?", engine: "ChatGPT", winning_competitor: "Health-Ade",
       ai_answer_snippet: "For gut health, options like Health-Ade and Poppi often come up for their probiotic/prebiotic positioning and clearly stated benefits.",
       citations: ["https://health-ade.com", "https://www.eatingwell.com"],
       merchant_gap: ["Prebiotic fiber + nutrition facts aren't in structured data; health framing is thin on the indexed page"],

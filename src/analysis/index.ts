@@ -14,6 +14,7 @@ import {
 import { buildFixCards } from "./fixSuggestions.js";
 import { confidenceFor, runSizeFor } from "./confidence.js";
 import { fmtRate, grounded } from "./util.js";
+import { engineLabel } from "../engines/labels.js";
 
 export * from "./types.js";
 
@@ -43,10 +44,10 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     if (card) lp.suggestedFixId = card.id;
   }
 
-  const groundedEngines = agg.grounding.filter((g) => g.groundingMode === "web_grounded").map((g) => g.engine);
+  const groundedEngines = agg.grounding.filter((g) => g.groundingMode === "web_grounded").map((g) => engineLabel(g.engine));
   const ungroundedEngines = agg.grounding
     .filter((g) => g.groundingMode !== "web_grounded" && g.calls - g.errors > 0)
-    .map((g) => g.engine);
+    .map((g) => engineLabel(g.engine));
 
   const transactionalLost = clusters.filter((c) => c.transactional && c.absent);
   const executiveInsight = buildExecutiveInsight({
@@ -80,7 +81,7 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     category: cfg.category,
     generatedAt: run.meta.finishedAt,
     basedOnResponses: ok.length,
-    enginesUsed: run.meta.engines,
+    enginesUsed: run.meta.engines.map(engineLabel),
     groundedEngines,
     ungroundedEngines,
     totalCostUsd: agg.totalCost.costUsd,

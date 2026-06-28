@@ -6,6 +6,7 @@ import type { Proportion } from "../benchmarks/stats.js";
 import { countFindings } from "../db/crawler.js";
 import { countProposals } from "../db/fixes.js";
 import { countAlerts } from "../db/monitoring.js";
+import { engineLabel } from "../engines/labels.js";
 
 // Shop-scoped Dashboard API (Phase 12 holdout). Computes the connected merchant's OWN
 // home screen — score, recommendation/mention rates with CIs, share of voice, weakest
@@ -15,8 +16,6 @@ import { countAlerts } from "../db/monitoring.js";
 // numbers). When there's no shop session at all, requireShop returns 401 and the client
 // falls back to the labeled Olipop sample — we never imply the sample is the merchant's.
 
-const ENGINE_LABELS: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity", anthropic: "Claude" };
-const engineLabel = (e: string) => ENGINE_LABELS[e] ?? e;
 
 export interface DashboardData {
   score: number;

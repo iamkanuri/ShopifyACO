@@ -1,4 +1,5 @@
 import type { Config, PromptEngineResult } from "../types.js";
+import { engineLabel } from "../engines/labels.js";
 import type {
   CategoryLeader,
   CompetitorThreat,
@@ -34,8 +35,8 @@ export function computeMentionGap(results: PromptEngineResult[], cfg: Config): M
     recommendation,
     mentionedNotChosen,
     summary:
-      `${cfg.brand.name} is known but rarely chosen in this scan: mentioned ` +
-      `${fmtRate(mention)} of answers but recommended only ${fmtRate(recommendation)}. ` +
+      `${cfg.brand.name} is mentioned more often than it's recommended in this scan: mentioned ` +
+      `${fmtRate(mention)} of answers but recommended ${fmtRate(recommendation)}. ` +
       `That leaves ${fmtRate(mentionedNotChosen)} "mentioned but not chosen".`,
   };
 }
@@ -137,7 +138,7 @@ export function computeEngineWeakness(
       if (d?.listRank != null) ranks.push(d.listRank);
     }
     rows.push({
-      engine,
+      engine: engineLabel(engine),
       mention: rate(mentioned, ok.length),
       recommendation: rate(recommended, ok.length),
       avgRankWhenMentioned: avg(ranks),
@@ -197,7 +198,7 @@ export function computeLeaderboard(results: PromptEngineResult[], cfg: Config): 
       const perEngineRec = engines.map((e) => {
         const eok = grounded(results.filter((r) => r.engine === e));
         const rec = eok.filter((r) => detOf(r, b.name)?.status === "recommended").length;
-        return { engine: e, rate: eok.length ? rec / eok.length : 0 };
+        return { engine: engineLabel(e), rate: eok.length ? rec / eok.length : 0 };
       });
       const maxRate = Math.max(0, ...perEngineRec.map((x) => x.rate));
       const strongestEngines = maxRate > 0 ? perEngineRec.filter((x) => x.rate === maxRate).map((x) => x.engine) : [];
@@ -232,7 +233,7 @@ export function computeLostPrompts(results: PromptEngineResult[], cfg: Config): 
     lost.push({
       prompt: r.prompt,
       template: r.template,
-      engine: r.engine,
+      engine: engineLabel(r.engine),
       brandMentioned: !!own?.mentioned,
       brandRecommended: own?.status === "recommended",
       brandRank: own?.listRank ?? null,

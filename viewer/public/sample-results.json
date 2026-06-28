@@ -9186,14 +9186,14 @@
     "generatedAt": "2026-06-23T04:07:52.985Z",
     "basedOnResponses": 48,
     "enginesUsed": [
-      "openai",
-      "gemini",
-      "perplexity"
+      "ChatGPT",
+      "Gemini",
+      "Perplexity"
     ],
     "groundedEngines": [
-      "perplexity",
-      "openai",
-      "gemini"
+      "Perplexity",
+      "ChatGPT",
+      "Gemini"
     ],
     "ungroundedEngines": [],
     "totalCostUsd": 0.062062599999999996,
@@ -9243,8 +9243,8 @@
       "formula": "score = 100 × (0.50·recommendationRate + 0.20·mentionRate + 0.15·rankQuality + 0.15·competitiveWinRate)",
       "basedOnResponses": 48
     },
-    "executiveInsight": "Across 48 grounded answers in this scan, AI assistants know Olipop (mentioned 85% (41/48)) but rarely choose it (recommended 48% (23/48)). openai is the weakest engine for Olipop.",
-    "headline": "AI assistants know Olipop — but rarely choose it.",
+    "executiveInsight": "Across 48 grounded answers in this scan, AI assistants mention Olipop (85% (41/48)) more often than they recommend it (48% (23/48)). ChatGPT is the weakest engine for Olipop.",
+    "headline": "AI assistants mention Olipop more than they recommend it.",
     "whatThisMeans": [
       "Discoverability: Olipop is mentioned in 85% (41/48) of answers — assistants do know it exists.",
       "Persuasion: it's recommended in only 48% (23/48) — when listed, it isn't the pick."
@@ -9280,11 +9280,11 @@
         "total": 48,
         "rate": 0.375
       },
-      "summary": "Olipop is known but rarely chosen in this scan: mentioned 85% (41/48) of answers but recommended only 48% (23/48). That leaves 38% (18/48) \"mentioned but not chosen\"."
+      "summary": "Olipop is mentioned more often than it's recommended in this scan: mentioned 85% (41/48) of answers but recommended 48% (23/48). That leaves 38% (18/48) \"mentioned but not chosen\"."
     },
     "engineWeakness": [
       {
-        "engine": "perplexity",
+        "engine": "Perplexity",
         "mention": {
           "count": 15,
           "total": 16,
@@ -9297,10 +9297,10 @@
         },
         "avgRankWhenMentioned": 1.6666666666666667,
         "isWeakest": false,
-        "summary": "perplexity: recommends Olipop 69% (11/16), mentions 94% (15/16), avg rank 1.7."
+        "summary": "Perplexity: recommends Olipop 69% (11/16), mentions 94% (15/16), avg rank 1.7."
       },
       {
-        "engine": "openai",
+        "engine": "ChatGPT",
         "mention": {
           "count": 13,
           "total": 16,
@@ -9313,10 +9313,10 @@
         },
         "avgRankWhenMentioned": 1.625,
         "isWeakest": true,
-        "summary": "openai: recommends Olipop 25% (4/16), mentions 81% (13/16), avg rank 1.6 — weakest engine."
+        "summary": "ChatGPT: recommends Olipop 25% (4/16), mentions 81% (13/16), avg rank 1.6 — weakest engine."
       },
       {
-        "engine": "gemini",
+        "engine": "Gemini",
         "mention": {
           "count": 13,
           "total": 16,
@@ -9329,10 +9329,10 @@
         },
         "avgRankWhenMentioned": 1.5555555555555556,
         "isWeakest": false,
-        "summary": "gemini: recommends Olipop 50% (8/16), mentions 81% (13/16), avg rank 1.6."
+        "summary": "Gemini: recommends Olipop 50% (8/16), mentions 81% (13/16), avg rank 1.6."
       }
     ],
-    "weakestEngine": "openai",
+    "weakestEngine": "ChatGPT",
     "clusters": [
       {
         "cluster": "alternatives",
@@ -9389,7 +9389,7 @@
         },
         "avgRankWhenMentioned": 1.6153846153846154,
         "strongestEngines": [
-          "perplexity"
+          "Perplexity"
         ],
         "topWinningPrompts": [
           "What are the best prebiotic soda brands?",
@@ -9412,7 +9412,7 @@
         },
         "avgRankWhenMentioned": 2.652173913043478,
         "strongestEngines": [
-          "perplexity"
+          "Perplexity"
         ],
         "topWinningPrompts": [
           "What are the best prebiotic soda brands?",
@@ -9435,7 +9435,7 @@
         },
         "avgRankWhenMentioned": 2.75,
         "strongestEngines": [
-          "openai"
+          "ChatGPT"
         ],
         "topWinningPrompts": [
           "Best soda alternatives for gut health?",
@@ -9457,8 +9457,8 @@
         },
         "avgRankWhenMentioned": 3.75,
         "strongestEngines": [
-          "perplexity",
-          "openai"
+          "Perplexity",
+          "ChatGPT"
         ],
         "topWinningPrompts": [
           "Best soda alternatives for cutting back on sugar?",
@@ -9480,7 +9480,7 @@
         },
         "avgRankWhenMentioned": 4.166666666666667,
         "strongestEngines": [
-          "perplexity"
+          "Perplexity"
         ],
         "topWinningPrompts": [
           "What's the healthiest soda I can drink?"
@@ -9491,7 +9491,7 @@
       {
         "prompt": "Best soda alternatives for cutting back on sugar?",
         "template": "Best soda alternatives for {use_case}?",
-        "engine": "openai",
+        "engine": "ChatGPT",
         "brandMentioned": false,
         "brandRecommended": false,
         "brandRank": null,
@@ -9503,7 +9503,7 @@
       {
         "prompt": "Best soda alternatives for gut health?",
         "template": "Best soda alternatives for {use_case}?",
-        "engine": "openai",
+        "engine": "ChatGPT",
         "brandMentioned": false,
         "brandRecommended": false,
         "brandRank": null,
@@ -9515,7 +9515,7 @@
       {
         "prompt": "Best soda alternatives for a healthier soda craving?",
         "template": "Best soda alternatives for {use_case}?",
-        "engine": "openai",
+        "engine": "ChatGPT",
         "brandMentioned": false,
         "brandRecommended": false,
         "brandRank": null,
@@ -9527,7 +9527,7 @@
       {
         "prompt": "Best soda alternatives for gut health?",
         "template": "Best soda alternatives for {use_case}?",
-        "engine": "gemini",
+        "engine": "Gemini",
         "brandMentioned": false,
         "brandRecommended": false,
         "brandRank": null,
@@ -9539,7 +9539,7 @@
       {
         "prompt": "What are the best prebiotic soda brands?",
         "template": "What are the best {category} brands?",
-        "engine": "openai",
+        "engine": "ChatGPT",
         "brandMentioned": true,
         "brandRecommended": false,
         "brandRank": 2,
@@ -9551,7 +9551,7 @@
       {
         "prompt": "Which prebiotic soda brand has the most fiber?",
         "template": "Which {category} brand has {feature}?",
-        "engine": "gemini",
+        "engine": "Gemini",
         "brandMentioned": true,
         "brandRecommended": false,
         "brandRank": null,
@@ -9563,7 +9563,7 @@
       {
         "prompt": "What soda is actually good for gut health?",
         "template": "What soda is actually good for gut health?",
-        "engine": "openai",
+        "engine": "ChatGPT",
         "brandMentioned": true,
         "brandRecommended": false,
         "brandRank": 2,
@@ -9575,7 +9575,7 @@
       {
         "prompt": "Popular prebiotic soda people recommend right now?",
         "template": "Popular {category} people recommend right now?",
-        "engine": "openai",
+        "engine": "ChatGPT",
         "brandMentioned": true,
         "brandRecommended": false,
         "brandRank": 2,
