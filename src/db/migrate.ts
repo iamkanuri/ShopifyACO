@@ -14,6 +14,50 @@ import { pgSslConfig } from "./pg.js";
 //   npm run migrate
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "migrations");
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// App-wide advisory-lock key serializing migrate runs across the web/worker/scheduler
+// services that each execute `npm run migrate` on deploy. Without it they race the same DDL
+// (a schema_migrations PK conflict / deadlock) — which, now that the start command is
+// `migrate && start`, would FAIL a deploy. The lock makes one apply while the others WAIT,
+// then find everything already applied. A session lock auto-releases if a holder dies.
+const MIGRATION_LOCK_KEY = 918273645;
+
+/** Connect with a few retries so a TRANSIENT DB blip on deploy doesn't fail the migrate (and
+ *  thus, under `&&`, the whole deploy). A genuinely-unreachable DB still fails after retries. */
+async function connectWithRetry(attempts = 4): Promise<pg.Client> {
+  let lastErr: Error | undefined;
+  for (let i = 1; i <= attempts; i++) {
+    const client = new pg.Client({
+      connectionString: ENV.databaseUrl,
+      ssl: pgSslConfig(ENV.databaseUrl), // SSL for cloud Supabase; off for a local dev Postgres
+      connectionTimeoutMillis: 15_000,
+    });
+    try {
+      await client.connect();
+      return client;
+    } catch (err) {
+      lastErr = err as Error;
+      await client.end().catch(() => {});
+      if (i < attempts) {
+        console.warn(`[migrate] connect attempt ${i}/${attempts} failed: ${lastErr.message} — retrying in ${i}s`);
+        await sleep(1000 * i);
+      }
+    }
+  }
+  throw lastErr ?? new Error("connect failed");
+}
+
+/** Block until this instance holds the migration lock (or give up after maxWaitMs). */
+async function acquireMigrationLock(client: pg.Client, maxWaitMs = 120_000): Promise<void> {
+  const start = Date.now();
+  for (;;) {
+    const { rows } = await client.query<{ ok: boolean }>("select pg_try_advisory_lock($1) as ok", [MIGRATION_LOCK_KEY]);
+    if (rows[0]?.ok) return;
+    if (Date.now() - start > maxWaitMs) fail("Timed out waiting for the migration lock (another instance may be stuck).");
+    await sleep(1000);
+  }
+}
 
 async function main(): Promise<void> {
   if (!ENV.databaseUrl) {
@@ -23,14 +67,9 @@ async function main(): Promise<void> {
     );
   }
 
-  const client = new pg.Client({
-    connectionString: ENV.databaseUrl,
-    ssl: pgSslConfig(ENV.databaseUrl), // SSL for cloud Supabase; off for a local dev Postgres
-    connectionTimeoutMillis: 15_000, // fail fast instead of hanging the boot
-  });
-
+  let client: pg.Client;
   try {
-    await client.connect();
+    client = await connectWithRetry();
   } catch (err) {
     fail(
       `Could not connect to the database: ${(err as Error).message}\n` +
@@ -40,6 +79,8 @@ async function main(): Promise<void> {
   }
 
   try {
+    // Serialize concurrent migrate runs (web/worker/scheduler) before any DDL.
+    await acquireMigrationLock(client);
     await client.query(
       "create table if not exists schema_migrations (filename text primary key, applied_at timestamptz not null default now())",
     );
@@ -82,6 +123,7 @@ async function main(): Promise<void> {
     }
     if (found.length !== 3) fail("Expected leads, runs, events — some are missing.");
   } finally {
+    await client.query("select pg_advisory_unlock($1)", [MIGRATION_LOCK_KEY]).catch(() => {});
     await client.end();
   }
 }

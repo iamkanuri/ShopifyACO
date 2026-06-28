@@ -16,13 +16,23 @@ export function hasPg(): boolean {
 /**
  * SSL config for a Postgres connection. Supabase **cloud** requires SSL, but a **local**
  * dev Postgres (localhost — e.g. the Supabase CLI stack) speaks plaintext and rejects an
- * SSL handshake. Detect localhost / `sslmode=disable` and turn SSL off there; everything
- * else (prod) keeps SSL on. Lets dev point at a local DB without touching prod behavior.
+ * SSL handshake. Detect localhost / `sslmode=disable` and turn SSL off there.
+ *
+ * For cloud: when a CA cert is configured (DB_CA_CERT) we do STRICT verification
+ * (`verify-full`: rejectUnauthorized + the CA), which defeats a MITM; without one we fall
+ * back to encrypted-but-unverified (`rejectUnauthorized:false`) — the prior behavior — so a
+ * deploy never breaks just because the CA isn't set yet. `caCert` is a param (defaulting to
+ * ENV) so the branching is pure + unit-testable.
  */
-export function pgSslConfig(connectionString: string | undefined): false | { rejectUnauthorized: boolean } {
+export function pgSslConfig(
+  connectionString: string | undefined,
+  caCert: string | undefined = ENV.dbCaCert,
+): false | { rejectUnauthorized: boolean; ca?: string } {
   const s = (connectionString ?? "").toLowerCase();
   const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(s) || s.includes("sslmode=disable");
-  return isLocal ? false : { rejectUnauthorized: false };
+  if (isLocal) return false;
+  if (caCert) return { ca: caCert, rejectUnauthorized: true };
+  return { rejectUnauthorized: false };
 }
 
 function getPool(): pg.Pool {

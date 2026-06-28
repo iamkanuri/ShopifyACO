@@ -12,6 +12,15 @@ import process from "node:process";
 
 const str = (v: string | undefined) => (v && v.trim() ? v.trim() : undefined);
 
+// A CA cert for strict Postgres TLS — accept a raw PEM or a base64-encoded PEM (Railway
+// env vars handle multi-line PEM, but base64 is easier to paste). undefined when unset.
+function decodePem(v: string | undefined): string | undefined {
+  const s = str(v);
+  if (!s) return undefined;
+  if (s.includes("BEGIN CERTIFICATE")) return s;
+  try { return Buffer.from(s, "base64").toString("utf8"); } catch { return undefined; }
+}
+
 // Supabase client wants the bare project URL. Tolerate a pasted REST path or
 // trailing slash (e.g. "https://x.supabase.co/rest/v1/").
 function normalizeSupabaseUrl(v: string | undefined): string | undefined {
@@ -44,6 +53,11 @@ export const ENV = {
   supabaseUrl: normalizeSupabaseUrl(process.env.SUPABASE_URL),
   supabaseServiceRoleKey: str(process.env.SUPABASE_SERVICE_ROLE_KEY),
   databaseUrl: str(process.env.DATABASE_URL),
+  // Optional CA (PEM or base64-PEM) for STRICT Postgres TLS (verify-full). When set, DB
+  // connections verify the server cert against it (rejectUnauthorized:true); unset keeps the
+  // encrypted-but-unverified default so a deploy never breaks if the CA isn't configured.
+  // Enable by downloading Supabase's CA (Dashboard → Database → SSL) into DB_CA_CERT.
+  dbCaCert: decodePem(process.env.DB_CA_CERT),
 
   // How many engine calls a benchmark issues at once. Web-grounded calls are slow, so a
   // strictly sequential mini run took minutes; bounded concurrency cuts it to tens of seconds.
