@@ -10,6 +10,7 @@ import { Evidence } from "./Evidence";
 import { Fixes } from "./Fixes";
 import { Experiments } from "./Experiments";
 import { Monitoring } from "./Monitoring";
+import { Attribution } from "./Attribution";
 import { Catalog } from "./Catalog";
 import { Settings } from "./Settings";
 import { Billing } from "./Billing";
@@ -28,6 +29,7 @@ const NAV = [
   { to: "/app/fixes", label: "Fix Studio", key: "fixes" },
   { to: "/app/experiments", label: "Experiments", key: "experiments" },
   { to: "/app/monitoring", label: "Monitoring", key: "monitoring" },
+  { to: "/app/attribution", label: "Attribution", key: "attribution" },
   { to: "/app/billing", label: "Billing", key: "billing" },
   { to: "/app/settings", label: "Settings", key: "settings" },
 ];
@@ -53,6 +55,7 @@ export function AppShell() {
   else if (sub === "fixes") screen = <Fixes />;
   else if (sub === "experiments") screen = <Experiments />;
   else if (sub === "monitoring") screen = <Monitoring />;
+  else if (sub === "attribution") screen = <Attribution />;
   else if (sub === "billing") screen = <Billing />;
   else if (sub === "settings") screen = <Settings connected={!demo} />;
   else screen = <Dashboard />;

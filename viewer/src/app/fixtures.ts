@@ -75,6 +75,14 @@ export interface AppBilling {
   plans: AppPlanCard[];
 }
 
+export interface AppAttributionSource { aiSource: string; sessions: number; productViews: number; checkouts: number; }
+export interface AppAttribution {
+  windowDays: number;
+  totals: { sessions: number; productViews: number; checkouts: number };
+  bySource: AppAttributionSource[];
+  note?: string;
+}
+
 const p = (successes: number, n: number): Proportion => {
   const rate = n ? successes / n : null;
   const z = 1.96, ph = rate ?? 0, denom = 1 + z * z / n;
@@ -248,5 +256,16 @@ export const DEMO = {
       { product_gid: "gid://shopify/Product/1003", title: "Classic Root Beer", vendor: "Olipop", product_type: "Prebiotic Soda", status: "ACTIVE", seo_title: "Olipop Classic Root Beer", seo_description: "Prebiotic root beer with plant fiber, 2–3g sugar.", variant_count: 2, metafield_count: 3 },
       { product_gid: "gid://shopify/Product/1004", title: "Cherry Cola", vendor: "Olipop", product_type: "Prebiotic Soda", status: "ACTIVE", seo_title: null, seo_description: null, variant_count: 2, metafield_count: 0 },
     ],
+  },
+
+  attribution: <AppAttribution>{
+    windowDays: 30,
+    totals: { sessions: 214, productViews: 96, checkouts: 12 },
+    bySource: [
+      { aiSource: "ChatGPT", sessions: 128, productViews: 61, checkouts: 8 },
+      { aiSource: "Perplexity", sessions: 57, productViews: 24, checkouts: 3 },
+      { aiSource: "Gemini", sessions: 29, productViews: 11, checkouts: 1 },
+    ],
+    note: "Directional: identifiable AI-referred sessions (referrer/UTM), not causal attribution. AI assistants often strip the referrer, so this undercounts; treat as a floor.",
   },
 };
