@@ -5,6 +5,7 @@ import { pgQuery } from "./pg.js";
 export interface PixelEventRow {
   shop: string;
   sessionId: string;
+  eventId?: string | null;
   eventType: string;
   aiSource: string | null;
   referrerHost: string | null;
@@ -15,13 +16,17 @@ export interface PixelEventRow {
   occurredAt: string;
 }
 
-export async function insertPixelEvent(e: PixelEventRow): Promise<void> {
-  await pgQuery(
+/** Insert one event. Returns false if it was a DUPLICATE (same shop + event_id already
+ *  stored) — a beacon's keepalive fetch can fire twice, so we dedup instead of double-count. */
+export async function insertPixelEvent(e: PixelEventRow): Promise<boolean> {
+  const { rowCount } = await pgQuery(
     `insert into pixel_events
-       (shop_domain, session_id, event_type, ai_source, referrer_host, utm_source, landing_path, consent, ip_hash, occurred_at)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [e.shop, e.sessionId, e.eventType, e.aiSource, e.referrerHost, e.utmSource, e.landingPath, e.consent, e.ipHash, e.occurredAt],
+       (shop_domain, session_id, event_id, event_type, ai_source, referrer_host, utm_source, landing_path, consent, ip_hash, occurred_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     on conflict (shop_domain, event_id) where event_id is not null do nothing`,
+    [e.shop, e.sessionId, e.eventId ?? null, e.eventType, e.aiSource, e.referrerHost, e.utmSource, e.landingPath, e.consent, e.ipHash, e.occurredAt],
   );
+  return (rowCount ?? 0) > 0;
 }
 
 /** Delete pixel_events older than `retentionDays` (data-retention purge). pixel_events

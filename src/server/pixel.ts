@@ -7,6 +7,7 @@ import { parsePixelEvent } from "../pixel/event.js";
 import { classifyAiReferrer } from "../pixel/referrer.js";
 import { attribution, insertPixelEvent, pixelActivity } from "../db/pixel.js";
 import { activatePixelForShop, hasPixelScope } from "../pixel/activate.js";
+import { safeEqualStr } from "../shopify/crypto.js";
 
 // Phase 10 — AI-referral pixel API.
 //   POST /api/pixel/ingest        PUBLIC beacon from the storefront Web Pixel (CORS).
@@ -23,7 +24,7 @@ import { activatePixelForShop, hasPixelScope } from "../pixel/activate.js";
 function cors(res: Response): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Pixel-Secret");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Pixel-Secret, X-Pixel-Token");
   res.setHeader("Vary", "Origin");
 }
 
@@ -66,6 +67,7 @@ export async function ingestHandler(req: Request, res: Response): Promise<void> 
 
   // Only store events for installed shops (scopes the public write surface). DB hiccup
   // → degrade to a no-op 202 rather than 500 (the beacon must not break the storefront).
+  let shopToken: string | null = null;
   try {
     const shop = await getShop(ev.shop);
     if (!shop || shop.status === "uninstalled") {
@@ -74,9 +76,24 @@ export async function ingestHandler(req: Request, res: Response): Promise<void> 
       res.status(202).json({ ok: true, stored: false, reason: "unknown_shop" });
       return;
     }
+    shopToken = shop.pixel_ingest_token;
   } catch (err) {
     console.error(`[pixel] shop lookup failed: ${(err as Error).message}`);
     res.status(202).json({ ok: true, stored: false, reason: "unavailable" });
+    return;
+  }
+
+  // Per-shop ingest token (anti-abuse, NOT auth — it ships to the browser). It scopes forgery
+  // to a single shop rather than the global shared secret. SOFT by default: a present-but-WRONG
+  // token is rejected; a MISSING token is accepted so pixels activated before the token rollout
+  // keep working. PIXEL_REQUIRE_TOKEN=1 makes it STRICT (reject missing) once all pixels carry one.
+  const presented = req.get("x-pixel-token") ?? null;
+  if (presented && shopToken && !safeEqualStr(presented, shopToken)) {
+    res.status(401).json({ ok: false, error: "bad_token" });
+    return;
+  }
+  if (!presented && ENV.pixel.requireToken) {
+    res.status(401).json({ ok: false, error: "token_required" });
     return;
   }
 
@@ -88,9 +105,10 @@ export async function ingestHandler(req: Request, res: Response): Promise<void> 
   }
 
   try {
-    await insertPixelEvent({
+    const stored = await insertPixelEvent({
       shop: ev.shop,
       sessionId: ev.sessionId,
+      eventId: ev.eventId,
       eventType: ev.type,
       aiSource: source,
       referrerHost,
@@ -100,7 +118,8 @@ export async function ingestHandler(req: Request, res: Response): Promise<void> 
       ipHash: ipHash(clientIp(req)),
       occurredAt: ev.occurredAt,
     });
-    res.status(202).json({ ok: true, stored: true, source });
+    // stored=false here means a duplicate beacon (same shop+event_id) — deduped, not an error.
+    res.status(202).json({ ok: true, stored, source, ...(stored ? {} : { reason: "duplicate" }) });
   } catch (err) {
     console.error(`[pixel] insert failed: ${(err as Error).message}`);
     res.status(202).json({ ok: true, stored: false, reason: "unavailable" });
@@ -140,6 +159,7 @@ export async function pixelHealthHandler(req: Request, res: Response): Promise<v
     webPixelId: row?.web_pixel_id ?? null,
     activated: Boolean(row?.web_pixel_id),
     hasScope: hasPixelScope(row?.scopes),
+    ingestTokenSet: Boolean(row?.pixel_ingest_token),
     lastEventAt: activity.lastEventAt,
     totalEvents: activity.totalEvents,
     eventsLast7d: activity.eventsLast7d,

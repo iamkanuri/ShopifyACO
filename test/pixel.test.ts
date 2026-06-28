@@ -97,11 +97,22 @@ test("hasPixelScope requires BOTH write_pixels and read_customer_events", () => 
 });
 
 test("pixelSettings includes EVERY schema key (webPixelCreate rejects missing keys)", () => {
-  const s = JSON.parse(pixelSettings());
+  const s = JSON.parse(pixelSettings("tok_abc123"));
   assert.ok(typeof s.ingest_url === "string" && s.ingest_url.endsWith("/api/pixel/ingest"));
   // shared_secret must always be present (empty when unset) or webPixelCreate fails.
   assert.equal(Object.prototype.hasOwnProperty.call(s, "shared_secret"), true);
   assert.equal(typeof s.shared_secret, "string");
+  // ingest_token must be present + non-blank (the per-shop token) — same schema-key rule.
+  assert.equal(s.ingest_token, "tok_abc123");
+});
+
+test("parsePixelEvent accepts a valid eventId and drops a malformed one", () => {
+  const good = parsePixelEvent({ shop: "s.myshopify.com", type: "product_viewed", sessionId: "sess_0001", consent: true, eventId: "evt_abcdef12" });
+  assert.equal(good.ok, true);
+  if (good.ok) assert.equal(good.event.eventId, "evt_abcdef12");
+  const bad = parsePixelEvent({ shop: "s.myshopify.com", type: "product_viewed", sessionId: "sess_0001", consent: true, eventId: "no!" });
+  assert.equal(bad.ok, true);
+  if (bad.ok) assert.equal(bad.event.eventId, null); // malformed → dropped to null (still stores)
 });
 
 // ---- DB-gated: ingest → directional attribution funnel ---------------------
@@ -139,6 +150,39 @@ test("attribution computes a distinct-session funnel per AI source (consent-filt
     assert.deepEqual(a.totals, { sessions: 3, productViews: 2, checkouts: 1 });
   } finally {
     await pgQuery("delete from pixel_events where shop_domain=$1", [shop]);
+  }
+});
+
+test("insertPixelEvent dedups on (shop, event_id); getOrCreatePixelIngestToken is stable", { skip: !RUN_DB }, async () => {
+  const { insertPixelEvent, attribution } = await import("../src/db/pixel.js");
+  const { upsertShop, getOrCreatePixelIngestToken } = await import("../src/db/shops.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `pixdedup-${Date.now()}.myshopify.com`;
+  const now = new Date().toISOString();
+  const ev = (eventId: string | null) => insertPixelEvent({ shop, sessionId: "c1", eventId, eventType: "session_start", aiSource: "ChatGPT", referrerHost: null, utmSource: null, landingPath: "/", consent: true, ipHash: "h", occurredAt: now });
+  try {
+    await upsertShop(shop, { status: "active" });
+
+    // Same event_id twice → second is a no-op (deduped).
+    assert.equal(await ev("evt_111"), true, "first insert stored");
+    assert.equal(await ev("evt_111"), false, "duplicate event_id deduped");
+    // A different id stores; a null id always stores (no dedup key).
+    assert.equal(await ev("evt_222"), true);
+    assert.equal(await ev(null), true);
+    assert.equal(await ev(null), true, "null event_id never collides");
+
+    // Only the two DISTINCT session_start events for c1 count as 1 session.
+    const a = await attribution(shop, { windowDays: 30 });
+    assert.equal(a.totals.sessions, 1);
+
+    // The per-shop token is generated once and stable across calls.
+    const t1 = await getOrCreatePixelIngestToken(shop);
+    const t2 = await getOrCreatePixelIngestToken(shop);
+    assert.ok(t1 && t1.length >= 16);
+    assert.equal(t1, t2, "token is stable (coalesce keeps the first)");
+  } finally {
+    await pgQuery("delete from pixel_events where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
   }
 });
 

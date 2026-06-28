@@ -1,6 +1,6 @@
 import { ENV } from "../server/env.js";
 import { getShopifyClient } from "../shopify/client.js";
-import { getAccessToken, getShop, setWebPixelId } from "../db/shops.js";
+import { getAccessToken, getOrCreatePixelIngestToken, getShop, setWebPixelId } from "../db/shops.js";
 
 // Web Pixel activation (Phase 10). Deploying the extension (`shopify app deploy`) only
 // REGISTERS it; an app-owned web pixel must be CREATED per shop via the Admin API
@@ -18,16 +18,18 @@ export function hasPixelScope(scopes: string | null | undefined): boolean {
   return REQUIRED_PIXEL_SCOPES.every((s) => set.has(s));
 }
 
-/** The settings JSON injected into the storefront pixel: where to beacon + optional
- *  anti-noise secret. The ingest URL is derived from the app/public base URL.
- *  IMPORTANT: webPixelCreate requires EVERY field declared in the extension's settings
- *  schema to be present, so we ALWAYS include shared_secret (empty string = no gate;
- *  the pixel + ingest both treat an empty secret as "no secret"). */
-export function pixelSettings(): string {
+/** The settings JSON injected into the storefront pixel: where to beacon + the anti-noise
+ *  secret + the per-shop ingest token. The ingest URL is derived from the app/public base URL.
+ *  IMPORTANT: webPixelCreate requires EVERY field declared in the extension's settings schema
+ *  to be present and NON-BLANK, so shared_secret is always a string (empty = no gate) and
+ *  ingest_token is the shop's always-non-blank token. The extension toml MUST declare
+ *  ingest_token (deploy the extension at the same time as this). */
+export function pixelSettings(ingestToken: string): string {
   const base = (ENV.shopify.appUrl ?? ENV.publicBaseUrl ?? "").replace(/\/+$/, "");
   return JSON.stringify({
     ingest_url: `${base}/api/pixel/ingest`,
     shared_secret: ENV.pixel.sharedSecret ?? "",
+    ingest_token: ingestToken,
   });
 }
 
@@ -52,7 +54,8 @@ export async function activatePixelForShop(shop: string): Promise<ActivateResult
   const token = await getAccessToken(shop);
   if (!token) return { activated: false, reason: "no_token" };
 
-  const { id } = await client.activateWebPixel(shop, token, pixelSettings(), row.web_pixel_id ?? undefined);
+  const ingestToken = await getOrCreatePixelIngestToken(shop);
+  const { id } = await client.activateWebPixel(shop, token, pixelSettings(ingestToken), row.web_pixel_id ?? undefined);
   await setWebPixelId(shop, id);
   return { activated: true, webPixelId: id };
 }

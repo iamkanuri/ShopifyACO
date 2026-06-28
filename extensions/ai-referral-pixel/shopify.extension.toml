@@ -36,3 +36,8 @@ type = "object"
   name = "Shared secret (optional)"
   description = "Optional value sent as the X-Pixel-Secret header. Anti-noise only — it ships to the browser, so it is NOT authentication."
   type = "single_line_text_field"
+
+  [extensions.settings.fields.ingest_token]
+  name = "Ingest token"
+  description = "Per-shop token sent as the X-Pixel-Token header. Set automatically by the app on activation; anti-abuse only (it ships to the browser), not authentication."
+  type = "single_line_text_field"

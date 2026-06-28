@@ -14,6 +14,7 @@ export interface ParsedPixelEvent {
   shop: string;
   type: PixelEventType;
   sessionId: string;
+  eventId: string | null;    // client-generated per-beacon id → idempotent ingest (dedup)
   referrer: string | null;   // raw referrer (used to derive host, never stored whole)
   utmSource: string | null;
   landingPath: string | null;
@@ -61,12 +62,18 @@ export function parsePixelEvent(body: unknown): ParseResult {
   const sessionId = str(b.sessionId, 128);
   if (!sessionId || !/^[A-Za-z0-9_-]{8,128}$/.test(sessionId)) return { ok: false, error: "invalid_session" };
 
+  // Optional per-beacon id for dedup. Untrusted → only accept a sane token-charset string;
+  // anything malformed is dropped to null (the event still stores, just not deduped).
+  const rawEventId = str(b.eventId, 128);
+  const eventId = rawEventId && /^[A-Za-z0-9_-]{8,128}$/.test(rawEventId) ? rawEventId : null;
+
   return {
     ok: true,
     event: {
       shop,
       type: b.type,
       sessionId,
+      eventId,
       referrer: str(b.referrer, 2048),
       utmSource: str(b.utmSource, 128),
       landingPath: toLandingPath(b.landingPath),

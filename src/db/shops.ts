@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { pgQuery } from "./pg.js";
 import { ENV } from "../server/env.js";
 import { decryptSecret, encryptSecret } from "../shopify/crypto.js";
@@ -15,6 +16,7 @@ export interface ShopRow {
   installed_at: string;
   uninstalled_at: string | null;
   web_pixel_id: string | null;
+  pixel_ingest_token: string | null;
 }
 
 export async function upsertShop(shopDomain: string, opts: { scopes?: string; status?: string } = {}): Promise<void> {
@@ -38,6 +40,19 @@ export async function getShop(shopDomain: string): Promise<ShopRow | null> {
 /** Record the app-owned Web Pixel id (Phase 10) so re-activation updates in place. */
 export async function setWebPixelId(shopDomain: string, webPixelId: string): Promise<void> {
   await pgQuery("update shops set web_pixel_id = $2, updated_at = now() where shop_domain = $1", [shopDomain, webPixelId]);
+}
+
+/** The shop's per-shop pixel ingest token, generating + persisting one on first use. Injected
+ *  into the shop's Web Pixel settings and checked at ingest (anti-abuse, not auth — it ships to
+ *  the browser, so it only scopes forgery to a single shop). Race-safe via coalesce. */
+export async function getOrCreatePixelIngestToken(shopDomain: string): Promise<string> {
+  const fresh = randomBytes(24).toString("base64url");
+  const { rows } = await pgQuery<{ pixel_ingest_token: string | null }>(
+    `update shops set pixel_ingest_token = coalesce(pixel_ingest_token, $2), updated_at = now()
+       where shop_domain = $1 returning pixel_ingest_token`,
+    [shopDomain, fresh],
+  );
+  return rows[0]?.pixel_ingest_token ?? fresh;
 }
 
 /** Encrypt + store an offline access token (and its rotating refresh token + expiries, for

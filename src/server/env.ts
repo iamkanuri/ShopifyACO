@@ -217,6 +217,11 @@ export const ENV = {
   pixel: {
     ingestEnabled: process.env.PIXEL_INGEST_ENABLED !== "0",
     sharedSecret: str(process.env.PIXEL_SHARED_SECRET),
+    // Per-shop ingest token enforcement. SOFT by default: a present-but-wrong token is
+    // rejected, a MISSING token is accepted (so pixels activated before the token rollout keep
+    // working). Flip PIXEL_REQUIRE_TOKEN=1 to STRICT (reject a missing token) once every shop's
+    // pixel has been re-activated with a token.
+    requireToken: process.env.PIXEL_REQUIRE_TOKEN === "1" || process.env.PIXEL_REQUIRE_TOKEN === "true",
   },
 };
 

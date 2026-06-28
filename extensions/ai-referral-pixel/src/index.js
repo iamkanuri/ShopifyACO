@@ -45,11 +45,13 @@ register(async ({ analytics, init, settings, browser }) => {
   }
 
   const secret = (settings && settings.shared_secret) || "";
+  const ingestToken = (settings && settings.ingest_token) || "";
   const beacon = (type) => {
     const body = JSON.stringify({
       shop: shop,
       type: type,
       sessionId: rec.sid,
+      eventId: newId(), // per-beacon id → server dedups a double-fired keepalive request
       referrer: rec.referrer,
       utmSource: rec.utm,
       landingPath: rec.landing,
@@ -58,6 +60,7 @@ register(async ({ analytics, init, settings, browser }) => {
     });
     const headers = { "Content-Type": "application/json" };
     if (secret) headers["X-Pixel-Secret"] = secret;
+    if (ingestToken) headers["X-Pixel-Token"] = ingestToken;
     // keepalive lets the request outlive the page navigation it may trigger.
     return fetch(ingestUrl, { method: "POST", headers: headers, body: body, keepalive: true, mode: "cors" }).catch(() => {});
   };

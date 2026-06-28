@@ -86,6 +86,7 @@ export interface AppPixelHealth {
   webPixelId: string | null;
   activated: boolean;
   hasScope: boolean;
+  ingestTokenSet?: boolean;
   lastEventAt: string | null;
   totalEvents: number;
   eventsLast7d: number;
@@ -282,6 +283,7 @@ export const DEMO = {
     webPixelId: "gid://shopify/WebPixel/2247262310",
     activated: true,
     hasScope: true,
+    ingestTokenSet: true,
     lastEventAt: "2026-06-22T15:04:00Z",
     totalEvents: 318,
     eventsLast7d: 214,
