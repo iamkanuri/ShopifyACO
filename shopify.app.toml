@@ -1,4 +1,4 @@
-# AisleLens / "AI Visibility" — Shopify app configuration.
+# AisleLens — Shopify app configuration.
 # Deployed to the Partner app via the Shopify CLI:  shopify app deploy
 #
 # client_id is your app's API key (PUBLIC — not the secret; safe to commit). Either
@@ -6,7 +6,7 @@
 # API key from Dev Dashboard → AI Visibility → Settings → Credentials.
 client_id = "f3df315c44ae47b0f6e0ffd6453a965d"
 
-name = "AI Visibility"
+name = "AisleLens"
 # Embedded: the app runs inside the Shopify admin iframe. Install uses Shopify managed
 # install + token exchange (POST /api/shopify/token); App Bridge supplies session tokens
 # for /app/api auth. Takes effect on the next `shopify app deploy`. The classic OAuth
@@ -31,9 +31,10 @@ redirect_urls = [
 [webhooks]
 api_version = "2026-01"
 
-  # Mandatory GDPR compliance webhooks (required for app review). Our single
-  # endpoint verifies HMAC, dedupes, and audits each topic.
-  [webhooks.privacy_compliance]
-  customer_data_request_url = "https://lens.thirdocular.com/api/shopify/webhooks"
-  customer_deletion_url     = "https://lens.thirdocular.com/api/shopify/webhooks"
-  shop_deletion_url         = "https://lens.thirdocular.com/api/shopify/webhooks"
+  # Mandatory GDPR compliance webhooks (required for app review). Current Shopify config
+  # format: a subscription with `compliance_topics` (the older `[webhooks.privacy_compliance]`
+  # *_url shape is deprecated). Our single endpoint verifies HMAC, dedupes, audits, and (for
+  # shop/redact) erases the shop's data.
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://lens.thirdocular.com/api/shopify/webhooks"
