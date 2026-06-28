@@ -32,9 +32,28 @@ const RECOMMEND_PHRASES = [
 
 const SNIPPET_RADIUS = 80; // ~160 chars total around the first mention
 
+// Comparative / preference separators. The brand AFTER one of these is the comparison
+// TARGET (the loser), not the subject a recommendation or list rank attaches to — so
+// "Caraway is my top pick over GreenPan" must not mark GreenPan recommended, and
+// "1. Caraway vs GreenPan" must not give GreenPan rank 1. (" vs." with a period is already
+// handled by sentence-boundary splitting; only the period-less forms need listing here.)
+const COMPARATIVE_SEPARATORS = [" vs ", " versus ", " over ", " rather than ", " instead of ", " compared to "];
+
 interface ListItem {
   rank: number; // 1-based; numbered lists use the printed number
   line: string;
+}
+
+/** The PRIMARY subject of a list line — truncated at the first comparative separator so a
+ *  "Brand A vs Brand B" item ranks only Brand A, not the comparison target on the same line. */
+function primaryPartOfLine(line: string): string {
+  const lower = line.toLowerCase();
+  let cut = line.length;
+  for (const sep of COMPARATIVE_SEPARATORS) {
+    const i = lower.indexOf(sep);
+    if (i !== -1 && i < cut) cut = i;
+  }
+  return line.slice(0, cut);
 }
 
 /** Parse numbered (`1.` / `1)`) and bulleted (`-`/`*`/`•`) list items, in order. */
@@ -71,8 +90,9 @@ function localSentence(text: string, index: number): string {
   let clause = text.slice(start, end);
   let rel = index - start; // brand position within the clause
 
-  // Narrow further at contrastive conjunctions, keeping the brand's side.
-  for (const sep of [" but ", " whereas ", " however ", " while "]) {
+  // Narrow further at contrastive conjunctions AND comparative separators, keeping the
+  // brand's side — so the recommendation attaches to the winner, not the comparison target.
+  for (const sep of [" but ", " whereas ", " however ", " while ", ...COMPARATIVE_SEPARATORS]) {
     let from = 0;
     let cut = clause.toLowerCase().indexOf(sep, from);
     while (cut !== -1) {
@@ -137,10 +157,11 @@ function detectBrand(text: string, brand: BrandConfig, isOwn: boolean): BrandDet
     };
   }
 
-  // Find this brand's rank in any list it appears in (first matching item).
+  // Find this brand's rank in any list it appears in (first matching item). Only the line's
+  // PRIMARY subject earns the rank — a brand after "vs/over/…" on the same line does not.
   let listRank: number | null = null;
   for (const item of parseListItems(text)) {
-    if (lineMentions(item.line, variants)) {
+    if (lineMentions(primaryPartOfLine(item.line), variants)) {
       listRank = item.rank;
       break;
     }

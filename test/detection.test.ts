@@ -102,6 +102,29 @@ test("mixed sentence ('but'): each side classified independently", () => {
   assert.notEqual(own(text, c).status, "recommended");
 });
 
+test("COMPARATIVE: 'X is my top pick over Y' → only X recommended (not the loser Y)", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "Caraway is my top pick over GreenPan.";
+  assert.equal(own(text, c).status, "recommended");
+  assert.equal(compFor(text, c, "GreenPan").mentioned, true);
+  assert.notEqual(compFor(text, c, "GreenPan").status, "recommended");
+});
+
+test("COMPARATIVE: '1. X vs Y' → only X is rank 1 (Y is not rank 1 / recommended)", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "1. Caraway vs GreenPan";
+  assert.equal(own(text, c).listRank, 1);
+  assert.equal(own(text, c).status, "recommended");
+  assert.notEqual(compFor(text, c, "GreenPan").listRank, 1);
+  assert.notEqual(compFor(text, c, "GreenPan").status, "recommended");
+});
+
+test("COMPARATIVE: 'best overall' is NOT split by the ' over ' rule", () => {
+  // Regression guard: " over " must not match inside "overall".
+  const d = own("All-Clad is the best overall.", cfg("All-Clad"));
+  assert.equal(d.status, "recommended");
+});
+
 test("first-mention order recorded", () => {
   const c = cfg("Caraway", ["GreenPan"]);
   const text = "GreenPan is popular, and Caraway is too.";
