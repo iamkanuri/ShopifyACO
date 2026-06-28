@@ -38,6 +38,35 @@ export async function purgeExpiredPixelEvents(retentionDays: number): Promise<nu
   return rowCount ?? 0;
 }
 
+export interface PixelActivity {
+  lastEventAt: string | null;
+  totalEvents: number;
+  eventsLast7d: number;
+  sessionsLast7d: number; // distinct started sessions in the last 7 days
+}
+
+/** Recent pixel activity for the health panel — lets the merchant tell "no AI traffic"
+ *  apart from "the pixel isn't running". Counts consented rows only. */
+export async function pixelActivity(shop: string): Promise<PixelActivity> {
+  const { rows } = await pgQuery<{ last_event: string | null; total: string; last7: string; sessions7: string }>(
+    `select max(occurred_at)                                                       as last_event,
+            count(*)::int                                                          as total,
+            count(*) filter (where occurred_at >= now() - interval '7 days')::int  as last7,
+            count(distinct case when event_type='session_start'
+                                 and occurred_at >= now() - interval '7 days'
+                            then session_id end)::int                              as sessions7
+       from pixel_events where shop_domain=$1 and consent=true`,
+    [shop],
+  );
+  const r = rows[0];
+  return {
+    lastEventAt: r?.last_event ?? null,
+    totalEvents: Number(r?.total ?? 0),
+    eventsLast7d: Number(r?.last7 ?? 0),
+    sessionsLast7d: Number(r?.sessions7 ?? 0),
+  };
+}
+
 export interface AttributionBySource {
   aiSource: string;
   sessions: number;       // distinct sessions that started from this source
@@ -52,19 +81,32 @@ export interface Attribution {
 }
 
 /** Directional AI-referral funnel over a trailing window. Only consented rows count.
- *  Sessions/views/checkouts are DISTINCT session counts (a session that viewed 3
- *  products counts once), so the funnel is honest. */
+ *  The funnel is computed PER SESSION and anchored on a real `session_start`: a session
+ *  counts only if it started, and views/checkouts are subsets of started sessions. This
+ *  keeps the funnel monotonic (views ≤ sessions, checkouts ≤ sessions) and forge-resistant
+ *  — orphan product_viewed/checkout beacons with no session_start can't inflate the counts.
+ *  Each session is attributed to the AI source on its session_start event. */
 export async function attribution(shop: string, opts: { windowDays?: number } = {}): Promise<Attribution> {
   const windowDays = Math.min(365, Math.max(1, Math.trunc(opts.windowDays ?? 30)));
   const { rows } = await pgQuery<{ ai_source: string | null; sessions: string; product_views: string; checkouts: string }>(
-    `select ai_source,
-            count(distinct case when event_type='session_start'      then session_id end)::int as sessions,
-            count(distinct case when event_type='product_viewed'     then session_id end)::int as product_views,
-            count(distinct case when event_type='checkout_completed' then session_id end)::int as checkouts
-       from pixel_events
-      where shop_domain=$1 and consent=true and ai_source is not null
-        and occurred_at >= now() - make_interval(days => $2::int)
-      group by ai_source
+    `with sess as (
+       select session_id,
+              max(ai_source) filter (where event_type='session_start') as source,
+              bool_or(event_type='session_start')      as started,
+              bool_or(event_type='product_viewed')     as viewed,
+              bool_or(event_type='checkout_completed') as checked_out
+         from pixel_events
+        where shop_domain=$1 and consent=true and ai_source is not null
+          and occurred_at >= now() - make_interval(days => $2::int)
+        group by session_id
+     )
+     select coalesce(source, 'Unknown') as ai_source,
+            count(*) filter (where started)::int                    as sessions,
+            count(*) filter (where started and viewed)::int         as product_views,
+            count(*) filter (where started and checked_out)::int    as checkouts
+       from sess
+      where started
+      group by source
       order by sessions desc`,
     [shop, windowDays],
   );

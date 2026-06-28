@@ -82,6 +82,15 @@ export interface AppAttribution {
   bySource: AppAttributionSource[];
   note?: string;
 }
+export interface AppPixelHealth {
+  webPixelId: string | null;
+  activated: boolean;
+  hasScope: boolean;
+  lastEventAt: string | null;
+  totalEvents: number;
+  eventsLast7d: number;
+  sessionsLast7d: number;
+}
 
 const p = (successes: number, n: number): Proportion => {
   const rate = n ? successes / n : null;
@@ -267,5 +276,15 @@ export const DEMO = {
       { aiSource: "Gemini", sessions: 29, productViews: 11, checkouts: 1 },
     ],
     note: "Directional: identifiable AI-referred sessions (referrer/UTM), not causal attribution. AI assistants often strip the referrer, so this undercounts; treat as a floor.",
+  },
+
+  pixelHealth: <AppPixelHealth>{
+    webPixelId: "gid://shopify/WebPixel/2247262310",
+    activated: true,
+    hasScope: true,
+    lastEventAt: "2026-06-22T15:04:00Z",
+    totalEvents: 318,
+    eventsLast7d: 214,
+    sessionsLast7d: 214,
   },
 };

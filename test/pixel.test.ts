@@ -39,11 +39,19 @@ test("referrerHost parses URLs and bare hosts, rejects non-http", () => {
 
 // ---- inbound beacon validation (untrusted public input) --------------------
 test("parsePixelEvent accepts a well-formed beacon and normalizes the shop", () => {
-  const r = parsePixelEvent({ shop: "My-Shop.myshopify.com", type: "session_start", sessionId: "abc12345" });
+  const r = parsePixelEvent({ shop: "My-Shop.myshopify.com", type: "session_start", sessionId: "abc12345", consent: true });
   assert.equal(r.ok, true);
   if (r.ok) {
     assert.equal(r.event.shop, "my-shop.myshopify.com");
-    assert.equal(r.event.consent, true); // omitted → true
+    assert.equal(r.event.consent, true); // explicit true → granted
+  }
+});
+
+test("parsePixelEvent requires EXPLICIT consent — omitted/non-true never grants it", () => {
+  for (const consent of [undefined, "true", 1, null]) {
+    const r = parsePixelEvent({ shop: "s.myshopify.com", type: "session_start", sessionId: "abc12345", consent });
+    assert.equal(r.ok, true);
+    if (r.ok) assert.equal(r.event.consent, false, `consent=${String(consent)} must not grant`);
   }
 });
 
@@ -117,12 +125,14 @@ test("attribution computes a distinct-session funnel per AI source (consent-filt
     await ev("p1", "session_start", "Perplexity");
     // A non-consented ChatGPT session must be EXCLUDED.
     await ev("x1", "session_start", "ChatGPT", false);
+    // An ORPHAN product_viewed with NO session_start must NOT inflate the funnel (forge-resistant).
+    await ev("orphan", "product_viewed", "ChatGPT");
 
     const a = await attribution(shop, { windowDays: 30 });
     const cg = a.bySource.find((s) => s.aiSource === "ChatGPT")!;
     const px = a.bySource.find((s) => s.aiSource === "Perplexity")!;
-    assert.equal(cg.sessions, 2, "x1 excluded by consent");
-    assert.equal(cg.productViews, 2);
+    assert.equal(cg.sessions, 2, "x1 excluded by consent; orphan excluded (no session_start)");
+    assert.equal(cg.productViews, 2, "orphan product_viewed excluded — funnel stays monotonic");
     assert.equal(cg.checkouts, 1);
     assert.equal(px.sessions, 1);
     assert.equal(px.productViews, 0);

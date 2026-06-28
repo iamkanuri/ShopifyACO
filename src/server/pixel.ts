@@ -5,8 +5,8 @@ import { clientIp, ipHash, rateLimit } from "./guards.js";
 import { getShop } from "../db/shops.js";
 import { parsePixelEvent } from "../pixel/event.js";
 import { classifyAiReferrer } from "../pixel/referrer.js";
-import { attribution, insertPixelEvent } from "../db/pixel.js";
-import { activatePixelForShop } from "../pixel/activate.js";
+import { attribution, insertPixelEvent, pixelActivity } from "../db/pixel.js";
+import { activatePixelForShop, hasPixelScope } from "../pixel/activate.js";
 
 // Phase 10 — AI-referral pixel API.
 //   POST /api/pixel/ingest        PUBLIC beacon from the storefront Web Pixel (CORS).
@@ -128,6 +128,23 @@ export async function activateHandler(req: Request, res: Response): Promise<void
   } catch (err) {
     res.status(502).json({ activated: false, error: (err as Error).message });
   }
+}
+
+/** GET /app/api/pixel/health — is the pixel actually running? Surfaces activation state,
+ *  scope grant, and recent activity so "no AI-referred sessions" can be told apart from a
+ *  pixel that was never activated / lost its scope / isn't receiving beacons. */
+export async function pixelHealthHandler(req: Request, res: Response): Promise<void> {
+  const shop = shopOf(req);
+  const [row, activity] = await Promise.all([getShop(shop), pixelActivity(shop)]);
+  res.json({
+    webPixelId: row?.web_pixel_id ?? null,
+    activated: Boolean(row?.web_pixel_id),
+    hasScope: hasPixelScope(row?.scopes),
+    lastEventAt: activity.lastEventAt,
+    totalEvents: activity.totalEvents,
+    eventsLast7d: activity.eventsLast7d,
+    sessionsLast7d: activity.sessionsLast7d,
+  });
 }
 
 /** GET /app/api/pixel/attribution?days=30 — directional AI-referral funnel. */

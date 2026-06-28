@@ -1,4 +1,4 @@
-import { DEMO, type AppAlertRow, type AppAttribution, type AppBilling, type AppDashboard, type AppExperimentRow, type AppFindingRow, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type AppShopInfo, type Proportion } from "./fixtures";
+import { DEMO, type AppAlertRow, type AppAttribution, type AppBilling, type AppDashboard, type AppExperimentRow, type AppFindingRow, type AppPixelHealth, type AppProductRow, type AppProposalRow, type AppRunRow, type AppScheduleRow, type AppShopInfo, type Proportion } from "./fixtures";
 
 // Client for the authenticated /app/api/* surface. Every call tries the live API; if
 // there's no shop session (401) or the backend is unavailable, it transparently falls
@@ -160,6 +160,12 @@ export const getBilling = () => load<AppBilling>(`/app/api/billing`, DEMO.billin
 
 /** Directional AI-referral attribution funnel (Phase 10). Consent-gated, browser-reported. */
 export const getAttribution = (days = 30) => load<AppAttribution>(`/app/api/pixel/attribution?days=${days}`, DEMO.attribution);
+
+/** Pixel health: is it activated/scoped and receiving beacons? (distinguishes no-traffic from broken). */
+export const getPixelHealth = () => load<AppPixelHealth>(`/app/api/pixel/health`, DEMO.pixelHealth);
+
+/** Re-create/refresh the shop's app-owned Web Pixel (the Attribution "Reconnect" action). */
+export const activatePixel = () => post<{ activated: boolean; webPixelId?: string; reason?: string; message?: string }>(`/app/api/pixel/activate`, {});
 
 /** Open the Stripe billing portal (returns a hosted URL to redirect to). */
 export const openBillingPortal = () => post<{ url: string }>(`/app/api/billing/portal`, {});

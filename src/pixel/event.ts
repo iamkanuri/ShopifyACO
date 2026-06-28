@@ -70,8 +70,9 @@ export function parsePixelEvent(body: unknown): ParseResult {
       referrer: str(b.referrer, 2048),
       utmSource: str(b.utmSource, 128),
       landingPath: toLandingPath(b.landingPath),
-      // Default to true ONLY when omitted; an explicit false is honored (no storage).
-      consent: b.consent === false ? false : true,
+      // Require EXPLICIT consent — anything but a literal `true` is treated as no-consent
+      // (the beacon always sends consent:true). A missing/forged field never grants consent.
+      consent: b.consent === true,
       occurredAt: toIso(b.occurredAt),
     },
   };
