@@ -9,6 +9,7 @@ export interface Plan {
   features: string[];
   cta?: string;
   stripeUrl?: string | null;
+  comingSoon?: boolean;
 }
 
 export interface AppConfig {

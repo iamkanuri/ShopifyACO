@@ -5,23 +5,17 @@ import { useConfig, type Plan } from "../config";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CTA_EVENT: Record<string, string> = {
   full_report: "cta_full_report",
-  monitoring: "cta_monitoring",
-  founder_beta: "cta_founder_beta",
 };
-
-// Monitoring isn't fulfillable yet — until a Stripe URL exists it's a waitlist.
-const isWaitlist = (p: Plan) => p.id === "monitoring" && !p.stripeUrl;
 
 // Set the fulfillment expectation RIGHT at the buy button (not just in the feature list)
 // so a buyer knows BEFORE paying that these are hand-delivered by email, not instant.
 const DELIVERY_NOTE: Record<string, string> = {
   full_report: "Reviewed by hand and emailed within 24 hours during beta — not an instant download.",
-  founder_beta: "Founder-reviewed and delivered by email during beta — not instant.",
 };
 
 export function Pricing({ runId, currentPlanId, email }: { runId?: string; currentPlanId?: string; email?: string }) {
   const { plans } = useConfig();
-  const [modalPlan, setModalPlan] = useState<{ id: string; name: string; waitlist: boolean } | null>(null);
+  const [modalPlan, setModalPlan] = useState<{ id: string; name: string } | null>(null);
 
   function onCta(p: Plan) {
     if (CTA_EVENT[p.id]) trackEvent(CTA_EVENT[p.id], runId, { plan: p.id });
@@ -51,18 +45,17 @@ export function Pricing({ runId, currentPlanId, email }: { runId?: string; curre
       window.open(url, "_blank", "noopener");
       return;
     }
-    setModalPlan({ id: p.id, name: p.name, waitlist: isWaitlist(p) }); // fallback: email capture
+    setModalPlan({ id: p.id, name: p.name }); // fallback: email capture
   }
 
   return (
     <div className="no-print">
       <div className="pricing">
         {plans.map((p) => {
-          const waitlist = isWaitlist(p);
-          const ctaLabel = waitlist ? "Join the beta waitlist" : p.cta;
+          const soon = p.comingSoon;
           return (
-            <div className={`card plan ${p.cta ? "" : "plan-free"} ${waitlist ? "plan-soon" : ""}`} key={p.id}>
-              {waitlist && <div className="plan-badge">Coming soon</div>}
+            <div className={`card plan ${p.cta || soon ? "" : "plan-free"} ${soon ? "plan-soon" : ""}`} key={p.id}>
+              {soon && <div className="plan-badge">Coming soon</div>}
               <div className="plan-name">{p.name}</div>
               <div className="plan-price">
                 {p.price}
@@ -74,12 +67,14 @@ export function Pricing({ runId, currentPlanId, email }: { runId?: string; curre
                   <li key={i}>{f}</li>
                 ))}
               </ul>
-              {p.cta ? (
+              {soon ? (
+                <div className="plan-current">Coming soon</div>
+              ) : p.cta ? (
                 <>
-                  <button className={`btn ${waitlist ? "" : "btn-primary"}`} onClick={() => onCta(p)}>
-                    {ctaLabel}
+                  <button className="btn btn-primary" onClick={() => onCta(p)}>
+                    {p.cta}
                   </button>
-                  {!waitlist && DELIVERY_NOTE[p.id] && <p className="plan-deliver">{DELIVERY_NOTE[p.id]}</p>}
+                  {DELIVERY_NOTE[p.id] && <p className="plan-deliver">{DELIVERY_NOTE[p.id]}</p>}
                 </>
               ) : currentPlanId === p.id ? (
                 <div className="plan-current">You're on this</div>
@@ -91,7 +86,7 @@ export function Pricing({ runId, currentPlanId, email }: { runId?: string; curre
         })}
       </div>
       {modalPlan && (
-        <LeadModal plan={modalPlan} runId={runId} waitlist={modalPlan.waitlist} onClose={() => setModalPlan(null)} />
+        <LeadModal plan={modalPlan} runId={runId} onClose={() => setModalPlan(null)} />
       )}
     </div>
   );
@@ -100,12 +95,10 @@ export function Pricing({ runId, currentPlanId, email }: { runId?: string; curre
 function LeadModal({
   plan,
   runId,
-  waitlist,
   onClose,
 }: {
   plan: { id: string; name: string };
   runId?: string;
-  waitlist?: boolean;
   onClose: () => void;
 }) {
   const [email, setEmail] = useState("");
@@ -135,16 +128,8 @@ function LeadModal({
           <>
             <h3>You're on the list ✓</h3>
             <p className="muted">
-              {waitlist ? (
-                <>
-                  We'll email <b>{email}</b> the moment weekly monitoring opens up.
-                </>
-              ) : (
-                <>
-                  Payments aren't live yet. We'll email <b>{email}</b> your {plan.name.toLowerCase()}{" "}
-                  as soon as it's ready.
-                </>
-              )}
+              Payments aren't live yet. We'll email <b>{email}</b> your {plan.name.toLowerCase()}{" "}
+              as soon as it's ready.
             </p>
             <button className="btn btn-primary" onClick={onClose}>
               Done
@@ -154,17 +139,8 @@ function LeadModal({
           <>
             <h3>{plan.name}</h3>
             <p className="muted">
-              {waitlist ? (
-                <>
-                  <b>Weekly monitoring is coming soon.</b> Join the waitlist and we'll let you know
-                  the moment it's ready — no charge today.
-                </>
-              ) : (
-                <>
-                  <b>Payments aren't live yet.</b> Leave your email and we'll send it when it's ready
-                  — no charge today.
-                </>
-              )}
+              <b>Payments aren't live yet.</b> Leave your email and we'll send it when it's ready
+              — no charge today.
             </p>
             <input
               className="modal-input"

@@ -13,6 +13,9 @@ export interface PlanDef {
   blurb: string;
   features: string[];
   cta?: string;
+  // Show the card greyed with a "Coming soon" badge and NO call-to-action (not even a
+  // waitlist) — used for tiers we want to signal but not take inbound requests for yet.
+  comingSoon?: boolean;
 }
 
 export const PLANS: PlanDef[] = [
@@ -38,31 +41,25 @@ export const PLANS: PlanDef[] = [
     ],
     cta: "Full Report — $29",
   },
+  // NOTE: ongoing monitoring is now part of the Shopify "Pro" subscription, so the old
+  // standalone "$49/mo Weekly monitoring" web plan was retired (it was redundant with Pro
+  // and priced higher). Pro ($29.99/mo on Shopify) is the canonical recurring product.
   {
-    id: "monitoring",
-    name: "Weekly monitoring",
-    price: "$49",
-    cadence: "/mo",
-    blurb: "Track and defend your AI share of voice.",
-    features: ["Automatic weekly scans", "Visibility & share-of-voice trends", "Alerts on new lost prompts", "Everything in Full report"],
-    // No `cta` by default: until STRIPE_WEEKLY_MONITORING_URL is set the UI shows a
-    // "Coming soon" badge + waitlist join (the fulfillment loop isn't ready yet).
-    cta: "Weekly Monitoring — $49/mo",
-  },
-  {
+    // Concierge / done-with-you tier. Kept `comingSoon` (greyed, no CTA) on purpose: we
+    // signal it exists but don't solicit audit requests yet. id stays "founder_beta" so the
+    // existing event/entitlement plumbing is untouched; only the public-facing copy changed.
     id: "founder_beta",
-    name: "Founder beta",
+    name: "Founder Audit",
     price: "$99",
-    cadence: "beta",
-    blurb: "5 deep scans + direct founder review.",
+    cadence: "",
+    blurb: "A senior, human teardown of your AI visibility — done with you.",
     features: [
       "5 deep scans (30 prompts each)",
-      "Each report reviewed personally by the founder",
-      "Direct line to shape the product",
-      "Lock in beta pricing",
+      "Personally reviewed and walked through with you",
+      "A prioritized, store-specific action plan",
     ],
-    cta: "Founder Beta — $99",
+    comingSoon: true,
   },
 ];
 
-export const PAID_PLAN_IDS = ["full_report", "monitoring", "founder_beta"] as const;
+export const PAID_PLAN_IDS = ["full_report", "founder_beta"] as const;
