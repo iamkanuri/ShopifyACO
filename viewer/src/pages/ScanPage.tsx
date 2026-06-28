@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useConfig } from "../config";
 import type { ScanBrand, ScanForm } from "../scanTypes";
 import { generatePrompts, inferStore, startScan, suggestPrompts } from "../api";
 import { getStatus } from "../api";
@@ -10,9 +11,6 @@ interface PromptRow {
   selected: boolean;
 }
 
-// Per-call worst-case cost (max output tokens) by engine — mirrors src/engines/models.
-const PER_CALL: Record<string, number> = { openai: 0.00715, gemini: 0.00177, perplexity: 0.00076 };
-const MINI_CAP = 0.5;
 const MINI_PROMPTS = 5;
 
 const ENGINE_LABEL: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity" };
@@ -72,13 +70,16 @@ export function ScanPage() {
     return () => document.removeEventListener("keydown", onKey);
   }, [showConfirm]);
 
+  // Cost numbers come from the server (/api/config), never hardcoded in React — so the
+  // displayed estimate matches the backend's reservation (Codex #9).
+  const { scanCostPerCall, scanCostCapUsd } = useConfig();
   const enabledEngines = Object.entries(engines).filter(([, v]) => v).map(([k]) => k);
   const selected = prompts.filter((p) => p.selected);
   const estMaxCost = useMemo(
-    () => selected.length * enabledEngines.reduce((s, e) => s + (PER_CALL[e] ?? 0), 0),
-    [selected.length, enabledEngines.join(",")],
+    () => selected.length * enabledEngines.reduce((s, e) => s + (scanCostPerCall[e] ?? 0), 0),
+    [selected.length, enabledEngines.join(","), scanCostPerCall],
   );
-  const overCap = estMaxCost > MINI_CAP;
+  const overCap = estMaxCost > scanCostCapUsd;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   // Arrived from the landing page (or a deep link) with a store already typed —
@@ -428,7 +429,7 @@ export function ScanPage() {
                     <b>{selected.length * enabledEngines.length}</b> calls
                   </div>
                   <div className={overCap ? "over" : ""}>
-                    Est. max cost <b>${estMaxCost.toFixed(3)}</b> (cap ${MINI_CAP.toFixed(2)})
+                    Est. max cost <b>${estMaxCost.toFixed(3)}</b> (cap ${scanCostCapUsd.toFixed(2)})
                   </div>
                 </div>
               </div>
@@ -439,7 +440,7 @@ export function ScanPage() {
 
       {overCap && (
         <div className="banner-error">
-          Over the ${MINI_CAP.toFixed(2)} mini-scan cap. Deselect prompts or engines in “Customize prompts”.
+          Over the ${scanCostCapUsd.toFixed(2)} mini-scan cap. Deselect prompts or engines in “Customize prompts”.
         </div>
       )}
       {enabledEngines.length === 0 && (

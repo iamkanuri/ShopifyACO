@@ -72,6 +72,7 @@ import {
 } from "./runStore.js";
 import { runScanJob } from "./scanJob.js";
 import { PLANS } from "../pricing.js";
+import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 
 const MINI_PROMPTS = 5;
 const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
@@ -382,6 +383,15 @@ app.get("/api/config", (req, res) => {
     plans,
     miniPrompts: MINI_PROMPTS,
     fullReportPrompts: SCAN_MODES.deep.prompts,
+    // Accurate worst-case cost PER CALL per public engine (token cost + the fixed
+    // search/request fee), so the scan UI's estimate matches the backend reservation
+    // instead of the old token-only client constant (~4.6× under). Codex #9.
+    scanCostPerCall: {
+      openai: perCallMaxCostUsd(MODELS.openai),
+      gemini: perCallMaxCostUsd(MODELS.gemini),
+      perplexity: perCallMaxCostUsd(MODELS.perplexity),
+    } as Record<string, number>,
+    scanCostCapUsd: SCAN_MODES.mini.maxCostUsd,
     // Ready-to-paste legal/support URLs for the Shopify App Store listing (in-app pages).
     legal: {
       privacyUrl: `${base}/privacy`,

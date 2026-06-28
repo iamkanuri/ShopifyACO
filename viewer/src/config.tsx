@@ -21,6 +21,8 @@ export interface AppConfig {
   plans: Plan[];
   miniPrompts: number;
   fullReportPrompts: number;
+  scanCostPerCall: Record<string, number>;
+  scanCostCapUsd: number;
 }
 
 const DEFAULTS: AppConfig = {
@@ -32,6 +34,10 @@ const DEFAULTS: AppConfig = {
   plans: [],
   miniPrompts: 5,
   fullReportPrompts: 30,
+  // Accurate per-call worst-case (token + fixed search fee); the server overrides via
+  // /api/config. Fallback values so a pre-load estimate is never wildly off.
+  scanCostPerCall: { openai: 0.0272, gemini: 0.0118, perplexity: 0.0058 },
+  scanCostCapUsd: 0.5,
 };
 
 const Ctx = createContext<AppConfig>(DEFAULTS);

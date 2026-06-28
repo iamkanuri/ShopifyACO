@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import type { EngineAdapter } from "./engines/types.js";
-import { ASSUMED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, estimateCostUsd, fixedCostPerCall } from "./engines/models.js";
+import { perCallMaxCostUsd } from "./engines/models.js";
 
 export interface CliArgs {
   configPath: string;
@@ -78,9 +78,7 @@ export function helpText(): string {
  *  engine's fixed per-call (grounded-search) fee so the reservation isn't undercount. */
 export function estimateMaxCost(promptCount: number, adapters: EngineAdapter[]): number {
   let total = 0;
-  for (const a of adapters) {
-    total += promptCount * (estimateCostUsd(a.model, ASSUMED_INPUT_TOKENS, MAX_OUTPUT_TOKENS) + fixedCostPerCall(a.model));
-  }
+  for (const a of adapters) total += promptCount * perCallMaxCostUsd(a.model);
   return total;
 }
 

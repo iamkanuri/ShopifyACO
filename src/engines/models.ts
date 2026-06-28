@@ -54,3 +54,11 @@ export function estimateCostUsd(
     (outputTokens / 1_000_000) * price.outputPerM
   );
 }
+
+/** Worst-case cost of ONE call: max-output token cost PLUS the fixed search/request fee.
+ *  THE single source of truth for per-call cost — estimateMaxCost and the public /api/config
+ *  scan quote both use it, so the client's displayed estimate can't drift from the backend's
+ *  reservation (the old token-only client constant under-counted ~4.6× by omitting the fee). */
+export function perCallMaxCostUsd(model: string): number {
+  return estimateCostUsd(model, ASSUMED_INPUT_TOKENS, MAX_OUTPUT_TOKENS) + fixedCostPerCall(model);
+}
