@@ -37,7 +37,7 @@ const SNIPPET_RADIUS = 80; // ~160 chars total around the first mention
 // "Caraway is my top pick over GreenPan" must not mark GreenPan recommended, and
 // "1. Caraway vs GreenPan" must not give GreenPan rank 1. (" vs." with a period is already
 // handled by sentence-boundary splitting; only the period-less forms need listing here.)
-const COMPARATIVE_SEPARATORS = [" vs ", " versus ", " over ", " rather than ", " instead of ", " compared to "];
+const COMPARATIVE_SEPARATORS = [" vs ", " versus ", " over ", " rather than ", " instead of ", " compared to ", " better than ", " ahead of "];
 
 interface ListItem {
   rank: number; // 1-based; numbered lists use the printed number
@@ -133,12 +133,26 @@ const NEGATED_RECOMMEND = [
   "cannot recommend",
   "not the best",
   "not a great",
+  "not my top pick",
+  "not my pick",
+  "not my first choice",
+  "not my favorite",
+  "n't my top pick",
+  "n't my pick",
   "steer clear",
   "stay away",
   "avoid ",
 ];
 function hasNegatedRecommend(sentence: string): boolean {
   return NEGATED_RECOMMEND.some((p) => sentence.includes(p));
+}
+
+/** True when the brand mention is directly preceded by a negation/exclusion cue, e.g. the
+ *  "GreenPan" in "I recommend Caraway, not GreenPan." The recommendation language sits in the
+ *  same clause but applies to the OTHER brand — so the negated one must not inherit it. */
+function negatedBeforeMention(text: string, index: number): boolean {
+  const before = text.slice(Math.max(0, index - 16), index).toLowerCase();
+  return /(?:^|[\s,;:])(?:not|except|but not|excluding|skip|avoid)\s+$/.test(before);
 }
 
 /** Detect one brand's visibility within a single answer. */
@@ -168,7 +182,7 @@ function detectBrand(text: string, brand: BrandConfig, isOwn: boolean): BrandDet
   }
 
   const sentence = localSentence(text, match.index);
-  const negated = hasNegatedRecommend(sentence);
+  const negated = hasNegatedRecommend(sentence) || negatedBeforeMention(text, match.index);
   let status: RecommendationStatus = "mentioned_neutral";
   let reason: string | undefined;
 

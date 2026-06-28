@@ -125,6 +125,28 @@ test("COMPARATIVE: 'best overall' is NOT split by the ' over ' rule", () => {
   assert.equal(d.status, "recommended");
 });
 
+test("NEGATION: 'I recommend X, not Y' → only X recommended (comma-scoped 'not Y')", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  for (const text of ["I recommend Caraway, not GreenPan.", "Go with Caraway, not GreenPan."]) {
+    assert.equal(own(text, c).status, "recommended", text);
+    assert.notEqual(compFor(text, c, "GreenPan").status, "recommended", text);
+  }
+});
+
+test("COMPARATIVE: 'X is the best and is better than Y' → only X recommended", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "Caraway is the best choice and is better than GreenPan.";
+  assert.equal(own(text, c).status, "recommended");
+  assert.notEqual(compFor(text, c, "GreenPan").status, "recommended");
+});
+
+test("NEGATION: 'X and Y are not my top picks' → neither recommended", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "GreenPan and Caraway are not my top picks.";
+  assert.notEqual(own(text, c).status, "recommended");
+  assert.notEqual(compFor(text, c, "GreenPan").status, "recommended");
+});
+
 test("first-mention order recorded", () => {
   const c = cfg("Caraway", ["GreenPan"]);
   const text = "GreenPan is popular, and Caraway is too.";
