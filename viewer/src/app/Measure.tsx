@@ -1,27 +1,40 @@
 import { useState } from "react";
+import { useConfig } from "../config";
 import { diagnose, getBenchmarks, runBenchmark, type RunBenchmarkResult } from "./appApi";
-import { DemoBadge, Pct, StatePane, useLoaded } from "./ui";
+import { ConfirmRun, DemoBadge, Pct, StatePane, useLoaded } from "./ui";
 import { navigate } from "../router";
 
-// Measure: start the loop. A merchant enters their brand + category + competitors and
-// runs a benchmark across ChatGPT/Gemini/Perplexity. The preview is MOCK ($0); a live
-// run (real engine spend) is an explicit opt-in. Below: their recent runs.
+// Measure: start the loop. A merchant enters their brand + category + competitors and runs
+// a benchmark across ChatGPT/Gemini/Perplexity. Every run is a REAL, cost-CONFIRMED run
+// (metered by the plan + the daily spend cap) — there is no silent $0 mock preview tier.
+const MAX_MEASURE_PROMPTS = 12; // mirrors buildShopBenchmarkConfig's default cap
+const MEASURE_ENGINES = ["openai", "gemini", "perplexity"];
+
 export function Measure() {
   const runs = useLoaded(() => getBenchmarks(), []);
+  const { scanCostPerCall } = useConfig();
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [competitors, setCompetitors] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<RunBenchmarkResult | null>(null);
   const [err, setErr] = useState("");
 
-  async function run() {
+  // Worst-case estimate (server-sourced per-call costs from /api/config), shown before spend.
+  const estimateUsd = MAX_MEASURE_PROMPTS * MEASURE_ENGINES.reduce((s, e) => s + (scanCostPerCall[e] ?? 0), 0);
+
+  function requestRun() {
     setErr(""); setResult(null);
     if (!brand.trim() || !category.trim()) { setErr("Brand and category are required."); return; }
+    setConfirmOpen(true);
+  }
+
+  async function run() {
     setBusy(true);
-    // Always a REAL run (metered by the plan + the daily spend cap) — no mock tier.
     const r = await runBenchmark({ brand: brand.trim(), category: category.trim(), competitors: competitors.split(",").map((s) => s.trim()).filter(Boolean), live: true });
     setBusy(false);
+    setConfirmOpen(false);
     if (r.demo) { setErr("Open the app from the Shopify admin (Apps → AI Visibility) to run against your store."); return; }
     if (!r.ok) { setErr(r.error ?? "Run failed."); return; }
     setResult(r);
@@ -51,9 +64,19 @@ export function Measure() {
           <label className="al-field al-measure-wide"><span className="al-set-k">Competitors (comma-separated)</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="Poppi, Culture Pop, Health-Ade" /></label>
         </div>
         <div className="al-measure-actions">
-          <button className="btn btn-primary" disabled={busy} onClick={run}>{busy ? "Running…" : "Run benchmark"}</button>
+          <button className="btn btn-primary" disabled={busy} onClick={requestRun}>{busy ? "Running…" : "Run benchmark"}</button>
           <span className="muted al-fineprint" style={{ margin: 0 }}>Real AI calls across ChatGPT, Gemini and Perplexity. Cost-capped; metered by your plan.</span>
         </div>
+        <ConfirmRun
+          open={confirmOpen}
+          title="Run a live benchmark?"
+          detail={`Up to ${MAX_MEASURE_PROMPTS} buyer-intent prompts × 3 assistants (ChatGPT, Gemini, Perplexity).`}
+          estimateUsd={estimateUsd}
+          busy={busy}
+          confirmLabel="Yes, run benchmark"
+          onConfirm={run}
+          onCancel={() => setConfirmOpen(false)}
+        />
         {err && <div className="al-note err" style={{ marginTop: 12 }}>{err}</div>}
         {result?.ok && (
           <div className="al-measure-result">

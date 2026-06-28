@@ -76,6 +76,39 @@ export function SeverityPill({ severity }: { severity: string }) {
   return <span className={`al-sev tone-${tone}`}>{severity}</span>;
 }
 
+/** Shared cost-confirmation before any LIVE (real-spend) run — used by Measure and
+ *  Monitoring "Run now" so real money is never spent on a single click without consent.
+ *  Shows an estimated max cost when known, else a generic real-spend warning. */
+export function ConfirmRun({ open, title, detail, estimateUsd, busy, confirmLabel = "Yes, run", onConfirm, onCancel }: {
+  open: boolean; title: string; detail?: string; estimateUsd?: number | null; busy?: boolean;
+  confirmLabel?: string; onConfirm: () => void; onCancel: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirmrun-title" onClick={(e) => e.stopPropagation()}>
+        <h3 id="confirmrun-title">{title}</h3>
+        {detail && <p className="muted">{detail}</p>}
+        <p style={{ margin: "8px 0" }}>
+          {estimateUsd != null
+            ? <>Estimated max cost <b>${estimateUsd.toFixed(2)}</b> in real AI spend — within your daily cost cap.</>
+            : <>This runs a <b>real</b> benchmark (real AI spend), within your daily cost cap.</>}
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button className="btn btn-primary" disabled={busy} onClick={onConfirm}>{busy ? "Running…" : confirmLabel}</button>
+          <button className="btn" disabled={busy} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function KindTag({ kind }: { kind: string }) {
   const label = kind === "evidence_backed" ? "Evidence-backed" : kind === "general_hygiene" ? "General hygiene" : kind === "write_products" ? "Auto-apply" : kind === "copy_ready" ? "Copy-ready" : kind;
   return <span className={`al-kind kind-${kind}`}>{label}</span>;

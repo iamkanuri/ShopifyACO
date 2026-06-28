@@ -144,7 +144,7 @@ function DashboardEmpty() {
       <div className="card al-onboard">
         <div className="al-onboard-head">
           <h3>You're connected — let's get your first numbers</h3>
-          <p className="muted">A benchmark asks ChatGPT, Gemini and Perplexity buyer-intent questions and measures whether they recommend you. It's free to preview ($0 mock) and quick.</p>
+          <p className="muted">A benchmark asks ChatGPT, Gemini and Perplexity buyer-intent questions and measures whether they recommend you. It makes real AI calls (cost-capped, metered by your plan) and shows the estimated cost before you run.</p>
         </div>
         <div className="al-onboard-steps">
           <div className="al-onboard-step">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { AppScheduleRow } from "./fixtures";
 import { acknowledgeAlert, createSchedule, deleteSchedule, getAlerts, getBenchmarks, getSchedules, runSchedule } from "./appApi";
 import { CADENCE_OPTIONS } from "./constants";
-import { DemoBadge, SeverityPill, StatePane, useLoaded } from "./ui";
+import { ConfirmRun, DemoBadge, SeverityPill, StatePane, useLoaded } from "./ui";
 
 // Monitoring: recurring runs + alerts. Alerts only fire on statistically credible
 // change (the CI of the difference excludes 0) — no cry-wolf on run-to-run noise.
@@ -67,12 +67,14 @@ export function Monitoring() {
 // visibility, and delete. Re-runs raise an alert only on a statistically credible change.
 function ScheduleCard({ sc, onChanged }: { sc: AppScheduleRow; onChanged: () => void }) {
   const [busy, setBusy] = useState<null | "run" | "del">(null);
+  const [confirmRun, setConfirmRun] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
 
   async function runNow() {
     setBusy("run"); setMsg(null);
     const r = await runSchedule(sc.id, { live: true });
     setBusy(null);
+    setConfirmRun(false);
     if (r.ok) {
       if (r.data?.skipped) { setMsg({ text: `Skipped: ${r.data.skipped}.`, tone: "info" }); }
       else {
@@ -85,6 +87,7 @@ function ScheduleCard({ sc, onChanged }: { sc: AppScheduleRow; onChanged: () => 
   }
 
   async function del() {
+    if (!window.confirm("Delete this schedule? It will stop re-running and alerting.")) return;
     setBusy("del");
     await deleteSchedule(sc.id);
     setBusy(null);
@@ -103,11 +106,20 @@ function ScheduleCard({ sc, onChanged }: { sc: AppScheduleRow; onChanged: () => 
         {sc.last_run_at ? ` · last run ${new Date(sc.last_run_at).toLocaleDateString()}` : " · not run yet"}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <button className="btn btn-primary" disabled={busy !== null} onClick={runNow}>{busy === "run" ? "Running…" : "Run now"}</button>
+        <button className="btn btn-primary" disabled={busy !== null} onClick={() => setConfirmRun(true)}>{busy === "run" ? "Running…" : "Run now"}</button>
         <button className="btn al-ghost" disabled={busy !== null} onClick={del}>{busy === "del" ? "Deleting…" : "Delete"}</button>
       </div>
       <p className="muted al-fineprint" style={{ margin: "6px 0 0" }}>Run now does a real benchmark — counts toward your daily cost cap.</p>
       {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 8 }}>{msg.text}</div>}
+      <ConfirmRun
+        open={confirmRun}
+        title="Run this benchmark now?"
+        detail="Re-runs the schedule's benchmark immediately so you can see a result without waiting for the cadence."
+        busy={busy === "run"}
+        confirmLabel="Yes, run now"
+        onConfirm={runNow}
+        onCancel={() => setConfirmRun(false)}
+      />
     </div>
   );
 }
