@@ -36,13 +36,13 @@ export function TermsPage() {
 
       <h3>Billing</h3>
       <ul>
-        <li>Paid plans are billed through Stripe. Prices and what each plan includes are shown
-          before you pay.</li>
-        <li>One-time purchases are charged once; subscriptions renew until cancelled. You can manage
-          or cancel a subscription through the billing portal; access continues until the end of the
-          paid period.</li>
-        <li>Refunds are handled case by case — contact us. During beta, some fulfilment is manual
-          and delivered by email; that's stated at checkout.</li>
+        <li>Plans for the Shopify App Store app are billed <b>through Shopify</b>. You review the
+          price and what's included before approving, and you manage or cancel the subscription from
+          your Shopify admin; access continues until the end of the paid period.</li>
+        <li>Purchases made on our website (e.g. one-time reports) are billed <b>through Stripe</b>.
+          Prices and what each purchase includes are shown before you pay. During beta, some
+          fulfilment is manual and delivered by email; that's stated at checkout.</li>
+        <li>Refunds are handled case by case — contact us.</li>
       </ul>
 
       <h3>Availability &amp; changes</h3>

@@ -304,7 +304,7 @@ export function ScanPage() {
             Run free scan
           </button>
         </form>
-        <div className="hero-trust">Free scan · results sent to your email</div>
+        <div className="hero-trust">Free scan · instant on-screen report</div>
       </div>
     );
   }

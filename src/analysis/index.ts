@@ -61,7 +61,7 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
   // Plain-English "what this means" framing (Part 7).
   const headline =
     mentionGap.mention.rate > mentionGap.recommendation.rate * 1.4
-      ? `AI assistants know ${cfg.brand.name} — but rarely choose it.`
+      ? `AI assistants mention ${cfg.brand.name} more than they recommend it.`
       : mentionGap.mention.rate === 0
         ? `AI assistants don't surface ${cfg.brand.name} yet.`
         : `${cfg.brand.name} has room to win more AI recommendations.`;
@@ -115,9 +115,9 @@ function buildExecutiveInsight(args: {
   const { brand, mentionGap, threat, weakest, transactionalLostLabels, n } = args;
   const parts: string[] = [];
   parts.push(
-    `Across ${n} grounded answers in this scan, AI assistants know ${brand} ` +
-      `(mentioned ${fmtRate(mentionGap.mention)}) but rarely choose it ` +
-      `(recommended ${fmtRate(mentionGap.recommendation)}).`,
+    `Across ${n} grounded answers in this scan, AI assistants mention ${brand} ` +
+      `(${fmtRate(mentionGap.mention)}) more often than they recommend it ` +
+      `(${fmtRate(mentionGap.recommendation)}).`,
   );
   if (threat) {
     const mult = threat.recommendationMultiplier;

@@ -39,7 +39,7 @@ export function LandingPage() {
           <ConnectShopify className="as-link hero-connect" label="Connect Shopify" />
           <Link className="hero-seeapp" to="/app">See the app →</Link>
         </div>
-        <div className="hero-trust">Free · {miniPrompts} shopper prompts across 3 AI assistants · results by email</div>
+        <div className="hero-trust">Free · {miniPrompts} shopper prompts across 3 AI assistants · instant on-screen report</div>
       </section>
 
       {/* Quiet secondary content below the fold. */}

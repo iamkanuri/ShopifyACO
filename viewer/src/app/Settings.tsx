@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useConfig } from "../config";
+import { Link } from "../router";
 import { ConnectShopify } from "../components/ConnectShopify";
 import { getSchedules, getShopInfo, updateSchedule } from "./appApi";
 import { CADENCE_OPTIONS } from "./constants";
 import { DemoBadge, StatePane, useLoaded } from "./ui";
 
-// Settings: connection state, granted scopes, plan, and recurring-schedule controls.
-// Plan/billing is read from the public config (Phase 11 wires real entitlements).
+// Settings: connection state, granted scopes, plan pointer, and recurring-schedule controls.
+// Plan/billing for the embedded app is Shopify Managed Pricing (Free/Pro) — surfaced in full
+// on the Billing screen; here we just link to it (never the public web Stripe catalogue).
 export function Settings({ connected }: { connected: boolean }) {
-  const { plans, contactEmail } = useConfig();
+  const { contactEmail } = useConfig();
   const s = useLoaded(() => getSchedules(), []);
   const info = useLoaded(() => getShopInfo(), []);
   const schedules = s.data?.schedules ?? [];
@@ -40,15 +42,9 @@ export function Settings({ connected }: { connected: boolean }) {
 
       <div className="section">
         <h2>Plan</h2>
-        <div className="grid al-plangrid">
-          {(plans ?? []).map((pl) => (
-            <div key={pl.id} className="card al-plan2">
-              <div className="al-plan2-name">{pl.name}</div>
-              <div className="al-plan2-price">{pl.price}<span className="muted">{pl.cadence ? ` ${pl.cadence}` : ""}</span></div>
-              <p className="muted">{pl.blurb}</p>
-            </div>
-          ))}
-          {(plans ?? []).length === 0 && <div className="al-state">Plans load from your live config.</div>}
+        <div className="card al-setrow">
+          <div><div className="al-set-k">Billing</div><div className="muted">Plans are billed through Shopify — Free &amp; Pro.</div></div>
+          <Link to="/app/billing" className="btn">Manage plan</Link>
         </div>
       </div>
 

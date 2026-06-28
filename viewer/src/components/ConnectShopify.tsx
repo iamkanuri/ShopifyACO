@@ -46,7 +46,7 @@ export function ConnectShopify({ className = "", label = "Connect Shopify" }: { 
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="connect-title" onClick={(e) => e.stopPropagation()}>
             <button className="modal-x" onClick={() => setOpen(false)} aria-label="Close">×</button>
             <h3 id="connect-title">Connect your Shopify store</h3>
-            <p className="muted">Enter your store's address — we'll send you to Shopify to approve a read-only connection.</p>
+            <p className="muted">Enter your store's address — we'll send you to Shopify to review and approve the connection.</p>
             <form onSubmit={submit}>
               <input
                 className="modal-input"
@@ -60,7 +60,7 @@ export function ConnectShopify({ className = "", label = "Connect Shopify" }: { 
               />
               {err && <div className="modal-err">{err}</div>}
               <button type="submit" className="btn btn-primary">Continue to Shopify →</button>
-              <p className="modal-fine">We only request read access to your products. You approve the connection on Shopify, and can disconnect anytime.</p>
+              <p className="modal-fine">Shopify shows you exactly what's requested — read access to your product catalog, AI-referral attribution, and approval-gated SEO updates to your products. You approve it on Shopify and can disconnect anytime.</p>
             </form>
           </div>
         </div>
