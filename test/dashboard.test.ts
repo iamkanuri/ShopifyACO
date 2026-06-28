@@ -113,7 +113,15 @@ test("dashboardHandler: no run → hasData false; after a mock run → the merch
     const run = await executeBenchmark(benchmarkId, { mock: true });
     assert.ok(run.runId > 0);
 
-    // 2) After a completed run → the merchant's own metrics.
+    // 2) A MOCK run is quarantined from the dashboard (S7) — it must NOT become the latest,
+    //    so a deterministic mock fixture can't masquerade as the merchant's real numbers.
+    const mockView = make();
+    await dashboardHandler(mockView.req, mockView.res as never);
+    assert.equal((mockView.res.payload as DashboardEnvelope).hasData, false, "mock run must not populate the dashboard");
+
+    // 3) Promote it to a live-mode run (its observations stand in for real ones at $0) and
+    //    confirm the dashboard now surfaces the merchant's own metrics.
+    await pgQuery("update benchmark_runs set mode='live' where id=$1", [run.runId]);
     const live = make();
     await dashboardHandler(live.req, live.res as never);
     const env = live.res.payload as DashboardEnvelope;
