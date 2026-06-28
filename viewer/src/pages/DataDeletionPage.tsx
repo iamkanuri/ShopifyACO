@@ -14,13 +14,17 @@ export function DataDeletionPage() {
       <ul>
         <li><b>Uninstalling immediately revokes our access</b> and deletes the encrypted access
           token we held for your store — we can no longer read your catalog.</li>
-        <li>Shopify also sends us standard data-erasure requests on your behalf
-          (<code>shop/redact</code>, <code>customers/redact</code>). We honor these. Note that we do
-          not store your customers' personal information in the first place — the app reads product
-          data, not customer data.</li>
-        <li>To also delete the analysis history and benchmark results tied to your store, email{" "}
-          {contactEmail ? <a href={`mailto:${contactEmail}`}>{contactEmail}</a> : "us"} and we'll
-          remove them.</li>
+        <li><b>Your store's data is then erased automatically.</b> About 48 hours after uninstall,
+          Shopify sends us <code>shop/redact</code> and we delete <b>everything</b> tied to your
+          store — catalog, benchmarks and answers, findings, fix proposals, experiments, monitoring,
+          AI-referral attribution, and your billing grant. You don't need to email us for this.</li>
+        <li>We don't store your customers' personal details (names, emails, addresses, orders). The
+          AI-referral Web Pixel does record <b>pseudonymous</b> shopper session data — the assistant a
+          visit came from, the landing path, the referrer host, and a salted IP hash — only with the
+          shopper's analytics consent. That's auto-deleted after 90 days and erased with the rest on
+          <code> shop/redact</code>.</li>
+        <li>Want erasure sooner, or have a specific request? Email{" "}
+          {contactEmail ? <a href={`mailto:${contactEmail}`}>{contactEmail}</a> : "us"}.</li>
       </ul>
 
       <h3>If you used the free scan (no store connected)</h3>
