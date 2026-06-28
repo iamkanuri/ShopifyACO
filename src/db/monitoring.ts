@@ -15,6 +15,11 @@ export interface ScheduleRow {
   next_run_at: string;
   last_run_at: string | null;
   last_run_id: number | null;
+  // Populated by listSchedules (joined from the benchmark) so the UI can name a schedule
+  // by what it watches, not a generic "Re-run benchmark". Absent on single-row lookups.
+  benchmark_name?: string | null;
+  brand?: string | null;
+  category?: string | null;
 }
 
 export async function createSchedule(shop: string, s: { kind?: string; benchmarkId?: number | null; experimentId?: number | null; cadence: Cadence }): Promise<number> {
@@ -43,7 +48,13 @@ export async function getSchedule(id: number): Promise<ScheduleRow | null> {
 
 export async function listSchedules(shop: string): Promise<ScheduleRow[]> {
   const { rows } = await pgQuery<ScheduleRow & { id: string; benchmark_id: string | null; experiment_id: string | null; last_run_id: string | null }>(
-    "select * from schedules where shop_domain=$1 order by created_at desc", [shop],
+    `select s.*, b.name as benchmark_name,
+            b.config->'brand'->>'name' as brand,
+            b.config->>'category' as category
+       from schedules s
+       left join benchmarks b on b.id = s.benchmark_id
+      where s.shop_domain=$1 order by s.created_at desc`,
+    [shop],
   );
   return rows.map(toRow);
 }

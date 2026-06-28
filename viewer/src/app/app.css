@@ -53,6 +53,8 @@
 .tone-warn { color: var(--warn) !important; background: var(--warn-soft); border-color: rgba(203,163,92,0.3) !important; }
 .status-applied { color: var(--good); background: var(--good-soft); }
 .status-approved { color: var(--warn); background: var(--warn-soft); }
+.status-live { color: var(--good); background: var(--good-soft); }
+.status-mock { color: var(--ink-3); background: var(--surface-2); }
 
 /* states */
 .al-state { padding: 28px; text-align: center; color: var(--ink-3); font-size: 13px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }

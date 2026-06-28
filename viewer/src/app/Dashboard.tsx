@@ -116,7 +116,7 @@ export function Dashboard() {
 
       <div className="section">
         <h2>Open alerts <DemoBadge show={alerts.demo} error={alerts.error} /></h2>
-        <StateList loading={alerts.loading} items={alerts.data?.alerts ?? []} empty="No open alerts — your visibility is steady.">
+        <StateList loading={alerts.loading} items={alerts.data?.alerts ?? []} empty="No open alerts. Add a Monitoring schedule to get alerted when your AI visibility changes.">
           {(alerts.data?.alerts ?? []).map((a) => (
             <div key={a.id} className="card al-alert">
               <div className="al-alert-top"><SeverityPill severity={a.severity} /><span className="al-alert-title">{a.title}</span></div>

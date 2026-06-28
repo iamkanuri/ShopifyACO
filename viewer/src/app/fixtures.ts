@@ -29,10 +29,10 @@ export interface AppExperimentRow {
 export interface Proportion { successes: number; n: number; rate: number | null; ciLow: number; ciHigh: number; }
 
 export interface AppShopInfo { shop: string; status: string; plan: string | null; scopes: string[]; writeProducts: boolean; }
-export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; }
+export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; benchmark_name?: string | null; brand?: string | null; category?: string | null; }
 export interface AppAlertRow { id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string; }
 export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
-export interface AppRunRow { id: number; benchmark_id: number | null; tier: string; status: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
+export interface AppRunRow { id: number; benchmark_id: number | null; tier: string; status: string; mode?: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
 
 export interface AppDashboardData {
   score: number;
@@ -208,7 +208,7 @@ export const DEMO = {
   },
 
   schedules: <AppScheduleRow[]>[
-    { id: 31, kind: "benchmark", cadence: "weekly", enabled: true, next_run_at: "2026-06-29T15:00:00Z", last_run_at: "2026-06-22T15:00:00Z" },
+    { id: 31, kind: "benchmark", cadence: "weekly", enabled: true, next_run_at: "2026-06-29T15:00:00Z", last_run_at: "2026-06-22T15:00:00Z", benchmark_name: "Olipop — AI visibility", brand: "Olipop", category: "prebiotic soda" },
   ],
 
   alerts: <AppAlertRow[]>[
@@ -221,8 +221,8 @@ export const DEMO = {
   ],
 
   runs: <AppRunRow[]>[
-    { id: 142, benchmark_id: 7, tier: "monitoring", status: "completed", observation_count: 240, cost_usd: 0.06, prompt_count: 16, started_at: "2026-06-22T15:00:00Z" },
-    { id: 131, benchmark_id: 7, tier: "monitoring", status: "completed", observation_count: 234, cost_usd: 0.06, prompt_count: 16, started_at: "2026-06-15T15:00:00Z" },
+    { id: 142, benchmark_id: 7, tier: "monitoring", status: "completed", mode: "live", observation_count: 240, cost_usd: 0.06, prompt_count: 16, started_at: "2026-06-22T15:00:00Z" },
+    { id: 131, benchmark_id: 7, tier: "monitoring", status: "completed", mode: "live", observation_count: 234, cost_usd: 0.06, prompt_count: 16, started_at: "2026-06-15T15:00:00Z" },
   ],
 
   billing: <AppBilling>{

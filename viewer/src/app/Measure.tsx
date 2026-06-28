@@ -93,12 +93,15 @@ export function Measure() {
         <StatePane loading={runs.loading} empty={(runs.data?.runs ?? []).length === 0} emptyText="No runs yet. Run your first benchmark above.">
           <div className="card al-table-wrap">
             <table className="al-table">
-              <thead><tr><th>Run</th><th>When</th><th>Prompts</th><th>Observations</th><th>Cost</th><th>Status</th></tr></thead>
+              <thead><tr><th>Run</th><th>When</th><th>Mode</th><th>Prompts</th><th>Observations</th><th>Cost</th><th>Status</th></tr></thead>
               <tbody>
                 {(runs.data?.runs ?? []).map((r) => (
                   <tr key={r.id}>
                     <td>#{r.id}</td>
                     <td className="muted">{new Date(r.started_at).toLocaleDateString()}</td>
+                    <td>{r.mode === "mock"
+                      ? <span className="al-status status-mock" title="Deterministic $0 preview — not a real AI measurement">Mock</span>
+                      : <span className="al-status status-live" title="Real AI calls (metered)">Live</span>}</td>
                     <td>{r.prompt_count}</td>
                     <td>{r.observation_count}</td>
                     <td className="muted">${Number(r.cost_usd).toFixed(2)}</td>

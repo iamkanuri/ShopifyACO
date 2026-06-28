@@ -58,10 +58,12 @@ export async function getRun(runId: number): Promise<RunRow | null> {
   return r ? { id: Number(r.id), benchmark_id: r.benchmark_id != null ? Number(r.benchmark_id) : null, shop_domain: r.shop_domain, tier: r.tier, status: r.status, observation_count: r.observation_count } : null;
 }
 
-/** Recent benchmark runs for a shop (for the in-app Measure/runs view). */
+/** Recent benchmark runs for a shop (for the in-app Measure/runs view). `mode`
+ *  distinguishes LIVE (real engine spend) from MOCK ($0 deterministic) runs so the
+ *  history can't pass a mock fixture run off as a real measurement. */
 export async function listRunsForShop(shop: string, limit = 20): Promise<Array<Record<string, unknown>>> {
   const { rows } = await pgQuery(
-    `select id, benchmark_id, tier, status, observation_count, cost_usd, prompt_count, started_at, finished_at
+    `select id, benchmark_id, tier, status, mode, observation_count, cost_usd, prompt_count, started_at, finished_at
        from benchmark_runs where shop_domain=$1 order by started_at desc limit $2`,
     [shop, Math.min(100, Math.max(1, limit))],
   );

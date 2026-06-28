@@ -13,6 +13,20 @@ export function Monitoring() {
   const schedules = s.data?.schedules ?? [];
   const alerts = a.data?.alerts ?? [];
 
+  // State-specific empty copy: "no open alerts" must NOT imply "visibility is steady"
+  // when monitoring has never actually run. Only an enabled schedule that has completed a
+  // run can support the claim that no credible change was found.
+  const anyRan = schedules.some((sc) => sc.last_run_at != null);
+  const anyEnabled = schedules.some((sc) => sc.enabled);
+  const alertsEmptyText =
+    schedules.length === 0
+      ? "No alerts yet. Create a schedule above to start watching for changes on a cadence."
+      : !anyEnabled
+        ? "No open alerts — but every schedule is paused, so nothing is being monitored right now."
+        : !anyRan
+          ? "No alerts yet — monitoring hasn't completed a run. Alerts appear here once a scheduled run detects a statistically credible change."
+          : "No open alerts — no statistically credible change since the last completed run.";
+
   async function ack(id: number) {
     setBusy(id);
     await acknowledgeAlert(id);
@@ -43,7 +57,8 @@ export function Monitoring() {
 
       <div className="section">
         <h2>Alerts</h2>
-        <StatePane loading={a.loading} empty={alerts.length === 0} emptyText="No open alerts — visibility is steady.">
+        <p className="muted al-fineprint" style={{ margin: "0 0 10px" }}>Alerts show here in-app (and in server logs). Email delivery isn't enabled yet — there's nowhere to set a recipient.</p>
+        <StatePane loading={a.loading} empty={alerts.length === 0} emptyText={alertsEmptyText}>
           <div className="grid">
             {alerts.map((al) => (
               <div key={al.id} className="card al-alert">
@@ -94,16 +109,27 @@ function ScheduleCard({ sc, onChanged }: { sc: AppScheduleRow; onChanged: () => 
     onChanged();
   }
 
+  // Name the card by what it watches (brand · category) rather than a generic action label.
+  const watched = sc.brand
+    ? `${sc.brand}${sc.category ? ` · ${sc.category}` : ""}`
+    : sc.benchmark_name || (sc.kind === "verification" ? "Applied fix" : "Benchmark");
+  const action = sc.kind === "verification" ? "Re-verify fix" : "Re-run benchmark";
+
   return (
     <div className="card al-sched">
       <div className="al-sched-main">
         <span className={`al-dot ${sc.enabled ? "on" : "off"}`} />
-        <b>{sc.kind === "verification" ? "Re-verify fix" : "Re-run benchmark"}</b>
-        <span className="al-cadence">{sc.cadence}</span>
+        <b>{watched}</b>
+        <span className="al-cadence">{sc.enabled ? sc.cadence : "paused"}</span>
       </div>
       <div className="muted al-sched-meta">
-        next {new Date(sc.next_run_at).toLocaleDateString()}
-        {sc.last_run_at ? ` · last run ${new Date(sc.last_run_at).toLocaleDateString()}` : " · not run yet"}
+        {action}
+        {!sc.enabled
+          ? " · paused — won't run until re-enabled"
+          : <>
+              {" · next "}{new Date(sc.next_run_at).toLocaleDateString()}
+              {sc.last_run_at ? ` · last run ${new Date(sc.last_run_at).toLocaleDateString()}` : " · not run yet"}
+            </>}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         <button className="btn btn-primary" disabled={busy !== null} onClick={() => setConfirmRun(true)}>{busy === "run" ? "Running…" : "Run now"}</button>
