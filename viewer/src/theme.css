@@ -401,6 +401,10 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .field > span { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .field input, .comp-row input, .add-prompt input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 13.5px; font-family: inherit; }
 .field input:focus, .comp-row input:focus, .add-prompt input:focus { outline: none; border-color: var(--accent); }
+.field input[aria-invalid="true"], .comp-row input[aria-invalid="true"] { border-color: var(--bad); }
+.field-error { color: var(--bad); font-size: 12px; font-weight: 500; margin-top: 2px; }
+.scan-error-summary ul { margin: 6px 0 0; padding-left: 18px; }
+.scan-error-summary li { margin: 2px 0; }
 .comp-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 10px; }
 .scan-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .suggest-msg { font-size: 12.5px; color: var(--ink-2); margin-top: 8px; background: var(--accent-soft); padding: 8px 12px; border-radius: 8px; }

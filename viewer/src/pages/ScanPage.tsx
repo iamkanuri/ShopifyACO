@@ -4,6 +4,9 @@ import type { ScanBrand, ScanForm } from "../scanTypes";
 import { generatePrompts, inferStore, startScan, suggestPrompts } from "../api";
 import { getStatus } from "../api";
 import { navigate } from "../router";
+import { useModalFocus } from "../useModalFocus";
+
+interface FieldErrors { brand?: string; category?: string; email?: string; competitors?: string }
 
 interface PromptRow {
   category: string;
@@ -59,16 +62,21 @@ export function ScanPage() {
   );
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [progress, setProgress] = useState<string[]>([]);
   const inferred = useRef(false);
 
-  // a11y: close the confirm dialog on Escape while it's open.
-  useEffect(() => {
-    if (!showConfirm) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowConfirm(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [showConfirm]);
+  // Field refs so we can move focus to the FIRST invalid field on a failed submit.
+  const brandRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const firstCompRef = useRef<HTMLInputElement>(null);
+
+  // a11y: confirm dialog gets initial focus, a focus trap, Escape, and focus restoration.
+  const confirmRef = useModalFocus<HTMLDivElement>(showConfirm, () => setShowConfirm(false));
+
+  const clearFieldError = (k: keyof FieldErrors) =>
+    setFieldErrors((f) => (f[k] ? { ...f, [k]: undefined } : f));
 
   // Cost numbers come from the server (/api/config), never hardcoded in React — so the
   // displayed estimate matches the backend's reservation (Codex #9).
@@ -108,11 +116,21 @@ export function ScanPage() {
     };
   }
 
-  function formValid(): string | null {
-    if (!brand.name.trim()) return "Enter your brand name.";
-    if (!category.trim()) return "Enter a product category.";
-    if (!competitors.some((c) => c.name.trim())) return "Add at least one competitor.";
-    return null;
+  // Collect ALL invalid fields at once (not one-error-per-submit) so the shopper sees the
+  // whole list. `requireEmail` is on only for the run, not for prompt generation.
+  function collectErrors(requireEmail: boolean): FieldErrors {
+    const e: FieldErrors = {};
+    if (!brand.name.trim()) e.brand = "Enter your brand name.";
+    if (!category.trim()) e.category = "Enter a product category.";
+    if (!competitors.some((c) => c.name.trim())) e.competitors = "Add at least one competitor.";
+    if (requireEmail && !emailValid) e.email = "Enter a valid email address to run the scan.";
+    return e;
+  }
+
+  // Move focus to the first invalid field, in visual (top-to-bottom) order.
+  function focusFirstError(e: FieldErrors): void {
+    const target = e.brand ? brandRef : e.category ? categoryRef : e.email ? emailRef : e.competitors ? firstCompRef : null;
+    target?.current?.focus();
   }
 
   /** Ask the server to auto-detect brand/category/competitors/prompts from the
@@ -162,11 +180,12 @@ export function ScanPage() {
   /** Ensure prompts exist (generate + auto-select the mini default). */
   async function ensurePrompts(): Promise<PromptRow[] | null> {
     if (prompts.length) return prompts;
-    const v = formValid();
-    if (v) {
-      setError(v);
+    const errs = collectErrors(false); // email not needed just to generate prompts
+    if (Object.keys(errs).length) {
+      setFieldErrors(errs);
       return null;
     }
+    setFieldErrors({});
     setError("");
     setBusy("generating");
     try {
@@ -222,7 +241,14 @@ export function ScanPage() {
   }
 
   async function openConfirm() {
-    if (!emailValid) return setError("Enter a valid email to run.");
+    // Validate every field up front, surface the full list, and focus the first invalid one.
+    const errs = collectErrors(true);
+    if (Object.keys(errs).length) {
+      setFieldErrors(errs);
+      focusFirstError(errs);
+      return;
+    }
+    setFieldErrors({});
     const rows = await ensurePrompts();
     if (!rows) return;
     if (rows.filter((p) => p.selected).length === 0) {
@@ -311,6 +337,7 @@ export function ScanPage() {
   }
 
   // ---- step 2: details (auto-detected, editable) ----
+  const errorList = [fieldErrors.brand, fieldErrors.category, fieldErrors.email, fieldErrors.competitors].filter(Boolean) as string[];
   return (
     <div className="scanpage">
       <h1 className="report-headline">Confirm your store</h1>
@@ -322,18 +349,37 @@ export function ScanPage() {
 
       {inferNote && busy !== "inferring" && <div className="infer-note">{inferNote}</div>}
 
+      {errorList.length > 0 && (
+        <div className="banner-error scan-error-summary" role="alert">
+          <strong>Please fix {errorList.length === 1 ? "this" : "these"} before running:</strong>
+          <ul>{errorList.map((m) => <li key={m}>{m}</li>)}</ul>
+        </div>
+      )}
+
       <fieldset className="scan-fields" disabled={busy === "inferring"}>
         <div className="card formcard">
           <h3>Your store</h3>
           <div className="form-grid">
-            <Field label="Brand name *">
-              <input value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} placeholder="Olipop" />
+            <Field label="Brand name *" error={fieldErrors.brand} errorId="err-brand">
+              <input ref={brandRef} value={brand.name}
+                onChange={(e) => { setBrand({ ...brand, name: e.target.value }); clearFieldError("brand"); }}
+                placeholder="Olipop"
+                aria-invalid={fieldErrors.brand ? true : undefined}
+                aria-describedby={fieldErrors.brand ? "err-brand" : undefined} />
             </Field>
-            <Field label="Category *">
-              <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="nonstick cookware" />
+            <Field label="Category *" error={fieldErrors.category} errorId="err-category">
+              <input ref={categoryRef} value={category}
+                onChange={(e) => { setCategory(e.target.value); clearFieldError("category"); }}
+                placeholder="nonstick cookware"
+                aria-invalid={fieldErrors.category ? true : undefined}
+                aria-describedby={fieldErrors.category ? "err-category" : undefined} />
             </Field>
-            <Field label="Your email *">
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@store.com" />
+            <Field label="Your email *" error={fieldErrors.email} errorId="err-email">
+              <input ref={emailRef} type="email" value={email}
+                onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
+                placeholder="you@store.com"
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-describedby={fieldErrors.email ? "err-email" : undefined} />
             </Field>
           </div>
         </div>
@@ -343,9 +389,12 @@ export function ScanPage() {
           {competitors.map((c, i) => (
             <div className="comp-row" key={i}>
               <input
+                ref={i === 0 ? firstCompRef : undefined}
                 placeholder="Competitor name"
                 value={c.name}
-                onChange={(e) => updateComp(i, { name: e.target.value })}
+                onChange={(e) => { updateComp(i, { name: e.target.value }); clearFieldError("competitors"); }}
+                aria-invalid={i === 0 && fieldErrors.competitors ? true : undefined}
+                aria-describedby={fieldErrors.competitors ? "err-competitors" : undefined}
               />
               <input
                 placeholder="Store URL (optional)"
@@ -357,6 +406,7 @@ export function ScanPage() {
               </button>
             </div>
           ))}
+          {fieldErrors.competitors && <span className="field-error" id="err-competitors">{fieldErrors.competitors}</span>}
           <button className="btn" onClick={() => setCompetitors([...competitors, { name: "", storeUrl: "" }])}>
             + Add competitor
           </button>
@@ -449,7 +499,7 @@ export function ScanPage() {
       {prompts.length > 0 && selected.length === 0 && (
         <div className="banner-error">Select at least one prompt to run a scan.</div>
       )}
-      {error && <div className="banner-error">{error}</div>}
+      {error && <div className="banner-error" role="alert">{error}</div>}
 
       {/* Honeypot: hidden from real users; bots fill every field and get rejected. */}
       <input
@@ -482,7 +532,7 @@ export function ScanPage() {
 
       {showConfirm && (
         <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(e) => e.stopPropagation()}>
+          <div ref={confirmRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(e) => e.stopPropagation()}>
             <h3 id="confirm-title">Run a live scan?</h3>
             <p className="muted">
               AisleLens will ask{" "}
@@ -510,11 +560,12 @@ export function ScanPage() {
   }
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, errorId, children }: { label: string; error?: string; errorId?: string; children: React.ReactNode }) {
   return (
     <label className="field">
       <span>{label}</span>
       {children}
+      {error && <span className="field-error" id={errorId}>{error}</span>}
     </label>
   );
 }

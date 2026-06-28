@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Loaded } from "./appApi";
 import type { Proportion } from "./fixtures";
+import { useModalFocus } from "../useModalFocus";
 
 // Shared primitives for the embedded /app UI. Small, prop-driven, dark-theme.
 
@@ -83,16 +84,12 @@ export function ConfirmRun({ open, title, detail, estimateUsd, busy, confirmLabe
   open: boolean; title: string; detail?: string; estimateUsd?: number | null; busy?: boolean;
   confirmLabel?: string; onConfirm: () => void; onCancel: () => void;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
+  // a11y: initial focus, focus trap, Escape, and focus restoration on close.
+  const dialogRef = useModalFocus<HTMLDivElement>(open, onCancel);
   if (!open) return null;
   return (
     <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirmrun-title" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="confirmrun-title" onClick={(e) => e.stopPropagation()}>
         <h3 id="confirmrun-title">{title}</h3>
         {detail && <p className="muted">{detail}</p>}
         <p style={{ margin: "8px 0" }}>
