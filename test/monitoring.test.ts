@@ -107,6 +107,39 @@ test("monitorRun runs a benchmark, advances cadence, and does NOT alert on ident
   }
 });
 
+test("monitorRun skips at execution when enforced and the shop lacks the monitoring feature (#21)", { skip: !RUN_DB }, async () => {
+  const { createBenchmark } = await import("../src/db/benchmarks.js");
+  const { createSchedule } = await import("../src/db/monitoring.js");
+  const { monitorRun } = await import("../src/monitoring/execute.js");
+  const { ENV } = await import("../src/server/env.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `mong-${Date.now()}.myshopify.com`;
+  const config = { brand: { name: "Caraway" }, category: "cookware", competitors: [{ name: "GreenPan" }], prompts: [{ text: "best ceramic pan?" }], engines: ["openai"], repetitions: 1 };
+  const benchmarkId = await createBenchmark(shop, "mong-bench", "monitoring", config as never);
+  const wasEnforced = ENV.billing.enforced;
+  try {
+    const scheduleId = await createSchedule(shop, { kind: "benchmark", benchmarkId, cadence: "weekly" });
+
+    // Enforced + a free-tier shop (no entitlement rows → no `monitoring` feature) → SKIP, no run.
+    ENV.billing.enforced = true;
+    const denied = await monitorRun(scheduleId, { mock: true });
+    assert.equal(denied.skipped, "not_entitled");
+    assert.equal(denied.runId, null);
+
+    // Dormant again → it runs (proves the gate is the only thing that blocked it).
+    ENV.billing.enforced = false;
+    const ran = await monitorRun(scheduleId, { mock: true });
+    assert.ok(ran.runId! > 0);
+  } finally {
+    ENV.billing.enforced = wasEnforced;
+    await pgQuery("delete from schedules where shop_domain=$1", [shop]);
+    await pgQuery("delete from observations where benchmark_id=$1", [benchmarkId]);
+    await pgQuery("delete from benchmark_runs where benchmark_id=$1", [benchmarkId]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
+});
+
 test("a verification schedule is refused until the experiment has a baseline", { skip: !RUN_DB }, async () => {
   const { createBenchmark } = await import("../src/db/benchmarks.js");
   const { planIntervention } = await import("../src/experiments/execute.js");

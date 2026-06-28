@@ -83,6 +83,12 @@ export async function updateScheduleHandler(req: Request, res: Response): Promis
     return;
   }
   const enabled = typeof req.body?.enabled === "boolean" ? req.body.enabled : undefined;
+  // Re-enabling a paused schedule re-consumes a monitoring slot, so re-check the quota at that
+  // point too (creation already gates; this closed the re-enable hole). Dormant unless enforced.
+  if (enabled === true) {
+    const quota = await assertScheduleQuota(shopOf(req));
+    if (!quota.allowed) { res.status(402).json(gateDenial(quota)); return; }
+  }
   await updateSchedule(id, { cadence: isCadence(cadence) ? cadence : undefined, enabled });
   res.json({ ok: true });
 }
@@ -101,6 +107,12 @@ export async function runScheduleHandler(req: Request, res: Response): Promise<v
   const live = req.body?.live === true;
   try {
     const r = await monitorRun(id, { mock: !live });
+    // monitorRun is the single execution-layer enforcement point (covers the scheduled/worker
+    // path too); surface its entitlement skip as a 402 for the user-facing "Run now".
+    if (r.skipped === "not_entitled") {
+      res.status(402).json({ error: "Monitoring isn't included in your current plan. Upgrade to run it.", code: "feature_not_in_plan" });
+      return;
+    }
     res.json({ ok: true, mode: live ? "live" : "mock", ...r });
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });

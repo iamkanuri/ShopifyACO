@@ -6,6 +6,8 @@ import { runVerification } from "../experiments/execute.js";
 import { evaluateAlerts, nextRunAt, type AlertDraft, type Cadence } from "./alerts.js";
 import { advanceSchedule, claimDueSchedules, createAlert, getSchedule, recordNotification } from "../db/monitoring.js";
 import { getProvider } from "../notify/provider.js";
+import { ENV } from "../server/env.js";
+import { assertFeature } from "../billing/enforce.js";
 
 // ===========================================================================
 // Monitoring orchestrator (Phase 8). The scheduler (PROCESS_MODE=scheduler) calls
@@ -47,6 +49,16 @@ export async function monitorRun(scheduleId: number, opts: { mock?: boolean } = 
   if (!schedule.enabled) return { scheduleId, runId: null, alerts: 0, skipped: "disabled" };
   const cadence = schedule.cadence as Cadence;
   const shop = schedule.shop_domain;
+
+  // Execution-time entitlement re-check (Phase 11; dormant unless BILLING_ENFORCED=1). This is
+  // the SHARED chokepoint for BOTH scheduled execution (worker monitor_run) and "Run now"
+  // (runScheduleHandler), so a downgraded merchant can't keep monitoring by either path. Skip
+  // (don't throw) so the worker doesn't retry-storm; idempotency keeps it from re-processing.
+  // Kind-aware: a benchmark schedule needs `monitoring`; a verification schedule needs `experiments`.
+  if (ENV.billing.enforced) {
+    const gate = await assertFeature(shop, schedule.kind === "verification" ? "experiments" : "monitoring");
+    if (!gate.allowed) return { scheduleId, runId: null, alerts: 0, skipped: "not_entitled" };
+  }
 
   if (schedule.kind === "verification") {
     if (schedule.experiment_id == null) return { scheduleId, runId: null, alerts: 0, skipped: "no experiment" };
