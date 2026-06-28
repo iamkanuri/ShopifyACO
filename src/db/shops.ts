@@ -127,6 +127,12 @@ export async function webhookSeen(dedupeKey: string, topic: string, shopDomain: 
   return (rowCount ?? 0) > 0;
 }
 
+/** Undo a webhookSeen mark (inline path only) so a FAILED delivery can be re-processed when
+ *  Shopify re-delivers it — otherwise the mark would dedupe the retry and drop the effect. */
+export async function unmarkWebhookSeen(dedupeKey: string): Promise<void> {
+  await pgQuery("delete from webhook_events where dedupe_key = $1", [dedupeKey]);
+}
+
 export async function audit(
   shopDomain: string | null,
   actor: string,

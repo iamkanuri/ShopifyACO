@@ -25,8 +25,50 @@ test("SHOP_SCOPED_DELETES deletes children before parents and the shop row last"
   }
 });
 
+// ---- pure: durable webhook inbox wiring ----
+test("registerWebhookJobs registers the shopify_webhook handler", async () => {
+  const { registerWebhookJobs } = await import("../src/server/webhookProcess.js");
+  const { getHandler } = await import("../src/queue/handlers.js");
+  registerWebhookJobs();
+  assert.equal(typeof getHandler("shopify_webhook"), "function");
+});
+
+test("processWebhookTopic with no shop is a no-op (no DB touched)", async () => {
+  const { processWebhookTopic } = await import("../src/server/webhookProcess.js");
+  await processWebhookTopic("app/uninstalled", null, Buffer.from("{}")); // must resolve without error
+});
+
 // ---- DB-gated: real erasure, scoped to the one shop ----
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_URL);
+
+test("processWebhookTopic shop/redact: refuses on shop mismatch, erases on match, keeps its own job", { skip: !RUN_DB }, async () => {
+  const { pgQuery } = await import("../src/db/pg.js");
+  const { processWebhookTopic } = await import("../src/server/webhookProcess.js");
+  const { upsertShop } = await import("../src/db/shops.js");
+  const { enqueue } = await import("../src/queue/jobs.js");
+  const shop = `wh-redact-${Date.now()}.myshopify.com`;
+  const present = async (sql: string) => (await pgQuery(sql, [shop])).rows.length;
+  try {
+    await upsertShop(shop, { status: "active" });
+    await pgQuery(`insert into pixel_events (shop_domain, session_id, event_type, consent) values ($1,'s1','session_start',true)`, [shop]);
+    const self = await enqueue({ type: "shopify_webhook", shop, idempotencyKey: `wh-self-${Date.now()}` });   // the running redact job
+    const other = await enqueue({ type: "noop", shop, idempotencyKey: `wh-other-${Date.now()}` });            // an unrelated shop job
+
+    // Body/header shop mismatch → refuse to erase.
+    await processWebhookTopic("shop/redact", shop, Buffer.from(JSON.stringify({ shop_domain: "intruder.myshopify.com" })), { jobId: self.id });
+    assert.equal(await present(`select 1 from shops where shop_domain=$1`), 1, "mismatch must NOT erase");
+
+    // Matching body → erase everything EXCEPT this running job (exceptJobId).
+    await processWebhookTopic("shop/redact", shop, Buffer.from(JSON.stringify({ shop_domain: shop })), { jobId: self.id });
+    assert.equal(await present(`select 1 from shops where shop_domain=$1`), 0, "shop erased");
+    assert.equal(await present(`select 1 from pixel_events where shop_domain=$1`), 0, "pixel_events erased");
+    assert.equal((await pgQuery(`select 1 from jobs where id=$1`, [self.id])).rows.length, 1, "running redact job preserved");
+    assert.equal((await pgQuery(`select 1 from jobs where id=$1`, [other.id])).rows.length, 0, "other shop jobs erased");
+  } finally {
+    await pgQuery(`delete from jobs where shop=$1`, [shop]);
+    await pgQuery(`delete from shops where shop_domain=$1`, [shop]);
+  }
+});
 test("redactShop erases the shop's rows and leaves other shops untouched", { skip: !RUN_DB }, async () => {
   const { pgQuery } = await import("../src/db/pg.js");
   const { redactShop } = await import("../src/db/redact.js");

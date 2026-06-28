@@ -9,11 +9,11 @@ import { getShopifyClient, effectiveSecret, effectiveSecrets, type TokenExchange
 import { safeEqualStr } from "../shopify/crypto.js";
 import { chooseScopes, parseScopes, hasScope } from "../shopify/scopes.js";
 import {
-  audit, consumeOAuthState, getAccessToken, getShop, markUninstalled, recordInstallation,
-  saveOAuthState, storeCredentials, upsertShop, webhookSeen,
+  audit, consumeOAuthState, getAccessToken, getShop, recordInstallation,
+  saveOAuthState, storeCredentials, upsertShop, webhookSeen, unmarkWebhookSeen,
 } from "../db/shops.js";
-import { redactShop } from "../db/redact.js";
-import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
+import { enqueue } from "../queue/jobs.js";
+import { processWebhookTopic } from "./webhookProcess.js";
 import { activatePixelForShop } from "../pixel/activate.js";
 import { syncShopifyEntitlement } from "../billing/shopifyEntitlement.js";
 
@@ -300,77 +300,43 @@ export async function webhookHandler(req: Request, res: Response): Promise<void>
   const dedupe = req.get("X-Shopify-Webhook-Id") ?? webhookHmac(raw, secrets[0]!);
   const payloadHash = createHash("sha256").update(raw).digest("hex");
 
-  // Idempotency / replay protection: ack duplicates without reprocessing.
+  // DURABLE INBOX (queue enabled): persist the verified delivery as a job and ack ONLY after
+  // it's durably recorded. The queue retries with backoff + dead-letters, and the idempotency
+  // key dedupes redeliveries — so a transient processing failure is retried, never silently
+  // dropped. (The old path marked the delivery "seen" then 200'd even when processing threw,
+  // and Shopify never re-delivers an acked webhook → effects could be lost forever.)
+  if (ENV.jobQueueEnabled) {
+    try {
+      await enqueue({
+        type: "shopify_webhook",
+        payload: { topic, shop, rawBase64: raw.toString("base64"), payloadHash },
+        shop: shop ?? undefined,
+        idempotencyKey: `webhook:${dedupe}`,
+      });
+      res.status(200).end(); // durably received
+    } catch (err) {
+      // NOT durably recorded → 503 so Shopify re-delivers (never ack what we didn't store).
+      console.error(`[shopify] webhook enqueue failed (${topic}):`, (err as Error).message);
+      res.status(503).end();
+    }
+    return;
+  }
+
+  // Inline (queue disabled — dev/tests): process synchronously, mark "seen" only AFTER success,
+  // and 500 on failure (unmarking so a Shopify re-delivery can reprocess).
   const fresh = await webhookSeen(dedupe, topic, shop, payloadHash);
   if (!fresh) {
     res.status(200).end();
     return;
   }
-
   try {
-    if (shop) {
-      switch (topic) {
-        case "app/uninstalled":
-          await markUninstalled(shop);
-          await recordInstallation(shop, "uninstall");
-          await audit(shop, "webhook", "app_uninstalled", "shop");
-          break;
-        case "shop/update":
-          await upsertShop(shop, {});
-          await audit(shop, "webhook", "shop_update", "shop");
-          break;
-        case "products/create":
-        case "products/update":
-        case "products/delete": {
-          await audit(shop, "webhook", topic.replace("/", "_"), "product");
-          // Incremental catalog reconciliation (best-effort; never fail the webhook).
-          try {
-            const body = JSON.parse(raw.toString("utf8")) as { id?: string | number };
-            if (body.id != null) {
-              const gid = productGidFromId(body.id);
-              if (topic === "products/delete") await deleteProduct(shop, gid);
-              else await syncOneProduct(shop, gid);
-            }
-          } catch (e) {
-            console.error(`[shopify] incremental catalog sync failed (${topic}):`, (e as Error).message);
-          }
-          break;
-        }
-        case "customers/data_request":
-        case "customers/redact":
-          // We store no customer PII (pixel data uses random session nonces + salted IP
-          // hashes, never a Shopify customer id), so there is nothing to return or erase
-          // per-customer — just audit the request.
-          await audit(shop, "webhook", topic.replace("/", "_"), "compliance");
-          break;
-        case "shop/redact": {
-          // Defense-in-depth before a DESTRUCTIVE erase: the HMAC authenticates the BODY,
-          // but routing uses the X-Shopify-Shop-Domain HEADER. Cross-check the body's shop so
-          // a (hypothetically) mis-delivered signed payload can't erase a different tenant.
-          let bodyShop: string | null = null;
-          try {
-            bodyShop = normalizeShopDomain((JSON.parse(raw.toString("utf8")) as { shop_domain?: string }).shop_domain);
-          } catch { /* unparseable body → fall through to header-only */ }
-          if (bodyShop && bodyShop !== shop) {
-            console.error(`[shopify] shop/redact body/header shop mismatch (${bodyShop} vs ${shop}) — refusing erase`);
-            break;
-          }
-          // Sent ~48h after uninstall: erase ALL data we hold for this shop. We intentionally
-          // do NOT write a shop-scoped audit row afterward — that would recreate a row for the
-          // shop we just erased; the erasure summary is logged to the process log instead.
-          const summary = await redactShop(shop);
-          console.log(`[shopify] shop/redact erased ${shop}:`, JSON.stringify(summary));
-          break;
-        }
-        default:
-          await audit(shop, "webhook", `unhandled:${topic}`, "webhook");
-      }
-    }
+    await processWebhookTopic(topic, shop, raw);
+    res.status(200).end();
   } catch (err) {
-    console.error(`[shopify] webhook ${topic} handler error:`, (err as Error).message);
-    // Still 200 — we've recorded receipt; Shopify retries are deduped.
+    console.error(`[shopify] webhook ${topic} failed (inline):`, (err as Error).message);
+    await unmarkWebhookSeen(dedupe).catch(() => {});
+    res.status(500).end();
   }
-  res.status(200).end();
 }
 
 /** GET /app/api/shop — the connected shop's recorded grant (for the Settings screen). Shows

@@ -61,13 +61,20 @@ export const SHOP_SCOPED_DELETES: ReadonlyArray<{ table: string; col: "shop_doma
 /**
  * Erase all data we hold for `shop`. Best-effort per table — one table's failure is logged
  * and the rest still run, so the erasure is as complete as possible (compliance goal). Returns
- * rows removed per table (and a `<table>:error` marker for any table that failed).
+ * rows removed per table (and a `<table>:error` marker for any table that failed) — the caller
+ * (the durable webhook job) treats any `:error` as "incomplete" and retries.
+ *
+ * `exceptJobId` keeps ONE `jobs` row — the shop/redact job that's running this erase — so the
+ * queue can still complete/retry it instead of the job deleting itself mid-flight. The leftover
+ * row is a no-PII redaction receipt.
  */
-export async function redactShop(shop: string): Promise<Record<string, number>> {
+export async function redactShop(shop: string, opts: { exceptJobId?: number } = {}): Promise<Record<string, number>> {
   const summary: Record<string, number> = {};
   for (const { table, col } of SHOP_SCOPED_DELETES) {
     try {
-      const { rowCount } = await pgQuery(`delete from ${table} where ${col} = $1`, [shop]);
+      const { rowCount } = table === "jobs" && opts.exceptJobId != null
+        ? await pgQuery(`delete from ${table} where ${col} = $1 and id <> $2`, [shop, opts.exceptJobId])
+        : await pgQuery(`delete from ${table} where ${col} = $1`, [shop]);
       if (rowCount) summary[table] = rowCount;
     } catch (err) {
       console.error(`[redact] failed to purge ${table} for ${shop}:`, (err as Error).message);
