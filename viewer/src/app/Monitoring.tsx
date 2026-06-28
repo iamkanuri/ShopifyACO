@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { acknowledgeAlert, createSchedule, getAlerts, getBenchmarks, getSchedules } from "./appApi";
+import type { AppScheduleRow } from "./fixtures";
+import { acknowledgeAlert, createSchedule, deleteSchedule, getAlerts, getBenchmarks, getSchedules, runSchedule } from "./appApi";
 import { CADENCE_OPTIONS } from "./constants";
 import { DemoBadge, SeverityPill, StatePane, useLoaded } from "./ui";
 
@@ -34,17 +35,7 @@ export function Monitoring() {
         <StatePane loading={s.loading} empty={schedules.length === 0} emptyText="No schedules yet — create one above to re-check on a cadence.">
           <div className="grid">
             {schedules.map((sc) => (
-              <div key={sc.id} className="card al-sched">
-                <div className="al-sched-main">
-                  <span className={`al-dot ${sc.enabled ? "on" : "off"}`} />
-                  <b>{sc.kind === "verification" ? "Re-verify fix" : "Re-run benchmark"}</b>
-                  <span className="al-cadence">{sc.cadence}</span>
-                </div>
-                <div className="muted al-sched-meta">
-                  next {new Date(sc.next_run_at).toLocaleDateString()}
-                  {sc.last_run_at ? ` · last ${new Date(sc.last_run_at).toLocaleDateString()}` : " · not run yet"}
-                </div>
-              </div>
+              <ScheduleCard key={sc.id} sc={sc} onChanged={() => { s.reload(); a.reload(); }} />
             ))}
           </div>
         </StatePane>
@@ -67,6 +58,56 @@ export function Monitoring() {
           </div>
         </StatePane>
       </div>
+    </div>
+  );
+}
+
+// One schedule, with the controls Codex flagged as missing: Run now (a real,
+// daily-cap-bounded run so the result is comparable — mock never alerts), last-run
+// visibility, and delete. Re-runs raise an alert only on a statistically credible change.
+function ScheduleCard({ sc, onChanged }: { sc: AppScheduleRow; onChanged: () => void }) {
+  const [busy, setBusy] = useState<null | "run" | "del">(null);
+  const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
+
+  async function runNow() {
+    setBusy("run"); setMsg(null);
+    const r = await runSchedule(sc.id, { live: true });
+    setBusy(null);
+    if (r.ok) {
+      if (r.data?.skipped) { setMsg({ text: `Skipped: ${r.data.skipped}.`, tone: "info" }); }
+      else {
+        const n = r.data?.alerts ?? 0;
+        setMsg({ text: n > 0 ? `Ran live · ${n} alert${n === 1 ? "" : "s"} raised — see below.` : "Ran live · no statistically credible change.", tone: "ok" });
+      }
+      onChanged();
+    } else if (r.demo) setMsg({ text: "Open the app from the Shopify admin to run monitoring.", tone: "info" });
+    else setMsg({ text: r.error ?? "Run failed.", tone: "err" });
+  }
+
+  async function del() {
+    setBusy("del");
+    await deleteSchedule(sc.id);
+    setBusy(null);
+    onChanged();
+  }
+
+  return (
+    <div className="card al-sched">
+      <div className="al-sched-main">
+        <span className={`al-dot ${sc.enabled ? "on" : "off"}`} />
+        <b>{sc.kind === "verification" ? "Re-verify fix" : "Re-run benchmark"}</b>
+        <span className="al-cadence">{sc.cadence}</span>
+      </div>
+      <div className="muted al-sched-meta">
+        next {new Date(sc.next_run_at).toLocaleDateString()}
+        {sc.last_run_at ? ` · last run ${new Date(sc.last_run_at).toLocaleDateString()}` : " · not run yet"}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <button className="btn btn-primary" disabled={busy !== null} onClick={runNow}>{busy === "run" ? "Running…" : "Run now"}</button>
+        <button className="btn al-ghost" disabled={busy !== null} onClick={del}>{busy === "del" ? "Deleting…" : "Delete"}</button>
+      </div>
+      <p className="muted al-fineprint" style={{ margin: "6px 0 0" }}>Run now does a real benchmark — counts toward your daily cost cap.</p>
+      {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 8 }}>{msg.text}</div>}
     </div>
   );
 }

@@ -170,4 +170,8 @@ export const syncCatalog = () => post(`/app/api/catalog/sync`, {});
 /** Create a recurring monitoring schedule for a benchmark (re-runs on the cadence, alerts on credible change). */
 export const createSchedule = (body: { kind?: string; benchmarkId: number; cadence: string }) => post<{ id: number }>(`/app/api/schedules`, body);
 export const updateSchedule = (id: number, body: { cadence?: string; enabled?: boolean }) => post(`/app/api/schedules/${id}`, body);
-export const runSchedule = (id: number) => post(`/app/api/schedules/${id}/run`, {});
+/** Run a schedule NOW. live=true does a real (daily-cap-bounded) benchmark so the result is
+ *  comparable; mock is deterministic and never alerts. Returns mode + alerts raised. */
+export const runSchedule = (id: number, opts: { live?: boolean } = {}) =>
+  post<{ mode: string; runId: number | null; alerts: number; skipped?: string }>(`/app/api/schedules/${id}/run`, { live: opts.live === true });
+export const deleteSchedule = (id: number) => post(`/app/api/schedules/${id}/delete`, {});
