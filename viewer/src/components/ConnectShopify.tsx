@@ -48,7 +48,9 @@ export function ConnectShopify({ className = "", label = "Connect Shopify" }: { 
             <h3 id="connect-title">Connect your Shopify store</h3>
             <p className="muted">Enter your store's address — we'll send you to Shopify to review and approve the connection.</p>
             <form onSubmit={submit}>
+              <label htmlFor="connect-shop-input" className="field-label">Store address</label>
               <input
+                id="connect-shop-input"
                 className="modal-input"
                 placeholder="yourstore.myshopify.com"
                 value={value}
@@ -57,8 +59,9 @@ export function ConnectShopify({ className = "", label = "Connect Shopify" }: { 
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
+                aria-describedby={err ? "connect-shop-err" : undefined}
               />
-              {err && <div className="modal-err">{err}</div>}
+              {err && <div id="connect-shop-err" className="modal-err">{err}</div>}
               <button type="submit" className="btn btn-primary">Continue to Shopify →</button>
               <p className="modal-fine">Shopify shows you exactly what's requested — read access to your product catalog, AI-referral attribution, and approval-gated SEO updates to your products. You approve it on Shopify and can disconnect anytime.</p>
             </form>

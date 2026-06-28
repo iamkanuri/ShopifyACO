@@ -60,8 +60,11 @@ export function AppShell() {
   else if (sub === "settings") screen = <Settings connected={!demo} />;
   else screen = <Dashboard />;
 
+  const screenName = NAV.find((n) => n.key === sub)?.label ?? "Dashboard";
+
   return (
     <div className="al-shell">
+      <a href="#al-main" className="skip-link">Skip to content</a>
       <aside className="al-side">
         <Link to="/" className="al-side-brand">{brandName}</Link>
         <nav className="al-nav">
@@ -77,7 +80,8 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="al-main">
+      <main className="al-main" id="al-main">
+        <h1 className="sr-only">{brandName} — {screenName}</h1>
         {demo && !probe.loading && (
           liveError ? (
             <div className="al-connect al-connect-err">

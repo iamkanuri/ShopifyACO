@@ -38,14 +38,14 @@ function StartPanel({ onStarted }: { onStarted: () => void }) {
   const [competitors, setCompetitors] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
 
   async function start() {
-    if (!brand.trim() || !category.trim() || !description.trim()) { setMsg("Brand, category and what-you-changed are required."); return; }
-    setBusy(true); setMsg("");
+    if (!brand.trim() || !category.trim() || !description.trim()) { setMsg({ text: "Brand, category and what-you-changed are required.", tone: "err" }); return; }
+    setBusy(true); setMsg(null);
     const r = await startVerification({ brand: brand.trim(), category: category.trim(), competitors: competitors.split(",").map((s) => s.trim()).filter(Boolean), description: description.trim() });
     setBusy(false);
-    setMsg(r.ok ? "Baseline captured. Apply your change, then run the verification below." : r.demo ? "Connect your store to start a verification." : r.error ?? "Could not start.");
+    setMsg(r.ok ? { text: "Baseline captured. Apply your change, then run the verification below.", tone: "ok" } : r.demo ? { text: "Connect your store to start a verification.", tone: "info" } : { text: r.error ?? "Could not start.", tone: "err" });
     if (r.ok) onStarted();
   }
 
@@ -61,7 +61,7 @@ function StartPanel({ onStarted }: { onStarted: () => void }) {
         <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? "Capturing baseline…" : "Start a verification (capture baseline)"}</button>
         <span className="muted al-fineprint" style={{ margin: 0 }}>Captures the BEFORE benchmark. Preview is $0.</span>
       </div>
-      {msg && <div className="al-note ok" style={{ marginTop: 12 }}>{msg}</div>}
+      {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 12 }}>{msg.text}</div>}
     </div>
   );
 }
@@ -69,13 +69,13 @@ function StartPanel({ onStarted }: { onStarted: () => void }) {
 function ExperimentCard({ x, onVerified }: { x: AppExperimentRow; onVerified: () => void }) {
   const r = x.result;
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
 
   async function verify() {
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(null);
     const res = await verifyExperiment(x.id);
     setBusy(false);
-    setMsg(res.ok ? "Verification complete." : res.demo ? "Connect your store to run the verification." : res.error ?? "Verification failed.");
+    setMsg(res.ok ? { text: "Verification complete.", tone: "ok" } : res.demo ? { text: "Connect your store to run the verification.", tone: "info" } : { text: res.error ?? "Verification failed.", tone: "err" });
     if (res.ok) onVerified();
   }
 
@@ -89,7 +89,7 @@ function ExperimentCard({ x, onVerified }: { x: AppExperimentRow; onVerified: ()
         </div>
         <div className="al-exp-mrow"><span className="al-exp-mlabel">Baseline</span><Pct p={r.primary.baseline} /><CiBar p={r.primary.baseline} tone="neutral" /></div>
         <p className="muted al-fineprint">Apply your change, then run the verification to measure whether it moved {labelOf(r.primary.metric)} — with CIs and honest caveats.</p>
-        {msg && <div className="al-note ok" style={{ marginTop: 10 }}>{msg}</div>}
+        {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 10 }}>{msg.text}</div>}
       </div>
     );
   }

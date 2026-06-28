@@ -9,7 +9,7 @@
   --surface-2: #282a30;
   --ink: #dedcd5;      /* warm off-white, dialed back from pure white */
   --ink-2: #908e87;    /* the one muted gray (secondary text) */
-  --ink-3: #6f6d67;    /* same family, a touch dimmer for tiny labels */
+  --ink-3: #8a8882;    /* tertiary text — bumped to ≥4.5:1 on dark surfaces (a11y) */
   --border: #2f3037;
   --accent: #f5f4f0;            /* "accent" == the off-white CTA / highlight */
   --accent-soft: rgba(245, 244, 240, 0.06);
@@ -45,15 +45,15 @@
   --surface-2: #efece6;
   --ink: #232220;
   --ink-2: #6b6862;
-  --ink-3: #918e87;
+  --ink-3: #6f6d67;    /* a11y: ≥4.5:1 on white + the light bg (was #918e87, ~3.2:1) */
   --border: #e4e1d9;
   --accent: #232220;
   --accent-soft: rgba(35, 34, 32, 0.05);
   --border-strong: rgba(35, 34, 32, 0.18);
   --ink-hover: #3a3833;
-  --good: #2f9e74;
+  --good: #1a7d50;     /* a11y: darkened for ≥4.5:1 small text on light (was #2f9e74) */
   --good-soft: rgba(47, 158, 116, 0.12);
-  --warn: #a67c1f;
+  --warn: #886412;     /* a11y: darkened for ≥4.5:1 small text on light (was #a67c1f) */
   --warn-soft: rgba(166, 124, 31, 0.13);
   --bad: #c5504e;
   --bad-soft: rgba(197, 80, 78, 0.10);
@@ -67,14 +67,14 @@
     --surface-2: #efece6;
     --ink: #232220;
     --ink-2: #6b6862;
-    --ink-3: #918e87;
+    --ink-3: #6f6d67;    /* a11y: ≥4.5:1 (was #918e87) */
     --border: #e4e1d9;
     --accent: #232220;
     --accent-soft: rgba(35, 34, 32, 0.05);
     --ink-hover: #3a3833;
-    --good: #2f9e74;
+    --good: #1a7d50;     /* a11y: ≥4.5:1 small text on light */
     --good-soft: rgba(47, 158, 116, 0.12);
-    --warn: #a67c1f;
+    --warn: #886412;     /* a11y: ≥4.5:1 small text on light */
     --warn-soft: rgba(166, 124, 31, 0.13);
     --bad: #c5504e;
     --bad-soft: rgba(197, 80, 78, 0.10);
@@ -100,6 +100,26 @@ input:not([type="checkbox"]):not([type="radio"]), textarea, select {
 }
 input::placeholder, textarea::placeholder { color: var(--ink-3); }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--ink); }
+
+/* a11y: a clear KEYBOARD focus ring. Several component :focus rules strip the outline for a
+   clean mouse look; :focus-visible (keyboard only) restores it, with !important so those
+   higher-specificity rules can't drop the ring for keyboard users. */
+a:focus-visible, button:focus-visible, [role="button"]:focus-visible,
+input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent) !important; outline-offset: 2px; border-radius: 6px;
+}
+
+/* a11y: visually-hidden content for screen readers (e.g. the page-level h1, skip link). */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: absolute; left: 8px; top: -40px; z-index: 100; padding: 8px 14px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; text-decoration: none; transition: top .15s ease;
+}
+.skip-link:focus { top: 8px; }
 
 /* feel less static: smooth, restrained micro-interactions (no transforms) */
 .btn, .navlink, .card.tile, .plan, .learn-card, .faq-item, .chip { transition: border-color .15s ease, background-color .15s ease, color .15s ease; }
@@ -345,7 +365,8 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .modal h3 { margin: 0 0 8px; font-size: 19px; }
 .modal p { font-size: 13.5px; line-height: 1.6; }
 .modal-x { position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 22px; color: var(--ink-3); cursor: pointer; line-height: 1; }
-.modal-input { width: 100%; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; margin: 12px 0 4px; }
+.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin: 10px 0 0; }
+.modal-input { width: 100%; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; margin: 4px 0; }
 .modal-input:focus { outline: none; border-color: var(--accent); }
 .modal-err { color: var(--bad); font-size: 12px; margin-bottom: 8px; }
 .modal-fine { font-size: 11px; color: var(--ink-3); margin-top: 10px; }

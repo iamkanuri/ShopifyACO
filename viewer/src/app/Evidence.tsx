@@ -100,7 +100,7 @@ export function Evidence() {
                   {finding.citations.length > 0 && (
                     <div className="al-cites">
                       cited: {finding.citations.map((c, i) => (
-                        <span key={i} className="al-cite">{hostOf(c)}</span>
+                        <a key={i} className="al-cite" href={c} target="_blank" rel="noopener noreferrer">{hostOf(c)}</a>
                       ))}
                     </div>
                   )}
