@@ -175,10 +175,13 @@ a.al-cite:hover { border-color: var(--ink-2); color: var(--ink); text-decoration
 .hero-seeapp:hover { color: var(--ink); }
 
 @media (max-width: 920px) {
-  .al-shell { grid-template-columns: 1fr; gap: 16px; }
-  .al-side { position: static; flex-direction: column; align-items: stretch; gap: 12px; }
+  /* minmax(0,1fr) lets the single column shrink BELOW the nav's min-content width — without
+     it, the no-wrap nav (~926px) expands the grid track and overflows the whole page (375px →
+     ~941px). min-width:0 lets the flex children shrink so the nav's own overflow-x scrolls. */
+  .al-shell { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .al-side { position: static; flex-direction: column; align-items: stretch; gap: 12px; min-width: 0; max-width: 100%; }
   /* a11y/mobile: one horizontally-scrollable tab bar instead of a 4-row wrapped nav. */
-  .al-nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 6px; }
+  .al-nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 6px; min-width: 0; max-width: 100%; }
   .al-navlink { white-space: nowrap; flex: 0 0 auto; }
   .al-hero { grid-template-columns: 1fr; }
   .al-loop { grid-template-columns: repeat(2, 1fr); }
