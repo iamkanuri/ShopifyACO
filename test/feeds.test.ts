@@ -8,7 +8,7 @@ import {
   statusOf, validateFeed, validateRecord,
 } from "../src/feeds/validate.js";
 import { computeReadiness, summarizeIssues } from "../src/feeds/readiness.js";
-import { toCSV, toJSON, toJSONL, columnsFor } from "../src/feeds/export.js";
+import { toCSV, toTSV, toJSON, toJSONL, columnsFor } from "../src/feeds/export.js";
 import { requiredFields, specManifest, SPEC_VERSION_CONFIRMED } from "../src/feeds/spec.js";
 import type { FeedRecord } from "../src/feeds/map.js";
 
@@ -182,6 +182,21 @@ test("CSV escapes delimiters/quotes/newlines; columns follow spec order", () => 
   assert.ok(csv.includes("US,CA")); // list joined inside one cell
   const lines = csv.trimEnd().split("\r\n");
   assert.equal(lines.length, 3); // header + 2 rows
+});
+
+test("CSV/TSV neutralize spreadsheet formula injection in merchant-controlled cells", () => {
+  const records: FeedRecord[] = [
+    { item_id: "1", title: "=HYPERLINK(\"http://evil\")", brand: "+1234", description: "@cmd", color: "-2+3" },
+    { item_id: "2", title: "Normal product", brand: "Acme" },
+  ];
+  const csv = toCSV(records);
+  assert.ok(csv.includes("'=HYPERLINK"), "leading = is escaped with a quote");
+  assert.ok(csv.includes("'+1234"), "leading + is escaped");
+  assert.ok(csv.includes("'@cmd"), "leading @ is escaped");
+  assert.ok(csv.includes("'-2+3"), "leading - is escaped");
+  assert.ok(csv.includes("Normal product"), "benign cell is untouched");
+  const tsv = toTSV(records);
+  assert.ok(tsv.includes("'=HYPERLINK") && tsv.includes("'@cmd"), "TSV neutralizes too");
 });
 
 test("JSON is an array; JSONL is one record per line; undefined keys dropped", () => {

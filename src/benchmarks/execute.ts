@@ -56,6 +56,7 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
 
   let totalCost = 0;
   let obsCount = 0;
+  let errorCount = 0;
   const modelVersions: Record<string, string> = {};
   const groundingModes: Record<string, string> = {};
 
@@ -86,15 +87,21 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
       const callCost = result.usage?.costUsd ?? 0;
       totalCost += callCost;
       if (!mock && callCost > 0) {
-        await recordUsage({ runId: String(runId), engine: adapter.name, model: adapter.model, costUsd: callCost, promptTokens: result.usage?.inputTokens, completionTokens: result.usage?.outputTokens });
+        await recordUsage({ runId: String(runId), shop: bench.shop_domain ?? undefined, engine: adapter.name, model: adapter.model, costUsd: callCost, promptTokens: result.usage?.inputTokens, completionTokens: result.usage?.outputTokens });
+      }
+
+      // A provider error (outage/timeout/quota/bad key) is OUR failure, not the merchant's.
+      // Recording an own-brand not_mentioned would drag the merchant's recommendation/mention
+      // rate down for an engine outage, so we EXCLUDE failed calls from the denominator —
+      // matching the CLI/public pipeline. (Any cost is still recorded above; the error is
+      // counted for transparency.)
+      if (result.error) {
+        errorCount++;
+        return;
       }
 
       const responseId = `${runId}-${pi}-${rep}-${adapter.name}`;
-      // On error, record a single own-brand not_mentioned row so the attempt still
-      // counts in the denominator (honest sample size).
-      const detections = result.error
-        ? [{ name: c.brand.name, isOwn: true, status: "not_mentioned" as const, listRank: null, snippet: undefined }]
-        : detectMentions(result.text, cfg);
+      const detections = detectMentions(result.text, cfg);
 
       for (const det of detections) {
         await insertObservation({
@@ -110,6 +117,7 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
       }
     });
 
+    if (errorCount > 0) console.warn(`[benchmark] run ${runId}: ${errorCount}/${tasks.length} engine call(s) failed and were excluded from the rates`);
     await finishRun(runId, { status: "completed", observationCount: obsCount, costUsd: totalCost, modelVersions, groundingModes });
     if (reservationId) await reconcileSpend(reservationId, totalCost);
     const agg = await aggregateRun(runId, c.brand.name);

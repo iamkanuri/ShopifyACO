@@ -107,12 +107,14 @@ export async function runDueSchedules(opts: { inline?: boolean; mock?: boolean }
   return { processed };
 }
 
-/** Register the worker handler. Defaults to mock; live needs payload.live === true. */
+/** Register the worker handler. The enqueue payload carries `mock` (runDueSchedules sets it
+ *  from MONITORING_LIVE); honor it directly so MONITORING_LIVE=1 actually produces live runs.
+ *  Defaults to mock when the flag is absent — recurring runs never silently spend. */
 export function registerMonitoringJobs(): void {
   registerHandler("monitor_run", async (payload) => {
     const scheduleId = Number(payload.scheduleId);
     if (!Number.isInteger(scheduleId)) throw new Error("monitor_run: missing scheduleId");
-    const r = await monitorRun(scheduleId, { mock: payload.live === true ? false : true });
+    const r = await monitorRun(scheduleId, { mock: payload.mock !== false });
     return { ...r };
   });
 }

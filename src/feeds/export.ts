@@ -17,11 +17,20 @@ export function columnsFor(records: FeedRecord[]): string[] {
 
 /** Serialize a single value to a flat cell string (for CSV/TSV). */
 function cell(v: FeedValue | undefined): string {
-  if (v == null) return "";
-  if (Array.isArray(v)) return v.join(",");
-  if (typeof v === "object") return JSON.stringify(v);
-  if (typeof v === "boolean") return v ? "true" : "false";
-  return String(v);
+  let s: string;
+  if (v == null) s = "";
+  else if (Array.isArray(v)) s = v.join(",");
+  else if (typeof v === "object") s = JSON.stringify(v);
+  else if (typeof v === "boolean") s = v ? "true" : "false";
+  else s = String(v);
+  return neutralizeFormula(s);
+}
+
+/** Prevent CSV/TSV formula injection: cells beginning with a character a spreadsheet would
+ *  evaluate (=, +, -, @, or a leading control char) are prefixed with a single quote so they
+ *  render as literal text. Merchant-controlled product values flow into these export files. */
+function neutralizeFormula(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 }
 
 function csvEscape(s: string): string {

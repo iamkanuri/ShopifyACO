@@ -344,9 +344,21 @@ export async function webhookHandler(req: Request, res: Response): Promise<void>
           await audit(shop, "webhook", topic.replace("/", "_"), "compliance");
           break;
         case "shop/redact": {
-          // Sent ~48h after uninstall: erase ALL data we hold for this shop.
+          // Defense-in-depth before a DESTRUCTIVE erase: the HMAC authenticates the BODY,
+          // but routing uses the X-Shopify-Shop-Domain HEADER. Cross-check the body's shop so
+          // a (hypothetically) mis-delivered signed payload can't erase a different tenant.
+          let bodyShop: string | null = null;
+          try {
+            bodyShop = normalizeShopDomain((JSON.parse(raw.toString("utf8")) as { shop_domain?: string }).shop_domain);
+          } catch { /* unparseable body → fall through to header-only */ }
+          if (bodyShop && bodyShop !== shop) {
+            console.error(`[shopify] shop/redact body/header shop mismatch (${bodyShop} vs ${shop}) — refusing erase`);
+            break;
+          }
+          // Sent ~48h after uninstall: erase ALL data we hold for this shop. We intentionally
+          // do NOT write a shop-scoped audit row afterward — that would recreate a row for the
+          // shop we just erased; the erasure summary is logged to the process log instead.
           const summary = await redactShop(shop);
-          await audit(shop, "webhook", "shop_redact", "compliance", null, summary);
           console.log(`[shopify] shop/redact erased ${shop}:`, JSON.stringify(summary));
           break;
         }
