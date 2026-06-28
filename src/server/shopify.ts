@@ -12,6 +12,7 @@ import {
   audit, consumeOAuthState, getAccessToken, getShop, markUninstalled, recordInstallation,
   saveOAuthState, storeCredentials, upsertShop, webhookSeen,
 } from "../db/shops.js";
+import { redactShop } from "../db/redact.js";
 import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
 import { activatePixelForShop } from "../pixel/activate.js";
 import { syncShopifyEntitlement } from "../billing/shopifyEntitlement.js";
@@ -337,10 +338,18 @@ export async function webhookHandler(req: Request, res: Response): Promise<void>
         }
         case "customers/data_request":
         case "customers/redact":
-        case "shop/redact":
-          // GDPR compliance webhooks: we store no customer PII, so just audit the request.
+          // We store no customer PII (pixel data uses random session nonces + salted IP
+          // hashes, never a Shopify customer id), so there is nothing to return or erase
+          // per-customer — just audit the request.
           await audit(shop, "webhook", topic.replace("/", "_"), "compliance");
           break;
+        case "shop/redact": {
+          // Sent ~48h after uninstall: erase ALL data we hold for this shop.
+          const summary = await redactShop(shop);
+          await audit(shop, "webhook", "shop_redact", "compliance", null, summary);
+          console.log(`[shopify] shop/redact erased ${shop}:`, JSON.stringify(summary));
+          break;
+        }
         default:
           await audit(shop, "webhook", `unhandled:${topic}`, "webhook");
       }
