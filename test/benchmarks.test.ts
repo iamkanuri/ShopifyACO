@@ -116,3 +116,24 @@ test("runShopBenchmark builds a cohort, runs it (mock), and lists the run for th
     await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
   }
 });
+
+test("getLatestCompletedRun ignores mock runs — the dashboard shows only live (S7)", { skip: !RUN_DB }, async () => {
+  const { createBenchmark, createRun, finishRun, getLatestCompletedRun } = await import("../src/db/benchmarks.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `s7-${Date.now()}.myshopify.com`;
+  let benchmarkId = 0;
+  try {
+    benchmarkId = await createBenchmark(shop, "s7", "mini", { brand: { name: "X" }, category: "c", competitors: [], prompts: [{ text: "p" }], engines: ["mock"] });
+    const liveRun = await createRun(benchmarkId, shop, "mini", ["mock"], 1, 1, "live");
+    await finishRun(liveRun, { status: "completed", observationCount: 1 });
+    // A MORE RECENT mock run (e.g. from a mock experiment / monitoring run) must NOT win.
+    const mockRun = await createRun(benchmarkId, shop, "mini", ["mock"], 1, 1, "mock");
+    await finishRun(mockRun, { status: "completed", observationCount: 1 });
+
+    const latest = await getLatestCompletedRun(shop);
+    assert.equal(latest?.id, liveRun, "dashboard latest must be the LIVE run, not the newer mock run");
+  } finally {
+    await pgQuery("delete from benchmark_runs where shop_domain=$1", [shop]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
+});

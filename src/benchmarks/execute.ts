@@ -39,7 +39,7 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
   if (adapters.length === 0) throw new Error("no engines configured for this benchmark");
 
   const prompts = c.prompts;
-  const runId = await createRun(benchmarkId, bench.shop_domain, bench.tier, adapters.map((a) => a.name), prompts.length, repetitions);
+  const runId = await createRun(benchmarkId, bench.shop_domain, bench.tier, adapters.map((a) => a.name), prompts.length, repetitions, mock ? "mock" : "live");
   const estimateUsd = estimateMaxCost(prompts.length * repetitions, adapters);
 
   // Live runs reserve worst-case spend atomically BEFORE any paid call.
