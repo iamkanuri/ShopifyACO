@@ -5,12 +5,27 @@ import { getExperiment, listExperiments, listInterventions } from "../db/experim
 import { getProposal } from "../db/fixes.js";
 import { productExists } from "../db/catalog.js";
 import { captureBaseline, planIntervention, runVerification, startVerification } from "../experiments/execute.js";
+import { assertBenchmarkQuota, assertFeature, gateDenial } from "../billing/enforce.js";
 
 // Shop-scoped Experiments API (Phase 7). requireShop sets req.shopDomain; every
 // handler is tenant-isolated. Baseline/verification are benchmark runs: mock by
 // default ($0); a LIVE run (real engine spend) requires explicit { live: true }.
 
 const METRICS = new Set(["recommendationRate", "mentionRate", "topChoiceRate", "promptCoverage", "citationBackedRate"]);
+
+/** Gate a LIVE experiment run: it spends real money, so it needs the experiments +
+ *  live_benchmarks features and consumes the benchmark quota — the same gates the
+ *  Measure path enforces (Codex #5: experiment endpoints previously bypassed them).
+ *  Returns false (and sends 402) when denied. No-op while BILLING_ENFORCED is dormant. */
+async function gateLiveRun(shop: string, res: Response): Promise<boolean> {
+  for (const feat of ["experiments", "live_benchmarks"] as const) {
+    const g = await assertFeature(shop, feat);
+    if (!g.allowed) { res.status(402).json(gateDenial(g)); return false; }
+  }
+  const q = await assertBenchmarkQuota(shop);
+  if (!q.allowed) { res.status(402).json(gateDenial(q)); return false; }
+  return true;
+}
 
 /** POST /app/api/experiments/plan — record an intervention + open an experiment. */
 export async function planHandler(req: Request, res: Response): Promise<void> {
@@ -71,6 +86,7 @@ export async function startVerificationHandler(req: Request, res: Response): Pro
     return;
   }
   const live = req.body?.live === true;
+  if (live && !(await gateLiveRun(shop, res))) return;
   try {
     const r = await startVerification(shop, { brand, category, competitors, description, mock: !live });
     res.json({ ok: true, mode: live ? "live" : "mock", ...r });
@@ -84,6 +100,7 @@ export async function baselineHandler(req: Request, res: Response): Promise<void
   const shop = shopOf(req);
   const id = Number(req.params.id);
   const live = req.body?.live === true;
+  if (live && !(await gateLiveRun(shop, res))) return;
   try {
     const r = await captureBaseline(shop, id, { mock: !live });
     res.json({ ok: true, baselineRunId: r.runId, mode: live ? "live" : "mock" });
@@ -97,6 +114,7 @@ export async function verifyHandler(req: Request, res: Response): Promise<void> 
   const shop = shopOf(req);
   const id = Number(req.params.id);
   const live = req.body?.live === true;
+  if (live && !(await gateLiveRun(shop, res))) return;
   try {
     const result = await runVerification(shop, id, { mock: !live });
     res.json({ ok: true, mode: live ? "live" : "mock", ...result });

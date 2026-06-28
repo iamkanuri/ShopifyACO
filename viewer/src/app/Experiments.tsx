@@ -1,7 +1,13 @@
 import { useState } from "react";
+import { useConfig } from "../config";
 import { getExperiments, startVerification, verifyExperiment } from "./appApi";
 import { DEMO, type AppExperimentRow, type Proportion } from "./fixtures";
-import { CiBar, DemoBadge, Pct, StatePane, VerdictPill, useLoaded } from "./ui";
+import { CiBar, ConfirmRun, DemoBadge, Pct, StatePane, VerdictPill, useLoaded } from "./ui";
+
+// A baseline/verification run is a live benchmark (real spend); mirror Measure's cap so the
+// cost confirmation is accurate (server-sourced per-call costs from /api/config).
+const EXP_PROMPTS = 12;
+const EXP_ENGINES = ["openai", "gemini", "perplexity"];
 
 // Experiments: the differentiator — did the change actually work? Matched
 // baseline/verification runs compared with CIs. "Inconclusive" is shown honestly,
@@ -33,19 +39,28 @@ export function Experiments() {
 }
 
 function StartPanel({ onStarted }: { onStarted: () => void }) {
+  const { scanCostPerCall } = useConfig();
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [competitors, setCompetitors] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
+  const estimateUsd = EXP_PROMPTS * EXP_ENGINES.reduce((s, e) => s + (scanCostPerCall[e] ?? 0), 0);
+
+  function requestStart() {
+    setMsg(null);
+    if (!brand.trim() || !category.trim() || !description.trim()) { setMsg({ text: "Brand, category and the change you're planning are required.", tone: "err" }); return; }
+    setConfirmOpen(true);
+  }
 
   async function start() {
-    if (!brand.trim() || !category.trim() || !description.trim()) { setMsg({ text: "Brand, category and what-you-changed are required.", tone: "err" }); return; }
-    setBusy(true); setMsg(null);
+    setBusy(true);
     const r = await startVerification({ brand: brand.trim(), category: category.trim(), competitors: competitors.split(",").map((s) => s.trim()).filter(Boolean), description: description.trim() });
     setBusy(false);
-    setMsg(r.ok ? { text: "Baseline captured. Apply your change, then run the verification below.", tone: "ok" } : r.demo ? { text: "Connect your store to start a verification.", tone: "info" } : { text: r.error ?? "Could not start.", tone: "err" });
+    setConfirmOpen(false);
+    setMsg(r.ok ? { text: "Live baseline captured. Apply your change in your store, then run the verification below.", tone: "ok" } : r.demo ? { text: "Connect your store to start a verification.", tone: "info" } : { text: r.error ?? "Could not start.", tone: "err" });
     if (r.ok) onStarted();
   }
 
@@ -55,26 +70,40 @@ function StartPanel({ onStarted }: { onStarted: () => void }) {
         <label className="al-field"><span className="al-set-k">Brand</span><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Olipop" /></label>
         <label className="al-field"><span className="al-set-k">Category</span><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="prebiotic soda" /></label>
         <label className="al-field"><span className="al-set-k">Competitors</span><input value={competitors} onChange={(e) => setCompetitors(e.target.value)} placeholder="Poppi, Culture Pop" /></label>
-        <label className="al-field"><span className="al-set-k">What did you change?</span><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Added review schema" /></label>
+        <label className="al-field"><span className="al-set-k">What are you planning to change?</span><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add review schema" /></label>
       </div>
       <div className="al-measure-actions">
-        <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? "Capturing baseline…" : "Start a verification (capture baseline)"}</button>
-        <span className="muted al-fineprint" style={{ margin: 0 }}>Captures the BEFORE benchmark. Preview is $0.</span>
+        <button className="btn btn-primary" disabled={busy} onClick={requestStart}>{busy ? "Capturing baseline…" : "Start a verification (capture baseline)"}</button>
+        <span className="muted al-fineprint" style={{ margin: 0 }}>Captures the BEFORE benchmark — a live run (real AI spend, cost-confirmed). Then apply your change and verify.</span>
       </div>
       {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 12 }}>{msg.text}</div>}
+      <ConfirmRun
+        open={confirmOpen}
+        title="Capture a live baseline?"
+        detail="Runs the BEFORE benchmark now so the eventual verdict is real proof, not a simulation. You'll apply your change, then run the AFTER verification (a second live run)."
+        estimateUsd={estimateUsd}
+        busy={busy}
+        confirmLabel="Yes, capture baseline"
+        onConfirm={start}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
 
 function ExperimentCard({ x, onVerified }: { x: AppExperimentRow; onVerified: () => void }) {
   const r = x.result;
+  const { scanCostPerCall } = useConfig();
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" | "info" } | null>(null);
+  const estimateUsd = EXP_PROMPTS * EXP_ENGINES.reduce((s, e) => s + (scanCostPerCall[e] ?? 0), 0);
 
   async function verify() {
     setBusy(true); setMsg(null);
     const res = await verifyExperiment(x.id);
     setBusy(false);
+    setConfirmOpen(false);
     setMsg(res.ok ? { text: "Verification complete.", tone: "ok" } : res.demo ? { text: "Connect your store to run the verification.", tone: "info" } : { text: res.error ?? "Verification failed.", tone: "err" });
     if (res.ok) onVerified();
   }
@@ -85,11 +114,21 @@ function ExperimentCard({ x, onVerified }: { x: AppExperimentRow; onVerified: ()
         <div className="al-exp-top">
           <VerdictPill verdict="pending" />
           <span className="al-exp-metric">Baseline captured</span>
-          <button className="btn btn-primary al-exp-verify" disabled={busy} onClick={verify}>{busy ? "Verifying…" : "Run verification"}</button>
+          <button className="btn btn-primary al-exp-verify" disabled={busy} onClick={() => setConfirmOpen(true)}>{busy ? "Verifying…" : "Run verification"}</button>
         </div>
         <div className="al-exp-mrow"><span className="al-exp-mlabel">Baseline</span><Pct p={r.primary.baseline} /><CiBar p={r.primary.baseline} tone="neutral" /></div>
         <p className="muted al-fineprint">Apply your change, then run the verification to measure whether it moved {labelOf(r.primary.metric)} — with CIs and honest caveats.</p>
         {msg && <div className={`al-note ${msg.tone}`} style={{ marginTop: 10 }}>{msg.text}</div>}
+        <ConfirmRun
+          open={confirmOpen}
+          title="Run the live verification?"
+          detail="Runs the AFTER benchmark now and compares it to the baseline (with CIs). We report 'inconclusive' honestly and never claim causation."
+          estimateUsd={estimateUsd}
+          busy={busy}
+          confirmLabel="Yes, verify"
+          onConfirm={verify}
+          onCancel={() => setConfirmOpen(false)}
+        />
       </div>
     );
   }

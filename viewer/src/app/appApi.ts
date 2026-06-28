@@ -129,11 +129,12 @@ export const proposeFixes = (runId: number, productGid: string) => post<{ create
 
 export const getExperiments = () => load<{ experiments: AppExperimentRow[] }>(`/app/api/experiments`, { experiments: DEMO.experiments });
 
-/** Start a verification: build a benchmark, plan the intervention, capture the baseline. */
+/** Start a verification: build a benchmark, plan the intervention, capture a LIVE baseline
+ *  (real spend) so the eventual verdict is real proof — never a mock simulation. */
 export const startVerification = (body: { brand: string; category: string; competitors: string[]; description: string }) =>
-  post<{ experimentId: number; baselineRunId: number }>(`/app/api/experiments/start`, body);
-/** Run the AFTER benchmark + compare to the baseline. */
-export const verifyExperiment = (id: number) => post<{ verdict: string }>(`/app/api/experiments/${id}/verify`, {});
+  post<{ experimentId: number; baselineRunId: number; mode: string }>(`/app/api/experiments/start`, { ...body, live: true });
+/** Run the AFTER benchmark LIVE + compare to the baseline. */
+export const verifyExperiment = (id: number) => post<{ verdict: string; mode: string }>(`/app/api/experiments/${id}/verify`, { live: true });
 
 /** The connected shop's recorded grant (scopes/plan/status) for the Settings screen. */
 export const getShopInfo = () => load<AppShopInfo>(`/app/api/shop`, DEMO.shopInfo);
