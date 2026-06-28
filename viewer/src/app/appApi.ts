@@ -143,7 +143,14 @@ export const getSchedules = () => load<{ schedules: AppScheduleRow[] }>(`/app/ap
 
 export const getAlerts = (status = "open") => load<{ alerts: AppAlertRow[] }>(`/app/api/alerts?status=${status}`, { alerts: DEMO.alerts });
 
-export const getCatalog = () => load<{ total: number; products: AppProductRow[] }>(`/app/api/catalog/products`, { total: DEMO.catalog.total, products: DEMO.catalog.products });
+export const getCatalog = (opts: { q?: string; limit?: number; offset?: number } = {}) => {
+  const p = new URLSearchParams();
+  if (opts.q) p.set("q", opts.q);
+  if (opts.limit != null) p.set("limit", String(opts.limit));
+  if (opts.offset) p.set("offset", String(opts.offset));
+  const qs = p.toString();
+  return load<{ total: number; products: AppProductRow[] }>(`/app/api/catalog/products${qs ? `?${qs}` : ""}`, { total: DEMO.catalog.total, products: DEMO.catalog.products });
+};
 
 export const getCatalogStatus = () => load<{ products: number; lastSync: { finished_at?: string; status?: string } | null }>(`/app/api/catalog/sync/status`, { products: DEMO.catalog.total, lastSync: { finished_at: DEMO.catalog.lastSyncAt, status: "completed" } });
 

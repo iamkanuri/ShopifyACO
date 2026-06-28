@@ -19,10 +19,11 @@ query CatalogProducts($cursor: String) {
       seo { title description }
       featuredImage { url }
       variants(first: 50) {
+        pageInfo { hasNextPage }
         nodes { id title sku barcode price availableForSale selectedOptions { name value } }
       }
-      collections(first: 20) { nodes { id title handle } }
-      metafields(first: 20) { nodes { namespace key value type } }
+      collections(first: 20) { pageInfo { hasNextPage } nodes { id title handle } }
+      metafields(first: 20) { pageInfo { hasNextPage } nodes { namespace key value type } }
     }
   }
 }`;
@@ -33,9 +34,9 @@ query CatalogProduct($id: ID!) {
     id title handle descriptionHtml vendor productType tags status onlineStoreUrl
     seo { title description }
     featuredImage { url }
-    variants(first: 50) { nodes { id title sku barcode price availableForSale selectedOptions { name value } } }
-    collections(first: 20) { nodes { id title handle } }
-    metafields(first: 20) { nodes { namespace key value type } }
+    variants(first: 50) { pageInfo { hasNextPage } nodes { id title sku barcode price availableForSale selectedOptions { name value } } }
+    collections(first: 20) { pageInfo { hasNextPage } nodes { id title handle } }
+    metafields(first: 20) { pageInfo { hasNextPage } nodes { namespace key value type } }
   }
 }`;
 

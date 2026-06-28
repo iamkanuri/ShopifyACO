@@ -44,6 +44,7 @@ export async function listProductsHandler(req: Request, res: Response): Promise<
   const q = typeof req.query.q === "string" ? req.query.q : undefined;
   const limit = Number(req.query.limit) || 50;
   const offset = Number(req.query.offset) || 0;
-  const [items, total] = await Promise.all([listProducts(shop, { q, limit, offset }), countProducts(shop)]);
+  // `total` matches the same filter so the UI's "showing X of Y" is correct while searching.
+  const [items, total] = await Promise.all([listProducts(shop, { q, limit, offset }), countProducts(shop, { q })]);
   res.json({ total, count: items.length, products: items });
 }

@@ -35,6 +35,9 @@ export interface NormalizedProduct {
   metafields: Array<{ namespace: string; key: string; value: string; type: string | null }>;
   variants: NormalizedVariant[];
   collections: NormalizedCollection[];
+  /** True if any nested connection (variants/collections/metafields) was capped by the
+   *  page size, so the synced data is a partial view. Surfaced in the catalog UI. */
+  nestedTruncated: boolean;
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -72,9 +75,9 @@ interface RawNode {
   onlineStoreUrl?: string;
   seo?: { title?: string; description?: string } | null;
   featuredImage?: { url?: string } | null;
-  variants?: { nodes?: unknown[] } | null;
-  collections?: { nodes?: unknown[] } | null;
-  metafields?: { nodes?: unknown[] } | null;
+  variants?: { nodes?: unknown[]; pageInfo?: { hasNextPage?: boolean } } | null;
+  collections?: { nodes?: unknown[]; pageInfo?: { hasNextPage?: boolean } } | null;
+  metafields?: { nodes?: unknown[]; pageInfo?: { hasNextPage?: boolean } } | null;
 }
 
 export function normalizeProduct(node: RawNode): NormalizedProduct | null {
@@ -121,6 +124,12 @@ export function normalizeProduct(node: RawNode): NormalizedProduct | null {
     return namespace && key ? [{ namespace, key, value: String(m.value ?? ""), type: str(m.type) }] : [];
   });
 
+  const nestedTruncated = Boolean(
+    node.variants?.pageInfo?.hasNextPage ||
+    node.collections?.pageInfo?.hasNextPage ||
+    node.metafields?.pageInfo?.hasNextPage,
+  );
+
   return {
     productGid,
     handle: str(node.handle),
@@ -137,5 +146,6 @@ export function normalizeProduct(node: RawNode): NormalizedProduct | null {
     metafields,
     variants,
     collections,
+    nestedTruncated,
   };
 }

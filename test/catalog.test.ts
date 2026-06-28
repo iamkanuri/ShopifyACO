@@ -107,6 +107,35 @@ dbTest("getStorefrontUrl returns a live product's public URL (skips archived/emp
   }
 });
 
+dbTest("sweepDeletedProducts removes products a later full sync didn't see, keeps the rest", async () => {
+  const { upsertProduct, sweepDeletedProducts, startSync, countProducts } = await import("../src/db/catalog.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `sweep-${Date.now()}.myshopify.com`;
+  const A = normalizeProduct({ ...RAW, id: `gid://shopify/Product/${Date.now()}A` })!;
+  const B = normalizeProduct({ ...RAW, id: `gid://shopify/Product/${Date.now()}B` })!;
+  try {
+    // Sync 1 sees both A and B.
+    const s1 = await startSync(shop, "full");
+    await upsertProduct(shop, A, s1);
+    await upsertProduct(shop, B, s1);
+    // Sync 2 sees only A (B was deleted from Shopify and the delete webhook was missed).
+    const s2 = await startSync(shop, "full");
+    await upsertProduct(shop, A, s2);
+    const removed = await sweepDeletedProducts(shop, s2);
+    assert.equal(removed, 1);                       // B swept
+    assert.equal(await countProducts(shop), 1);     // only A remains
+    const rows = await pgQuery<{ product_gid: string }>("select product_gid from products where shop_domain=$1", [shop]);
+    assert.equal(rows.rows[0]!.product_gid, A.productGid);
+    // Child rows for B are gone too.
+    const v = await pgQuery<{ c: string }>("select count(*)::int c from product_variants where shop_domain=$1 and product_gid=$2", [shop, B.productGid]);
+    assert.equal(Number(v.rows[0]!.c), 0);
+  } finally {
+    for (const t of ["catalog_snapshots", "catalog_syncs", "product_variants", "product_collections", "collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+  }
+});
+
 // Full mock sync — needs SHOPIFY_MODE=mock + APP_ENCRYPTION_KEY.
 const RUN_SYNC = RUN_DB && process.env.SHOPIFY_MODE === "mock" && Boolean(process.env.APP_ENCRYPTION_KEY);
 test("full mock catalog sync pulls + upserts 7 products (idempotent)", { skip: !RUN_SYNC }, async () => {

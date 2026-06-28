@@ -31,7 +31,7 @@ export interface Proportion { successes: number; n: number; rate: number | null;
 export interface AppShopInfo { shop: string; status: string; plan: string | null; scopes: string[]; writeProducts: boolean; }
 export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; benchmark_name?: string | null; brand?: string | null; category?: string | null; }
 export interface AppAlertRow { id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string; }
-export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; }
+export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; nested_truncated?: boolean; }
 export interface AppRunRow { id: number; benchmark_id: number | null; tier: string; status: string; mode?: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
 
 export interface AppDashboardData {

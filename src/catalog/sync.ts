@@ -1,7 +1,7 @@
 import { getAccessToken } from "../db/shops.js";
 import { fetchProduct, fetchProductsPage } from "./source.js";
 import { normalizeProduct } from "./normalize.js";
-import { finishSync, resumableSync, startSync, updateSyncProgress, upsertProduct } from "../db/catalog.js";
+import { finishSync, resumableSync, startSync, sweepDeletedProducts, updateSyncProgress, upsertProduct } from "../db/catalog.js";
 import { pgQuery } from "../db/pg.js";
 import { registerHandler } from "../queue/handlers.js";
 
@@ -12,6 +12,8 @@ import { registerHandler } from "../queue/handlers.js";
 export interface SyncResult {
   syncId: number;
   productsSynced: number;
+  /** Products removed because this completed full sync didn't see them (reconciliation). */
+  productsRemoved: number;
 }
 
 /** Full catalog sync. Pass resume:true to continue an interrupted run. */
@@ -47,8 +49,11 @@ export async function syncCatalog(shop: string, opts: { resume?: boolean } = {})
       hasNext = page.hasNextPage;
       await updateSyncProgress(syncId, cursor, count);
     }
+    // Reconcile: a completed full snapshot is authoritative, so drop products it didn't see
+    // (covers webhook-missed deletes). Conservative — see sweepDeletedProducts.
+    const productsRemoved = await sweepDeletedProducts(shop, syncId);
     await finishSync(syncId, "completed");
-    return { syncId, productsSynced: count };
+    return { syncId, productsSynced: count, productsRemoved };
   } catch (err) {
     await finishSync(syncId, "failed", (err as Error).message);
     throw err;

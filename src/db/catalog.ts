@@ -9,15 +9,17 @@ export async function upsertProduct(shop: string, p: NormalizedProduct, syncId?:
   await pgTx(async (c) => {
     await c.query(
       `insert into products (shop_domain, product_gid, handle, title, description, vendor, product_type,
-         tags, status, online_url, image_url, seo_title, seo_description, metafields, last_synced_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb, now(), now())
+         tags, status, online_url, image_url, seo_title, seo_description, metafields, last_sync_id, nested_truncated,
+         last_synced_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16, now(), now())
        on conflict (shop_domain, product_gid) do update set
          handle=excluded.handle, title=excluded.title, description=excluded.description, vendor=excluded.vendor,
          product_type=excluded.product_type, tags=excluded.tags, status=excluded.status, online_url=excluded.online_url,
          image_url=excluded.image_url, seo_title=excluded.seo_title, seo_description=excluded.seo_description,
-         metafields=excluded.metafields, last_synced_at=now(), updated_at=now()`,
+         metafields=excluded.metafields, nested_truncated=excluded.nested_truncated,
+         last_sync_id=coalesce($15, products.last_sync_id), last_synced_at=now(), updated_at=now()`,
       [shop, p.productGid, p.handle, p.title, p.description, p.vendor, p.productType, p.tags, p.status,
-       p.onlineUrl, p.imageUrl, p.seoTitle, p.seoDescription, JSON.stringify(p.metafields)],
+       p.onlineUrl, p.imageUrl, p.seoTitle, p.seoDescription, JSON.stringify(p.metafields), syncId ?? null, p.nestedTruncated ?? false],
     );
 
     // Variants: upsert current set, then prune any that no longer exist.
@@ -94,9 +96,37 @@ export async function resumableSync(shop: string): Promise<{ id: number; cursor:
 }
 
 // ---- read API --------------------------------------------------------------
-export async function countProducts(shop: string): Promise<number> {
-  const { rows } = await pgQuery<{ n: string }>("select count(*)::int n from products where shop_domain=$1", [shop]);
+/** Count products, optionally restricted to the same `q` filter as listProducts (so the UI's
+ *  "showing X of Y" total matches a search). No `q` → the shop's full synced count. */
+export async function countProducts(shop: string, opts: { q?: string } = {}): Promise<number> {
+  const q = opts.q?.trim();
+  const { rows } = await pgQuery<{ n: string }>(
+    `select count(*)::int n from products
+       where shop_domain=$1 and ($2::text is null or title ilike '%'||$2||'%' or vendor ilike '%'||$2||'%' or product_type ilike '%'||$2||'%')`,
+    [shop, q ?? null],
+  );
   return Number(rows[0]?.n ?? 0);
+}
+
+/** Remove products that a COMPLETED full sync didn't see — Shopify's webhook delivery isn't
+ *  guaranteed, so a missed products/delete would otherwise leave a stale product eligible for
+ *  fixes/feeds. Conservative: only deletes rows NOT stamped by this sync AND not touched since
+ *  the sync started (so a concurrent webhook upsert is never clobbered). Returns rows removed. */
+export async function sweepDeletedProducts(shop: string, syncId: number): Promise<number> {
+  return pgTx(async (c) => {
+    const { rows } = await c.query<{ product_gid: string }>(
+      `select product_gid from products
+         where shop_domain=$1 and last_sync_id is distinct from $2
+           and last_synced_at < (select started_at from catalog_syncs where id=$2)`,
+      [shop, syncId],
+    );
+    const gids = rows.map((r) => r.product_gid);
+    if (!gids.length) return 0;
+    await c.query("delete from product_variants where shop_domain=$1 and product_gid = any($2)", [shop, gids]);
+    await c.query("delete from product_collections where shop_domain=$1 and product_gid = any($2)", [shop, gids]);
+    await c.query("delete from products where shop_domain=$1 and product_gid = any($2)", [shop, gids]);
+    return gids.length;
+  });
 }
 /** True if a product GID belongs to this shop's catalog (tenant-ownership check). */
 export async function productExists(shop: string, productGid: string): Promise<boolean> {
@@ -122,7 +152,7 @@ export async function listProducts(shop: string, opts: { q?: string; limit?: num
   const q = opts.q?.trim();
   const { rows } = await pgQuery(
     `select p.product_gid, p.title, p.handle, p.vendor, p.product_type, p.status, p.image_url,
-            p.seo_title, p.seo_description, jsonb_array_length(p.metafields) as metafield_count,
+            p.seo_title, p.seo_description, p.nested_truncated, jsonb_array_length(p.metafields) as metafield_count,
             (select count(*)::int from product_variants v where v.shop_domain=p.shop_domain and v.product_gid=p.product_gid) as variant_count
      from products p
      where p.shop_domain=$1 and ($2::text is null or p.title ilike '%'||$2||'%' or p.vendor ilike '%'||$2||'%' or p.product_type ilike '%'||$2||'%')
@@ -142,10 +172,10 @@ export async function loadNormalizedProducts(shop: string, opts: { cap?: number 
     product_gid: string; handle: string | null; title: string | null; description: string | null;
     vendor: string | null; product_type: string | null; tags: string[] | null; status: string | null;
     online_url: string | null; image_url: string | null; seo_title: string | null; seo_description: string | null;
-    metafields: unknown;
+    metafields: unknown; nested_truncated: boolean | null;
   }>(
     `select product_gid, handle, title, description, vendor, product_type, tags, status,
-            online_url, image_url, seo_title, seo_description, metafields
+            online_url, image_url, seo_title, seo_description, metafields, nested_truncated
        from products where shop_domain=$1 order by product_gid asc limit $2`,
     [shop, cap],
   );
@@ -191,5 +221,6 @@ export async function loadNormalizedProducts(shop: string, opts: { cap?: number 
     metafields: Array.isArray(p.metafields) ? (p.metafields as NormalizedProduct["metafields"]) : [],
     variants: byProduct.get(p.product_gid) ?? [],
     collections: [],
+    nestedTruncated: Boolean(p.nested_truncated),
   }));
 }

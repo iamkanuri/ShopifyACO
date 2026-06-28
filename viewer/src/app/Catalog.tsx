@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getCatalog, getCatalogStatus, syncCatalog } from "./appApi";
 import { DemoBadge, StatePane, useLoaded } from "./ui";
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const PAGE_SIZE = 50;
 
 // Catalog: the synced product data the benchmarks + fixes operate on. Reads are free
 // (Shopify Admin API), so syncing never spends money. We surface machine-readability
 // gaps (missing SEO) right here so the merchant sees what the diagnosis acts on.
 export function Catalog() {
-  const c = useLoaded(() => getCatalog(), []);
+  const [qInput, setQInput] = useState("");
+  const [q, setQ] = useState("");
+  const [offset, setOffset] = useState(0);
+  // Debounce the search box; any new query resets to the first page.
+  useEffect(() => {
+    const t = setTimeout(() => { setQ(qInput.trim()); setOffset(0); }, 300);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  const c = useLoaded(() => getCatalog({ q, limit: PAGE_SIZE, offset }), [q, offset]);
   const s = useLoaded(() => getCatalogStatus(), []);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -16,7 +26,8 @@ export function Catalog() {
   const say = (text: string, tone: "ok" | "info" | "err" = "info") => { setNote(text); setNoteTone(tone); };
   const products = c.data?.products ?? [];
   const demo = c.demo; // showing sample data (no store connected)
-  const total = c.data?.total ?? products.length;
+  const matchTotal = c.data?.total ?? products.length;       // matches the current search filter
+  const syncedCount = s.data?.products ?? matchTotal;        // grand total synced (unfiltered)
 
   // Poll the status endpoint until the background sync reports done (bounded). Returns
   // true if it completed, false if we gave up waiting (the worker is still finishing).
@@ -39,7 +50,7 @@ export function Catalog() {
         // No real store connected — illustrate the capability on the sample catalog.
         // Clearly a demo (the "Demo data" badge is right here); we never imply a real pull.
         await delay(1500);
-        say(`Synced ${total} sample products · just now (demo)`, "ok");
+        say(`Synced ${syncedCount} sample products · just now (demo)`, "ok");
         return;
       }
       // Connected store → real pull. In prod the queue runs it in the background, so keep
@@ -57,20 +68,42 @@ export function Catalog() {
   }
 
   const lastSync = s.data?.lastSync?.finished_at;
+  const rangeFrom = matchTotal === 0 ? 0 : offset + 1;
+  const rangeTo = offset + products.length;
+  const hasPrev = offset > 0;
+  const hasNext = offset + products.length < matchTotal;
+  const searching = q.length > 0;
+
   return (
     <div>
       <div className="al-page-head">
         <div>
           <h2>Catalog <DemoBadge show={c.demo} /></h2>
           <p className="muted">
-            {c.data?.total ?? products.length} products synced from Shopify{lastSync ? ` · last ${new Date(lastSync).toLocaleString()}` : ""}. Reads are free.
+            {syncedCount} products synced from Shopify{lastSync ? ` · last ${new Date(lastSync).toLocaleString()}` : ""}. Reads are free.
           </p>
         </div>
         <button className="btn" disabled={busy} onClick={sync}>{busy ? "Syncing…" : "Sync now"}</button>
       </div>
       {note && <div className={`al-note ${noteTone}`} style={{ marginBottom: 16 }}>{note}</div>}
 
-      <StatePane loading={c.loading} empty={products.length === 0} emptyText="No products yet. Sync your Shopify catalog to begin.">
+      <div className="al-catalog-toolbar">
+        <input
+          className="al-catalog-search"
+          type="search"
+          value={qInput}
+          onChange={(e) => setQInput(e.target.value)}
+          placeholder="Search products by title, vendor or type…"
+          aria-label="Search products"
+        />
+        <span className="muted al-catalog-count">
+          {matchTotal === 0
+            ? (searching ? `No matches for “${q}”` : "No products")
+            : `Showing ${rangeFrom}–${rangeTo} of ${matchTotal}${searching ? ` matching “${q}”` : ""}`}
+        </span>
+      </div>
+
+      <StatePane loading={c.loading} empty={products.length === 0} emptyText={searching ? `No products match “${q}”. Try a different search.` : "No products yet. Sync your Shopify catalog to begin."}>
         <div className="card al-table-wrap">
           <table className="al-table">
             <thead>
@@ -81,7 +114,10 @@ export function Catalog() {
                 <tr key={p.product_gid}>
                   <td><b>{p.title}</b><div className="muted al-table-sub">{p.vendor}</div></td>
                   <td className="muted">{p.product_type ?? "—"}</td>
-                  <td>{p.variant_count}</td>
+                  <td>
+                    {p.variant_count}
+                    {p.nested_truncated && <span className="al-gapmark" style={{ marginLeft: 6 }} title="This product has more variants/collections/metafields than were synced (capped at 50/20/20). Diagnosis uses what was synced.">partial</span>}
+                  </td>
                   <td>{p.seo_title && p.seo_description ? <span className="al-ok">complete</span> : <span className="al-gapmark">{p.seo_title || p.seo_description ? "partial" : "missing"}</span>}</td>
                   <td>{p.metafield_count}</td>
                 </tr>
@@ -90,6 +126,14 @@ export function Catalog() {
           </table>
         </div>
       </StatePane>
+
+      {!demo && (hasPrev || hasNext) && (
+        <div className="al-pager">
+          <button className="btn" disabled={!hasPrev || c.loading} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>← Previous</button>
+          <span className="muted">Page {Math.floor(offset / PAGE_SIZE) + 1} of {Math.max(1, Math.ceil(matchTotal / PAGE_SIZE))}</span>
+          <button className="btn" disabled={!hasNext || c.loading} onClick={() => setOffset(offset + PAGE_SIZE)}>Next →</button>
+        </div>
+      )}
     </div>
   );
 }
