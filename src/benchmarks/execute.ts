@@ -117,6 +117,12 @@ export async function executeBenchmark(benchmarkId: number, opts: { mock?: boole
       }
     });
 
+    // A run where every call failed captured no observations — FAIL it rather than
+    // completing with a fabricated neutral score the dashboard could then promote (Codex #8).
+    // The catch below marks the run failed and settles any spend.
+    if (obsCount === 0) {
+      throw new Error(errorCount > 0 ? `All ${errorCount} engine call(s) failed — no data captured.` : "No engine responses produced any observation.");
+    }
     if (errorCount > 0) console.warn(`[benchmark] run ${runId}: ${errorCount}/${tasks.length} engine call(s) failed and were excluded from the rates`);
     await finishRun(runId, { status: "completed", observationCount: obsCount, costUsd: totalCost, modelVersions, groundingModes });
     if (reservationId) await reconcileSpend(reservationId, totalCost);

@@ -123,7 +123,10 @@ export function scoreFromMetrics(m: BenchmarkMetrics): ScoreBreakdown {
   const mention = m.mentionRate.rate ?? 0;
   const avgRank = m.avgPosition.mean;
   const rankValue = avgRank == null ? 0.5 : clamp01(1 - (avgRank - 1) / 5);
-  const compValue = m.winLoss.responses > 0 ? 1 - m.winLoss.losses / m.winLoss.responses : 0.5;
+  // No win/loss data → 0 (no competitive evidence earns no points), matching the CLI path
+  // (analysis/score.ts winValue). Previously 0.5 here, which made the two scores diverge for
+  // sparse/no-data runs (benchmark 15 vs CLI 8). Codex A4.
+  const compValue = m.winLoss.responses > 0 ? 1 - m.winLoss.losses / m.winLoss.responses : 0;
 
   const w = SCORE_WEIGHTS; // single source of truth (src/analysis/score.ts)
   const components = [

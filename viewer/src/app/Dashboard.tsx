@@ -60,7 +60,7 @@ export function Dashboard() {
           </div>
           <div>
             <div className="al-score-label">AI Visibility Score</div>
-            <div className="muted al-score-basis">A documented, deterministic blend of recommendation rate, mention rate, average position and engine coverage — never a black box.</div>
+            <div className="muted al-score-basis">A documented, deterministic blend of recommendation rate, mention rate, rank quality and competitive standing — never a black box.</div>
           </div>
         </div>
 

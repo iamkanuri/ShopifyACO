@@ -41,10 +41,11 @@ test("scoreFromMetrics: a perfect brand scores 100", () => {
   assert.equal(score, 100);
 });
 
-test("scoreFromMetrics: an absent brand floors at the neutral rank+competitive 0.5 (=15)", () => {
-  // rec 0, mention 0, no rank data (0.5), no competitive data (0.5).
+test("scoreFromMetrics: an absent brand floors at the neutral rank 0.5 only (=8)", () => {
+  // rec 0, mention 0, no rank data (neutral 0.5 → 7.5), no competitive data (0 — no
+  // evidence earns no points, matching the CLI path; Codex A4 — was 0.5/15).
   const { score } = scoreFromMetrics(M({ rec: [0, 10] }));
-  assert.equal(score, 15);
+  assert.equal(score, 8);
 });
 
 test("scoreFromMetrics: a partial brand matches the weighted formula", () => {

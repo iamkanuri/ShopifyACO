@@ -3,9 +3,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { compareProportions, engineDivergence, mean, proportion, shareOfVoice, volatility } from "../src/benchmarks/stats.js";
 import { ALL_INTENT_TYPES, generateIntentCohort } from "../src/benchmarks/intents.js";
-import { aggregate, type ObservationLike } from "../src/benchmarks/metrics.js";
+import { aggregate, scoreFromMetrics, type ObservationLike } from "../src/benchmarks/metrics.js";
+import { computeVisibilityScore } from "../src/analysis/score.js";
 import { estimateMaxCost } from "../src/cli.js";
 import { fixedCostPerCall } from "../src/engines/models.js";
+
+// ---- A4: no-data score must agree across the benchmark + CLI paths ---------
+test("no-data score is unified across benchmark + CLI paths (no neutral points for no evidence)", () => {
+  const benchScore = scoreFromMetrics(aggregate([], "Olipop")).score;
+  const cliScore = computeVisibilityScore([], { brand: { name: "Olipop" }, category: "x", competitors: [], promptTemplates: ["x"] }).score;
+  assert.equal(benchScore, cliScore, "benchmark and CLI no-data scores must agree (was 15 vs 8)");
+});
 
 // ---- stats: Wilson CIs + comparisons --------------------------------------
 test("proportion gives a point rate inside a Wilson CI", () => {
