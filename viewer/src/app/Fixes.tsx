@@ -65,7 +65,14 @@ export function Fixes() {
                     <button className="btn" disabled={busy === p.id} onClick={() => act(p.id, rollbackFix, "Rolled back — restored the previous value.")}>Rollback</button>
                   ) : null
                 ) : (
-                  <button className="btn" onClick={() => { navigator.clipboard?.writeText(p.proposed_value); setNote({ id: p.id, text: "Copied — paste into your theme.", ok: true }); }}>Copy snippet</button>
+                  <button className="btn" onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(p.proposed_value);
+                      setNote({ id: p.id, text: "Copied — paste into your theme.", ok: true });
+                    } catch {
+                      setNote({ id: p.id, text: "Couldn't copy automatically — select the snippet and copy it manually.", ok: false });
+                    }
+                  }}>Copy snippet</button>
                 )}
                 {p.status !== "dismissed" && p.status !== "applied" && (
                   <button className="btn al-ghost" disabled={busy === p.id} onClick={() => act(p.id, dismissFix, "Dismissed.")}>Dismiss</button>

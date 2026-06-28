@@ -42,7 +42,8 @@ export function App() {
   else if (path === "/terms") page = <TermsPage />;
   else if (path === "/support") page = <SupportPage />;
   else if (path === "/data-deletion") page = <DataDeletionPage />;
-  else page = <LandingPage />;
+  else if (path === "/") page = <LandingPage />;
+  else page = <NotFound />;
 
   const active = (p: string) => (path === p ? "active" : "");
 
@@ -53,7 +54,9 @@ export function App() {
           <Link to="/" className="brandmark">
             <div className="logo"><Mark /></div>
             <div>
-              <h1>{brandName}</h1>
+              {/* Brand wordmark is site chrome, not the page title — a span so each page
+                  provides the single <h1> (avoids two h1s per page, Codex #23). */}
+              <span className="brandname">{brandName}</span>
               <div className="sub">Are AI assistants recommending your store?</div>
             </div>
           </Link>
@@ -81,6 +84,15 @@ export function App() {
       )}
       {page}
       {!isAdmin && <Footer />}
+    </div>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="prose card" style={{ textAlign: "center" }}>
+      <h1>Page not found</h1>
+      <p className="muted">That page doesn't exist. <Link to="/">Go to the homepage →</Link></p>
     </div>
   );
 }

@@ -133,7 +133,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus
   width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
   background: var(--surface-2); border: 1px solid var(--border); color: var(--ink); font-weight: 800; font-size: 18px;
 }
-.brandmark h1 { font-size: 19px; margin: 0; letter-spacing: -0.01em; }
+.brandmark .brandname { display: block; font-weight: 800; font-size: 19px; margin: 0; letter-spacing: -0.01em; }
 .brandmark .sub { font-size: 12.5px; color: var(--ink-3); margin-top: 1px; }
 .muted { color: var(--ink-3); }
 
@@ -434,7 +434,7 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 @media (max-width: 560px) {
   .app { padding: 16px 14px 64px; }
   .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .brandmark h1 { font-size: 17px; }
+  .brandmark .brandname { font-size: 17px; }
   .report-headline { font-size: 21px; }
   .runmeta { gap: 6px; }
   .chip, .pill { font-size: 10.5px; padding: 4px 9px; }
@@ -591,7 +591,7 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 /* ============ premium polish ============ */
 /* Display typeface on hero titles + headings — the single biggest lift away from
    a default-template feel. Body stays Inter. */
-.hero-land h1, .land-section > h2, .report-headline, .brandmark h1,
+.hero-land h1, .land-section > h2, .report-headline, .brandmark .brandname,
 .cta-band h2, .center-card h1, .prose h1, .modal h3, .sample h2 {
   font-family: var(--font-display);
   letter-spacing: -0.03em;
