@@ -83,9 +83,9 @@ test("estimateMaxCost includes each engine's fixed per-call search fee", () => {
   assert.equal(fixedCostPerCall("sonar"), 0.005);
   assert.equal(fixedCostPerCall("mock"), 0);          // mock never costs
   assert.equal(fixedCostPerCall("unknown-model"), 0); // unknown → no fee
-  // 2 prompts × (sonar 0.005 + gpt-4o 0.02) fixed fees alone = 0.05, plus token cost on top.
-  const adapters = [{ model: "sonar" }, { model: "gpt-4o" }] as never;
-  assert.ok(estimateMaxCost(2, adapters) >= 2 * (0.005 + 0.02));
+  // 2 prompts × (sonar 0.005 + gpt-5.4-mini 0.016) fixed fees alone = 0.042, plus token cost.
+  const adapters = [{ model: "sonar" }, { model: "gpt-5.4-mini" }] as never;
+  assert.ok(estimateMaxCost(2, adapters) >= 2 * (0.005 + 0.016));
 });
 
 test("aggregate: citation-backed rate is n=0 (not a fabricated 0/1) when never mentioned", () => {

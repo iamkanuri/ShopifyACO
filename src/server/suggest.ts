@@ -6,7 +6,7 @@ import { postJson } from "../engines/http.js";
 // cost stays under ~$0.02. Never loops. Falls back gracefully if the key is missing
 // or the response can't be parsed.
 
-const MAX_SUGGEST_TOKENS = 350; // bounds cost: 350 out + ~250 in on gpt-4o ≈ $0.004
+const MAX_SUGGEST_TOKENS = 350; // bounds cost: 350 out + ~250 in on gpt-5.4-mini ≈ $0.002
 
 export interface SuggestResult {
   prompts: string[];

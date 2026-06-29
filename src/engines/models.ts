@@ -5,7 +5,9 @@
 // ---------------------------------------------------------------------------
 
 export const MODELS = {
-  openai: "gpt-4o",
+  // gpt-5.4-mini: a CURRENT, web_search-capable model (gpt-4o is now deprecated/off OpenAI's
+  // pricing page). ~half the per-call cost of gpt-4o and fresher for the "ChatGPT" claim.
+  openai: "gpt-5.4-mini",
   gemini: "gemini-2.5-flash",
   perplexity: "sonar",
   // Reserved for later adapters:
@@ -24,7 +26,11 @@ export interface ModelPrice {
 
 /** Approximate public pricing (USD / 1M tokens). Keep in sync with MODELS. */
 export const PRICING: Record<string, ModelPrice> = {
-  "gpt-4o": { inputPerM: 2.5, outputPerM: 10, fixedPerCallUsd: 0.02 },
+  // OpenAI web_search bills a ~$0.01/call tool fee PLUS the retrieved search content as ~8k
+  // input tokens at the model's input rate — so fixedPerCallUsd ≈ 0.01 + 8000·inputPerM/1e6.
+  // gpt-5.4-mini: 0.01 + 8000·0.75/1e6 ≈ 0.016.
+  "gpt-5.4-mini": { inputPerM: 0.75, outputPerM: 4.5, fixedPerCallUsd: 0.016 },
+  "gpt-4o": { inputPerM: 2.5, outputPerM: 10, fixedPerCallUsd: 0.03 }, // legacy (deprecated by OpenAI)
   "gemini-2.5-flash": { inputPerM: 0.3, outputPerM: 2.5, fixedPerCallUsd: 0.01 },
   // Perplexity sonar also bills per-request for web search; tokens are the bulk.
   sonar: { inputPerM: 1, outputPerM: 1, fixedPerCallUsd: 0.005 },
