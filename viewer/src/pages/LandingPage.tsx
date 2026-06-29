@@ -36,7 +36,7 @@ export function LandingPage() {
           </button>
         </form>
         <div className="hero-ctas">
-          <ConnectShopify className="as-link hero-connect" label="Connect Shopify" />
+          <ConnectShopify className="as-link hero-connect" label="Get it on the Shopify App Store →" />
           <Link className="hero-seeapp" to="/app">See the app →</Link>
         </div>
         <div className="hero-trust">Free · {miniPrompts} shopper prompts across 3 AI assistants · instant on-screen report</div>

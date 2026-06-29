@@ -139,6 +139,11 @@ export const ENV = {
     // (admin.shopify.com/store/{shop}/charges/{appHandle}/pricing_plans). Find it in the
     // Partner Dashboard. Unset → the in-app "Manage plan" button degrades to a note.
     appHandle: str(process.env.SHOPIFY_APP_HANDLE),
+    // Public Shopify App Store LISTING url (apps.shopify.com/<handle>). Set once the listing is
+    // live; until then the connect CTA falls back to an App Store search. We must NOT collect a
+    // myshopify.com domain in the install flow (App Store req 2.3.1) — installation always starts
+    // from this Shopify-owned surface (managed install + token exchange take over inside admin).
+    appStoreUrl: str(process.env.SHOPIFY_APP_STORE_URL),
     // 'mock' lets us build + test the full flow with no real Shopify credentials.
     mode: (str(process.env.SHOPIFY_MODE) ?? "live") as "live" | "mock",
   },

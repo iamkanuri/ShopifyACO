@@ -23,6 +23,7 @@ export interface AppConfig {
   fullReportPrompts: number;
   scanCostPerCall: Record<string, number>;
   scanCostCapUsd: number;
+  appStoreUrl: string | null;
 }
 
 const DEFAULTS: AppConfig = {
@@ -38,6 +39,7 @@ const DEFAULTS: AppConfig = {
   // /api/config. Fallback values so a pre-load estimate is never wildly off.
   scanCostPerCall: { openai: 0.0272, gemini: 0.0118, perplexity: 0.0058 },
   scanCostCapUsd: 0.5,
+  appStoreUrl: null,
 };
 
 const Ctx = createContext<AppConfig>(DEFAULTS);

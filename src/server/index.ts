@@ -379,6 +379,9 @@ app.get("/api/config", (req, res) => {
     brandName: ENV.publicBrandName,
     baseUrl: base,
     contactEmail: ENV.contactEmail,
+    // Public Shopify App Store listing (Shopify-owned install surface; req 2.3.1). Null until
+    // the listing is live → the connect CTA falls back to an App Store search for the brand.
+    appStoreUrl: ENV.shopify.appStoreUrl ?? null,
     tagline: TAGLINE,
     demoNote: DEMO_NOTE,
     plans,

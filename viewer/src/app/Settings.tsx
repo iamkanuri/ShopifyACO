@@ -31,7 +31,7 @@ export function Settings({ connected }: { connected: boolean }) {
         <div className="card al-setrow">
           <div><div className="al-set-k">Status</div><div className={connected ? "al-ok" : "al-gapmark"}>{connected ? "Connected" : "Not connected (demo)"}</div></div>
           <div><div className="al-set-k">Scopes</div><div className="muted">{scopes.length ? scopes.join(", ") : info.loading ? "…" : "—"}</div></div>
-          {!connected && <ConnectShopify className="btn btn-primary" label="Connect Shopify" />}
+          {!connected && <ConnectShopify className="btn btn-primary" label="Get it on the Shopify App Store" />}
         </div>
         <p className="muted al-fineprint">
           {info.data?.writeProducts

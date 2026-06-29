@@ -89,7 +89,7 @@ export function AppShell() {
             </div>
           ) : (
             <div className="al-connect">
-              You're viewing <b>sample data</b>. <ConnectShopify className="as-link al-connect-link" label="Connect your Shopify store" /> to see your real AI visibility.
+              You're viewing <b>sample data</b>. <ConnectShopify className="as-link al-connect-link" label="Get it on the Shopify App Store" /> to see your real AI visibility.
             </div>
           )
         )}
