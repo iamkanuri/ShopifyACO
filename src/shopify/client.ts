@@ -122,7 +122,7 @@ function parseTokenResponse(json: TokenResponse): TokenExchange {
   };
 }
 
-class LiveClient implements ShopifyClient {
+export class LiveClient implements ShopifyClient {
   mode = "live" as const;
   // The OAuth token endpoint is form-encoded (per Shopify docs); `expiring=1` is only honored
   // as a form param, so all three token calls below post application/x-www-form-urlencoded.
@@ -247,13 +247,31 @@ class LiveClient implements ShopifyClient {
     return registered;
   }
   async activateWebPixel(shop: string, accessToken: string, settings: string, existingId?: string): Promise<{ id: string }> {
-    // settings is a JSON string matching the extension's settings schema.
-    const isUpdate = Boolean(existingId);
-    const op = isUpdate ? "webPixelUpdate" : "webPixelCreate";
-    const query = isUpdate
+    // Try UPDATE when we have a stored id, but the stored id can go stale (the pixel was
+    // deleted on Shopify's side — e.g. an uninstall) → webPixelUpdate returns a "couldn't be
+    // found" userError. In that case fall back to CREATE (a fresh pixel) so reconnect self-heals
+    // instead of being permanently wedged on a dead id.
+    if (existingId) {
+      const upd = await this.pixelMutation(shop, accessToken, "webPixelUpdate", { id: existingId, wp: { settings } });
+      if (upd.id) return { id: upd.id };
+      const stale = upd.userErrors.some((m) => /couldn'?t be found|could not be found|does ?n'?t exist|not exist|not found|invalid id/i.test(m));
+      if (!stale) throw new Error(`webPixelUpdate userErrors: ${upd.userErrors.join("; ")}`);
+      console.warn(`[shopify] stored web pixel id stale for ${shop} — creating a fresh pixel`);
+    }
+    const cre = await this.pixelMutation(shop, accessToken, "webPixelCreate", { wp: { settings } });
+    if (cre.id) return { id: cre.id };
+    throw new Error(`webPixelCreate userErrors: ${cre.userErrors.join("; ") || "no web pixel id returned"}`);
+  }
+
+  /** Run a webPixelCreate/Update mutation; returns the id (or the userError messages) without
+   *  throwing on userErrors, so activateWebPixel can decide whether to fall back to create. */
+  private async pixelMutation(
+    shop: string, accessToken: string,
+    op: "webPixelCreate" | "webPixelUpdate", variables: Record<string, unknown>,
+  ): Promise<{ id?: string; userErrors: string[] }> {
+    const query = op === "webPixelUpdate"
       ? `mutation a($id: ID!, $wp: WebPixelInput!){ webPixelUpdate(id: $id, webPixel: $wp){ webPixel { id } userErrors { field message code } } }`
       : `mutation a($wp: WebPixelInput!){ webPixelCreate(webPixel: $wp){ webPixel { id } userErrors { field message code } } }`;
-    const variables = isUpdate ? { id: existingId, wp: { settings } } : { wp: { settings } };
     const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
       method: "POST",
       headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
@@ -263,11 +281,7 @@ class LiveClient implements ShopifyClient {
     if (!res.ok) throw new Error(`${op} failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
     const json = (await res.json()) as { data?: Record<string, { webPixel?: { id?: string }; userErrors?: Array<{ message?: string }> }> };
     const payload = json.data?.[op];
-    const errs = payload?.userErrors ?? [];
-    if (errs.length) throw new Error(`${op} userErrors: ${errs.map((e) => e.message).join("; ")}`);
-    const id = payload?.webPixel?.id;
-    if (!id) throw new Error(`${op} returned no web pixel id`);
-    return { id };
+    return { id: payload?.webPixel?.id, userErrors: (payload?.userErrors ?? []).map((e) => e.message ?? "") };
   }
 }
 

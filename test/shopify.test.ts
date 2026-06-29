@@ -11,6 +11,49 @@ import { shouldRefreshToken } from "../src/shopify/tokens.js";
 const KEY = Buffer.alloc(32, 9).toString("base64");
 const KEY2 = Buffer.alloc(32, 4).toString("base64");
 
+// ---- web pixel activation: self-heal a stale stored id ---------------------
+test("activateWebPixel falls back to create when the stored pixel id is stale", async () => {
+  const { LiveClient } = await import("../src/shopify/client.js");
+  const calls: string[] = [];
+  const realFetch = globalThis.fetch;
+  // Simulate: webPixelUpdate(stale id) → "couldn't be found"; webPixelCreate → fresh id.
+  globalThis.fetch = (async (_url: unknown, init: { body: string }) => {
+    const body = JSON.parse(init.body) as { query: string };
+    const op = /webPixelUpdate/.test(body.query) ? "webPixelUpdate" : "webPixelCreate";
+    calls.push(op);
+    const data = op === "webPixelUpdate"
+      ? { webPixelUpdate: { webPixel: null, userErrors: [{ message: "The web pixel with the ID used as the input value couldn't be found." }] } }
+      : { webPixelCreate: { webPixel: { id: "gid://shopify/WebPixel/999" }, userErrors: [] } };
+    return { ok: true, json: async () => ({ data }) };
+  }) as unknown as typeof fetch;
+  try {
+    const r = await new LiveClient().activateWebPixel("s.myshopify.com", "tok", "{}", "gid://shopify/WebPixel/stale");
+    assert.equal(r.id, "gid://shopify/WebPixel/999");
+    assert.deepEqual(calls, ["webPixelUpdate", "webPixelCreate"]); // tried update, fell back to create
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("activateWebPixel surfaces a NON-stale update error (does not blindly recreate)", async () => {
+  const { LiveClient } = await import("../src/shopify/client.js");
+  const calls: string[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url: unknown, init: { body: string }) => {
+    calls.push(/webPixelUpdate/.test((JSON.parse(init.body) as { query: string }).query) ? "u" : "c");
+    return { ok: true, json: async () => ({ data: { webPixelUpdate: { webPixel: null, userErrors: [{ message: "settings can't be blank" }] } } }) };
+  }) as unknown as typeof fetch;
+  try {
+    await assert.rejects(
+      () => new LiveClient().activateWebPixel("s.myshopify.com", "tok", "{}", "gid://shopify/WebPixel/x"),
+      /can't be blank/,
+    );
+    assert.deepEqual(calls, ["u"]); // did NOT fall back to create on a real validation error
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 // ---- crypto (token encryption at rest) ------------------------------------
 test("encrypt → decrypt round-trips", () => {
   const blob = encryptSecret("shpat_secret_token", KEY);
