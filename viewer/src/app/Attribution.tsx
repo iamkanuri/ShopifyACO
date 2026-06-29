@@ -65,12 +65,19 @@ function PixelHealth({ h, demo, onReconnect }: { h: AppPixelHealth; demo: boolea
         <div className="al-health-grid">
           <div><div className="al-set-k">Activation</div><div>{h.activated ? "Activated" : "Not activated"}</div></div>
           <div><div className="al-set-k">Scopes</div><div>{h.hasScope ? "Granted" : "Missing"}</div></div>
+          <div><div className="al-set-k">Ingest token</div><div>{h.ingestTokenSet ? "Set" : "Not set"}</div></div>
           <div><div className="al-set-k">Last beacon</div><div>{h.lastEventAt ? new Date(h.lastEventAt).toLocaleString() : "none yet"}</div></div>
           <div><div className="al-set-k">Sessions (7d)</div><div>{h.sessionsLast7d}</div></div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
-          <button className="btn" disabled={busy || demo} onClick={reconnect}>{busy ? "Reconnecting…" : "Reconnect pixel"}</button>
-          {msg && <span className={`al-note ${msg.tone}`} style={{ margin: 0 }}>{msg.text}</span>}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
+          {/* When healthy, the button is a quiet, optional action (not a prompt); when something's
+              wrong it's the primary fix. */}
+          <button className={`btn ${state === "ok" ? "al-ghost" : "btn-primary"}`} disabled={busy || demo} onClick={reconnect}>
+            {busy ? "Reconnecting…" : "Reconnect pixel"}
+          </button>
+          {msg
+            ? <span className={`al-note ${msg.tone}`} style={{ margin: 0 }}>{msg.text}</span>
+            : state === "ok" && <span className="muted al-fineprint" style={{ margin: 0 }}>Healthy — no action needed. Only reconnect if it stops receiving beacons.</span>}
         </div>
         <p className="muted al-fineprint" style={{ marginTop: 10 }}>Only events captured with the shopper's analytics consent are stored — non-consented sessions are never recorded.</p>
       </div>
