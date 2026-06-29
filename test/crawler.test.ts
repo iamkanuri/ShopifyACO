@@ -328,6 +328,14 @@ test("diagnoseRun (mock) crawls, diagnoses, and persists findings", { skip: !RUN
     const pages = await listCrawlPages(shop, runId);
     assert.ok(pages.length >= 2);
 
+    // findingsHandler maps the raw engine slug → the product label for the live screen (#6).
+    const { findingsHandler } = await import("../src/server/evidence.js");
+    const res2 = { code: 0, payload: null as unknown, status(c: number) { this.code = c; return this; }, json(b: unknown) { this.payload = b; return this; } };
+    await findingsHandler({ shopDomain: shop, query: { runId: String(runId) }, body: {}, params: {} } as never, res2 as never);
+    const served = (res2.payload as { findings: Array<{ engine: string | null }> }).findings;
+    for (const f of served) assert.ok(!["openai", "gemini", "perplexity", "anthropic"].includes(String(f.engine)), `raw engine slug leaked to the client: ${f.engine}`);
+    assert.ok(served.some((f) => f.engine === "ChatGPT"), "an openai-sourced finding should read 'ChatGPT'");
+
     // idempotent re-run converges (findings replaced, not duplicated)
     await diagnoseRun({ runId, shopDomain: shop, merchantBrand: "MyBrand", benchmarkId, mock: true });
     const findings2 = await listFindings(shop, { runId });

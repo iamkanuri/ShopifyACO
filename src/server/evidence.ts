@@ -5,6 +5,7 @@ import { diagnoseRun } from "../diagnosis/execute.js";
 import { getBenchmark, getRun } from "../db/benchmarks.js";
 import { listCrawlPages, listFindings } from "../db/crawler.js";
 import { enqueue } from "../queue/jobs.js";
+import { engineLabel } from "../engines/labels.js";
 
 // Shop-scoped Evidence & Diagnosis API (Phase 5). requireShop sets req.shopDomain;
 // every handler verifies the target run belongs to THIS shop (tenant isolation).
@@ -73,7 +74,13 @@ export async function findingsHandler(req: Request, res: Response): Promise<void
   const owned = await ownedRun(req, res);
   if (!owned) return;
   const findings = await listFindings(shop, { runId: owned.runId });
-  res.json({ runId: owned.runId, count: findings.length, findings });
+  // Map the raw engine slug (openai/gemini/perplexity) → its product label (ChatGPT/Gemini/
+  // Perplexity) so the LIVE Evidence screen reads like the analysis/demo, which are already
+  // labeled. The DB stores the adapter name; the merchant should never see a raw slug (#6).
+  const labeled = findings.map((f) =>
+    typeof f.engine === "string" && f.engine ? { ...f, engine: engineLabel(f.engine) } : f,
+  );
+  res.json({ runId: owned.runId, count: labeled.length, findings: labeled });
 }
 
 /** GET /app/api/evidence/pages?runId= — crawled pages for a run (merchant + competitors). */
