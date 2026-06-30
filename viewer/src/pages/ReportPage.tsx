@@ -115,7 +115,7 @@ function PreviewClaim({ runId, preview: p, onClaimed }: { runId: string; preview
         <h2>Save &amp; share your scorecard</h2>
         <p className="muted">Unlock the full competitor leaderboard, the per-assistant breakdown, and every score component — and get a shareable link.</p>
         <div className="claim-form">
-          <input type="email" placeholder="you@store.com" value={email} aria-label="Your email"
+          <input type="email" placeholder="you@yourstore.com" value={email} aria-label="Your email"
             onChange={(e) => { setEmail(e.target.value); setErr(""); }}
             onKeyDown={(e) => e.key === "Enter" && claim()} />
           <button className="btn btn-primary lg" disabled={busy} onClick={claim}>{busy ? "Saving…" : "Save & share your scorecard"}</button>
