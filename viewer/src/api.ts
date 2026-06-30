@@ -33,7 +33,6 @@ export const startScan = (body: {
   form: ScanForm;
   prompts: string[];
   engines?: string[];
-  email: string;
   hp?: string;
   sourcePage?: string;
 }) => postJson<{ runId: string; estimateMaxUsd: number; totalCalls: number }>("/api/scan", body);

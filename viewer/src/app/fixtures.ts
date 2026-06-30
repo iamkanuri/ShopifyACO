@@ -107,18 +107,18 @@ export const DEMO = {
   category: "prebiotic soda",
 
   dashboard: {
-    score: 67, // /100 AI visibility score (real scan, 2026-06-23)
-    recommendationRate: p(23, 48),
+    score: 72, // /100 AI visibility score (real scan on gpt-5.4-mini, 2026-06-28)
+    recommendationRate: p(28, 48),
     mentionRate: p(41, 48),
     shareOfVoice: [
-      { key: "Olipop", share: 0.48 },
-      { key: "Poppi", share: 0.23 },
-      { key: "Health-Ade", share: 0.06 },
+      { key: "Olipop", share: 0.58 },
+      { key: "Poppi", share: 0.15 },
       { key: "Culture Pop", share: 0.02 },
+      { key: "Health-Ade", share: 0.02 },
     ],
     weakestEngine: "ChatGPT",
     topThreat: "Poppi",
-    lastRunAt: "2026-06-22T15:00:00Z",
+    lastRunAt: "2026-06-28T15:00:00Z",
     openFindings: 4,
     pendingFixes: 2,
     openAlerts: 1,
@@ -224,8 +224,8 @@ export const DEMO = {
   alerts: <AppAlertRow[]>[
     {
       id: 41, type: "threshold", severity: "warning", metric: "recommendationRate",
-      title: "ChatGPT recommends Olipop only 25% of the time",
-      detail: "Perplexity recommends you 69% and Gemini 50%, but ChatGPT just 25% — your biggest engine gap. Engine results vary run-to-run; corroborate before acting.",
+      title: "ChatGPT recommends Olipop the least (50%)",
+      detail: "Perplexity and Gemini both recommend you 63%, but ChatGPT only 50% — your weakest engine. Engine results vary run-to-run; corroborate before acting.",
       status: "open", created_at: "2026-06-22T15:05:00Z",
     },
   ],

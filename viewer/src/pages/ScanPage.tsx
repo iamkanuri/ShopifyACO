@@ -6,7 +6,7 @@ import { getStatus } from "../api";
 import { navigate } from "../router";
 import { useModalFocus } from "../useModalFocus";
 
-interface FieldErrors { brand?: string; category?: string; email?: string; competitors?: string }
+interface FieldErrors { brand?: string; category?: string; competitors?: string }
 
 interface PromptRow {
   category: string;
@@ -50,7 +50,6 @@ export function ScanPage() {
   const [competitors, setCompetitors] = useState<ScanBrand[]>([{ name: "", storeUrl: "" }]);
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [engines, setEngines] = useState({ openai: true, gemini: true, perplexity: true });
-  const [email, setEmail] = useState("");
   const [hp, setHp] = useState(""); // honeypot — must stay empty
   const [newPrompt, setNewPrompt] = useState("");
   const [suggestMsg, setSuggestMsg] = useState("");
@@ -69,7 +68,6 @@ export function ScanPage() {
   // Field refs so we can move focus to the FIRST invalid field on a failed submit.
   const brandRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
-  const emailRef = useRef<HTMLInputElement>(null);
   const firstCompRef = useRef<HTMLInputElement>(null);
 
   // a11y: confirm dialog gets initial focus, a focus trap, Escape, and focus restoration.
@@ -88,7 +86,6 @@ export function ScanPage() {
     [selected.length, enabledEngines.join(","), scanCostPerCall],
   );
   const overCap = estMaxCost > scanCostCapUsd;
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   // Arrived from the landing page (or a deep link) with a store already typed —
   // auto-detect once. The Index path already supplies brand+category, so skip it there.
@@ -116,20 +113,19 @@ export function ScanPage() {
     };
   }
 
-  // Collect ALL invalid fields at once (not one-error-per-submit) so the shopper sees the
-  // whole list. `requireEmail` is on only for the run, not for prompt generation.
-  function collectErrors(requireEmail: boolean): FieldErrors {
+  // Collect ALL invalid fields at once (not one-error-per-submit) so the shopper sees the whole
+  // list. No email here — the scan is ungated; email is collected on the report to save/share.
+  function collectErrors(): FieldErrors {
     const e: FieldErrors = {};
     if (!brand.name.trim()) e.brand = "Enter your brand name.";
     if (!category.trim()) e.category = "Enter a product category.";
     if (!competitors.some((c) => c.name.trim())) e.competitors = "Add at least one competitor.";
-    if (requireEmail && !emailValid) e.email = "Enter a valid email address to run the scan.";
     return e;
   }
 
   // Move focus to the first invalid field, in visual (top-to-bottom) order.
   function focusFirstError(e: FieldErrors): void {
-    const target = e.brand ? brandRef : e.category ? categoryRef : e.email ? emailRef : e.competitors ? firstCompRef : null;
+    const target = e.brand ? brandRef : e.category ? categoryRef : e.competitors ? firstCompRef : null;
     target?.current?.focus();
   }
 
@@ -180,7 +176,7 @@ export function ScanPage() {
   /** Ensure prompts exist (generate + auto-select the mini default). */
   async function ensurePrompts(): Promise<PromptRow[] | null> {
     if (prompts.length) return prompts;
-    const errs = collectErrors(false); // email not needed just to generate prompts
+    const errs = collectErrors(); // email not needed just to generate prompts
     if (Object.keys(errs).length) {
       setFieldErrors(errs);
       return null;
@@ -243,7 +239,7 @@ export function ScanPage() {
   async function openConfirm() {
     // Validate every field up front, surface the full list, and focus the first invalid one.
     // Email is NOT required to run (value-first) — it's collected on the report to save/share.
-    const errs = collectErrors(false);
+    const errs = collectErrors();
     if (Object.keys(errs).length) {
       setFieldErrors(errs);
       focusFirstError(errs);
@@ -267,7 +263,6 @@ export function ScanPage() {
         form: buildForm(),
         prompts: selected.map((p) => p.text),
         engines: enabledEngines,
-        email: email.trim(),
         hp,
         sourcePage: window.location.pathname,
       });
@@ -338,7 +333,7 @@ export function ScanPage() {
   }
 
   // ---- step 2: details (auto-detected, editable) ----
-  const errorList = [fieldErrors.brand, fieldErrors.category, fieldErrors.email, fieldErrors.competitors].filter(Boolean) as string[];
+  const errorList = [fieldErrors.brand, fieldErrors.category, fieldErrors.competitors].filter(Boolean) as string[];
   return (
     <div className="scanpage">
       <h1 className="report-headline">Confirm your store</h1>
