@@ -14,15 +14,18 @@ import { WhatThisMeans } from "../components/WhatThisMeans";
 import { ConfidenceBadge, RunSizeBadge } from "../components/Badges";
 import { ExportBar } from "../components/ExportBar";
 import { Pricing } from "../components/Pricing";
+import { FunnelCta } from "../components/FunnelCta";
 
 export function Report({
   run,
   runId,
   reportMdUrl,
+  isShopify,
 }: {
   run: RunResults;
   runId?: string;
   reportMdUrl?: string;
+  isShopify?: boolean;
 }) {
   const a = run.analysis as MerchantAnalysis;
 
@@ -118,8 +121,17 @@ export function Report({
       </Collapse>
 
       <section className="section no-print">
-        <h2>Get the full report</h2>
-        <Pricing runId={runId} />
+        <h2>{isShopify ? "Fix this on your store" : "Get the full report"}</h2>
+        <p className="muted">
+          {isShopify
+            ? "AisleLens installs on your Shopify store to diagnose why AI picks competitors — and helps you fix it."
+            : "A hand-reviewed deep report, or install AisleLens free if you're on Shopify."}
+        </p>
+        <FunnelCta isShopify={isShopify} runId={runId} />
+        <details className="report-collapse" style={{ marginTop: 18 }}>
+          <summary>See all plans</summary>
+          <div className="rc-body"><Pricing runId={runId} /></div>
+        </details>
       </section>
 
       <footer className="disclaimer">

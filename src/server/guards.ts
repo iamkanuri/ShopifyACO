@@ -105,6 +105,20 @@ export async function freeScanAllowed(email: string, ipHashValue: string): Promi
   };
 }
 
+// Value-first: the RUN is now ungated (no email), so it's bounded per-IP/day (+ the global
+// spend cap). Claiming a report (adding an email) is bounded per-email/day.
+export interface UngatedScanCheck { ok: boolean; ipCount: number; perIp: number }
+export async function ungatedScanAllowed(ipHashValue: string): Promise<UngatedScanCheck> {
+  const ipCount = await countRunsByIpToday(ipHashValue);
+  return { ok: ipCount < ENV.freeScansPerIpUngated, ipCount, perIp: ENV.freeScansPerIpUngated };
+}
+
+export interface ClaimCheck { ok: boolean; emailCount: number; perEmail: number }
+export async function claimAllowed(email: string): Promise<ClaimCheck> {
+  const emailCount = await countRunsByEmailToday(email);
+  return { ok: emailCount < ENV.freeScansPerEmailPerDay, emailCount, perEmail: ENV.freeScansPerEmailPerDay };
+}
+
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const isValidEmail = (e: unknown): e is string =>
   typeof e === "string" && e.length <= 254 && EMAIL_RE.test(e);

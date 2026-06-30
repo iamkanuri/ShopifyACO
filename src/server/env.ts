@@ -71,6 +71,9 @@ export const ENV = {
   // Free-scan abuse limits.
   freeScansPerEmailPerDay: Number(process.env.FREE_SCANS_PER_EMAIL ?? 2),
   freeScansPerIpPerDay: Number(process.env.FREE_SCANS_PER_IP ?? 2),
+  // Value-first: the scan runs WITHOUT an email now, so the per-IP daily cap on UNGATED runs
+  // (plus the global spend cap) is the denial-of-wallet backstop. Keep this modest.
+  freeScansPerIpUngated: Number(process.env.FREE_SCANS_PER_IP_UNGATED ?? 2),
 
   // Admin cockpit.
   adminPassword: str(process.env.ADMIN_PASSWORD),

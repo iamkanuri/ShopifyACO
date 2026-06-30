@@ -1,7 +1,7 @@
 import "dotenv/config";
 import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Config } from "../types.js";
@@ -38,6 +38,8 @@ import {
   clientIp,
   currentSpendUsd,
   freeScanAllowed,
+  ungatedScanAllowed,
+  claimAllowed,
   ipHash,
   isValidEmail,
   rateLimit,
@@ -52,6 +54,7 @@ import {
   insertRun,
   listCategoryIndexes,
   updateOrder,
+  updateRun,
   upsertCategoryIndex,
   type IndexEntry,
 } from "../db/supabase.js";
@@ -61,16 +64,21 @@ import {
   acquireLock,
   activeRun,
   createRun,
+  getClaim,
   getResults,
   getStatus,
   isBusy,
   isValidRunId,
   newRunId,
+  ogPngPath,
   readProgress,
   releaseLock,
   runDir,
+  setClaimed,
 } from "./runStore.js";
 import { runScanJob } from "./scanJob.js";
+import { reportPreview } from "./reportPreview.js";
+import { renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 
@@ -480,8 +488,10 @@ app.post(
     const formErr = validateForm(body?.form);
     if (formErr) return res.status(400).json({ error: formErr });
     if (body.form.competitors.length > 8) return res.status(400).json({ error: "Free scans allow up to 8 competitors." });
-    if (!isValidEmail(body.email)) return res.status(400).json({ error: "A valid email is required to run a scan." });
-    const email = body.email;
+    // VALUE-FIRST: the scan runs WITHOUT an email. Email is collected later to CLAIM the
+    // report (POST /api/runs/:id/claim). A legacy client may still send one; we ignore it
+    // for the run and never gate the run on it.
+    const email = isValidEmail(body.email) ? body.email : undefined;
     const ip = clientIp(req);
     const ipH = ipHash(ip);
 
@@ -495,8 +505,6 @@ app.post(
     if (isBusy()) {
       return res.status(409).json({ error: `A scan is already running (${activeRun()}). Try again shortly.` });
     }
-
-    await insertLead({ email, plan: "free_mini", source: "scan_gate", source_page: body.sourcePage, ip_hash: ipH });
 
     const engines = (body.engines ?? DEFAULT_ENGINES).filter((e) => DEFAULT_ENGINES.includes(e));
     let config: Config;
@@ -516,21 +524,21 @@ app.post(
     // GLOBAL daily spend cap — before any live API call.
     const spend = await spendAllows(estimateMaxUsd);
     if (!spend.ok) {
-      await insertLead({ email, plan: "monitoring", source: "spend_cap", source_page: body.sourcePage, ip_hash: ipH });
+      if (email) await insertLead({ email, plan: "monitoring", source: "spend_cap", source_page: body.sourcePage, ip_hash: ipH });
       await insertEvent("spend_cap_block", undefined, { spentUsd: spend.spentUsd, capUsd: spend.capUsd });
       return res.status(429).json({
         capReached: true,
-        error: `Daily scan capacity reached ($${spend.capUsd}). We saved your email — we'll notify you when it resets.`,
+        error: `Daily scan capacity reached ($${spend.capUsd}). Please try again after it resets.`,
       });
     }
 
-    // Free-scan daily limits (per email AND per IP).
-    const free = await freeScanAllowed(email, ipH);
+    // Ungated runs are bounded per-IP/day (the global spend cap above is the real backstop).
+    const free = await ungatedScanAllowed(ipH);
     if (!free.ok) {
       await insertEvent("daily_limit_block", undefined, { ipHash: ipH });
       return res.status(429).json({
         limitReached: true,
-        error: `Free scan limit reached (${free.perEmail}/day per email, ${free.perIp}/day per IP). Try again tomorrow.`,
+        error: `Free scan limit reached (${free.perIp}/day from this network). Try again tomorrow.`,
       });
     }
 
@@ -558,12 +566,72 @@ app.get(
 app.get(
   "/api/runs/:runId",
   wrap(async (req, res) => {
-    if (!isValidRunId(req.params.runId)) return res.status(404).json({ error: "Results not ready." });
-    const results = (await getResults(req.params.runId)) as Record<string, unknown> | null;
+    const runId = req.params.runId;
+    if (!isValidRunId(runId)) return res.status(404).json({ error: "Results not ready." });
+    const results = (await getResults(runId)) as Record<string, unknown> | null;
     if (!results) return res.status(404).json({ error: "Results not ready." });
-    res.json(redactRun(results));
+    const claim = await getClaim(runId);
+    if (claim.claimed) {
+      // CLAIMED → fully PUBLIC (no email wall): everything is derived from public AI queries
+      // about public brands, no PII — this is what lets a shared scorecard spread.
+      return res.json({ claimed: true, ...redactRun(results) });
+    }
+    // Ungated preview: score + gap + weakest engine only. Email claims the full breakdown.
+    const preview = reportPreview(results);
+    if (!preview) return res.status(404).json({ error: "Results not ready." });
+    res.json({ claimed: false, preview });
   }),
 );
+
+// Claim a report with an email → it becomes publicly viewable + saves the lead. UNLOCK-ONLY:
+// it never re-runs the scan (the 15 calls already ran once); it just reveals what's computed.
+app.post(
+  "/api/runs/:runId/claim",
+  wrap(async (req, res) => {
+    const runId = req.params.runId;
+    if (!isValidRunId(runId)) return res.status(404).json({ error: "Unknown report." });
+    const body = req.body as { email?: string; hp?: string; sourcePage?: string };
+    if (body.hp) return res.status(400).json({ error: "Request rejected." });
+    if (!isValidEmail(body.email)) return res.status(400).json({ error: "Enter a valid email to save your scorecard." });
+    const email = body.email;
+    const ipH = ipHash(clientIp(req));
+    if (!rateLimit(`claim:${clientIp(req)}`, 8, 60_000)) return res.status(429).json({ error: "Too many requests — give it a minute." });
+
+    const results = await getResults(runId);
+    if (!results) return res.status(404).json({ error: "Report not found." });
+    const status = await getStatus(runId);
+    if (status?.status !== "complete") return res.status(409).json({ error: "The scan isn't finished yet." });
+
+    const claim = await getClaim(runId);
+    if (!claim.claimed) {
+      const allowed = await claimAllowed(email); // per-email/day limit on report creation
+      if (!allowed.ok) return res.status(429).json({ error: `Daily limit reached (${allowed.perEmail}/day per email). Try again tomorrow.` });
+      await setClaimed(runId);
+      await updateRun(runId, { email });
+      await insertLead({ email, plan: "free_mini", source: "report_claim", run_id: runId, source_page: body.sourcePage, ip_hash: ipH });
+      await insertEvent("report_claimed", runId, {});
+    }
+    res.json({ ok: true, claimed: true });
+  }),
+);
+
+// Dynamic OG/social share card (1200×630 PNG, no PII). Cached to the volume per report —
+// rasterize once; social scrapers re-fetch. Public route (it IS the share image).
+app.get("/report/:runId/og.png", wrap(async (req, res) => {
+  const runId = req.params.runId;
+  if (!isValidRunId(runId)) return res.status(404).end();
+  const cached = ogPngPath(runId);
+  if (existsSync(cached)) {
+    res.type("png").setHeader("Cache-Control", "public, max-age=86400, immutable");
+    return res.sendFile(cached);
+  }
+  const results = await getResults(runId);
+  const preview = reportPreview(results);
+  if (!preview) return res.status(404).end();
+  const png = renderOgPng(preview, ENV.publicBrandName);
+  await writeFile(cached, png).catch(() => {}); // best-effort cache; serve regardless
+  res.type("png").setHeader("Cache-Control", "public, max-age=86400, immutable").send(png);
+}));
 
 app.get("/api/runs/:runId/report.md", (req, res) => {
   if (!isValidRunId(req.params.runId)) return res.status(404).send("Report not ready.");
@@ -841,7 +909,7 @@ app.post(
 // --- serve the built viewer (single service) -------------------------------
 const dist = resolve("viewer/dist");
 let indexTemplate: string | null = null;
-function serveIndex(req: Request, res: Response) {
+async function serveIndex(req: Request, res: Response) {
   if (indexTemplate === null) {
     try {
       indexTemplate = readFileSync(join(dist, "index.html"), "utf8");
@@ -874,6 +942,38 @@ function serveIndex(req: Request, res: Response) {
       .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
       .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`);
   }
+
+  // Per-report share card: a /report/:id link unfurls into the brand's score + gap with a
+  // dynamic OG image. Wrapped in try/catch so a missing/failed report falls back to the
+  // default meta rather than 500-ing the page itself.
+  const rm = req.path.match(/^\/report\/(\d{8}-\d{6}-[0-9a-f]{20})\/?$/);
+  if (rm) {
+    try {
+      const runId = rm[1]!;
+      const preview = reportPreview(await getResults(runId));
+      if (preview && preview.score != null) {
+        const base = baseUrl(req);
+        const t = escapeHtml(`${preview.brand || "This store"}: ${preview.score}/100 AI Visibility Score — ${ENV.publicBrandName}`);
+        const d = escapeHtml(
+          preview.gapPoints != null
+            ? `Mentioned by AI ${preview.mentionRate}% · recommended only ${preview.recommendationRate}% — a ${preview.gapPoints}-pt gap going to competitors. See the full breakdown.`
+            : `How often AI assistants recommend ${preview.brand || "this store"} vs its competitors.`,
+        );
+        const img = escapeHtml(`${base}/report/${runId}/og.png`);
+        const url = escapeHtml(`${base}/report/${runId}`);
+        html = html
+          .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+          .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
+          .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
+          .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`)
+          .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
+          .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`);
+      }
+    } catch { /* fall back to default meta */ }
+  }
+
   if (req.path.startsWith("/admin")) res.setHeader("Cache-Control", "no-store");
   res.type("html").send(html);
 }
@@ -882,7 +982,7 @@ if (existsSync(dist)) {
   app.use(express.static(dist, { index: false }));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api")) return next();
-    serveIndex(req, res);
+    serveIndex(req, res).catch(next);
   });
 } else if (ENV.isProd) {
   console.warn("[server] viewer/dist not found — did `npm run build` run? Serving API only.");

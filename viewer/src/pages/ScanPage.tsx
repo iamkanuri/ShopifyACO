@@ -242,7 +242,8 @@ export function ScanPage() {
 
   async function openConfirm() {
     // Validate every field up front, surface the full list, and focus the first invalid one.
-    const errs = collectErrors(true);
+    // Email is NOT required to run (value-first) — it's collected on the report to save/share.
+    const errs = collectErrors(false);
     if (Object.keys(errs).length) {
       setFieldErrors(errs);
       focusFirstError(errs);
@@ -374,13 +375,8 @@ export function ScanPage() {
                 aria-invalid={fieldErrors.category ? true : undefined}
                 aria-describedby={fieldErrors.category ? "err-category" : undefined} />
             </Field>
-            <Field label="Your email *" error={fieldErrors.email} errorId="err-email">
-              <input ref={emailRef} type="email" value={email}
-                onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
-                placeholder="you@store.com"
-                aria-invalid={fieldErrors.email ? true : undefined}
-                aria-describedby={fieldErrors.email ? "err-email" : undefined} />
-            </Field>
+            {/* No email here anymore — the scan runs ungated; email is collected on the report
+                to SAVE & SHARE the scorecard (value-first funnel), not to start the run. */}
           </div>
         </div>
 

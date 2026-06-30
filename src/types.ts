@@ -153,6 +153,10 @@ export interface RunMeta {
   engines: string[];
   promptCount: number;
   totalCalls: number;
+  /** Best-effort: did the scanned store look like Shopify? Drives funnel CTA routing
+   *  (Install vs the one-time report). Absent on CLI/older runs → treated as false. */
+  isShopify?: boolean;
+  shopifySignal?: string | null;
 }
 
 export interface RunResults {

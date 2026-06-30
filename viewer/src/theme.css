@@ -298,6 +298,23 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .btn.lg { padding: 11px 20px; font-size: 14.5px; }
 .btn.icon { padding: 6px 10px; line-height: 1; }
 .report-headline { font-size: 27px; letter-spacing: -0.02em; margin: 18px 0 4px; }
+
+/* value-first preview + claim (ungated results) */
+.preview-score { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 4px; }
+.preview-score-num { font-size: 72px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.preview-score-den { font-size: 28px; font-weight: 600; color: var(--ink-3); }
+.preview-gap { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.preview-gap-line { font-size: 18px; line-height: 1.5; margin: 0; }
+.claim-card { margin: 8px 0 4px; }
+.claim-card h2 { margin: 0 0 6px; }
+.claim-form { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.claim-form input { flex: 1; min-width: 240px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; }
+.claim-form input:focus { outline: none; border-color: var(--accent); }
+
+/* Shopify-aware CTA routing + share bar */
+.funnel-cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.sharebar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 6px; }
+.sharebar-label { font-weight: 600; }
 .demo-banner { background: var(--accent-soft); color: var(--ink-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 13px; margin-bottom: 4px; }
 
 /* ============ pills (confidence / run size) ============ */

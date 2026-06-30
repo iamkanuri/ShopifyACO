@@ -106,3 +106,24 @@ export async function getResults(runId: string): Promise<unknown | null> {
   if (!existsSync(path)) return null;
   return JSON.parse(await readFile(path, "utf8"));
 }
+
+// ---- claim state (value-first funnel) --------------------------------------
+// A run is created without an email (ungated preview). Providing an email "claims" the
+// report → it becomes publicly viewable at its unguessable /report/:id (full breakdown, no
+// PII). We keep ONLY a boolean + timestamp on the volume; the email lives in the leads table.
+export interface ClaimState { claimed: boolean; claimedAt?: string }
+
+export async function getClaim(runId: string): Promise<ClaimState> {
+  const path = join(runDir(runId), "claim.json");
+  if (!existsSync(path)) return { claimed: false };
+  try { return JSON.parse(await readFile(path, "utf8")) as ClaimState; } catch { return { claimed: false }; }
+}
+
+export async function setClaimed(runId: string): Promise<void> {
+  await writeFile(join(runDir(runId), "claim.json"), JSON.stringify({ claimed: true, claimedAt: new Date().toISOString() }), "utf8");
+}
+
+/** Path of the cached OG card PNG for a report (rasterized once, then served from disk). */
+export function ogPngPath(runId: string): string {
+  return join(runDir(runId), "og.png");
+}

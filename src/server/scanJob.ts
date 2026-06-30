@@ -7,6 +7,7 @@ import { writeReports } from "../report.js";
 import { appendProgress, releaseLock, runDir, setStatus } from "./runStore.js";
 import { recordSpend } from "./guards.js";
 import { insertEvent, updateRun } from "../db/supabase.js";
+import { detectShopify } from "./shopifyDetect.js";
 
 export interface ScanJobOpts {
   maxCostUsd: number;
@@ -40,6 +41,10 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
     });
     await appendProgress(runId, `Running ${prompts.length} prompts × ${adapters.length} engines…`);
 
+    // Shopify detection runs IN PARALLEL with the AI calls (never on the critical path) and
+    // defaults to false on any failure. We start it before awaiting runScan so they overlap.
+    const detectP = detectShopify(config.brand.storeUrl).catch(() => ({ isShopify: false, signal: null }));
+
     const results = await runScan(prompts, adapters, config, {
       concurrency: opts.concurrency ?? config.concurrency ?? 3,
       maxCostUsd: opts.maxCostUsd,
@@ -50,6 +55,7 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       onProgress: (m) => void appendProgress(runId, m),
     });
 
+    const detection = await detectP;
     const finishedAt = new Date().toISOString();
     const meta = {
       startedAt,
@@ -58,6 +64,8 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       engines: adapters.map((a) => a.name),
       promptCount: prompts.length,
       totalCalls: prompts.length * adapters.length,
+      isShopify: detection.isShopify,
+      shopifySignal: detection.signal,
     };
     const { analysis } = await writeReports(results, config, { outDir: runDir(runId), meta });
 
