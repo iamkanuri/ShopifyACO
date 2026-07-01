@@ -10,7 +10,7 @@ import { extractDiscoveredBrands } from "../analysis/discoveredBrands.js";
 import { generateArtifacts } from "../artifacts/generate.js";
 import { generatePrompts } from "../prompts/library.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
-import { reserveSpend, reconcileSpend, settleFailedReservation } from "../queue/spend.js";
+import { reservePaidSpend, settlePaidSpend, releasePaidSpend } from "../queue/paidSpend.js";
 import { ENV } from "../server/env.js";
 
 // The automated $29 deep-report generator (Phase 2). Deep scan (≈30 prompts) → analysis →
@@ -54,11 +54,13 @@ export async function generatePaidReport(input: GeneratePaidInput): Promise<Paid
 
   const cap = ENV.paidSpendCapUsd;
   const estimate = prompts.length * adapters.length * perCallMaxCostUsd(MODELS.openai) + 0.2; // + discovery/artifacts
-  let reservationId: number | undefined;
+  // Reserve against the PAID-ONLY budget (paid_spend_days) — isolated from the shared queue counter
+  // and the free funnel, so nothing else can starve a paying customer's generation.
+  let reserved = false;
   if (!input.mock) {
-    const res = await reserveSpend(`paid:${input.runId}`, estimate, cap);
+    const res = await reservePaidSpend(estimate, cap);
     if (!res.ok) throw new Error(`paid spend cap reached (would exceed $${cap}); not run.`);
-    reservationId = res.reservationId;
+    reserved = true;
   }
 
   try {
@@ -87,10 +89,10 @@ export async function generatePaidReport(input: GeneratePaidInput): Promise<Paid
     const artifacts = await generateArtifacts(analysis, results, deep, { live: !input.mock, apiKey: input.keys.openai });
 
     const costUsd = agg.totalCost.costUsd + disc.costUsd + artifacts.costUsd;
-    if (reservationId != null) await reconcileSpend(reservationId, costUsd).catch(() => {});
+    if (reserved) await settlePaidSpend(estimate, costUsd).catch(() => {});
     return { report: run, artifacts, costUsd };
   } catch (err) {
-    if (reservationId != null) await settleFailedReservation(reservationId, 0).catch(() => {});
+    if (reserved) await releasePaidSpend(estimate).catch(() => {});
     throw err;
   }
 }
