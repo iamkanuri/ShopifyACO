@@ -954,11 +954,7 @@ async function serveIndex(req: Request, res: Response) {
       if (preview && preview.score != null) {
         const base = baseUrl(req);
         const t = escapeHtml(`${preview.brand || "This store"}: ${preview.score}/100 AI Visibility Score — ${ENV.publicBrandName}`);
-        const d = escapeHtml(
-          preview.gapPoints != null
-            ? `Mentioned by AI ${preview.mentionRate}% · recommended only ${preview.recommendationRate}% — a ${preview.gapPoints}-pt gap going to competitors. See the full breakdown.`
-            : `How often AI assistants recommend ${preview.brand || "this store"} vs its competitors.`,
-        );
+        const d = escapeHtml(`${preview.gapLine} See the full breakdown.`);
         const img = escapeHtml(`${base}/report/${runId}/og.png`);
         const url = escapeHtml(`${base}/report/${runId}`);
         html = html

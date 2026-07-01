@@ -22,8 +22,32 @@ test("reportPreview extracts score + mention→recommend gap + weakest engine", 
   assert.equal(p.weakestEngine, "ChatGPT");
   assert.equal(p.isShopify, true);
   assert.equal(p.brand, "Olipop");
+  // a real gap → the "leaking to competitors" framing
+  assert.match(p.gapLine, /27-point gap is demand going to competitors/);
   // the preview must carry no PII (it's served publicly + drives the OG card)
   assert.ok(!JSON.stringify(p).includes("@"));
+});
+
+// The edge case the gap line MUST get right: a brand AI never surfaces has a 0-point gap, which
+// is NOT "demand leaking to competitors" — it's being invisible. (Same line drives all 3 surfaces.)
+test("gapLine reframes the no-visibility case as invisibility, not a competitor leak", () => {
+  const invisible = reportPreview({
+    analysis: { brand: "HP Envy", category: "printers", basedOnResponses: 15,
+      visibilityScore: { score: 11 }, mentionGap: { mention: { rate: 0 }, recommendation: { rate: 0 } } },
+  })!;
+  assert.equal(invisible.gapPoints, 0);
+  assert.match(invisible.gapLine, /don't surface HP Envy/);
+  assert.doesNotMatch(invisible.gapLine, /going to competitors/);
+});
+
+test("gapLine calls out a brand AI both knows and recommends as winning", () => {
+  const winning = reportPreview({
+    analysis: { brand: "Caraway", category: "cookware", basedOnResponses: 30,
+      visibilityScore: { score: 88 }, mentionGap: { mention: { rate: 0.9 }, recommendation: { rate: 0.9 } } },
+  })!;
+  assert.equal(winning.gapPoints, 0);
+  assert.match(winning.gapLine, /both know and recommend Caraway/);
+  assert.doesNotMatch(winning.gapLine, /going to competitors/);
 });
 
 test("reportPreview returns null when there's no analysis yet", () => {

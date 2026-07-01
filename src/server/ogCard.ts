@@ -30,10 +30,10 @@ function scoreColor(score: number | null): string {
 export function buildOgSvg(p: ReportPreview, brandName: string): string {
   const score = p.score;
   const title = p.brand ? `${p.brand}${p.category ? ` · ${p.category}` : ""}` : (p.category || "Your store");
-  const gapLine =
-    p.mentionRate != null && p.recommendationRate != null && p.gapPoints != null
-      ? `Mentioned ${p.mentionRate}% · recommended only ${p.recommendationRate}% — a ${p.gapPoints}-pt gap going to competitors`
-      : "How often AI assistants recommend you vs your competitors";
+  const gapLine = p.gapLine;
+  // resvg doesn't wrap <text>; shrink the font so the longer edge-case sentences (e.g. the
+  // "invisible" line) still fit the ~1120px content width instead of running off the card.
+  const gapFontSize = Math.max(20, Math.min(30, Math.floor(1120 / (gapLine.length * 0.53))));
   const c = scoreColor(score);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="#14161f"/>
@@ -47,7 +47,7 @@ export function buildOgSvg(p: ReportPreview, brandName: string): string {
   <text x="${80 + (score == null ? 70 : String(score).length * 108)}" y="430" font-family="Inter" font-size="56" fill="#8a8882">/ 100</text>
   <text x="84" y="478" font-family="Inter" font-size="26" font-weight="700" fill="#8a8882" letter-spacing="1">AI VISIBILITY SCORE</text>
 
-  <text x="80" y="560" font-family="Inter" font-size="30" fill="#ECEAE3">${xml(gapLine)}</text>
+  <text x="80" y="560" font-family="Inter" font-size="${gapFontSize}" fill="#ECEAE3">${xml(gapLine)}</text>
 </svg>`;
 }
 

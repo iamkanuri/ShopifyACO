@@ -9,6 +9,7 @@ import { FunnelCta } from "../components/FunnelCta";
 interface Preview {
   brand: string; category: string; score: number | null;
   mentionRate: number | null; recommendationRate: number | null; gapPoints: number | null;
+  gapLine: string;
   weakestEngine: string | null; headline: string | null; isShopify: boolean; basedOnResponses: number;
 }
 type RunsResponse = { claimed: false; preview: Preview } | ({ claimed: true } & RunResults);
@@ -104,9 +105,7 @@ function PreviewClaim({ runId, preview: p, onClaimed }: { runId: string; preview
           <div className="muted">AI Visibility Score</div>
         </div>
         <div className="card preview-gap">
-          {p.gapPoints != null
-            ? <p className="preview-gap-line">Known by AI <b>{p.mentionRate}%</b> of the time, recommended only <b>{p.recommendationRate}%</b> — that <b>{p.gapPoints}-point gap</b> is demand going to competitors.</p>
-            : <p className="preview-gap-line">How often AI assistants recommend you versus your competitors.</p>}
+          <p className="preview-gap-line">{p.gapLine}</p>
           {p.weakestEngine && <p className="muted">Weakest assistant: <b>{p.weakestEngine}</b> recommends you the least.</p>}
         </div>
       </section>
