@@ -114,13 +114,13 @@ function PreviewClaim({ runId, preview: p, onClaimed }: { runId: string; preview
         <h2>Save &amp; share your scorecard</h2>
         <p className="muted">Unlock the full competitor leaderboard, the per-assistant breakdown, and every score component — and get a shareable link.</p>
         <div className="claim-form">
-          <input type="email" placeholder="you@yourstore.com" value={email} aria-label="Your email"
+          <input type="email" placeholder="you@example.com" value={email} aria-label="Your email address"
             onChange={(e) => { setEmail(e.target.value); setErr(""); }}
             onKeyDown={(e) => e.key === "Enter" && claim()} />
           <button className="btn btn-primary lg" disabled={busy} onClick={claim}>{busy ? "Saving…" : "Save & share your scorecard"}</button>
         </div>
         {err && <div className="banner-error" role="alert">{err}</div>}
-        <p className="muted al-fineprint">We email you the link. The scorecard is then public at its unguessable URL — built only from public AI answers about public brands, no personal data.</p>
+        <p className="muted al-fineprint">Your full scorecard opens right here — no waiting on email. This page's link then works for anyone you share it with, showing only public AI answers about public brands (no personal data). The URL is unguessable, so it stays private until you share it.</p>
       </div>
 
       <section className="section">

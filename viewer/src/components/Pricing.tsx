@@ -145,7 +145,7 @@ function LeadModal({
             <input
               className="modal-input"
               type="email"
-              placeholder="you@yourstore.com"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);

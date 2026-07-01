@@ -150,10 +150,21 @@ export function ScanPage() {
       if (r.prompts && r.prompts.length) {
         setPrompts(r.prompts.map((text, i) => ({ category: "ai_suggested", text, selected: i < MINI_PROMPTS })));
       }
+      const hasCategory = Boolean(r.category);
+      const hasCompetitors = Boolean(r.competitors && r.competitors.length);
       if (r.error) {
         setInferNote("Couldn't auto-detect your store — fill in the details below.");
+      } else if (guessedBrand && hasCategory && hasCompetitors) {
+        setInferNote(`Detected ${guessedBrand} · ${r.category}. Edit anything that's off.`);
       } else if (guessedBrand) {
-        setInferNote(`Detected ${guessedBrand}${r.category ? ` · ${r.category}` : ""}. Edit anything that's off.`);
+        // Honest about partial detection instead of implying a full auto-fill (e.g. brand found
+        // but the category/competitors came back empty) — otherwise the shopper stares at blank
+        // required fields thinking they're populated.
+        const missing = !hasCategory && !hasCompetitors ? "its category and competitors"
+          : !hasCategory ? "its category" : "its competitors";
+        setInferNote(`Found ${guessedBrand}, but couldn't auto-fill ${missing} — add ${hasCategory || hasCompetitors ? "it" : "them"} below.`);
+      } else {
+        setInferNote("Couldn't auto-detect your store — fill in the details below.");
       }
     } catch {
       const guessedBrand = brandFromInput(store);
