@@ -79,7 +79,7 @@ import {
 } from "./runStore.js";
 import { runScanJob } from "./scanJob.js";
 import { reportPreview } from "./reportPreview.js";
-import { stripPaidDelta } from "./reportProjection.js";
+import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
 import { renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
@@ -580,21 +580,28 @@ app.get(
     //  • CLAIMED (email) → the FREE diagnosis + proof + fix TITLES, minus the paid delta.
     //  • else → the ungated preview (score + gap + weakest engine).
     const paidReport = await getPaidReportByRun(runId);
-    if (paidReport?.status === "complete" && paidReport.report) {
+    const paidOrder = Boolean(await getPaidOrderForRun(runId));
+    const tier = paidReportTier(paidReport?.status, Boolean(paidReport?.report), paidOrder);
+    if (tier === "complete") {
       return res.json({
         claimed: true, paid: true, generating: false,
-        ...redactRun(paidReport.report as Record<string, unknown>),
-        artifacts: paidReport.artifacts ?? null,
+        ...redactRun(paidReport!.report as Record<string, unknown>),
+        artifacts: paidReport!.artifacts ?? null,
       });
     }
-    const paidOrder = Boolean(await getPaidOrderForRun(runId));
-    if (paidOrder) {
-      // They paid; the deep report + artifacts are being generated on the worker. Show the full
-      // report meanwhile with a generating flag so the buyer sees progress, never a blank wait.
+    if (tier === "failed") {
+      // Generation failed (held/refunded). Be HONEST: the buyer keeps the full report meanwhile,
+      // sees a snag + refund note, and the client STOPS polling — never an infinite spinner.
       return res.json({
-        claimed: true, paid: true, generating: true, generatingStatus: paidReport?.status ?? "pending",
+        claimed: true, paid: true, generating: false,
+        failed: true, failedRefunded: paidReport?.status === "refunded",
         ...redactRun(results),
       });
+    }
+    if (tier === "generating") {
+      // Paid; the deep report + artifacts are being generated on the worker. Show the full report
+      // meanwhile with a generating flag so the buyer sees progress, never a blank wait.
+      return res.json({ claimed: true, paid: true, generating: true, ...redactRun(results) });
     }
     if (claim.claimed) {
       // CLAIMED → fully PUBLIC (no email wall for viewers): the whole alarm, no PII — this

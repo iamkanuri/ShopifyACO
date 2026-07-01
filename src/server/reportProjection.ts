@@ -19,6 +19,21 @@ import type { MerchantAnalysis } from "../analysis/types.js";
  * impact, tier, and the evidence (relatedPrompts/relatedSnippets) — removes the
  * step-by-step `suggestedFix` and its `verifyNote`. Idempotent.
  */
+export type PaidTier = "complete" | "failed" | "generating" | "none";
+
+/**
+ * Which paid tier to serve, given the paid_report status, whether the deep report is present, and
+ * whether a paid order exists. PURE so the serve decision is unit-testable — in particular the
+ * FAILED case (`held`/`refunded`): a generation that failed must resolve to "failed" (honest state),
+ * NOT "generating" (which would leave the buyer on an infinite spinner with no idea a refund is due).
+ */
+export function paidReportTier(status: string | null | undefined, hasReport: boolean, paidOrder: boolean): PaidTier {
+  if (status === "complete" && hasReport) return "complete";
+  if (!paidOrder) return "none";
+  if (status === "held" || status === "refunded") return "failed";
+  return "generating"; // pending | generating | null → the worker is (or will be) on it
+}
+
 export function stripPaidDelta(run: Record<string, unknown>): Record<string, unknown> {
   const analysis = run.analysis as MerchantAnalysis | undefined;
   if (analysis && Array.isArray(analysis.fixCards)) {

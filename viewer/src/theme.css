@@ -270,6 +270,9 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .generating-banner { display: flex; align-items: center; gap: 14px; background: var(--accent-soft);
   border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px; font-size: 13px; margin-bottom: 16px; }
 .spinner.sm { width: 22px; height: 22px; border-width: 3px; }
+.failed-banner { background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 12px;
+  padding: 14px 16px; font-size: 13px; line-height: 1.5; margin-bottom: 16px; color: var(--ink-2); }
+.failed-banner b { color: var(--ink); }
 .artifacts-card { border-color: var(--good); }
 .artifact { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
 .artifact > summary { cursor: pointer; font-size: 13px; }

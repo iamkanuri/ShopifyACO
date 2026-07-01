@@ -13,7 +13,12 @@ interface Preview {
   gapLine: string;
   weakestEngine: string | null; headline: string | null; isShopify: boolean; basedOnResponses: number;
 }
-type ClaimedResponse = { claimed: true; paid: boolean; generating?: boolean; generatingStatus?: string; artifacts?: ArtifactBundle | null } & RunResults;
+type ClaimedResponse = {
+  claimed: true; paid: boolean;
+  generating?: boolean;
+  failed?: boolean; failedRefunded?: boolean;
+  artifacts?: ArtifactBundle | null;
+} & RunResults;
 type RunsResponse = { claimed: false; preview: Preview } | ClaimedResponse;
 
 export function ReportPage({ runId }: { runId: string }) {
@@ -77,6 +82,13 @@ export function ReportPage({ runId }: { runId: string }) {
             <b>Generating your full report…</b> Running a deeper scan and drafting your done-for-you
             fixes. This usually takes a couple of minutes — the page updates automatically.
           </div>
+        </div>
+      )}
+      {data.failed && (
+        <div className="card failed-banner">
+          <b>We hit a snag generating your full report.</b> We're on it — and if we can't resolve it
+          shortly, your payment is refunded automatically, no action needed. Your full diagnosis below
+          is unaffected. {data.failedRefunded ? "This order has been refunded." : "We'll email you if anything's needed."}
         </div>
       )}
       {data.artifacts && data.artifacts.artifacts.length > 0 && (
