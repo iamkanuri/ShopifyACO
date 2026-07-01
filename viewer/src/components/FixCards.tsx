@@ -1,11 +1,29 @@
 import type { FixCard } from "../types";
+import { trackEvent } from "../api";
 
-export function FixCards({ cards }: { cards: FixCard[] }) {
+export function FixCards({ cards, paid = true, runId }: { cards: FixCard[]; paid?: boolean; runId?: string }) {
   const evidence = cards.filter((c) => c.tier === "evidence_backed");
   const hygiene = cards.filter((c) => c.tier === "general_hygiene");
 
   return (
     <div className="grid" style={{ gap: 22 }}>
+      {!paid && (
+        <div className="fix-upsell">
+          <div>
+            <b>You're seeing what to fix.</b> The full report writes the fixes for you — a drafted
+            comparison page, product schema, and llms.txt, generated from this scan's real prompts
+            and competitor proof.
+          </div>
+          <a
+            className="btn btn-primary"
+            href="#full-report-cta"
+            onClick={() => trackEvent("cta_full_report", runId, { from: "fix_cards" })}
+          >
+            Unlock the done-for-you fixes
+          </a>
+        </div>
+      )}
+
       <div>
         <div className="tierhead">
           <span className="t">✅ Evidence-backed</span>
@@ -13,7 +31,7 @@ export function FixCards({ cards }: { cards: FixCard[] }) {
         </div>
         <div className="fixgrid">
           {evidence.map((c) => (
-            <Card key={c.id} c={c} />
+            <Card key={c.id} c={c} paid={paid} />
           ))}
         </div>
       </div>
@@ -25,7 +43,7 @@ export function FixCards({ cards }: { cards: FixCard[] }) {
         </div>
         <div className="fixgrid">
           {hygiene.map((c) => (
-            <Card key={c.id} c={c} />
+            <Card key={c.id} c={c} paid={paid} />
           ))}
         </div>
       </div>
@@ -33,7 +51,7 @@ export function FixCards({ cards }: { cards: FixCard[] }) {
   );
 }
 
-function Card({ c }: { c: FixCard }) {
+function Card({ c, paid }: { c: FixCard; paid: boolean }) {
   return (
     <div className="card fixcard">
       <div className="fhead">
@@ -43,9 +61,16 @@ function Card({ c }: { c: FixCard }) {
       <div className="meta">
         <b>Why:</b> {c.why}
       </div>
-      <div className="meta">
-        <b>Suggested step:</b> {c.suggestedFix}
-      </div>
+
+      {paid && c.suggestedFix ? (
+        <div className="meta">
+          <b>Suggested step:</b> {c.suggestedFix}
+        </div>
+      ) : (
+        <div className="fix-locked">
+          🔒 <span>The done-for-you fix for this — written from this scan — is in the full report.</span>
+        </div>
+      )}
 
       {(c.relatedPrompts.length > 0 || c.relatedSnippets.length > 0) && (
         <details>
@@ -68,7 +93,7 @@ function Card({ c }: { c: FixCard }) {
         </details>
       )}
 
-      {c.verifyNote && <div className="verify">⚠️ Verify before publishing: {c.verifyNote}</div>}
+      {paid && c.verifyNote && <div className="verify">⚠️ Verify before publishing: {c.verifyNote}</div>}
     </div>
   );
 }

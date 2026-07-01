@@ -12,7 +12,7 @@ interface Preview {
   gapLine: string;
   weakestEngine: string | null; headline: string | null; isShopify: boolean; basedOnResponses: number;
 }
-type RunsResponse = { claimed: false; preview: Preview } | ({ claimed: true } & RunResults);
+type RunsResponse = { claimed: false; preview: Preview } | ({ claimed: true; paid: boolean } & RunResults);
 
 export function ReportPage({ runId }: { runId: string }) {
   const [data, setData] = useState<RunsResponse | null>(null);
@@ -54,13 +54,19 @@ export function ReportPage({ runId }: { runId: string }) {
   // Ungated preview — score + gap + weakest engine, with an email step to unlock + share.
   if (!data.claimed) return <PreviewClaim runId={runId} preview={data.preview} onClaimed={load} />;
 
-  // Claimed → full, public report + share affordance + Shopify-aware CTA.
+  // Claimed → the free diagnosis (or, once paid, the full report) + share + Shopify-aware CTA.
   const a = data.analysis;
   const shareText = a ? `${a.brand} scores ${a.visibilityScore.score}/100 on AI shopping visibility.` : "My AI shopping visibility scorecard";
   return (
     <>
       <ShareBar runId={runId} shareText={shareText} />
-      <Report run={data} runId={runId} reportMdUrl={`/api/runs/${runId}/report.md`} isShopify={Boolean(data.meta?.isShopify)} />
+      <Report
+        run={data}
+        runId={runId}
+        paid={data.paid}
+        reportMdUrl={data.paid ? `/api/runs/${runId}/report.md` : undefined}
+        isShopify={Boolean(data.meta?.isShopify)}
+      />
     </>
   );
 }

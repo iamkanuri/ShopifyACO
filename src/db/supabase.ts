@@ -157,6 +157,24 @@ export const getOrder = (id: number) =>
     return data ?? null;
   }, null);
 
+/**
+ * The paid order (if any) that unlocks a report — a `paid` order whose source_run_id is
+ * this run. Drives the free/paid projection (paid-report Phase 1). Graceful: on DB error
+ * or no DB it returns null → the report stays FREE (fail-safe: never unlock on a DB blip).
+ */
+export const getPaidOrderForRun = (runId: string) =>
+  safe<Record<string, unknown> | null>("getPaidOrderForRun", async (c) => {
+    const { data, error } = await c
+      .from("orders")
+      .select("id, plan, status, source_run_id, scan_run_id")
+      .eq("status", "paid")
+      .eq("source_run_id", runId)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data ?? null;
+  }, null);
+
 export const updateOrder = (id: number, patch: Partial<OrderRow> & { fulfilled_at?: string }) =>
   safe("updateOrder", async (c) => {
     const { error } = await c.from("orders").update(patch).eq("id", id);

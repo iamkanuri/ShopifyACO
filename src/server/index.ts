@@ -49,6 +49,7 @@ import {
 import {
   getCategoryIndex,
   getOrder,
+  getPaidOrderForRun,
   insertEvent,
   insertLead,
   insertRun,
@@ -78,6 +79,7 @@ import {
 } from "./runStore.js";
 import { runScanJob } from "./scanJob.js";
 import { reportPreview } from "./reportPreview.js";
+import { stripPaidDelta } from "./reportProjection.js";
 import { renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
@@ -571,15 +573,24 @@ app.get(
     const results = (await getResults(runId)) as Record<string, unknown> | null;
     if (!results) return res.status(404).json({ error: "Results not ready." });
     const claim = await getClaim(runId);
+    // Paid-report Phase 1 — the free/paid re-cut:
+    //  • PAID (a paid order for this run) → the full report incl. the done-for-you fixes.
+    //  • CLAIMED (email) → the FREE diagnosis + proof + fix TITLES, minus the paid delta.
+    //  • else → the ungated preview (score + gap + weakest engine).
+    // Paid is checked first so a buyer sees the full report even without claiming.
+    const paid = Boolean(await getPaidOrderForRun(runId));
+    if (paid) {
+      return res.json({ claimed: true, paid: true, ...redactRun(results) });
+    }
     if (claim.claimed) {
-      // CLAIMED → fully PUBLIC (no email wall): everything is derived from public AI queries
-      // about public brands, no PII — this is what lets a shared scorecard spread.
-      return res.json({ claimed: true, ...redactRun(results) });
+      // CLAIMED → fully PUBLIC (no email wall for viewers): the whole alarm, no PII — this
+      // is what lets a shared scorecard spread. The paid delta (the executed fixes) is held.
+      return res.json({ claimed: true, paid: false, ...stripPaidDelta(redactRun(results)) });
     }
     // Ungated preview: score + gap + weakest engine only. Email claims the full breakdown.
     const preview = reportPreview(results);
     if (!preview) return res.status(404).json({ error: "Results not ready." });
-    res.json({ claimed: false, preview });
+    res.json({ claimed: false, paid: false, preview });
   }),
 );
 
@@ -633,12 +644,17 @@ app.get("/report/:runId/og.png", wrap(async (req, res) => {
   res.type("png").setHeader("Cache-Control", "public, max-age=86400, immutable").send(png);
 }));
 
-app.get("/api/runs/:runId/report.md", (req, res) => {
+app.get("/api/runs/:runId/report.md", wrap(async (req, res) => {
   if (!isValidRunId(req.params.runId)) return res.status(404).send("Report not ready.");
+  // The downloadable report.md carries the full write-up incl. the executed fixes — it's part
+  // of the PAID bundle. Free viewers read the diagnosis on-screen; the md is gated to a paid order.
+  if (!(await getPaidOrderForRun(req.params.runId))) {
+    return res.status(402).send("The downloadable report is part of the full report.");
+  }
   const path = resolve(join(runDir(req.params.runId), "report.md"));
   if (!existsSync(path)) return res.status(404).send("Report not ready.");
   res.type("text/markdown").sendFile(path);
-});
+}));
 
 // --- demo (committed fixture) ----------------------------------------------
 app.get("/api/demo", (_req, res) => {

@@ -21,11 +21,15 @@ export function Report({
   runId,
   reportMdUrl,
   isShopify,
+  paid = true,
 }: {
   run: RunResults;
   runId?: string;
   reportMdUrl?: string;
   isShopify?: boolean;
+  /** Paid-report Phase 1: false hides the executed "how" (done-for-you fixes) behind the
+   *  $29 upgrade. Defaults to true so the demo/showcase renders the full experience. */
+  paid?: boolean;
 }) {
   const a = run.analysis as MerchantAnalysis;
 
@@ -117,10 +121,10 @@ export function Report({
       </Collapse>
 
       <Collapse title="Recommended next steps">
-        <FixCards cards={a.fixCards} />
+        <FixCards cards={a.fixCards} paid={paid} runId={runId} />
       </Collapse>
 
-      <section className="section no-print">
+      <section className="section no-print" id="full-report-cta">
         <h2>{isShopify ? "Fix this on your store" : "Get the full report"}</h2>
         <p className="muted">
           {isShopify
