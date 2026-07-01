@@ -102,7 +102,8 @@ export function buildFixCards(
   // 3. Expose the quotable details competitors win on — derived from the proof points
   //    actually detected in THIS scan (neutral labels), not a fixed spec list.
   if (proofPoints.length) {
-    const top = proofPoints.slice(0, 6);
+    // Cap at the top few by frequency (Fix 4) so this reads as focused advice, not a 7-item dump.
+    const top = proofPoints.slice(0, 4);
     const labels = top.map((p) => p.label.toLowerCase());
     cards.push({
       id: "expose_specs",
@@ -131,9 +132,12 @@ export function buildFixCards(
       tier: "evidence_backed",
       impact: "medium",
       title: "Feature third-party proof and press",
+      // Honest framing (Fix 3): the proof point is a reason that appeared in answers where the
+      // brand lost — NOT a claim that a specific named competitor "won on" it (the snippet often
+      // quotes a brand that isn't even in the configured list).
       why:
-        `Winning competitors (${testing.competitors.join(", ")}) were backed by ${testing.label.toLowerCase()} ` +
-        `in ${testing.hits} answer(s). Assistants trust and repeat these.`,
+        `In answers where ${brand} wasn't the pick, ${testing.label.toLowerCase()} showed up as a reason AI ` +
+        `trusted and repeated (${testing.hits} answer(s)).`,
       relatedPrompts: testing.examplePrompt ? [testing.examplePrompt] : [],
       relatedSnippets: testing.exampleSnippet ? [testing.exampleSnippet] : [],
       suggestedFix:
@@ -216,14 +220,28 @@ function clusterFix(
     };
   }
 
+  // Fix 4: derive the title + step from the REAL lost prompt (like the comparison card), so the
+  // card reads as advice — "Publish a 'best modular sofa under $2000' guide" — not internal
+  // taxonomy ("Add content for 'Budget / under-price' queries").
   const eg = (clusterLost.find((l) => l.prompt)?.prompt ?? c.prompts[0]) as string | undefined;
+  const q = eg ? humanizePrompt(eg) : c.label.toLowerCase();
   return {
-    title: `Add content for "${c.label}" queries in ${category}`,
-    why: `Shoppers ask "${c.label}"-style questions${eg ? ` (e.g. "${eg}")` : ""} and ${brand} isn't the answer.`,
+    title: eg ? `Publish a "${q}" guide` : `Add content for ${c.label.toLowerCase()} queries in ${category}`,
+    why: `Shoppers ask "${eg ?? c.label}" and ${brand} isn't the answer.`,
     fix:
-      `Publish a page that directly answers this intent for ${brand} — mirror how shoppers phrase it ` +
-      `and state the specifics assistants can quote.`,
+      `Create a page that directly answers "${eg ?? c.label}" — mirror how shoppers phrase it, ` +
+      `show where ${brand} fits, and state the specifics assistants can quote.`,
   };
+}
+
+/** Turn a shopper question into a pasteable page-title phrase: drop the leading question stem
+ *  and trailing punctuation ("What are the best luxury bags?" → "best luxury bags"). */
+function humanizePrompt(p: string): string {
+  return p
+    .trim()
+    .replace(/[?.!]+$/, "")
+    .replace(/^(what are the|what'?s the|what is the|which|what|who makes the|where can i (find|buy) the?)\s+/i, "")
+    .trim();
 }
 
 const IMPACT_ORDER: Record<FixCard["impact"], number> = { high: 0, medium: 1, low: 2 };

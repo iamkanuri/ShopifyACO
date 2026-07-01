@@ -32,7 +32,7 @@ export function GapAnalysis({ a }: { a: MerchantAnalysis }) {
       {a.proofPoints.length > 0 && (
         <div className="card" style={{ padding: 18 }}>
           <div className="k" style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--ink-3)", fontWeight: 700, marginBottom: 12 }}>
-            Why competitors win — proof points AI quotes
+            Reasons AI cited in answers where you weren't recommended
           </div>
           <div className="prooflist">
             {a.proofPoints.slice(0, 9).map((p) => (

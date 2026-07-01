@@ -99,6 +99,25 @@ export function Report({
         <WhatThisMeans a={a} />
       </section>
 
+      {a.discoveredBrands && a.discoveredBrands.length > 0 && (
+        <section className="section">
+          <div className="card discovered">
+            <div className="disc-head">AI is recommending brands you didn't list</div>
+            <p className="muted" style={{ marginTop: 4 }}>
+              Discovered in your scan — <b>directional</b>, ranked by how many of your {a.basedOnResponses} answers
+              each appeared in. Not measured as competitors, just surfaced so you know who's actually in the room.
+            </p>
+            <div className="disc-tags">
+              {a.discoveredBrands.map((b) => (
+                <span className="disc-tag" key={b.name}>
+                  <b>{b.name}</b> <span className="muted">· seen in {b.answers}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Detail: collapsed by default, expand on demand. */}
       <Collapse title="Category leader vs your direct niche threat" open>
         <ThreatCard a={a} />

@@ -4,6 +4,7 @@ import { CliArgs, confirm, estimateMaxCost, helpText, parseArgs } from "./cli.js
 import { loadConfig } from "./config.js";
 import { expandPrompts } from "./prompts.js";
 import { buildAdapters, type ApiKeys } from "./engines/index.js";
+import { extractDiscoveredBrands } from "./analysis/discoveredBrands.js";
 import { runScan } from "./runner.js";
 import { writeReports } from "./report.js";
 import type { RunMeta } from "./types.js";
@@ -100,7 +101,21 @@ async function main(): Promise<void> {
     promptCount: prompts.length,
     totalCalls,
   };
-  const { jsonPath, mdPath, agg } = await writeReports(results, cfg, { outDir: args.outDir, meta });
+  // Fix 1: surface unlisted brands the AI recommended (live only — a cheap gpt-5.4-mini pass
+  // over the captured answers; skipped in --mock so mock runs stay $0).
+  const discovered = args.mock
+    ? { brands: [], answersConsidered: 0, costUsd: 0 }
+    : await extractDiscoveredBrands(results, cfg, { apiKey: keys.openai, concurrency: 4 }).catch(() => ({
+        brands: [],
+        answersConsidered: 0,
+        costUsd: 0,
+      }));
+
+  const { jsonPath, mdPath, agg } = await writeReports(results, cfg, {
+    outDir: args.outDir,
+    meta,
+    discoveredBrands: discovered.brands,
+  });
 
   const own = agg.overall.find((b) => b.isOwn)!;
   console.log("\n=== Done ===");
@@ -108,7 +123,8 @@ async function main(): Promise<void> {
     `  ${cfg.brand.name}: mentioned ${(own.mentionRate * 100).toFixed(0)}%, ` +
       `recommended ${(own.recommendationRate * 100).toFixed(0)}%`,
   );
-  console.log(`  Est. cost: $${agg.totalCost.costUsd.toFixed(4)}`);
+  console.log(`  Est. cost: $${(agg.totalCost.costUsd + discovered.costUsd).toFixed(4)}`);
+  if (discovered.brands.length) console.log(`  Discovered ${discovered.brands.length} unlisted brand(s) AI recommended.`);
   if (agg.hasUngroundedEngine) console.log("  ⚠️  Some engines ran without web grounding.");
   console.log(`  Report:  ${mdPath}`);
   console.log(`  Results: ${jsonPath}`);

@@ -126,6 +126,11 @@ export interface FixCard {
   verifyNote?: string;
 }
 
+export interface DiscoveredBrand {
+  name: string;
+  answers: number;
+}
+
 export interface MerchantAnalysis {
   brand: string;
   category: string;
@@ -152,6 +157,7 @@ export interface MerchantAnalysis {
   leaderboard: LeaderboardRow[];
   lostPrompts: LostPrompt[];
   fixCards: FixCard[];
+  discoveredBrands?: DiscoveredBrand[];
 }
 
 export interface RunMeta {

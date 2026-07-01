@@ -11,6 +11,7 @@ import type {
 } from "./types.js";
 import { aggregate } from "./aggregate.js";
 import { analyzeRun } from "./analysis/index.js";
+import { sanitizeSnippet } from "./analysis/text.js";
 import type { FixCard, MerchantAnalysis, RateStat } from "./analysis/types.js";
 
 const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
@@ -32,6 +33,9 @@ function score(d: BrandDetection | undefined): number {
 export interface WriteOptions {
   outDir: string;
   meta: RunMeta;
+  /** Fix 1: unlisted-competitor brands, computed by the live scan orchestration (async LLM pass)
+   *  and attached to the otherwise-pure analysis before persisting. */
+  discoveredBrands?: import("./analysis/types.js").DiscoveredBrand[];
 }
 
 export async function writeReports(
@@ -44,6 +48,7 @@ export async function writeReports(
 
   const runResults: RunResults = { meta: opts.meta, config: cfg, results, aggregate: agg };
   const analysis = analyzeRun(runResults);
+  if (opts.discoveredBrands?.length) analysis.discoveredBrands = opts.discoveredBrands;
   runResults.analysis = analysis;
 
   const jsonPath = join(opts.outDir, "results.json");
@@ -244,7 +249,7 @@ function buildMarkdown(
     L.push("_No brand mentions to quote._");
   } else {
     for (const x of snippets.slice(0, 12)) {
-      L.push(`- **${x.r.engine}** (${x.d!.status}): "${x.d!.snippet}"`);
+      L.push(`- **${x.r.engine}** (${x.d!.status}): "${sanitizeSnippet(x.d!.snippet)}"`);
     }
   }
   L.push("");
@@ -311,10 +316,19 @@ function buildMarkdown(
   }
 
   if (analysis.proofPoints.length) {
-    L.push("**Competitor proof points** (reasons competitors win, by frequency in winning answers):");
+    L.push("**Reasons AI cited in answers where you weren't recommended** (by frequency):");
     L.push("");
     for (const p of analysis.proofPoints.slice(0, 8)) {
-      L.push(`- **${p.label}** — ${p.hits} answer(s), e.g. ${p.competitors.join(", ")}`);
+      L.push(`- **${p.label}** — ${p.hits} answer(s)`);
+    }
+    L.push("");
+  }
+
+  if (analysis.discoveredBrands?.length) {
+    L.push(`**AI also recommended these brands you didn't list** (discovered, directional — of ${analysis.basedOnResponses} answers):`);
+    L.push("");
+    for (const b of analysis.discoveredBrands) {
+      L.push(`- **${b.name}** — seen in ${b.answers} answer(s)`);
     }
     L.push("");
   }

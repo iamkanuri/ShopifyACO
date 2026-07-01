@@ -4,6 +4,7 @@ import { expandPrompts } from "../prompts.js";
 import { buildAdapters } from "../engines/index.js";
 import { runScan } from "../runner.js";
 import { writeReports } from "../report.js";
+import { extractDiscoveredBrands } from "../analysis/discoveredBrands.js";
 import { appendProgress, releaseLock, runDir, setStatus } from "./runStore.js";
 import { recordSpend } from "./guards.js";
 import { insertEvent, updateRun } from "../db/supabase.js";
@@ -67,25 +68,40 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       isShopify: detection.isShopify,
       shopifySignal: detection.signal,
     };
-    const { analysis } = await writeReports(results, config, { outDir: runDir(runId), meta });
+    // Fix 1: surface brands the AI recommended that weren't configured. Best-effort + cheap
+    // (a per-answer gpt-5.4-mini pass over the already-captured text); a failure just yields none.
+    const discovered = await extractDiscoveredBrands(results, config, {
+      apiKey: opts.keys.openai,
+      concurrency: 4,
+    }).catch(() => ({ brands: [], answersConsidered: 0, costUsd: 0 }));
+    if (discovered.brands.length) {
+      await appendProgress(runId, `Discovered ${discovered.brands.length} unlisted brand(s) AI recommended.`);
+    }
+
+    const { analysis } = await writeReports(results, config, {
+      outDir: runDir(runId),
+      meta,
+      discoveredBrands: discovered.brands,
+    });
 
     // Surface per-engine failures (engine isolation already captured them).
     const engineErrors = [...new Set(results.filter((r) => r.error).map((r) => r.engine))];
+    const totalCostUsd = analysis.totalCostUsd + discovered.costUsd;
     await setStatus(runId, {
       status: "complete",
       finishedAt,
-      costUsd: analysis.totalCostUsd,
+      costUsd: totalCostUsd,
       engineErrors,
     });
-    // Count this spend against the global daily cap + persist the run + event.
-    recordSpend(analysis.totalCostUsd);
-    await updateRun(runId, { status: "complete", cost_usd: analysis.totalCostUsd });
+    // Count this spend (scan + discovery) against the global daily cap + persist the run + event.
+    recordSpend(totalCostUsd);
+    await updateRun(runId, { status: "complete", cost_usd: totalCostUsd });
     await insertEvent("scan_completed", runId, {
       score: analysis.visibilityScore.score,
-      costUsd: analysis.totalCostUsd,
+      costUsd: totalCostUsd,
       engineErrors,
     });
-    await appendProgress(runId, `Done. Visibility score ${analysis.visibilityScore.score}/100, $${analysis.totalCostUsd.toFixed(4)}.`);
+    await appendProgress(runId, `Done. Visibility score ${analysis.visibilityScore.score}/100, $${totalCostUsd.toFixed(4)}.`);
   } catch (err) {
     const message = (err as Error).message;
     await setStatus(runId, { status: "failed", error: message });

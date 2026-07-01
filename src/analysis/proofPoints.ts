@@ -1,6 +1,7 @@
 import type { Config, PromptEngineResult } from "../types.js";
 import type { ProofPoint } from "./types.js";
 import { detOf, detScore, grounded, uniq } from "./util.js";
+import { sanitizeSnippet } from "./text.js";
 
 // ---------------------------------------------------------------------------
 // Deterministic proof-point taxonomy. We scan the responses where a competitor
@@ -82,7 +83,7 @@ export function extractProofPoints(results: PromptEngineResult[], cfg: Config): 
         hits: e.hits,
         competitors: uniq([...e.competitors]),
         examplePrompt: e.prompt,
-        exampleSnippet: e.snippet,
+        exampleSnippet: sanitizeSnippet(e.snippet),
       };
     })
     .sort((a, b) => b.hits - a.hits);

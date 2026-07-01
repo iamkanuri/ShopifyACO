@@ -10,6 +10,7 @@ import type {
   QueryClusterResult,
 } from "./types.js";
 import { avg, detOf, detScore, fmtRate, grounded, rate, uniq } from "./util.js";
+import { sanitizeSnippet } from "./text.js";
 import { confidenceFor } from "./confidence.js";
 
 // ---------------------------------------------------------------------------
@@ -238,7 +239,7 @@ export function computeLostPrompts(results: PromptEngineResult[], cfg: Config): 
       brandRecommended: own?.status === "recommended",
       brandRank: own?.listRank ?? null,
       winners: uniq(winners),
-      snippet: topWinner?.snippet,
+      snippet: sanitizeSnippet(topWinner?.snippet),
     });
   }
   // Worst losses first: brand absent before merely out-ranked.

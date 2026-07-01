@@ -120,6 +120,14 @@ export interface LostPrompt {
   suggestedFixId?: string;
 }
 
+/** A brand the AI recommended that the merchant did NOT configure as a competitor. DISCOVERED
+ *  + DIRECTIONAL — frequency-of-appearance only (never rates/rank; never a first-class competitor). */
+export interface DiscoveredBrand {
+  name: string;
+  /** Number of grounded answers it appeared in as a recommendation (≥2 — hallucination floor). */
+  answers: number;
+}
+
 export type FixTier = "evidence_backed" | "general_hygiene";
 export type FixImpact = "high" | "medium" | "low";
 
@@ -164,4 +172,7 @@ export interface MerchantAnalysis {
   leaderboard: LeaderboardRow[];
   lostPrompts: LostPrompt[];
   fixCards: FixCard[];
+  /** Brands the AI recommended that weren't in the configured competitor list (Fix 1).
+   *  Populated by a live LLM pass in the scan orchestration — NOT by the pure analyzeRun. */
+  discoveredBrands?: DiscoveredBrand[];
 }

@@ -266,6 +266,14 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .fixcard summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .fixcard .ev { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; font-size: 11.5px; color: var(--ink-2); margin-top: 6px; font-style: italic; }
 .fixcard .verify { font-size: 11.5px; color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 7px 10px; }
+/* Fix 1: unlisted competitors the AI recommended — the shareable hook, diagnosis-tier. */
+.card.discovered { border-color: var(--accent); background: var(--accent-soft); }
+.disc-head { font-size: 14px; font-weight: 800; color: var(--ink); }
+.disc-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.disc-tag { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 12px; font-size: 12.5px; color: var(--ink); }
+.disc-tag b { font-weight: 700; }
+
 /* Paid-report Phase 1: the free view shows fix titles + why; the executed "how" is locked. */
 .fix-upsell { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
