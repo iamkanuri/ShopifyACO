@@ -5,8 +5,14 @@ import { detOf, detScore, grounded, uniq } from "./util.js";
 // ---------------------------------------------------------------------------
 // Deterministic proof-point taxonomy. We scan the responses where a competitor
 // out-ranks the brand and tally WHY those competitors tend to win — the concrete,
-// quotable reasons an AI cites. Purely keyword-driven (no LLM); an optional LLM
-// pass can refine this later behind a flag.
+// quotable reasons an AI cites, captured with the real snippet as evidence.
+//
+// The taxonomy is CATEGORY-AGNOSTIC on purpose (this runs for fashion, supplements,
+// furniture, cookware, anything). It NEVER assumes a vertical — the specificity comes
+// from the real quoted snippet + the actual competitor + the actual lost prompt, not
+// from a hardcoded spec list. (The old taxonomy was cookware-only and told a handbag
+// brand to expose its "oven-safe temperature".) Purely keyword-driven, no LLM; an
+// optional LLM pass can refine the categorization later behind a flag.
 // ---------------------------------------------------------------------------
 
 interface ProofDef {
@@ -15,18 +21,22 @@ interface ProofDef {
   re: RegExp;
 }
 
+// Cross-vertical reasons an assistant cites for picking one brand over another. Labels
+// stay neutral so they read correctly in any category; the regexes catch the concrete
+// wording ("Saffiano leather", "third-party tested", "lasts for years") across verticals.
 export const PROOF_DEFS: ProofDef[] = [
-  { id: "third_party_testing", label: "Third-party testing / lab results", re: /(test kitchen|america'?s test kitchen|consumer reports|wirecutter|good housekeeping|serious eats|lab[- ]tested|independent(ly)? test)/i },
-  { id: "named_reviews", label: "Named editorial reviews", re: /(wirecutter|consumer reports|good housekeeping|america'?s test kitchen|serious eats|the spruce|editor'?s pick|named .* the best)/i },
-  { id: "durability", label: "Durability / longevity", re: /(durab|long[- ]lasting|lasts (for )?years|scratch[- ]resistant|hard[- ]anodized|won'?t warp|built to last)/i },
-  { id: "induction", label: "Induction compatibility", re: /induction/i },
-  { id: "oven_safe", label: "Oven-safe temperature", re: /(oven[- ]safe|\d{3}\s?°?\s?f|\d{3}\s?degrees|broiler[- ]safe|high[- ]heat)/i },
-  { id: "price_value", label: "Price / value", re: /(great value|best value|affordable|budget[- ]friendly|worth the (money|price)|cost[- ]effective)/i },
-  { id: "warranty", label: "Warranty / guarantee", re: /(warranty|lifetime guarantee|guaranteed for life|money[- ]back)/i },
-  { id: "non_toxic_claims", label: "Non-toxic material claims", re: /(pfas[- ]free|ptfe[- ]free|pfoa[- ]free|free of (lead|cadmium)|non[- ]toxic|free from .* chemicals)/i },
-  { id: "materials", label: "Premium materials (steel/clad)", re: /(stainless steel|tri[- ]ply|5[- ]ply|fully clad|carbon steel|cast iron|aluminum core)/i },
-  { id: "product_line", label: "Signature product line", re: /(valencia pro|always pan|d3|d5|d7|stainless clad|professional clad|original pan)/i },
-  { id: "dishwasher_safe", label: "Dishwasher safe", re: /dishwasher[- ]safe/i },
+  { id: "editorial_press", label: "Editorial & press coverage", re: /(vogue|elle|harper'?s|gq|wirecutter|consumer reports|good housekeeping|the strategist|forbes|reviewed by|editor'?s? (pick|choice)|magazine|featured in|praised by|critics?|customer reviews|thousands of reviews)/i },
+  { id: "awards_recognition", label: "Awards & recognition", re: /(award[- ]winning|\baward\b|best[- ]of|top[- ]?(pick|rated)|voted (the )?best|highly rated|acclaimed|iconic|renowned)/i },
+  { id: "third_party_testing", label: "Third-party testing / certification", re: /(third[- ]party (test|lab)|independent(ly)? test|lab[- ]tested|clinically (tested|proven|dosed)|nsf certified|gmp|usda organic|\bcertified\b|dermatologist[- ]tested)/i },
+  { id: "materials_craft", label: "Materials & craftsmanship", re: /(premium material|high[- ]quality material|full[- ]grain|top[- ]grain|leather|suede|silk|cashmere|merino|\bwool\b|organic cotton|solid (wood|oak|walnut|maple)|hardwood|stainless steel|craftsmanship|hand[- ](made|crafted|stitched|finished)|well[- ]made|quality construction)/i },
+  { id: "ingredients_formulation", label: "Ingredients & formulation", re: /(ingredient|formula|active (ingredient|compound)|dosage|potency|clean label|no (artificial|added|fillers)|sugar[- ]free|bioavailab|clinically effective)/i },
+  { id: "durability", label: "Durability & longevity", re: /(durab|long[- ]lasting|lasts (for )?years|built to last|sturdy|hard[- ]wearing|scratch[- ]resistant|holds up|won'?t (warp|sag|fade))/i },
+  { id: "price_value", label: "Price & value", re: /(great value|best value|affordable|budget[- ]friendly|worth (the|every) (money|penny|price)|cost[- ]effective|reasonably priced|bang for)/i },
+  { id: "heritage_reputation", label: "Heritage & reputation", re: /(heritage|since \d{4}|founded in \d{4}|established \d{4}|decades of|legacy|storied|trusted (brand|name)|reputation for|household name)/i },
+  { id: "selection_range", label: "Selection & range", re: /(wide (range|selection|variety|array)|range of (styles|sizes|colou?rs|options|flavou?rs)|many (options|styles|choices)|extensive (line|collection)|customizable|made[- ]to[- ]order)/i },
+  { id: "sustainability", label: "Sustainability & ethics", re: /(sustainab|ethical(ly)?|eco[- ]friendly|organic|responsibly (made|sourced)|carbon[- ]neutral|recycled|fair[- ]trade|cruelty[- ]free|\bvegan\b)/i },
+  { id: "warranty_returns", label: "Warranty, guarantee & returns", re: /(warranty|guarantee|money[- ]back|free returns|lifetime (guarantee|warranty)|trial period|risk[- ]free)/i },
+  { id: "design_style", label: "Design & style", re: /(timeless|elegant|stylish|sleek|refined aesthetic|signature (look|silhouette|design|style)|design[- ]forward|beautifully designed|versatile (style|look))/i },
 ];
 
 /** Extract competitor proof points from the responses where a competitor beats us. */

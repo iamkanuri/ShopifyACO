@@ -20,7 +20,9 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const CLUSTER_DEFS: ClusterDef[] = [
   {
     id: "non_toxic_ceramic",
-    label: "Non-toxic / ceramic",
+    // "non-toxic"/"toxic" are cross-vertical (mattresses, cosmetics, baby, cleaning), so the
+    // label must NOT assume cookware — it used to say "ceramic" and leaked into those reports.
+    label: "Non-toxic / material safety",
     transactional: false,
     test: (p) => /(non[- ]?toxic|ceramic|pfas|ptfe|pfoa|teflon|toxic|non[- ]?stick)/.test(p),
   },
@@ -32,7 +34,7 @@ export const CLUSTER_DEFS: ClusterDef[] = [
   },
   {
     id: "induction",
-    label: "Induction stove",
+    label: "Induction compatibility",
     transactional: true,
     test: (p) => /induction/.test(p),
   },
