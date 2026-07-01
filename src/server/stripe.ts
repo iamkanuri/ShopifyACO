@@ -6,6 +6,8 @@ import { hasPg } from "../db/pg.js";
 import { billingEventSeen, recordBillingEvent } from "../db/entitlements.js";
 import { isFullRefund, priceToPlan, provisionFromCheckout, provisionInvoiceFailed, provisionRefund, provisionSubscriptionEvent } from "../billing/provision.js";
 import { PLANS } from "../pricing.js";
+import { enqueuePaidReport } from "../paid/enqueue.js";
+import { alertOwner } from "../paid/notify.js";
 
 // ---------------------------------------------------------------------------
 // Minimal Stripe webhook — NO Stripe SDK. We verify the signature ourselves
@@ -139,6 +141,22 @@ async function handleCheckoutCompleted(event: StripeEvent): Promise<void> {
       sessionId: s.id,
     });
     console.log(JSON.stringify({ level: "info", msg: "paid order", plan, sessionId: s.id }));
+  }
+
+  // Paid-report Phase 2: for a one-time report purchase tied to a mini-scan (client_reference_id),
+  // ENQUEUE the durable deep-report generation and return — the webhook must NOT block on it
+  // (Stripe retries slow endpoints → double-fire). Best-effort; idempotent on session_id.
+  if (created && sourceRunId) {
+    try {
+      const r = await enqueuePaidReport({
+        sessionId: s.id, runId: sourceRunId, email: s.customer_details?.email ?? s.customer_email ?? null,
+        plan, paymentIntent,
+      });
+      console.log(JSON.stringify({ level: "info", msg: "paid report enqueue", sessionId: s.id, ...r }));
+    } catch (err) {
+      // A failed enqueue must not fail the webhook — but it IS a payment with no generation, so alert.
+      await alertOwner(`Paid report enqueue FAILED — ${s.id}`, `run=${sourceRunId}: ${(err as Error).message}. Generate/refund manually.`).catch(() => {});
+    }
   }
 
   // Additive: provision the entitlement. Best-effort + PG-gated so the order path above

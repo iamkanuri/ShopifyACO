@@ -65,6 +65,11 @@ export const ENV = {
 
   // Spend / storage.
   dailySpendCapUsd: Number(process.env.DAILY_SPEND_CAP_USD ?? 10),
+  // Separate budget for PAID deep-report generation (Phase 2) so a busy free-scan day can't
+  // starve a paying customer. Reserved via the queue's own spend accounting, not the free cap.
+  paidSpendCapUsd: Number(process.env.PAID_SPEND_CAP_USD ?? 5),
+  // How long a failed paid report is HELD (owner can hand-fix) before the auto-refund fallback.
+  paidRefundAfterMin: Number(process.env.PAID_REFUND_AFTER_MIN ?? 180),
   // Where result files live. On Railway this is the volume mount path (e.g. /data).
   dataDir: str(process.env.DATA_DIR) ?? "runs",
 

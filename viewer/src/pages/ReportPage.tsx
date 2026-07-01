@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import type { RunResults } from "../types";
+import type { RunResults, ArtifactBundle } from "../types";
 import { Link } from "../router";
 import { Report } from "./Report";
 import { ShareBar } from "../components/ShareBar";
 import { FunnelCta } from "../components/FunnelCta";
+import { PaidArtifacts } from "../components/PaidArtifacts";
 
 // The ungated preview slice (mirrors the server's reportPreview). No PII.
 interface Preview {
@@ -12,7 +13,8 @@ interface Preview {
   gapLine: string;
   weakestEngine: string | null; headline: string | null; isShopify: boolean; basedOnResponses: number;
 }
-type RunsResponse = { claimed: false; preview: Preview } | ({ claimed: true; paid: boolean } & RunResults);
+type ClaimedResponse = { claimed: true; paid: boolean; generating?: boolean; generatingStatus?: string; artifacts?: ArtifactBundle | null } & RunResults;
+type RunsResponse = { claimed: false; preview: Preview } | ClaimedResponse;
 
 export function ReportPage({ runId }: { runId: string }) {
   const [data, setData] = useState<RunsResponse | null>(null);
@@ -33,6 +35,14 @@ export function ReportPage({ runId }: { runId: string }) {
       .catch((e) => !cancelled && setError(e.message));
     return () => { cancelled = true; };
   }, [runId]);
+
+  // While the paid deep report + artifacts generate on the worker, poll until they land.
+  const generating = Boolean(data && data.claimed && data.generating);
+  useEffect(() => {
+    if (!generating) return;
+    const t = setInterval(load, 6000);
+    return () => clearInterval(t);
+  }, [generating]);
 
   if (error)
     return (
@@ -60,6 +70,18 @@ export function ReportPage({ runId }: { runId: string }) {
   return (
     <>
       <ShareBar runId={runId} shareText={shareText} />
+      {data.generating && (
+        <div className="card generating-banner">
+          <div className="spinner sm" />
+          <div>
+            <b>Generating your full report…</b> Running a deeper scan and drafting your done-for-you
+            fixes. This usually takes a couple of minutes — the page updates automatically.
+          </div>
+        </div>
+      )}
+      {data.artifacts && data.artifacts.artifacts.length > 0 && (
+        <PaidArtifacts bundle={data.artifacts} />
+      )}
       <Report
         run={data}
         runId={runId}

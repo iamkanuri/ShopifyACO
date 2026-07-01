@@ -131,6 +131,22 @@ export interface DiscoveredBrand {
   answers: number;
 }
 
+export interface Artifact {
+  id: string;
+  kind: "comparison_page" | "buying_guide" | "llms_txt" | "product_schema";
+  title: string;
+  format: "markdown" | "text" | "json";
+  filename: string;
+  body: string;
+  placeholders: string[];
+  drafted: "llm" | "template";
+}
+export interface ArtifactBundle {
+  artifacts: Artifact[];
+  bridge: string;
+  costUsd: number;
+}
+
 export interface MerchantAnalysis {
   brand: string;
   category: string;

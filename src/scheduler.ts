@@ -6,6 +6,7 @@ import { startHealthServer } from "./health.js";
 import { recoverAbandoned, touchHeartbeat } from "./queue/jobs.js";
 import { runDueSchedules } from "./monitoring/execute.js";
 import { runRetentionPurge } from "./retention/purge.js";
+import { sweepHeldRefunds } from "./paid/refundSweep.js";
 
 // Scheduler process (PROCESS_MODE=scheduler / `npm run scheduler`). Runs periodic
 // maintenance: recovers abandoned jobs and (in later phases) enqueues due recurring
@@ -24,6 +25,10 @@ async function tick(): Promise<void> {
   // Data-retention purge (compliance): once/day, deletes pixel_events past the window.
   const purge = await runRetentionPurge();
   if (purge.ran) console.log(`[scheduler] retention purge: removed ${purge.pixelEventsDeleted ?? 0} expired pixel_event(s)`);
+  // Paid-report Phase 2: auto-refund the FALLBACK for reports held past the window (owner had time
+  // to hand-fix). A refund that itself fails alerts loudly for manual action — never silent.
+  const refunds = await sweepHeldRefunds();
+  if (refunds.considered) console.log(`[scheduler] refund sweep: ${refunds.refunded} refunded, ${refunds.failed} failed of ${refunds.considered} held`);
   await touchHeartbeat("scheduler", { tickMs: TICK_MS });
 }
 

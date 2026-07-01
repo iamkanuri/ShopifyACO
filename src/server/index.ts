@@ -80,6 +80,7 @@ import {
 import { runScanJob } from "./scanJob.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta } from "./reportProjection.js";
+import { getPaidReportByRun } from "../db/paidReports.js";
 import { renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
@@ -573,14 +574,27 @@ app.get(
     const results = (await getResults(runId)) as Record<string, unknown> | null;
     if (!results) return res.status(404).json({ error: "Results not ready." });
     const claim = await getClaim(runId);
-    // Paid-report Phase 1 — the free/paid re-cut:
-    //  • PAID (a paid order for this run) → the full report incl. the done-for-you fixes.
+    // Paid-report tiers:
+    //  • PAID + deep report COMPLETE → the worker-generated DEEP report + done-for-you artifacts (from DB).
+    //  • PAID + still generating/held → the full free report + a `generating` flag (buyer polls).
     //  • CLAIMED (email) → the FREE diagnosis + proof + fix TITLES, minus the paid delta.
     //  • else → the ungated preview (score + gap + weakest engine).
-    // Paid is checked first so a buyer sees the full report even without claiming.
-    const paid = Boolean(await getPaidOrderForRun(runId));
-    if (paid) {
-      return res.json({ claimed: true, paid: true, ...redactRun(results) });
+    const paidReport = await getPaidReportByRun(runId);
+    if (paidReport?.status === "complete" && paidReport.report) {
+      return res.json({
+        claimed: true, paid: true, generating: false,
+        ...redactRun(paidReport.report as Record<string, unknown>),
+        artifacts: paidReport.artifacts ?? null,
+      });
+    }
+    const paidOrder = Boolean(await getPaidOrderForRun(runId));
+    if (paidOrder) {
+      // They paid; the deep report + artifacts are being generated on the worker. Show the full
+      // report meanwhile with a generating flag so the buyer sees progress, never a blank wait.
+      return res.json({
+        claimed: true, paid: true, generating: true, generatingStatus: paidReport?.status ?? "pending",
+        ...redactRun(results),
+      });
     }
     if (claim.claimed) {
       // CLAIMED → fully PUBLIC (no email wall for viewers): the whole alarm, no PII — this
