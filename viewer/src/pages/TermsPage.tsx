@@ -40,9 +40,10 @@ export function TermsPage() {
           price and what's included before approving, and you manage or cancel the subscription from
           your Shopify admin; access continues until the end of the paid period.</li>
         <li>Purchases made on our website (e.g. one-time reports) are billed <b>through Stripe</b>.
-          Prices and what each purchase includes are shown before you pay. During beta, some
-          fulfilment is manual and delivered by email; that's stated at checkout.</li>
-        <li>Refunds are handled case by case — contact us.</li>
+          Prices and what each purchase includes are shown before you pay. One-time reports are
+          <b> generated automatically</b> after payment and appear on your report page.</li>
+        <li>If a paid report can't be generated, it is <b>refunded automatically</b>; other refunds
+          are handled case by case — contact us.</li>
       </ul>
 
       <h3>Availability &amp; changes</h3>

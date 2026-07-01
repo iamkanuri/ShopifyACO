@@ -8,9 +8,9 @@ const CTA_EVENT: Record<string, string> = {
 };
 
 // Set the fulfillment expectation RIGHT at the buy button (not just in the feature list)
-// so a buyer knows BEFORE paying that these are hand-delivered by email, not instant.
+// so a buyer knows BEFORE paying what they get: automated, on-screen generation.
 const DELIVERY_NOTE: Record<string, string> = {
-  full_report: "Reviewed by hand and emailed within 24 hours during beta — not an instant download.",
+  full_report: "Generated automatically after payment — your deep report + done-for-you fixes appear on screen in minutes.",
 };
 
 export function Pricing({ runId, currentPlanId, email }: { runId?: string; currentPlanId?: string; email?: string }) {

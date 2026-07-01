@@ -31,7 +31,7 @@ export function ThanksPage() {
       <p className="muted">
         {isMonitoring
           ? "Your weekly monitoring is being set up. We'll email you your first full report and then a fresh scan every week."
-          : "Your full report is being prepared. During beta it's reviewed by hand and delivered by email within 24 hours."}
+          : "We're generating your full report now — a deeper scan plus your done-for-you fixes. It appears on your report page in a few minutes, no email needed."}
       </p>
       {contactEmail && (
         <p className="muted" style={{ fontSize: 13 }}>
@@ -44,7 +44,7 @@ export function ThanksPage() {
             View your scan report
           </Link>
           <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            Your full report builds on this scan — we'll email the deep version shortly.
+            Your full report builds on this scan — the deep version appears here automatically in a few minutes.
           </div>
         </>
       ) : (

@@ -88,7 +88,7 @@ export function ReportPage({ runId }: { runId: string }) {
         <div className="card failed-banner">
           <b>We hit a snag generating your full report.</b> We're on it — and if we can't resolve it
           shortly, your payment is refunded automatically, no action needed. Your full diagnosis below
-          is unaffected. {data.failedRefunded ? "This order has been refunded." : "We'll email you if anything's needed."}
+          is unaffected. {data.failedRefunded ? "This order has been refunded." : ""}
         </div>
       )}
       {data.artifacts && data.artifacts.artifacts.length > 0 && (
