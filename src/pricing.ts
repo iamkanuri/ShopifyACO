@@ -34,7 +34,7 @@ export const PLANS: PlanDef[] = [
     cadence: "one-time",
     blurb: "The complete picture + how to fix it.",
     features: [
-      "25+ buyer-intent prompts, deeper clusters",
+      "Comprehensive buyer-intent analysis across your category (up to 30 prompts)",
       "Competitor proof-point gap + lost-prompt analysis",
       "Prioritized fix roadmap + downloadable report",
       "Manually reviewed during beta — delivered by email within 24h",

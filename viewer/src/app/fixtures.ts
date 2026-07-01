@@ -247,7 +247,7 @@ export const DEMO = {
     managedPricingUrl: null,
     plans: [
       { id: "free_mini", name: "Free mini scan", price: "$0", cadence: "", blurb: "See if AI assistants know you.", features: ["5 buyer-intent prompts", "3 engines", "Visibility score + competitor leaderboard"], limits: { benchmarksPerMonth: 3, monitoringSchedules: 0, feeds: 1 }, tier: 0, stripeUrl: null, current: true },
-      { id: "full_report", name: "Full report", price: "$29", cadence: "one-time", blurb: "The complete picture + how to fix it.", features: ["25+ prompts", "Competitor gap + lost-prompt analysis", "Fix roadmap + report"], limits: { benchmarksPerMonth: 25, monitoringSchedules: 0, feeds: 3 }, tier: 1, stripeUrl: null, current: false },
+      { id: "full_report", name: "Full report", price: "$29", cadence: "one-time", blurb: "The complete picture + how to fix it.", features: ["Comprehensive buyer-intent analysis (up to 30 prompts)", "Competitor gap + lost-prompt analysis", "Fix roadmap + report"], limits: { benchmarksPerMonth: 25, monitoringSchedules: 0, feeds: 3 }, tier: 1, stripeUrl: null, current: false },
       { id: "monitoring", name: "Weekly monitoring", price: "$49", cadence: "/mo", blurb: "Track and defend your AI share of voice.", features: ["Automatic weekly scans", "Share-of-voice trends", "Alerts on new lost prompts"], limits: { benchmarksPerMonth: 60, monitoringSchedules: 5, feeds: 10 }, tier: 2, stripeUrl: null, current: false },
       { id: "founder_beta", name: "Founder beta", price: "$99", cadence: "beta", blurb: "5 deep scans + direct founder review.", features: ["5 deep scans", "Founder review", "Shape the product"], limits: { benchmarksPerMonth: 100, monitoringSchedules: 10, feeds: 25 }, tier: 3, stripeUrl: null, current: false },
     ],
