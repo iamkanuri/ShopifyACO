@@ -38,7 +38,7 @@ export async function suggestPrompts(form: ScanForm, apiKey: string | undefined)
           { role: "system", content: sys },
           { role: "user", content: user },
         ],
-        max_tokens: MAX_SUGGEST_TOKENS,
+        max_completion_tokens: MAX_SUGGEST_TOKENS,
         response_format: { type: "json_object" },
         temperature: 0.7,
       },

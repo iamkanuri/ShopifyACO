@@ -43,7 +43,7 @@ export async function inferStore(store: string, apiKey: string | undefined): Pro
           { role: "system", content: sys },
           { role: "user", content: user },
         ],
-        max_tokens: MAX_TOKENS,
+        max_completion_tokens: MAX_TOKENS,
         response_format: { type: "json_object" },
         temperature: 0.3,
       },

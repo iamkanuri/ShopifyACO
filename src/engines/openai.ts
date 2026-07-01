@@ -61,7 +61,7 @@ export function createOpenAIAdapter(apiKey: string | undefined): EngineAdapter {
           { role: "system", content: SHOPPING_SYSTEM_PROMPT },
           { role: "user", content: prompt },
         ],
-        max_tokens: MAX_OUTPUT_TOKENS,
+        max_completion_tokens: MAX_OUTPUT_TOKENS,
       },
     });
     const text = json.choices?.[0]?.message?.content ?? "";
