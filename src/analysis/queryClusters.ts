@@ -68,7 +68,10 @@ export const CLUSTER_DEFS: ClusterDef[] = [
   },
   {
     id: "everyday",
-    label: "Everyday cooking",
+    // Category-neutral: this cluster fires on generic wording ("everyday", "daily")
+    // so its label must NOT assume a vertical — a fashion/beauty/etc. brand was
+    // getting "everyday cooking" in its report (Caraway-origins artifact).
+    label: "Everyday use",
     transactional: false,
     test: (p) => /(everyday|daily|home cooking|all[- ]?around)/.test(p),
   },
