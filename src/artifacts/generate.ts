@@ -2,6 +2,7 @@ import type { Config, PromptEngineResult } from "../types.js";
 import type { MerchantAnalysis } from "../analysis/types.js";
 import { MODELS, estimateCostUsd } from "../engines/models.js";
 import { postJson } from "../engines/http.js";
+import { sanitizeSnippet } from "../analysis/text.js";
 import type { Artifact, ArtifactBundle } from "./types.js";
 
 // The done-for-you artifact generator (paid-report Phase 2). See ./types.ts for the rules.
@@ -28,25 +29,23 @@ export async function generateArtifacts(
   let costUsd = 0;
   const useLlm = Boolean(opts.live && opts.apiKey);
 
-  // 1. Comparison page — ONLY when a real threat out-recommends the brand (restraint: no
-  //    manufactured "vs" when the merchant is winning).
-  const cmp = analysis.fixCards.find((c) => c.id === "cmp_threat");
-  if (analysis.threat && cmp) {
-    const competitor = analysis.threat.competitor;
-    const reasons = reasonLabels(analysis, competitor);
-    const prompts = cmp.relatedPrompts.slice(0, 5);
-    const evidence = cmp.relatedSnippets.slice(0, 4);
+  // 1. Comparison page. Target = a CONFIGURED threat, OR — for a brand that beats its configured
+  //    competitors but is out-recommended by a DISCOVERED brand it couldn't see — that discovered
+  //    brand (same generator, discovered target). NEVER manufactured when nobody out-recommends the
+  //    brand (restraint preserved).
+  const target = pickComparisonTarget(analysis, results);
+  if (target) {
     const drafted = useLlm
-      ? await draftComparison(brand, competitor, cfg.category, reasons, prompts, evidence, opts.apiKey!)
+      ? await draftComparison(brand, target.competitor, cfg.category, target.reasons, target.prompts, target.evidence, opts.apiKey!)
       : null;
     costUsd += drafted?.cost ?? 0;
-    const body = drafted?.body ?? templateComparison(brand, competitor, cfg.category, reasons, prompts, evidence);
+    const body = drafted?.body ?? templateComparison(brand, target.competitor, cfg.category, target.reasons, target.prompts, target.evidence);
     artifacts.push(mkArtifact({
       id: "comparison_page", kind: "comparison_page",
-      title: `${brand} vs ${competitor} — comparison page`,
-      format: "markdown", filename: `${slug(brand)}-vs-${slug(competitor)}.md`,
+      title: `${brand} vs ${target.competitor} — comparison page`,
+      format: "markdown", filename: `${slug(brand)}-vs-${slug(target.competitor)}.md`,
       body, drafted: drafted ? "llm" : "template",
-      groundedIn: { prompts, competitor },
+      groundedIn: { prompts: target.prompts, competitor: target.competitor },
     }));
   }
 
@@ -101,21 +100,27 @@ async function draftComparison(
     `Evidence — what assistants actually said about ${competitor} (use only this for ${competitor}'s claims):\n` +
     evidence.map((e) => `- "${e}"`).join("\n") +
     `\n\nStructure: (1) open with the real buyer question; (2) an honest side-by-side covering ${reasons.join(", ") || "the key factors"} — ` +
-    `state ${competitor}'s strengths from the evidence, and give ${brand} a fair side using [PLACEHOLDERS] where a ${brand} product fact is needed; ` +
-    `(3) a "Where ${brand} wins" section that is ALL [PLACEHOLDERS] for the merchant's real advantages. ` +
-    `Be truthful and non-defamatory. No call-to-action or footer.`;
+    `state ${competitor}'s strengths from the evidence, and give ${brand} a fair side; ` +
+    `(3) a short "Where ${brand} wins" section. ` +
+    `Use AT MOST 6 [PLACEHOLDERS] in the whole page, each broad and grouped (e.g. [YOUR MATERIALS & CONSTRUCTION], ` +
+    `[YOUR PRICE/VALUE ANGLE], [WHERE YOU GENUINELY BEAT ${competitor.toUpperCase()}]) — do NOT create a separate placeholder for every detail, ` +
+    `and do NOT prefix them with the word "placeholder". Be truthful and non-defamatory. No call-to-action or footer.`;
   return llmDraft(user, apiKey);
 }
 
 async function draftGuide(
   brand: string, category: string, question: string, others: string[], apiKey: string,
 ): Promise<{ body: string; cost: number } | null> {
+  const allowed = [brand, ...others];
   const user =
     `Draft a buying guide titled to answer this exact shopper question: "${question}" (~300–450 words), for ${category}.\n` +
-    `It must INCLUDE ${brand} as a genuine option (honestly, using [PLACEHOLDERS] for any ${brand} product fact you can't verify). ` +
-    (others.length ? `Other brands AI assistants recommend here (mention naturally, no invented claims): ${others.join(", ")}.\n` : "") +
-    `Structure: a short intro to the buyer's need, then how to choose (the criteria that matter for ${category}), then a shortlist that ` +
-    `positions ${brand} fairly among the options. Truthful, helpful, non-promotional. No call-to-action or footer.`;
+    `It must INCLUDE ${brand} as a genuine option (honestly, using [PLACEHOLDERS] for any ${brand} product fact you can't verify).\n` +
+    `CRITICAL: name ONLY these brands and NO others — do not introduce any brand or retailer from your own knowledge: ${allowed.join(", ")}.\n` +
+    (others.length
+      ? `The non-${brand} brands (${others.join(", ")}) are ones AI assistants actually recommend for this query — mention them naturally with no invented claims.\n`
+      : `If you cannot name other real options from the list, focus the shortlist on ${brand} and the selection criteria instead of inventing competitors.\n`) +
+    `Structure: a short intro to the buyer's need, then how to choose (the criteria that matter for ${category}), then a shortlist. ` +
+    `Truthful, helpful, non-promotional. No call-to-action or footer.`;
   return llmDraft(user, apiKey);
 }
 
@@ -260,8 +265,56 @@ function mkArtifact(a: Omit<Artifact, "placeholders">): Artifact {
 
 export function extractPlaceholders(body: string): string[] {
   const out = new Set<string>();
-  for (const m of body.matchAll(/\[([^\]\n]{2,80})\]/g)) out.add(m[1]!.trim());
+  for (const m of body.matchAll(/\[([^\]\n]{2,80})\]/g)) {
+    const t = m[1]!.trim().replace(/^placeholder:?\s*/i, "");
+    if (!t || /^placeholder$/i.test(t)) continue; // drop noise from the instructional file comment
+    out.add(t);
+  }
   return [...out];
+}
+
+/** The comparison target: a configured threat, else a discovered brand out-recommending the brand,
+ *  else null (restraint — no comparison when nobody beats the merchant). Reuses the SAME draft path. */
+function pickComparisonTarget(
+  analysis: MerchantAnalysis,
+  results: PromptEngineResult[],
+): { competitor: string; reasons: string[]; prompts: string[]; evidence: string[] } | null {
+  const cmp = analysis.fixCards.find((c) => c.id === "cmp_threat");
+  if (analysis.threat && cmp) {
+    return {
+      competitor: analysis.threat.competitor,
+      reasons: reasonLabels(analysis, analysis.threat.competitor),
+      prompts: cmp.relatedPrompts.slice(0, 5),
+      evidence: cmp.relatedSnippets.slice(0, 4),
+    };
+  }
+  // Winner vs configured competitors — but is a DISCOVERED brand out-recommending them? Compare the
+  // discovered brand's answer-frequency to the merchant's own recommendation count (directional).
+  const top = (analysis.discoveredBrands ?? [])[0];
+  if (top && top.answers > analysis.mentionGap.recommendation.count) {
+    const ev = evidenceForBrand(results, top.name);
+    return { competitor: top.name, reasons: topLabels(analysis, 3), prompts: ev.prompts, evidence: ev.snippets };
+  }
+  return null;
+}
+
+/** Real evidence about a brand from the captured answers: the prompts it appeared in + sanitized
+ *  snippets around its mentions. Keeps the discovered-brand comparison grounded (no fabrication). */
+function evidenceForBrand(results: PromptEngineResult[], name: string): { prompts: string[]; snippets: string[] } {
+  const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+  const prompts: string[] = [];
+  const snippets: string[] = [];
+  for (const r of results) {
+    if (r.error || !r.text || !re.test(r.text)) continue;
+    if (!prompts.includes(r.prompt)) prompts.push(r.prompt);
+    const m = re.exec(r.text);
+    if (m && snippets.length < 4) {
+      const start = Math.max(0, m.index - 80);
+      const s = sanitizeSnippet((start > 0 ? "…" : "") + r.text.slice(start, m.index + name.length + 130).replace(/\s+/g, " ").trim() + "…");
+      if (s) snippets.push(s);
+    }
+  }
+  return { prompts: prompts.slice(0, 5), snippets: snippets.slice(0, 4) };
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

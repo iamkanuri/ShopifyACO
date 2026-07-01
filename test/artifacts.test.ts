@@ -30,14 +30,35 @@ test("generateArtifacts drafts a grounded bundle with merchant placeholders (moc
   assert.match(bundle.bridge, /AisleLens Shopify app/, "bundle closes with the recurring-app bridge");
 });
 
-test("restraint: a winning brand (no threat) gets NO manufactured comparison page", async () => {
+test("restraint: a clean winner (no configured OR discovered threat) gets NO comparison page", async () => {
   const cfg: Config = { brand: { name: "WinnerCo" }, category: "widgets", competitors: [], promptTemplates: [] };
   const a = {
-    brand: "WinnerCo", category: "widgets", threat: null,
-    fixCards: [], proofPoints: [], clusters: [], discoveredBrands: [],
+    brand: "WinnerCo", category: "widgets", threat: null, fixCards: [], proofPoints: [], clusters: [],
+    discoveredBrands: [{ name: "SomeBrand", answers: 2 }], // below the merchant's own rec count
+    mentionGap: { recommendation: { count: 6, total: 10, rate: 0.6 } },
   } as unknown as MerchantAnalysis;
 
   const bundle = await generateArtifacts(a, [], cfg, { live: false });
-  assert.ok(!bundle.artifacts.some((x) => x.kind === "comparison_page"), "no vs page when winning");
+  assert.ok(!bundle.artifacts.some((x) => x.kind === "comparison_page"), "no vs page when nobody out-recommends");
   assert.ok(bundle.artifacts.some((x) => x.kind === "llms_txt"), "still gets the hygiene artifacts");
+});
+
+test("a 'winner' out-recommended by a DISCOVERED brand gets a comparison targeting THAT brand", async () => {
+  const cfg: Config = { brand: { name: "Ritual" }, category: "multivitamins", competitors: [], promptTemplates: [] };
+  const a = {
+    brand: "Ritual", category: "multivitamins", threat: null, fixCards: [], clusters: [],
+    proofPoints: [{ id: "ingredients_formulation", label: "Ingredients & formulation", hits: 3, competitors: [] }],
+    discoveredBrands: [{ name: "Centrum", answers: 8 }], // > merchant's own rec count → real threat
+    mentionGap: { recommendation: { count: 5, total: 24, rate: 0.21 } },
+  } as unknown as MerchantAnalysis;
+  const results = [{
+    prompt: "best daily multivitamin?", template: "t", engine: "openai", model: "gpt-5.4-mini",
+    groundingMode: "web_grounded" as const, text: "Centrum is a widely available, affordable daily multivitamin many people start with.", detections: [], usage: {},
+  }];
+
+  const bundle = await generateArtifacts(a, results, cfg, { live: false });
+  const cmp = bundle.artifacts.find((x) => x.kind === "comparison_page");
+  assert.ok(cmp, "discovered threat → a comparison page");
+  assert.match(cmp!.title, /Ritual vs Centrum/);
+  assert.equal(cmp!.groundedIn?.competitor, "Centrum");
 });
