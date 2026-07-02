@@ -69,7 +69,14 @@ export const ENV = {
   // starve a paying customer. Reserved via the queue's own spend accounting, not the free cap.
   paidSpendCapUsd: Number(process.env.PAID_SPEND_CAP_USD ?? 5),
   // How long a failed paid report is HELD (owner can hand-fix) before the auto-refund fallback.
+  // This is ALSO the 'pending' stuck cap: a report never even claimed by this long = a dead/absent
+  // worker → sweep it to held→refund (ordinary backlog is minutes, so it's untouched). See reconcile.ts.
   paidRefundAfterMin: Number(process.env.PAID_REFUND_AFTER_MIN ?? 180),
+  // Stuck cap for a report stuck in 'generating' (a worker claimed it, then died mid-run). A single
+  // generation is bounded at a few minutes, so 30m "in progress" is a definitively dead worker —
+  // ZERO backlog false-positive risk. Must stay comfortably > the max retry window (~15m) and ≤ the
+  // refund window. Distinct (tight) cap vs the 'pending' cap on purpose — see reconcile.ts.
+  paidGenStuckCapMin: Number(process.env.PAID_GEN_STUCK_CAP_MIN ?? 30),
   // NOTE: to TEST the failure path (held→alert→auto-refund), set `PAID_FORCE_FAIL=<runId>` on the
   // worker (read directly in src/paid/handler.ts) — NOT PAID_SPEND_CAP_USD=0, which is a real
   // budget knob and, if left set, silently fails every buyer. Scoping to a runId keeps real orders safe.

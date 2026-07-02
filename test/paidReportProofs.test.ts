@@ -4,6 +4,7 @@ import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { constructEvent } from "../src/server/stripe.js";
 import { processAutoRefund } from "../src/paid/refund.js";
+import { paidJobKey } from "../src/paid/jobKey.js";
 
 // ===========================================================================
 // Paid-report Phase 2 — the CAN'T-UNDO-IN-PROD proofs (webhook + refund). These
@@ -60,7 +61,10 @@ test("PROOF 2 (mechanism): session_id is unique + creation/enqueue are on-confli
 
   const enqueue = readFileSync("src/paid/enqueue.ts", "utf8");
   assert.match(enqueue, /if \(!created\) return \{ enqueued: false, reason: "duplicate" \}/, "a duplicate must NOT re-enqueue");
-  assert.match(enqueue, /idempotencyKey: `paid_report:\$\{input\.sessionId\}`/, "the job carries a per-session idempotency key");
+  // The job's idempotency key goes through the shared paidJobKey helper so it can't drift from the
+  // reconciliation join (a drift would silently break dead-letter→held detection → stranded payments).
+  assert.match(enqueue, /idempotencyKey: paidJobKey\(input\.sessionId\)/, "the job key uses the shared paidJobKey helper");
+  assert.equal(paidJobKey("cs_x"), "paid_report:cs_x", "paidJobKey pins the exact key format the reconcile sweep joins on");
 });
 
 // ---- PROOF 4: a FAILED refund alerts loudly + independently ------------------

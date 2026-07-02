@@ -81,6 +81,46 @@ export async function markRefunded(sessionId: string): Promise<void> {
   );
 }
 
+export interface ReportToHold extends PaidReportRow {
+  hold_reason: "retries_exhausted" | "stuck_generating" | "stuck_pending";
+}
+
+/**
+ * Reports whose generation is GENUINELY dead and should transition to `held` (Design A
+ * reconciliation — src/paid/reconcile.ts). A non-complete report is held when ANY of:
+ *   • its job DEAD-LETTERED (retries exhausted) — the common genuine failure, caught promptly;
+ *   • it's stuck in `generating` past `genStuckCapMin` (a worker claimed it then died — a single
+ *     generation is bounded at minutes, so this is a definitively dead worker, ZERO backlog risk);
+ *   • it's stuck in `pending` past `pendingStuckCapMin` (never claimed — a dead/absent worker; pinned
+ *     LONG to the refund window so ordinary backlog runs untouched, but a stranded payment still refunds).
+ * TWO separate caps on purpose: a tight one for `generating` (can't false-positive) and a long one for
+ * `pending` (ordinary backlog must NOT be force-failed). Excludes already held/refunded/complete, so the
+ * owner alert fires exactly once. The job join key is bound (`$3`) to the same paidJobKey the enqueue uses.
+ */
+export async function listReportsToHold(opts: {
+  genStuckCapMin: number;
+  pendingStuckCapMin: number;
+  jobPrefix: string;
+}): Promise<ReportToHold[]> {
+  if (!hasPg()) return [];
+  const res = await pgQuery<ReportToHold>(
+    `select pr.*, case
+         when j.status = 'dead_letter' then 'retries_exhausted'
+         when pr.status = 'generating' then 'stuck_generating'
+         else 'stuck_pending' end as hold_reason
+       from paid_reports pr
+       left join jobs j on j.idempotency_key = ($3 || pr.session_id)
+      where pr.status in ('pending', 'generating')
+        and (
+          j.status = 'dead_letter'
+          or (pr.status = 'generating' and pr.created_at < now() - ($1 || ' minutes')::interval)
+          or (pr.status = 'pending'    and pr.created_at < now() - ($2 || ' minutes')::interval)
+        )`,
+    [String(opts.genStuckCapMin), String(opts.pendingStuckCapMin), opts.jobPrefix],
+  );
+  return res.rows;
+}
+
 /** Held reports older than the window that haven't been refunded — the auto-refund fallback set. */
 export async function listHeldForRefund(olderThanMinutes: number): Promise<PaidReportRow[]> {
   if (!hasPg()) return [];
