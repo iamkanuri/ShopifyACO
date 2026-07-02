@@ -23,6 +23,7 @@ export function Report({
   isShopify,
   paid = true,
   purchased = false,
+  failed = false,
 }: {
   run: RunResults;
   runId?: string;
@@ -35,6 +36,10 @@ export function Report({
    *  $29 upsell (keeps the Shopify-install bridge). Distinct from `paid`: the demo sets
    *  paid=true to unlock the full experience but leaves purchased=false so it still upsells. */
   purchased?: boolean;
+  /** Genuine paid-generation failure (refunded). The banner + retry live in ReportPage; here we
+   *  just suppress the $29 same-run re-buy (which would recur on the same failed config) — the
+   *  retry is a fresh scan — while keeping the Shopify-install bridge. */
+  failed?: boolean;
 }) {
   const a = run.analysis as MerchantAnalysis;
 
@@ -149,16 +154,20 @@ export function Report({
       </Collapse>
 
       <section className="section no-print" id="full-report-cta">
-        <h2>{purchased || isShopify ? "Fix this on your store" : "Get the full report"}</h2>
+        <h2>{failed ? "Prefer to run this on your store?" : purchased || isShopify ? "Fix this on your store" : "Get the full report"}</h2>
         <p className="muted">
-          {purchased
+          {failed
+            ? "Install AisleLens to run your AI-visibility report right inside Shopify — and apply the fixes automatically."
+            : purchased
             ? "You've got the full report. Install AisleLens on your Shopify store to apply these fixes and keep watching your AI visibility automatically."
             : isShopify
             ? "AisleLens installs on your Shopify store to diagnose why AI picks competitors — and helps you fix it."
             : "A deep, automatically-generated report, or install AisleLens free if you're on Shopify."}
         </p>
-        <FunnelCta isShopify={isShopify} runId={runId} purchased={purchased} />
-        {!purchased && (
+        {/* On a genuine failure, suppress the $29 same-run re-buy (retry is a fresh scan, in the
+            banner above) — show only the Shopify-install bridge. `purchased || failed` = install-only. */}
+        <FunnelCta isShopify={isShopify} runId={runId} purchased={purchased || failed} />
+        {!purchased && !failed && (
           <details className="report-collapse" style={{ marginTop: 18 }}>
             <summary>See all plans</summary>
             <div className="rc-body"><Pricing runId={runId} /></div>

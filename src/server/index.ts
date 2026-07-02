@@ -590,12 +590,15 @@ app.get(
       });
     }
     if (tier === "failed") {
-      // Generation failed (held/refunded). Be HONEST: the buyer keeps the full report meanwhile,
-      // sees a snag + refund note, and the client STOPS polling — never an infinite spinner.
+      // Genuine failure (retries exhausted / stuck → held/refunded). Be HONEST AND don't devalue the
+      // paid tier: serve the clean FREE scorecard (paid delta withheld via stripPaidDelta — the same
+      // projection the free claimed tier uses), NOT the paid diagnosis. The client shows an honest
+      // refund banner + a retry (a fresh scan) and STOPS polling — never an infinite spinner, never a
+      // silent free page, never the $29 "how" given away on a refund.
       return res.json({
-        claimed: true, paid: true, generating: false,
+        claimed: true, paid: false, generating: false,
         failed: true, failedRefunded: paidReport?.status === "refunded",
-        ...redactRun(results),
+        ...stripPaidDelta(redactRun(results)),
       });
     }
     if (tier === "generating") {

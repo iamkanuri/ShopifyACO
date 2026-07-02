@@ -95,6 +95,9 @@ export function ReportPage({ runId }: { runId: string }) {
   // Claimed → the free diagnosis (or, once paid, the full report) + share + Shopify-aware CTA.
   const a = data.analysis;
   const shareText = a ? `${a.brand} scores ${a.visibilityScore.score}/100 on AI shopping visibility.` : "My AI shopping visibility scorecard";
+  // Retry after a genuine failure = a fresh scan (clean fresh start, no customer memory needed),
+  // prefilled with this run's brand/category so there's no re-entry friction.
+  const retryHref = a ? `/scan?brand=${encodeURIComponent(a.brand)}&category=${encodeURIComponent(a.category)}` : "/scan";
   return (
     <>
       <ShareBar runId={runId} shareText={shareText} />
@@ -109,9 +112,14 @@ export function ReportPage({ runId }: { runId: string }) {
       )}
       {data.failed && (
         <div className="card failed-banner">
-          <b>We hit a snag generating your full report.</b> We're on it — and if we can't resolve it
-          shortly, your payment is refunded automatically, no action needed. Your full diagnosis below
-          is unaffected. {data.failedRefunded ? "This order has been refunded." : ""}
+          <b>Your full report couldn't be generated{data.failedRefunded ? ", so you've been refunded" : ""}.</b>{" "}
+          {data.failedRefunded
+            ? "Your payment was refunded automatically — no action needed."
+            : "You'll be refunded automatically — no action needed."}{" "}
+          Your free scorecard is below. Run a new scan to try again.
+          <div style={{ marginTop: 12 }}>
+            <Link to={retryHref} className="btn btn-primary">Run a new scan →</Link>
+          </div>
         </div>
       )}
       {data.artifacts && data.artifacts.artifacts.length > 0 && (
@@ -122,6 +130,7 @@ export function ReportPage({ runId }: { runId: string }) {
         runId={runId}
         paid={data.paid}
         purchased={data.paid}
+        failed={data.failed}
         reportMdUrl={data.paid ? `/api/runs/${runId}/report.md` : undefined}
         isShopify={Boolean(data.meta?.isShopify)}
       />
