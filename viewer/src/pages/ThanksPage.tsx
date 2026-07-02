@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link } from "../router";
+import { Link, navigate } from "../router";
 import { trackEvent } from "../api";
 import { useConfig } from "../config";
 
@@ -19,9 +19,26 @@ export function ThanksPage() {
       }
     })();
 
+  // For a report purchase we know the run for, send the buyer STRAIGHT to their report — which
+  // reflects the REAL state (generating → complete, or the honest failed/refunded banner) instead
+  // of this page's old static "we're generating it" claim that stayed cheerful even on failure.
+  // ?paid=1 tells the report page to hold a "confirming payment" state until the webhook lands.
+  const willRedirect = Boolean(runId) && plan !== "monitoring";
+
   useEffect(() => {
     trackEvent("payment_completed", runId, { plan });
-  }, [plan, runId]);
+    if (willRedirect) navigate(`/report/${runId}?paid=1`);
+  }, [plan, runId, willRedirect]);
+
+  if (willRedirect) {
+    return (
+      <div className="card center-card">
+        <div className="big-check">✓</div>
+        <h1>Payment received — thank you.</h1>
+        <p className="muted">Taking you to your report…</p>
+      </div>
+    );
+  }
 
   const isMonitoring = plan === "monitoring";
   return (
@@ -30,28 +47,17 @@ export function ThanksPage() {
       <h1>Thank you — you're in.</h1>
       <p className="muted">
         {isMonitoring
-          ? "Your weekly monitoring is being set up. We'll email you your first full report and then a fresh scan every week."
-          : "We're generating your full report now — a deeper scan plus your done-for-you fixes. It appears on your report page in a few minutes, no email needed."}
+          ? "Your weekly monitoring is being set up. Your first report and each weekly scan appear in the app."
+          : "Your full report is generated automatically — a deeper scan plus your done-for-you fixes. Open it from the report link you already have; it updates on-screen as it finishes, no email needed."}
       </p>
       {contactEmail && (
         <p className="muted" style={{ fontSize: 13 }}>
           Questions? <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
         </p>
       )}
-      {runId ? (
-        <>
-          <Link to={`/report/${runId}`} className="btn btn-primary">
-            View your scan report
-          </Link>
-          <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            Your full report builds on this scan — the deep version appears here automatically in a few minutes.
-          </div>
-        </>
-      ) : (
-        <Link to="/demo" className="btn btn-primary">
-          See a sample report meanwhile
-        </Link>
-      )}
+      <Link to="/demo" className="btn btn-primary">
+        See a sample report meanwhile
+      </Link>
     </div>
   );
 }

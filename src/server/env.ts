@@ -70,6 +70,9 @@ export const ENV = {
   paidSpendCapUsd: Number(process.env.PAID_SPEND_CAP_USD ?? 5),
   // How long a failed paid report is HELD (owner can hand-fix) before the auto-refund fallback.
   paidRefundAfterMin: Number(process.env.PAID_REFUND_AFTER_MIN ?? 180),
+  // NOTE: to TEST the failure path (held→alert→auto-refund), set `PAID_FORCE_FAIL=<runId>` on the
+  // worker (read directly in src/paid/handler.ts) — NOT PAID_SPEND_CAP_USD=0, which is a real
+  // budget knob and, if left set, silently fails every buyer. Scoping to a runId keeps real orders safe.
   // Where result files live. On Railway this is the volume mount path (e.g. /data).
   dataDir: str(process.env.DATA_DIR) ?? "runs",
 

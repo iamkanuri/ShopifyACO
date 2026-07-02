@@ -23,14 +23,21 @@ export type PaidTier = "complete" | "failed" | "generating" | "none";
 
 /**
  * Which paid tier to serve, given the paid_report status, whether the deep report is present, and
- * whether a paid order exists. PURE so the serve decision is unit-testable — in particular the
+ * whether a `paid` order still exists. PURE so the serve decision is unit-testable — in particular the
  * FAILED case (`held`/`refunded`): a generation that failed must resolve to "failed" (honest state),
- * NOT "generating" (which would leave the buyer on an infinite spinner with no idea a refund is due).
+ * NOT "generating" (an infinite spinner) and NOT "none" (silently reverting to the anonymous free
+ * preview after a refund).
+ *
+ * CRITICAL ordering: the held/refunded check comes BEFORE the `!paidOrder` short-circuit. A refund
+ * flips the order out of `paid` (getPaidOrderForRun then returns null → paidOrder=false), but the
+ * buyer must still see the honest "your payment was refunded" banner rather than the free preview.
+ * So the FAILED state is driven by the paid_report status alone, independent of the order status —
+ * a paid_report row only exists because a payment happened, so held/refunded IS a paid tier.
  */
 export function paidReportTier(status: string | null | undefined, hasReport: boolean, paidOrder: boolean): PaidTier {
   if (status === "complete" && hasReport) return "complete";
-  if (!paidOrder) return "none";
   if (status === "held" || status === "refunded") return "failed";
+  if (!paidOrder) return "none";
   return "generating"; // pending | generating | null → the worker is (or will be) on it
 }
 

@@ -22,6 +22,7 @@ export function Report({
   reportMdUrl,
   isShopify,
   paid = true,
+  purchased = false,
 }: {
   run: RunResults;
   runId?: string;
@@ -30,6 +31,10 @@ export function Report({
   /** Paid-report Phase 1: false hides the executed "how" (done-for-you fixes) behind the
    *  $29 upgrade. Defaults to true so the demo/showcase renders the full experience. */
   paid?: boolean;
+  /** The viewer already BOUGHT this report (real purchase, not the demo showcase). Hides the
+   *  $29 upsell (keeps the Shopify-install bridge). Distinct from `paid`: the demo sets
+   *  paid=true to unlock the full experience but leaves purchased=false so it still upsells. */
+  purchased?: boolean;
 }) {
   const a = run.analysis as MerchantAnalysis;
 
@@ -144,17 +149,21 @@ export function Report({
       </Collapse>
 
       <section className="section no-print" id="full-report-cta">
-        <h2>{isShopify ? "Fix this on your store" : "Get the full report"}</h2>
+        <h2>{purchased || isShopify ? "Fix this on your store" : "Get the full report"}</h2>
         <p className="muted">
-          {isShopify
+          {purchased
+            ? "You've got the full report. Install AisleLens on your Shopify store to apply these fixes and keep watching your AI visibility automatically."
+            : isShopify
             ? "AisleLens installs on your Shopify store to diagnose why AI picks competitors — and helps you fix it."
-            : "A hand-reviewed deep report, or install AisleLens free if you're on Shopify."}
+            : "A deep, automatically-generated report, or install AisleLens free if you're on Shopify."}
         </p>
-        <FunnelCta isShopify={isShopify} runId={runId} />
-        <details className="report-collapse" style={{ marginTop: 18 }}>
-          <summary>See all plans</summary>
-          <div className="rc-body"><Pricing runId={runId} /></div>
-        </details>
+        <FunnelCta isShopify={isShopify} runId={runId} purchased={purchased} />
+        {!purchased && (
+          <details className="report-collapse" style={{ marginTop: 18 }}>
+            <summary>See all plans</summary>
+            <div className="rc-body"><Pricing runId={runId} /></div>
+          </details>
+        )}
       </section>
 
       <footer className="disclaimer">

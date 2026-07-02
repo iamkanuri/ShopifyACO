@@ -188,8 +188,10 @@ process. No Vercel, no CORS.
 - **Payments signal (links only, NO Stripe SDK):** CTAs open `STRIPE_FULL_REPORT_URL` /
   `STRIPE_WEEKLY_MONITORING_URL` / `STRIPE_FOUNDER_BETA_URL` when set, else fall back to
   the email-capture modal. Click → `payment_link_clicked` event; success URL →
-  `/thanks?plan=…` → `payment_completed` event. Full report is sold honestly as
-  "manually reviewed during beta, delivered by email within 24h".
+  `/thanks?plan=…` → `payment_completed` event, which redirects to `/report/:id?paid=1`.
+  Full report is now **generated automatically** on payment (deep scan + done-for-you
+  artifacts, on-screen in minutes) — see the paid-report automation program below; the
+  old "manually reviewed / emailed within 24h" fulfillment is retired.
 - **Scan modes** (`SCAN_MODES` in `env.ts`): mini (5/$0.50, public self-serve),
   standard (15/$2, admin), deep (30/$5, admin).
 - **Privacy/safety:** report IDs (`newRunId`) carry 80 bits of crypto entropy so

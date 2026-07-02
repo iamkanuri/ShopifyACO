@@ -4,8 +4,9 @@ import { analyzeRun } from "../src/analysis/index.js";
 import { stripPaidDelta, paidReportTier } from "../src/server/reportProjection.js";
 import { fashionRun } from "./support/categoryFixtures.js";
 
-// Paid-report Phase 2 (#4 fix): a FAILED generation must serve the honest failed state, never
-// "generating" (which would leave the buyer on an infinite spinner). This is the serve-path decision.
+// Paid-report Phase 2: a FAILED generation must serve the honest failed state, never
+// "generating" (an infinite spinner) and never "none" (silently reverting to the free preview
+// after a refund). This is the serve-path decision.
 test("paidReportTier: held/refunded → failed (NOT generating — no infinite spinner)", () => {
   assert.equal(paidReportTier("held", false, true), "failed", "a held report is FAILED, not generating");
   assert.equal(paidReportTier("refunded", false, true), "failed", "a refunded report is FAILED, not generating");
@@ -15,9 +16,17 @@ test("paidReportTier: held/refunded → failed (NOT generating — no infinite s
   assert.equal(paidReportTier(null, false, true), "generating", "paid but no row yet → job enqueued, still generating");
   // Complete + report present → the deep report.
   assert.equal(paidReportTier("complete", true, true), "complete");
-  // No paid order → not a paid tier at all.
-  assert.equal(paidReportTier("held", false, false), "none");
+});
+
+// The refund regression: a refund flips the order out of `paid` (paidOrder=false), but the buyer
+// MUST still see the honest failed/refunded banner — NOT revert to the anonymous free preview.
+// So held/refunded resolves to "failed" DRIVEN BY the paid_report status, independent of the order.
+test("paidReportTier: held/refunded is failed even when the order is no longer 'paid'", () => {
+  assert.equal(paidReportTier("held", false, false), "failed", "held with no paid order (refund pending) → honest failed state");
+  assert.equal(paidReportTier("refunded", false, false), "failed", "refunded (order flipped out of paid) → honest refunded state, NOT the free preview");
+  // No paid_report row AND no paid order → genuinely not a paid tier (free preview / claim).
   assert.equal(paidReportTier(null, false, false), "none");
+  assert.equal(paidReportTier(undefined, false, false), "none");
 });
 
 // Paid-report Phase 1: the FREE view keeps the whole diagnosis + proof + fix titles/why, but

@@ -24,6 +24,12 @@ type RunsResponse = { claimed: false; preview: Preview } | ClaimedResponse;
 export function ReportPage({ runId }: { runId: string }) {
   const [data, setData] = useState<RunsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [polls, setPolls] = useState(0);
+
+  // Set by the post-checkout /thanks redirect (/report/:id?paid=1). Right after payment the
+  // redirect can beat Stripe's webhook, so the report isn't a paid tier yet — we hold a
+  // "confirming payment" state and poll instead of flashing the free preview / email gate.
+  const justPaid = new URLSearchParams(window.location.search).get("paid") === "1";
 
   function load() {
     setError(null);
@@ -41,13 +47,19 @@ export function ReportPage({ runId }: { runId: string }) {
     return () => { cancelled = true; };
   }, [runId]);
 
-  // While the paid deep report + artifacts generate on the worker, poll until they land.
+  // A paid tier is "registered" once the webhook recorded the order + paid_report row: the server
+  // then returns complete (paid) / generating / failed. Until then, a just-paid buyer is awaiting.
+  const paidTierRegistered = Boolean(data && data.claimed && (data.paid || data.generating || data.failed));
+  const MAX_PAID_WAIT_POLLS = 20; // ~2 min at 6s — don't spin forever on a (rare) lost webhook.
+  const awaitingPaid = justPaid && Boolean(data) && !paidTierRegistered && polls < MAX_PAID_WAIT_POLLS;
+
+  // Poll while the deep report generates on the worker, OR while we await the just-paid webhook.
   const generating = Boolean(data && data.claimed && data.generating);
   useEffect(() => {
-    if (!generating) return;
-    const t = setInterval(load, 6000);
+    if (!generating && !awaitingPaid) return;
+    const t = setInterval(() => { setPolls((n) => n + 1); load(); }, 6000);
     return () => clearInterval(t);
-  }, [generating]);
+  }, [generating, awaitingPaid]);
 
   if (error)
     return (
@@ -63,6 +75,17 @@ export function ReportPage({ runId }: { runId: string }) {
         <div className="spinner" />
         <h2 style={{ marginTop: 18 }}>Loading your report…</h2>
         <p className="muted">Fetching results and AI-visibility analysis.</p>
+      </div>
+    );
+
+  // Freshly paid, webhook not yet registered — hold a truthful "confirming payment" state rather
+  // than flash the free preview / email-claim gate at a paying customer during the webhook lag.
+  if (awaitingPaid)
+    return (
+      <div className="card center-card">
+        <div className="spinner" />
+        <h2 style={{ marginTop: 18 }}>Payment received — setting up your full report…</h2>
+        <p className="muted">Confirming your purchase and starting a deeper scan. This page updates automatically.</p>
       </div>
     );
 
@@ -98,6 +121,7 @@ export function ReportPage({ runId }: { runId: string }) {
         run={data}
         runId={runId}
         paid={data.paid}
+        purchased={data.paid}
         reportMdUrl={data.paid ? `/api/runs/${runId}/report.md` : undefined}
         isShopify={Boolean(data.meta?.isShopify)}
       />
