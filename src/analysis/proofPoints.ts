@@ -2,6 +2,8 @@ import type { Config, PromptEngineResult } from "../types.js";
 import type { ProofPoint } from "./types.js";
 import { detOf, detScore, grounded, uniq } from "./util.js";
 import { sanitizeSnippet } from "./text.js";
+import { brandContexts } from "../detection/index.js";
+import { buildVariants } from "../detection/match.js";
 
 // ---------------------------------------------------------------------------
 // Deterministic proof-point taxonomy. We scan the responses where a competitor
@@ -47,30 +49,38 @@ export function extractProofPoints(results: PromptEngineResult[], cfg: Config): 
 
   for (const r of ok) {
     const ownScore = detScore(detOf(r, cfg.brand.name));
-    // Winning competitors in this response (out-ranking the brand).
+    // Winning competitors in this response (out-ranking the brand), paired with their config so we
+    // can build their name variants for brand-scoped context extraction.
     const winners = cfg.competitors
-      .map((c) => detOf(r, c.name))
-      .filter((d): d is NonNullable<typeof d> => !!d && d.mentioned && detScore(d) > ownScore);
+      .map((c) => ({ cfg: c, det: detOf(r, c.name) }))
+      .filter((w): w is { cfg: (typeof cfg.competitors)[number]; det: NonNullable<typeof w.det> } =>
+        !!w.det && w.det.mentioned && detScore(w.det) > ownScore);
     if (winners.length === 0) continue;
 
-    // Scan the full answer text (falling back to winner snippets for old fixtures
-    // that predate the stored `text` field).
-    const haystack = r.text && r.text.length > 0 ? r.text : winners.map((w) => w.snippet ?? "").join(" \n ");
+    for (const w of winners) {
+      // PRECISION FIX: match the taxonomy only against the clauses/bullets that are actually ABOUT
+      // this winner — NOT the whole answer. A "durability" sentence about the merchant (or an
+      // unconfigured brand) must never be counted as a reason THIS competitor wins. Falls back to
+      // the winner's own detection snippet for old fixtures that predate the stored `text`.
+      const contexts = r.text && r.text.length > 0
+        ? brandContexts(r.text, buildVariants(w.cfg))
+        : (w.det.snippet ? [w.det.snippet] : []);
+      if (contexts.length === 0) continue;
+      const haystack = contexts.join(" \n ");
 
-    for (const def of PROOF_DEFS) {
-      if (!def.re.test(haystack)) continue;
-      const entry = acc.get(def.id) ?? { hits: 0, competitors: new Set<string>() };
-      entry.hits += 1;
-      winners.forEach((w) => entry.competitors.add(w.name));
-      if (!entry.snippet) {
+      for (const def of PROOF_DEFS) {
         const m = def.re.exec(haystack);
-        if (m) {
+        if (!m) continue;
+        const entry = acc.get(def.id) ?? { hits: 0, competitors: new Set<string>() };
+        entry.hits += 1;
+        entry.competitors.add(w.cfg.name); // attribute to THIS winner only
+        if (!entry.snippet) {
           const start = Math.max(0, m.index - 70);
           entry.snippet = (start > 0 ? "…" : "") + haystack.slice(start, m.index + m[0].length + 70).replace(/\s+/g, " ").trim() + "…";
+          entry.prompt = r.prompt;
         }
-        entry.prompt = r.prompt;
+        acc.set(def.id, entry);
       }
-      acc.set(def.id, entry);
     }
   }
 

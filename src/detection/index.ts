@@ -1,5 +1,5 @@
 import type { BrandConfig, BrandDetection, Config, RecommendationStatus } from "../types.js";
-import { buildVariants, findEarliest, lineMentions, type Match } from "./match.js";
+import { buildVariants, findAll, findEarliest, lineMentions, type Match } from "./match.js";
 
 // ===========================================================================
 // CORE IP — turns one engine answer into structured brand visibility.
@@ -82,7 +82,7 @@ function parseListItems(text: string): ListItem[] {
  * punctuation, semicolons, AND contrastive conjunctions (" but ", " whereas ",
  * " however ", " while "), then keep only the segment around the brand mention.
  */
-function localSentence(text: string, index: number): string {
+function clauseAround(text: string, index: number): string {
   let start = index;
   while (start > 0 && !".!?\n;".includes(text[start - 1]!)) start--;
   let end = index;
@@ -93,8 +93,7 @@ function localSentence(text: string, index: number): string {
   // Narrow further at contrastive conjunctions AND comparative separators, keeping the
   // brand's side — so the recommendation attaches to the winner, not the comparison target.
   for (const sep of [" but ", " whereas ", " however ", " while ", ...COMPARATIVE_SEPARATORS]) {
-    let from = 0;
-    let cut = clause.toLowerCase().indexOf(sep, from);
+    let cut = clause.toLowerCase().indexOf(sep);
     while (cut !== -1) {
       if (rel <= cut) {
         clause = clause.slice(0, cut);
@@ -103,11 +102,45 @@ function localSentence(text: string, index: number): string {
         clause = clause.slice(after);
         rel -= after;
       }
-      from = 0;
-      cut = clause.toLowerCase().indexOf(sep, from);
+      cut = clause.toLowerCase().indexOf(sep);
     }
   }
-  return clause.toLowerCase();
+  return clause; // ORIGINAL case (keeps snippets readable); callers lowercase if they need to match.
+}
+
+/** The clause containing `index`, LOWERCASED — for the recommendation-language / negation checks. */
+function localSentence(text: string, index: number): string {
+  return clauseAround(text, index).toLowerCase();
+}
+
+/**
+ * The segments of `text` that are ABOUT the brand with these `variants`: the clause around each
+ * mention (clauseAround — narrowed at contrastive/comparative separators, so mixed answers attribute
+ * per-brand) PLUS any list bullet whose PRIMARY subject is the brand. Original case (readable snippets).
+ *
+ * This is the brand-scoped extractor proof-point attribution uses so a reason is only credited to the
+ * brand whose OWN clause contains it — never the whole answer. (Also the extractor the future
+ * "merchant-mirror" reuses to pull what assistants say about the MERCHANT specifically.)
+ */
+export function brandContexts(text: string, variants: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (seg: string) => {
+    const s = seg.trim();
+    const key = s.toLowerCase();
+    if (s && !seen.has(key)) { seen.add(key); out.push(s); }
+  };
+  // List bullets whose primary subject is this brand → the whole (primary part of the) bullet.
+  for (const item of parseListItems(text)) {
+    const primary = primaryPartOfLine(item.line);
+    if (lineMentions(primary, variants)) add(primary);
+  }
+  // The clause around each prose mention of the brand (deduped against the bullets above, since a
+  // bulleted mention's clause is often the same line).
+  for (const m of findAll(text, variants)) {
+    add(clauseAround(text, m.index));
+  }
+  return out;
 }
 
 function snippetAround(text: string, match: Match): string {

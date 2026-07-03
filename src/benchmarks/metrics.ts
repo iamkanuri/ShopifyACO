@@ -1,5 +1,5 @@
 import { compareProportions, engineDivergence, mean, proportion, shareOfVoice, type Comparison, type MeanMetric, type Proportion } from "./stats.js";
-import { SCORE_WEIGHTS } from "../analysis/score.js";
+import { scoreCore } from "../analysis/score.js";
 
 // Pure aggregation: a set of observations → benchmark metrics, each with a sample
 // size and confidence interval. One observation = one engine answer's assessment of
@@ -112,31 +112,34 @@ export function aggregate(observations: ObservationLike[], merchantBrand: string
 //
 // Never a black box: components are returned so the UI can show why.
 export interface ScoreBreakdown {
-  score: number;
+  score: number | null; // NULL when n===0 (a zero-observation run has no score) — see scoreCore
   components: Array<{ key: string; label: string; weight: number; value: number; contribution: number }>;
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+// App-side component labels (kept as shipped — the app says "Competitive standing", the web says
+// "Competitive win rate"); only the MATH is shared, via scoreCore.
+const APP_SCORE_LABELS: Record<string, string> = {
+  recommendation: "Recommendation rate",
+  mention: "Mention rate",
+  rank: "Rank quality when listed",
+  win: "Competitive standing",
+};
 
 export function scoreFromMetrics(m: BenchmarkMetrics): ScoreBreakdown {
   const rec = m.recommendationRate.rate ?? 0;
   const mention = m.mentionRate.rate ?? 0;
   const avgRank = m.avgPosition.mean;
   const rankValue = avgRank == null ? 0.5 : clamp01(1 - (avgRank - 1) / 5);
-  // No win/loss data → 0 (no competitive evidence earns no points), matching the CLI path
-  // (analysis/score.ts winValue). Previously 0.5 here, which made the two scores diverge for
-  // sparse/no-data runs (benchmark 15 vs CLI 8). Codex A4.
+  // No win/loss data → 0 (no competitive evidence earns no points). Previously 0.5 here, which made
+  // the two scores diverge for sparse/no-data runs (benchmark 15 vs CLI 8). Codex A4.
   const compValue = m.winLoss.responses > 0 ? 1 - m.winLoss.losses / m.winLoss.responses : 0;
 
-  const w = SCORE_WEIGHTS; // single source of truth (src/analysis/score.ts)
-  const components = [
-    { key: "recommendation", label: "Recommendation rate", weight: w.recommendation, value: rec },
-    { key: "mention", label: "Mention rate", weight: w.mention, value: mention },
-    { key: "rank", label: "Rank quality when listed", weight: w.rank, value: rankValue },
-    { key: "win", label: "Competitive standing", weight: w.win, value: compValue },
-  ].map((c) => ({ ...c, contribution: c.weight * c.value * 100 }));
-
-  return { score: Math.round(components.reduce((s, c) => s + c.contribution, 0)), components };
+  // The SAME formula the CLI/web path uses (scoreCore) — including score:null when n===0.
+  const core = scoreCore({ recommendation: rec, mention, rank: rankValue, win: compValue }, m.n);
+  const components = core.components.map((c) => ({ ...c, label: APP_SCORE_LABELS[c.key] ?? c.key }));
+  return { score: core.score, components };
 }
 
 /** Baseline vs verification comparison on recommendation rate (the headline metric). */

@@ -1,6 +1,7 @@
 import type { VisibilityScore } from "../types";
 
-function scoreColor(score: number): string {
+function scoreColor(score: number | null): string {
+  if (score == null) return "var(--ink-3)";
   if (score >= 70) return "var(--good)";
   if (score >= 40) return "var(--warn)";
   return "var(--bad)";
@@ -13,13 +14,13 @@ export function ScorePanel({ score }: { score: VisibilityScore }) {
       <div className="scoredial">
         <div
           className="ring"
-          style={{ ["--p" as string]: score.score, ["--ring-color" as string]: color }}
+          style={{ ["--p" as string]: score.score ?? 0, ["--ring-color" as string]: color }}
         >
           <div className="inner">
             <div className="num" style={{ color }}>
-              {score.score}
+              {score.score ?? "—"}
             </div>
-            <div className="den">/ 100</div>
+            <div className="den">{score.score == null ? "not enough data" : "/ 100"}</div>
           </div>
         </div>
         <div>

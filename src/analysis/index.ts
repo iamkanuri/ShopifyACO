@@ -15,6 +15,7 @@ import { buildFixCards } from "./fixSuggestions.js";
 import { confidenceFor, runSizeFor } from "./confidence.js";
 import { fmtRate, grounded } from "./util.js";
 import { engineLabel } from "../engines/labels.js";
+import { isCommonWordPhrase } from "../detection/match.js";
 
 export * from "./types.js";
 
@@ -48,6 +49,13 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
   const ungroundedEngines = agg.grounding
     .filter((g) => g.groundingMode !== "web_grounded" && g.calls - g.errors > 0)
     .map((g) => engineLabel(g.engine));
+
+  // #3: brands whose name is entirely common words ("Made In", "Our Place") are matched
+  // case-sensitively to avoid prose false-positives ("made in USA") — document it so the count is trusted.
+  const commonWordBrands = [cfg.brand, ...cfg.competitors].filter((b) => isCommonWordPhrase(b.name)).map((b) => b.name);
+  const caveat = commonWordBrands.length
+    ? `${CAVEAT} Note: ${commonWordBrands.join(", ")} ${commonWordBrands.length === 1 ? "is a common-word name" : "are common-word names"}, so ${commonWordBrands.length === 1 ? "it is" : "they are"} counted only where an assistant capitalizes the name (as brands appear in lists) — avoiding false matches in ordinary prose.`
+    : CAVEAT;
 
   const transactionalLost = clusters.filter((c) => c.transactional && c.absent);
   const executiveInsight = buildExecutiveInsight({
@@ -85,7 +93,7 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     groundedEngines,
     ungroundedEngines,
     totalCostUsd: agg.totalCost.costUsd,
-    caveat: CAVEAT,
+    caveat,
     runSize: runSizeFor(ok.length),
     confidence: confidenceFor(ok.length),
     visibilityScore,

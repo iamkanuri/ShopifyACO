@@ -20,7 +20,7 @@ export interface ScoreComponent {
 }
 
 export interface VisibilityScore {
-  score: number; // 0..100, rounded
+  score: number | null; // 0..100 rounded; NULL when there are zero grounded observations (no data → no score)
   components: ScoreComponent[];
   formula: string; // documented, deterministic
   basedOnResponses: number;

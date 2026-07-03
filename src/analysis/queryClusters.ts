@@ -17,71 +17,57 @@ interface ClusterDef {
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// CATEGORY-AGNOSTIC buyer-intent clusters. Triggers key off the UNIVERSAL shapes of shopper queries
+// (the same intents the prompt library generates: core "what's best", brand comparison, budget,
+// use-case/fit, alternatives, gift) — NOT vertical-specific vocabulary. The old taxonomy triggered on
+// cookware terms (pfas/teflon/induction/first-apartment), so a fashion/supplement/furniture brand's
+// prompts fell into ~zero clusters → thin transactional analysis AND a missing/wrong paid buying-guide
+// topic (generate.ts picks it from a cluster_* card). Now every vertical's real prompts cluster.
 export const CLUSTER_DEFS: ClusterDef[] = [
   {
-    id: "non_toxic_ceramic",
-    // "non-toxic"/"toxic" are cross-vertical (mattresses, cosmetics, baby, cleaning), so the
-    // label must NOT assume cookware — it used to say "ceramic" and leaked into those reports.
-    label: "Non-toxic / material safety",
-    transactional: false,
-    test: (p) => /(non[- ]?toxic|ceramic|pfas|ptfe|pfoa|teflon|toxic|non[- ]?stick)/.test(p),
+    id: "high_intent",
+    label: "Top recommendation ('what's best')",
+    transactional: true,
+    test: (p) => /(what(?:'s|s| is| are)?\s+the\s+best|which\b[^?]*\bbest\b|\brecommend\b|should i buy|top (pick|choice|recommendation))/.test(p),
+  },
+  {
+    id: "comparison",
+    label: "Brand comparison & quality",
+    transactional: true,
+    test: (p, cfg) => {
+      if (/(best brand|brands?\s+right now|highest quality|best[- ]quality|top[- ]rated|most recommended|\bcompare\b|\bversus\b|difference between|which\b[^?]*\bbrand\b)/.test(p)) return true;
+      return cfg.competitors.some((c) => new RegExp(`\\bvs\\.?\\b.{0,20}${escapeRe(c.name.toLowerCase())}|${escapeRe(c.name.toLowerCase())}.{0,20}\\bvs\\.?\\b`).test(p));
+    },
   },
   {
     id: "budget",
-    label: "Budget / under-price",
+    label: "Budget / price",
     transactional: true,
-    test: (p) => /(under \$|\bunder \d|budget|cheap|affordable|value|\$\d)/.test(p),
+    test: (p) => /(under \$|\bunder \d|\bbudget\b|\bcheap\b|affordable|\bvalue\b|\$\d|best value|worth (the|it|every))/.test(p),
   },
   {
-    id: "induction",
-    label: "Induction compatibility",
+    id: "use_case",
+    label: "Use case & fit",
     transactional: true,
-    test: (p) => /induction/.test(p),
-  },
-  {
-    id: "wedding_gift",
-    label: "Wedding / gift",
-    transactional: true,
-    test: (p) => /(wedding|gift|registry)/.test(p),
-  },
-  {
-    id: "first_apartment",
-    label: "First apartment / starter",
-    transactional: true,
-    test: (p) => /(first apartment|apartment|starter|first place|moving out|new home)/.test(p),
+    test: (p) => /(everyday|\bdaily\b|all[- ]?around|holds? up|built to last|lasts?\b|for (a|an|my|your|the|beginners?|first[- ]time|kids|pets|home|work|travel|daily|years)|best\b[^?]*\bfor\b)/.test(p),
   },
   {
     id: "alternatives",
     label: "Alternatives to a competitor",
     transactional: true,
     test: (p, cfg) => {
-      if (/(alternative|instead of|switch from|replacement for)/.test(p)) return true;
-      // "good alternatives to {Competitor}" / "vs {Competitor}"
+      if (/(alternative|instead of|switch (from|to)|replacement for|similar to|other options|comparable to)/.test(p)) return true;
+      // "good alternatives to {Competitor}" / "{Competitor} vs" / "better than {Competitor}"
       return cfg.competitors.some((c) =>
-        new RegExp(`(alternative|vs\\.?|compare).{0,20}${escapeRe(c.name.toLowerCase())}`).test(p),
+        new RegExp(`(alternative|vs\\.?|versus|compare|better than).{0,20}${escapeRe(c.name.toLowerCase())}`).test(p),
       );
     },
   },
   {
-    id: "teflon_replacement",
-    label: "Replacing Teflon / safety switch",
-    transactional: true,
-    test: (p) => /(replac\w*|switch).{0,30}(teflon|non[- ]?stick|pans)/.test(p),
-  },
-  {
-    id: "everyday",
-    // Category-neutral: this cluster fires on generic wording ("everyday", "daily")
-    // so its label must NOT assume a vertical — a fashion/beauty/etc. brand was
-    // getting "everyday cooking" in its report (Caraway-origins artifact).
-    label: "Everyday use",
+    id: "gift",
+    label: "Gift & occasion",
     transactional: false,
-    test: (p) => /(everyday|daily|home cooking|all[- ]?around)/.test(p),
-  },
-  {
-    id: "dtc_quality",
-    label: "Best-quality / DTC brand",
-    transactional: false,
-    test: (p) => /(direct[- ]to[- ]consumer|\bdtc\b|highest quality|best quality|best brand)/.test(p),
+    test: (p) => /(\bgift\b|\bpresent\b|wedding|registry|\bholiday\b|birthday|christmas|anniversary|housewarming)/.test(p),
   },
 ];
 

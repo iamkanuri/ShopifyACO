@@ -55,8 +55,8 @@ export function Dashboard() {
 
       <div className="al-hero">
         <div className="card al-score">
-          <div className="al-score-ring" style={{ ["--p" as string]: d.score }}>
-            <div className="al-score-inner"><span className="al-score-num">{d.score}</span><span className="al-score-den">/100</span></div>
+          <div className="al-score-ring" style={{ ["--p" as string]: d.score ?? 0 }}>
+            <div className="al-score-inner"><span className="al-score-num">{d.score ?? "—"}</span><span className="al-score-den">{d.score == null ? "" : "/100"}</span></div>
           </div>
           <div>
             <div className="al-score-label">AI Visibility Score</div>

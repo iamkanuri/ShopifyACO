@@ -68,4 +68,23 @@ for (const fx of NON_COOKWARE_FIXTURES) {
       assert.doesNotMatch(p.label, COOKWARE_VOCAB, `proof label "${p.label}" carries cookware DNA`);
     }
   });
+
+  // The BLIND SPOT that let the cluster bug ship: the old test only checked vocabulary ABSENCE, not
+  // cluster COVERAGE — so cookware trigger keywords (a non-cookware brand's prompts matching ~zero
+  // clusters) passed silently while starving the transactional analysis AND the paid buying-guide.
+  test(`${fx.name}: buyer-intent clusters actually POPULATE (coverage, not just vocab-absence)`, () => {
+    const a = analyzeRun(fx.run());
+    const txn = a.clusters.filter((c) => c.transactional);
+    assert.ok(
+      txn.length >= 3,
+      `expected ≥3 transactional clusters for ${fx.name}, got ${txn.length}: [${a.clusters.map((c) => c.label).join(", ")}]`,
+    );
+    for (const c of a.clusters) {
+      assert.doesNotMatch(c.label, COOKWARE_VOCAB, `cluster label "${c.label}" carries cookware DNA`);
+    }
+    // Downstream: a cluster_* fix card must exist so the PAID buying-guide artifact gets a topic
+    // (generate.ts derives the guide from a cluster_* card — the customer-facing symptom of the bug).
+    const clusterCards = a.fixCards.filter((c) => c.id.startsWith("cluster_"));
+    assert.ok(clusterCards.length >= 1, `expected ≥1 cluster fix card (paid buying-guide topic) for ${fx.name}`);
+  });
 }

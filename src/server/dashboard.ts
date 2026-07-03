@@ -18,7 +18,7 @@ import { engineLabel } from "../engines/labels.js";
 
 
 export interface DashboardData {
-  score: number;
+  score: number | null; // null when the latest run has zero observations (no score) — see scoreCore
   scoreComponents: Array<{ key: string; label: string; weight: number; value: number; contribution: number }>;
   recommendationRate: Proportion;
   mentionRate: Proportion;

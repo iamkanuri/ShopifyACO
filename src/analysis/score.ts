@@ -29,6 +29,33 @@ const WEIGHTS = SCORE_WEIGHTS;
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
+export type ScoreKey = keyof typeof SCORE_WEIGHTS;
+export interface ScoreCoreComponent { key: ScoreKey; weight: number; value: number; contribution: number }
+export interface ScoreCoreResult { score: number | null; components: ScoreCoreComponent[] }
+
+/**
+ * THE single scoring formula. Both the CLI/web path (computeVisibilityScore, over raw results) and
+ * the app path (scoreFromMetrics in benchmarks/metrics.ts, over aggregated metrics) call this, so the
+ * documented math can never diverge — not just the weights, the whole computation. Callers attach
+ * their own component labels/detail (the app keeps "Competitive standing", the web "Competitive win
+ * rate"); only the numbers live here.
+ *
+ * `n` is the observation count. A run with ZERO observations returns score:null — NOT a fabricated
+ * ~8 (which the neutral rank default 0.5 would otherwise contribute for a run that measured nothing).
+ */
+export function scoreCore(
+  values: { recommendation: number; mention: number; rank: number; win: number },
+  n: number,
+): ScoreCoreResult {
+  const components: ScoreCoreComponent[] = (Object.keys(WEIGHTS) as ScoreKey[]).map((key) => {
+    const weight = WEIGHTS[key];
+    const value = values[key] ?? 0;
+    return { key, weight, value, contribution: weight * value * 100 };
+  });
+  const score = n === 0 ? null : Math.round(components.reduce((s, c) => s + c.contribution, 0));
+  return { score, components };
+}
+
 export function computeVisibilityScore(
   results: PromptEngineResult[],
   cfg: Config,
@@ -57,48 +84,28 @@ export function computeVisibilityScore(
   const rankValue = avgRank == null ? 0.5 : clamp01(1 - (avgRank - 1) / 5);
   const winValue = n > 0 ? 1 - beaten / n : 0;
 
-  const components: ScoreComponent[] = [
-    {
-      key: "recommendation",
-      label: "Recommendation rate",
-      weight: WEIGHTS.recommendation,
-      value: recRate.rate,
-      contribution: WEIGHTS.recommendation * recRate.rate * 100,
-      detail: `Explicitly recommended in ${recommended}/${n} grounded answers.`,
-    },
-    {
-      key: "mention",
-      label: "Mention rate",
-      weight: WEIGHTS.mention,
-      value: mentionRate.rate,
-      contribution: WEIGHTS.mention * mentionRate.rate * 100,
-      detail: `Mentioned at all in ${mentioned}/${n} grounded answers.`,
-    },
-    {
-      key: "rank",
-      label: "Rank quality when listed",
-      weight: WEIGHTS.rank,
-      value: rankValue,
-      contribution: WEIGHTS.rank * rankValue * 100,
-      detail:
-        avgRank == null
-          ? "Never appeared in a ranked list (neutral 0.5 applied)."
-          : `Average list position ${avgRank.toFixed(1)} when ranked (lower is better).`,
-    },
-    {
-      key: "win",
-      label: "Competitive win rate",
-      weight: WEIGHTS.win,
-      value: winValue,
-      contribution: WEIGHTS.win * winValue * 100,
-      detail: `A competitor out-ranked the brand in ${beaten}/${n} answers.`,
-    },
-  ];
-
-  const score = Math.round(components.reduce((s, c) => s + c.contribution, 0));
+  // Shared math (scoreCore): score:null when n===0, identical to the app path.
+  const core = scoreCore({ recommendation: recRate.rate, mention: mentionRate.rate, rank: rankValue, win: winValue }, n);
+  const labels: Record<ScoreKey, string> = {
+    recommendation: "Recommendation rate",
+    mention: "Mention rate",
+    rank: "Rank quality when listed",
+    win: "Competitive win rate",
+  };
+  const details: Record<ScoreKey, string> = {
+    recommendation: `Explicitly recommended in ${recommended}/${n} grounded answers.`,
+    mention: `Mentioned at all in ${mentioned}/${n} grounded answers.`,
+    rank: avgRank == null
+      ? "Never appeared in a ranked list (neutral 0.5 applied)."
+      : `Average list position ${avgRank.toFixed(1)} when ranked (lower is better).`,
+    win: `A competitor out-ranked the brand in ${beaten}/${n} answers.`,
+  };
+  const components: ScoreComponent[] = core.components.map((c) => ({
+    ...c, label: labels[c.key], detail: details[c.key],
+  }));
 
   return {
-    score,
+    score: core.score,
     components,
     formula:
       "score = 100 × (0.50·recommendationRate + 0.20·mentionRate + " +
