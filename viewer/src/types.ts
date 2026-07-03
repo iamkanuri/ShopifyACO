@@ -131,6 +131,21 @@ export interface DiscoveredBrand {
   answers: number;
 }
 
+export interface CitedSource {
+  domain: string;
+  count: number;
+  examplePrompts: string[];
+}
+export interface CitedSourceBucket {
+  n: number;
+  sources: CitedSource[];
+}
+export interface CitedSourcesReport {
+  overall: CitedSourceBucket;
+  onLostAnswers: CitedSourceBucket;
+  byEngine: Record<string, CitedSourceBucket>;
+}
+
 export interface Artifact {
   id: string;
   kind: "comparison_page" | "buying_guide" | "llms_txt" | "product_schema";
@@ -173,6 +188,7 @@ export interface MerchantAnalysis {
   leaderboard: LeaderboardRow[];
   lostPrompts: LostPrompt[];
   fixCards: FixCard[];
+  citedSources?: CitedSourcesReport;
   discoveredBrands?: DiscoveredBrand[];
 }
 

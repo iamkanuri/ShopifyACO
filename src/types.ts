@@ -97,6 +97,9 @@ export interface PromptEngineResult {
   usage?: EngineUsage;
   /** Detection for the brand, then each competitor. */
   detections: BrandDetection[];
+  /** Source URLs the assistant cited for this answer (web-grounded only). Additive + back-compat —
+   *  old runs (pre-citations) simply omit it; the citation analysis treats absence as "no data". */
+  citations?: string[];
   raw?: unknown;
 }
 

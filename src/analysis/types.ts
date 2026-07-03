@@ -4,6 +4,9 @@
 // Every rate carries its raw counts (n=) for statistical honesty.
 // ---------------------------------------------------------------------------
 
+import type { CitedSourcesReport } from "./citedSources.js"; // type-only (no runtime cycle)
+export type { CitedSource, CitedSourceBucket, CitedSourcesReport } from "./citedSources.js";
+
 export interface RateStat {
   count: number;
   total: number;
@@ -172,6 +175,9 @@ export interface MerchantAnalysis {
   leaderboard: LeaderboardRow[];
   lostPrompts: LostPrompt[];
   fixCards: FixCard[];
+  /** The "AI trust graph": source domains assistants CITED while answering, conditioned on outcome
+   *  (all / lost / per-engine). Observed, never causal. Empty buckets when the run has no citations. */
+  citedSources: CitedSourcesReport;
   /** Brands the AI recommended that weren't in the configured competitor list (Fix 1).
    *  Populated by a live LLM pass in the scan orchestration — NOT by the pure analyzeRun. */
   discoveredBrands?: DiscoveredBrand[];

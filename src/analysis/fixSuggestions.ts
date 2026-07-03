@@ -6,7 +6,13 @@ import type {
   ProofPoint,
   QueryClusterResult,
 } from "./types.js";
+import type { CitedSourcesReport } from "./citedSources.js";
 import { uniq } from "./util.js";
+
+/** "wirecutter.com (5), reddit.com (4), goodhousekeeping.com (2)" for the top cited sources. */
+function sourceList(report: CitedSourcesReport | undefined, n = 3): string {
+  return (report?.onLostAnswers.sources ?? []).slice(0, n).map((s) => `${s.domain} (${s.count})`).join(", ");
+}
 
 // ---------------------------------------------------------------------------
 // Fix cards in two clearly-labeled tiers:
@@ -37,6 +43,7 @@ export function buildFixCards(
   clusters: QueryClusterResult[],
   proofPoints: ProofPoint[],
   lostPrompts: LostPrompt[],
+  citedSources?: CitedSourcesReport,
 ): FixCard[] {
   const cards: FixCard[] = [];
   const brand = cfg.brand.name;
@@ -127,23 +134,27 @@ export function buildFixCards(
     (p) => p.id === "third_party_testing" || p.id === "editorial_press" || p.id === "awards_recognition",
   );
   if (testing) {
+    // Upgrade from generic to SPECIFIC when we know where assistants actually grounded the lost
+    // answers: name the exact sources (observed — "the assistant cited X", never "X caused the win").
+    const lostSources = sourceList(citedSources);
+    const lostN = citedSources?.onLostAnswers.n ?? 0;
     cards.push({
       id: "third_party_proof",
       tier: "evidence_backed",
       impact: "medium",
       title: "Feature third-party proof and press",
-      // Honest framing (Fix 3): the proof point is a reason that appeared in answers where the
-      // brand lost — NOT a claim that a specific named competitor "won on" it (the snippet often
-      // quotes a brand that isn't even in the configured list).
-      why:
-        `In answers where ${brand} wasn't the pick, ${testing.label.toLowerCase()} showed up as a reason AI ` +
-        `trusted and repeated (${testing.hits} answer(s)).`,
+      // Honest framing: a reason that appeared in answers where the brand lost — NOT a claim that a
+      // named competitor "won on" it. The cited sources are OBSERVED (assistant cited them), not causal.
+      why: lostSources
+        ? `In the ${lostN} answer(s) where ${brand} wasn't the pick, assistants cited ${lostSources} — the third-party sources they leaned on most in your category (observed, not proof those citations chose the competitor).`
+        : `In answers where ${brand} wasn't the pick, ${testing.label.toLowerCase()} showed up as a reason AI trusted and repeated (${testing.hits} answer(s)).`,
       relatedPrompts: testing.examplePrompt ? [testing.examplePrompt] : [],
       relatedSnippets: testing.exampleSnippet ? [testing.exampleSnippet] : [],
-      suggestedFix:
-        "If you have legitimate third-party testing, editorial coverage, or awards, surface them as quotable, " +
-        "linkable text near the product (not only in images).",
-      verifyNote: "Add this only if true — never fabricate tests, reviews, or awards.",
+      suggestedFix: lostSources
+        ? `Earn and surface legitimate proof on the sources assistants actually cite here (${lostSources}): pursue coverage/reviews/testing from those outlets, and make any genuine results quotable, linkable text near the product (not only in images).`
+        : "If you have legitimate third-party testing, editorial coverage, or awards, surface them as quotable, " +
+          "linkable text near the product (not only in images).",
+      verifyNote: "Add this only if true — never fabricate tests, reviews, or awards; the cited sources are where assistants LOOKED, not proof they chose the competitor.",
     });
   }
 

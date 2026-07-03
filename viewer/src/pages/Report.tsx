@@ -15,6 +15,7 @@ import { ConfidenceBadge, RunSizeBadge } from "../components/Badges";
 import { ExportBar } from "../components/ExportBar";
 import { Pricing } from "../components/Pricing";
 import { FunnelCta } from "../components/FunnelCta";
+import { CitedSources } from "../components/CitedSources";
 
 export function Report({
   run,
@@ -148,6 +149,12 @@ export function Report({
       <Collapse title="Lost prompts">
         <LostPrompts lost={a.lostPrompts} brand={a.brand} />
       </Collapse>
+
+      {a.citedSources && a.citedSources.overall.n > 0 && (
+        <Collapse title="Where AI grounds its answers — cited sources">
+          <CitedSources report={a.citedSources} brand={a.brand} />
+        </Collapse>
+      )}
 
       <Collapse title="Recommended next steps">
         <FixCards cards={a.fixCards} paid={paid} runId={runId} />

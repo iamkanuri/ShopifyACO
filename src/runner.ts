@@ -96,6 +96,9 @@ export async function runScan(
           text: res.text,
           usage: res.usage,
           detections,
+          // Carry the cited sources through to the analysis layer (the web path used to drop them).
+          // Only present on web-grounded answers; persisted into results.json for the citation report.
+          ...(res.citations && res.citations.length ? { citations: res.citations } : {}),
           ...(opts.saveRaw ? { raw: res.raw } : {}),
         });
 

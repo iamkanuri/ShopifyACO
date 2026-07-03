@@ -3,6 +3,7 @@ import type { MerchantAnalysis } from "./types.js";
 import { computeVisibilityScore } from "./score.js";
 import { analyzeClusters } from "./queryClusters.js";
 import { extractProofPoints } from "./proofPoints.js";
+import { analyzeCitedSources } from "./citedSources.js";
 import {
   computeCategoryLeader,
   computeEngineWeakness,
@@ -37,7 +38,8 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
   const leaderboard = computeLeaderboard(results, cfg);
   const proofPoints = extractProofPoints(results, cfg);
   const lostPrompts = computeLostPrompts(results, cfg);
-  const fixCards = buildFixCards(cfg, threat, clusters, proofPoints, lostPrompts);
+  const citedSources = analyzeCitedSources(results, cfg);
+  const fixCards = buildFixCards(cfg, threat, clusters, proofPoints, lostPrompts, citedSources);
 
   // Link each lost prompt to the first fix card that references it.
   for (const lp of lostPrompts) {
@@ -110,6 +112,7 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     leaderboard,
     lostPrompts,
     fixCards,
+    citedSources,
   };
 }
 

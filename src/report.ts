@@ -333,6 +333,17 @@ function buildMarkdown(
     L.push("");
   }
 
+  // Cited sources — the "AI trust graph" (observed, not causal).
+  const cs = analysis.citedSources;
+  if (cs && cs.onLostAnswers.n > 0 && cs.onLostAnswers.sources.length) {
+    L.push(`**Where AI grounded its answers in the ${cs.onLostAnswers.n} query(s) you lost** — the third-party sources to earn proof on (assistants *cited* these while answering; observed, not proof they caused the pick):`);
+    L.push("");
+    for (const s of cs.onLostAnswers.sources.slice(0, 8)) {
+      L.push(`- **${s.domain}** — cited in ${s.count} lost answer(s)`);
+    }
+    L.push("");
+  }
+
   // ---- Recommended next steps ----------------------------------------------
   L.push("## Recommended next steps");
   L.push("");
