@@ -155,11 +155,16 @@ export interface Artifact {
   body: string;
   placeholders: string[];
   drafted: "llm" | "template";
+  /** Provenance tags in the body — "(fact Fn — crawled …)", "(AI answer, this scan)", "(you provide)".
+   *  Optional for back-compat with reports generated before tier 2a. */
+  provenance?: string[];
 }
 export interface ArtifactBundle {
   artifacts: Artifact[];
   bridge: string;
   costUsd: number;
+  /** Count of facts the store crawl produced (tier 2a). 0 → all templates → show the honest note. */
+  sourcedFacts?: number;
 }
 
 export interface MerchantAnalysis {

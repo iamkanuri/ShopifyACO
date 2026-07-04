@@ -10,6 +10,24 @@ Single source of truth for deferred work. Reflects the live beta at
 
 ---
 
+## 💡 FUTURE IDEA (not started): tier-2a done-for-you drafts as a Pro-app deliverable
+
+Today the tier-2a merchant-facts artifacts (comparison page / llms.txt / Product JSON-LD, filled
+from the merchant's live store) are generated **only** by the $29 Payment Link path
+(`generatePaidReport`, one caller: the Stripe webhook). The embedded Shopify app (Pro) delivers the
+`/app` evidence/fixes/monitoring UI instead — a different, category-agnostic engine — and its Phase-5
+diagnosis crawler already resolves the merchant URL from **shopOrigin** via `getStorefrontUrl` (no
+prompt). So app buyers are unaffected by the paid-step store-URL capture; they don't have the
+promise/delivery mismatch that capture fixes.
+
+**The idea:** also generate the tier-2a drafts inside the app (auto-populating `storeUrl` from
+shopOrigin) so the done-for-you drafts become a recurring **Pro** deliverable, not just the $29
+tripwire. This is a NEW feature build on a surface that has never produced these artifacts — a real
+product call for later, deliberately NOT bundled into the crawler+capture release. Decide it on its
+own merits when there's pull for it.
+
+---
+
 ## ✅ DONE (2026-06-27): data-retention purge for pixel_events (protected-data compliance)
 
 **Why:** Shopify's protected-customer-data Step 2 asks "Do you have retention periods that

@@ -24,6 +24,9 @@ export interface Artifact {
   placeholders: string[];
   /** Whether this was LLM-drafted (live) or a deterministic structural draft (mock/offline). */
   drafted: "llm" | "template";
+  /** Provenance tags present in the body — "(fact Fn — crawled …)", "(AI answer, this scan)",
+   *  "(you provide)". Parallel to `placeholders` so the viewer can render source counts (tier 2a). */
+  provenance: string[];
   groundedIn?: { prompts?: string[]; competitor?: string };
 }
 
@@ -33,4 +36,8 @@ export interface ArtifactBundle {
    *  the AisleLens app = the recurring product that applies + monitors these fixes). */
   bridge: string;
   costUsd: number;
+  /** How many sourced facts the store crawl produced (tier 2a). 0 → the merchant side is all
+   *  templates (no store URL, or nothing crawlable) → the viewer shows the honest "fill-in" note.
+   *  >0 → real prices/ratings/claims were read from the live store. */
+  sourcedFacts: number;
 }

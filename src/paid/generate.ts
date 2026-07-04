@@ -1,4 +1,4 @@
-import type { Config, RunResults, RunMeta } from "../types.js";
+import type { BrandConfig, Config, RunResults, RunMeta } from "../types.js";
 import type { ApiKeys } from "../engines/index.js";
 import type { ArtifactBundle } from "../artifacts/types.js";
 import { buildAdapters } from "../engines/index.js";
@@ -12,6 +12,9 @@ import { generatePrompts } from "../prompts/library.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 import { reservePaidSpend, settlePaidSpend, releasePaidSpend } from "../queue/paidSpend.js";
 import { ENV } from "../server/env.js";
+import { crawlSeeds } from "../crawler/crawl.js";
+import { discoverSeeds } from "../crawler/seeds.js";
+import { buildMerchantFacts, type MerchantFacts } from "../artifacts/merchantFacts.js";
 
 // The automated $29 deep-report generator (Phase 2). Deep scan (≈30 prompts) → analysis →
 // discovered brands → done-for-you artifacts. Runs in the WORKER; mock-capable ($0) for tests.
@@ -46,11 +49,42 @@ export function deepenConfig(config: Config, n = DEEP_PROMPTS): Config {
   return { ...config, promptTemplates: merged };
 }
 
+/**
+ * Tier 2a: crawl the merchant's OWN store into typed, sourced facts so the paid artifacts fill with
+ * real data (prices, ratings, stated claims) instead of [YOUR DIFFERENTIATORS] placeholders. Gated
+ * on `brand.storeUrl` (absent → null → the artifacts degrade to placeholders, unchanged). Best-effort
+ * and NEVER throws: any discovery/crawl/build failure yields null. Mock by default (CRAWLER_MODE),
+ * live only when CRAWLER_MODE=live is set on the worker. Bounded to ENV.crawler.maxPages (1 homepage
+ * + ≤7 PDPs, depth 0). Runs CONCURRENT with the deep scan — never on the critical path.
+ */
+export async function crawlMerchantFacts(brand: BrandConfig): Promise<MerchantFacts | null> {
+  const storeUrl = brand.storeUrl?.trim();
+  if (!storeUrl) return null;
+  try {
+    const discovery = await discoverSeeds(storeUrl, Math.max(1, ENV.crawler.maxPages - 1));
+    if (!discovery || discovery.seeds.length === 0) return null;
+    const pages = await crawlSeeds(discovery.seeds, { maxPages: ENV.crawler.maxPages, maxDepth: 0 });
+    if (!pages.some((p) => p.ok)) return null; // couldn't read the store at all → placeholders
+    const facts = buildMerchantFacts(pages, brand.name, storeUrl, discovery.products);
+    // Fold in non-products dropped at DISCOVERY (never crawled) so the exclusion is fully auditable.
+    if (discovery.excludedNonProducts.length) {
+      facts.excluded.nonProducts = [...new Set([...discovery.excludedNonProducts, ...facts.excluded.nonProducts])];
+    }
+    return facts;
+  } catch {
+    return null;
+  }
+}
+
 export async function generatePaidReport(input: GeneratePaidInput): Promise<PaidReportOutput> {
   const deep = deepenConfig(input.config);
   const { adapters } = buildAdapters(deep, input.keys, input.mock ?? false);
   if (adapters.length === 0) throw new Error("paid deep scan: no engines configured (check API keys).");
   const { prompts } = expandPrompts(deep);
+
+  // Tier 2a store crawl runs IN PARALLEL with the AI calls (detectShopify pattern): kick it off
+  // before awaiting the scan so they overlap, and swallow any failure to a null (→ placeholders).
+  const factsP = crawlMerchantFacts(input.config.brand).catch(() => null);
 
   const cap = ENV.paidSpendCapUsd;
   const estimate = prompts.length * adapters.length * perCallMaxCostUsd(MODELS.openai) + 0.2; // + discovery/artifacts
@@ -86,7 +120,8 @@ export async function generatePaidReport(input: GeneratePaidInput): Promise<Paid
     const disc = await extractDiscoveredBrands(results, deep, { apiKey: input.mock ? undefined : input.keys.openai });
     analysis.discoveredBrands = disc.brands;
     run.analysis = analysis;
-    const artifacts = await generateArtifacts(analysis, results, deep, { live: !input.mock, apiKey: input.keys.openai });
+    const merchantFacts = (await factsP) ?? undefined; // tier 2a: real sourced facts (or placeholders)
+    const artifacts = await generateArtifacts(analysis, results, deep, { live: !input.mock, apiKey: input.keys.openai, merchantFacts });
 
     const costUsd = agg.totalCost.costUsd + disc.costUsd + artifacts.costUsd;
     if (reserved) await settlePaidSpend(estimate, costUsd).catch(() => {});

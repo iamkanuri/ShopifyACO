@@ -46,6 +46,11 @@ export async function getStatus(runId: string) {
 export const submitLead = (body: { email: string; plan: string; runId?: string }) =>
   postJson<{ ok: boolean }>("/api/leads", body);
 
+/** Confirm/persist the merchant's store URL at the paid step so the $29 report's crawler can fill the
+ *  drafts. Returns `reachable` (a soft liveness signal — a typo warning, never a hard block). */
+export const setStoreUrl = (runId: string, storeUrl: string, hp?: string) =>
+  postJson<{ ok: boolean; storeUrl: string; reachable: boolean }>(`/api/runs/${runId}/store-url`, { storeUrl, hp });
+
 // ---- admin ----
 export async function adminMe(): Promise<{ authed: boolean; configured: boolean }> {
   const r = await fetch("/api/admin/me");

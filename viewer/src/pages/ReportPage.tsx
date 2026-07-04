@@ -18,6 +18,7 @@ type ClaimedResponse = {
   generating?: boolean;
   failed?: boolean; failedRefunded?: boolean;
   artifacts?: ArtifactBundle | null;
+  storeUrlHint?: string | null;
 } & RunResults;
 type RunsResponse = { claimed: false; preview: Preview } | ClaimedResponse;
 
@@ -133,6 +134,7 @@ export function ReportPage({ runId }: { runId: string }) {
         failed={data.failed}
         reportMdUrl={data.paid ? `/api/runs/${runId}/report.md` : undefined}
         isShopify={Boolean(data.meta?.isShopify)}
+        storeUrlHint={"storeUrlHint" in data ? data.storeUrlHint : null}
       />
     </>
   );

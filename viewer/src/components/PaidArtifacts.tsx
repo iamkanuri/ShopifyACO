@@ -14,7 +14,15 @@ function download(filename: string, body: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Count crawled-fact provenance tags — "(fact Fn — crawled …)" — in an artifact. */
+function sourcedFactCount(provenance: string[] | undefined): number {
+  return (provenance ?? []).filter((t) => /^\(fact\s+F\d+/i.test(t)).length;
+}
+
 export function PaidArtifacts({ bundle }: { bundle: ArtifactBundle }) {
+  // Whether the store crawl produced facts (drives the honest note) — from the bundle, NOT a tag count
+  // (llms.txt / schema embed crawled values WITHOUT (fact Fn) tags, so counting tags undercounts).
+  const totalSourced = bundle.sourcedFacts ?? bundle.artifacts.reduce((n, a) => n + sourcedFactCount(a.provenance), 0);
   return (
     <section className="section">
       <div className="card artifacts-card">
@@ -22,25 +30,43 @@ export function PaidArtifacts({ bundle }: { bundle: ArtifactBundle }) {
         <p className="muted">
           Ready-to-adapt drafts written from this scan. Fill every <code>[placeholder]</code> with your
           real, verifiable details before publishing.
+          {totalSourced > 0 && (
+            <>
+              {" "}Lines tagged <code>(fact … — crawled …)</code> were read from your live store —{" "}
+              <b>{totalSourced}</b> sourced {totalSourced === 1 ? "fact" : "facts"} in all. Verify each
+              tagged line and remove the tags before publishing.
+            </>
+          )}
         </p>
-        {bundle.artifacts.map((a) => (
-          <details key={a.id} className="artifact">
-            <summary>
-              <b>{a.title}</b>{" "}
-              <span className="muted">
-                · {a.drafted === "llm" ? "drafted" : "scaffold"}
-                {a.placeholders.length ? ` · ${a.placeholders.length} to fill in` : ""}
-              </span>
-            </summary>
-            <div className="artifact-body">
-              <div className="artifact-actions">
-                <button className="btn" onClick={() => download(a.filename, a.body)}>Download {a.filename}</button>
-                <button className="btn" onClick={() => navigator.clipboard?.writeText(a.body).catch(() => {})}>Copy</button>
+        {totalSourced === 0 && (
+          <p className="muted" style={{ borderLeft: "3px solid var(--warn, #c90)", paddingLeft: 10 }}>
+            These are <b>fill-in templates</b> — we couldn't pull sourced facts from your live store. If you
+            didn't give us your store URL, add it and run a fresh scan to auto-fill your real prices, ratings,
+            and product details.
+          </p>
+        )}
+        {bundle.artifacts.map((a) => {
+          const sourced = sourcedFactCount(a.provenance);
+          return (
+            <details key={a.id} className="artifact">
+              <summary>
+                <b>{a.title}</b>{" "}
+                <span className="muted">
+                  · {a.drafted === "llm" ? "drafted" : "scaffold"}
+                  {sourced ? ` · ${sourced} sourced ${sourced === 1 ? "fact" : "facts"}` : ""}
+                  {a.placeholders.length ? ` · ${a.placeholders.length} to fill in` : ""}
+                </span>
+              </summary>
+              <div className="artifact-body">
+                <div className="artifact-actions">
+                  <button className="btn" onClick={() => download(a.filename, a.body)}>Download {a.filename}</button>
+                  <button className="btn" onClick={() => navigator.clipboard?.writeText(a.body).catch(() => {})}>Copy</button>
+                </div>
+                <pre className="artifact-pre">{a.body}</pre>
               </div>
-              <pre className="artifact-pre">{a.body}</pre>
-            </div>
-          </details>
-        ))}
+            </details>
+          );
+        })}
         <div className="artifact-bridge">{bundle.bridge}</div>
       </div>
     </section>

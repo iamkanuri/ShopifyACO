@@ -53,8 +53,10 @@ export function originOf(u: string): string | null {
   }
 }
 
-/** Mode-aware single fetch: fixtures under mock, the SSRF-safe fetcher under live. */
-async function fetchPage(url: string, limits: FetchLimits): Promise<FetchResult> {
+/** Mode-aware single fetch: fixtures under mock, the SSRF-safe fetcher under live. Exported so
+ *  seed discovery (src/crawler/seeds.ts) fetches `/products.json` / sitemap through the SAME
+ *  mock-vs-live switch and SSRF-hardened path the crawl itself uses. */
+export async function modeFetch(url: string, limits: FetchLimits): Promise<FetchResult> {
   if (ENV.crawler.mode === "mock") {
     const r = mockFetch(url);
     return {
@@ -65,7 +67,9 @@ async function fetchPage(url: string, limits: FetchLimits): Promise<FetchResult>
   return safeFetch(url, limits);
 }
 
-async function robotsFor(origin: string, respect: boolean): Promise<RobotsPolicy> {
+/** Mode-aware robots policy: mock fixtures under mock, a real robots.txt fetch under live.
+ *  Exported so seed discovery can honor robots on `/products.json` before requesting it. */
+export async function robotsFor(origin: string, respect: boolean): Promise<RobotsPolicy> {
   if (!respect) return { rules: [], fetched: false };
   if (ENV.crawler.mode === "mock") {
     const text = mockRobots(origin);
@@ -122,7 +126,7 @@ export async function crawlOne(url: string, opts: { limits: FetchLimits; policy?
   }
 
   try {
-    const res = await fetchPage(url, opts.limits);
+    const res = await modeFetch(url, opts.limits);
     base.finalUrl = res.finalUrl;
     base.origin = originOf(res.finalUrl) ?? base.origin;
     base.status = res.status;

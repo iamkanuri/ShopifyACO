@@ -22,6 +22,7 @@ export function Report({
   runId,
   reportMdUrl,
   isShopify,
+  storeUrlHint,
   paid = true,
   purchased = false,
   failed = false,
@@ -30,6 +31,8 @@ export function Report({
   runId?: string;
   reportMdUrl?: string;
   isShopify?: boolean;
+  /** Prefill for the paid-step store-URL capture (confirm vs re-type). */
+  storeUrlHint?: string | null;
   /** Paid-report Phase 1: false hides the executed "how" (done-for-you fixes) behind the
    *  $29 upgrade. Defaults to true so the demo/showcase renders the full experience. */
   paid?: boolean;
@@ -173,7 +176,7 @@ export function Report({
         </p>
         {/* On a genuine failure, suppress the $29 same-run re-buy (retry is a fresh scan, in the
             banner above) — show only the Shopify-install bridge. `purchased || failed` = install-only. */}
-        <FunnelCta isShopify={isShopify} runId={runId} purchased={purchased || failed} />
+        <FunnelCta isShopify={isShopify} runId={runId} purchased={purchased || failed} storeUrlHint={storeUrlHint} />
         {!purchased && !failed && (
           <details className="report-collapse" style={{ marginTop: 18 }}>
             <summary>See all plans</summary>

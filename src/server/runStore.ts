@@ -107,6 +107,21 @@ export async function getResults(runId: string): Promise<unknown | null> {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
+/** Persist a merchant store URL onto a run's config (results.json), OVERWRITING any stale free-scan
+ *  value — so the paid report generator (which reads getResults(runId).config) crawls the URL the
+ *  buyer confirmed at checkout. Runs on the web process (has the volume), which is also where the
+ *  Stripe webhook reads the config. Post-scan, config.brand.storeUrl only feeds the paid crawler —
+ *  the free report's analysis is already computed — so this never alters the displayed scorecard. */
+export async function setRunStoreUrl(runId: string, storeUrl: string): Promise<boolean> {
+  const path = join(runDir(runId), "results.json");
+  if (!existsSync(path)) return false;
+  const results = JSON.parse(await readFile(path, "utf8")) as { config?: Config };
+  if (!results.config?.brand) return false;
+  results.config.brand.storeUrl = storeUrl;
+  await writeFile(path, JSON.stringify(results), "utf8");
+  return true;
+}
+
 // ---- claim state (value-first funnel) --------------------------------------
 // A run is created without an email (ungated preview). Providing an email "claims" the
 // report → it becomes publicly viewable at its unguessable /report/:id (full breakdown, no

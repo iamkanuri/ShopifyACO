@@ -76,7 +76,10 @@ import {
   releaseLock,
   runDir,
   setClaimed,
+  setRunStoreUrl,
 } from "./runStore.js";
+import { safeFetch } from "../crawler/fetch.js";
+import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
@@ -609,7 +612,9 @@ app.get(
     if (claim.claimed) {
       // CLAIMED → fully PUBLIC (no email wall for viewers): the whole alarm, no PII — this
       // is what lets a shared scorecard spread. The paid delta (the executed fixes) is held.
-      return res.json({ claimed: true, paid: false, ...stripPaidDelta(redactRun(results)) });
+      // storeUrlHint prefills the paid-step store-URL capture (confirm vs re-type).
+      const storeUrlHint = (results.config as { brand?: { storeUrl?: string } } | undefined)?.brand?.storeUrl ?? null;
+      return res.json({ claimed: true, paid: false, storeUrlHint, ...stripPaidDelta(redactRun(results)) });
     }
     // Ungated preview: score + gap + weakest engine only. Email claims the full breakdown.
     const preview = reportPreview(results);
@@ -647,6 +652,50 @@ app.post(
       await insertEvent("report_claimed", runId, {});
     }
     res.json({ ok: true, claimed: true });
+  }),
+);
+
+// Paid-step store-URL capture. The $29 checkout promises done-for-you DRAFTS, and the crawler is what
+// fills them — so we confirm the merchant's store URL at the point of purchase (the free scan keeps it
+// OPTIONAL to stay frictionless). Persists onto the run config (overwriting any stale free-scan value)
+// so the Stripe webhook's paid generation crawls the confirmed URL. Light + fail-friendly: a quick
+// SSRF-safe liveness check catches typos BEFORE payment, but never hard-blocks (some valid stores
+// refuse bots; the crawler has fallback discovery). Never requires Shopify detection.
+function normalizeStoreUrl(raw: string): string | null {
+  const s = (raw ?? "").trim();
+  if (!s || /\s/.test(s) || !/\./.test(s)) return null; // must look like a domain
+  const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+  return validateUrl(withScheme).ok ? withScheme : null;
+}
+
+app.post(
+  "/api/runs/:runId/store-url",
+  wrap(async (req, res) => {
+    const runId = req.params.runId;
+    if (!isValidRunId(runId)) return res.status(404).json({ error: "Unknown report." });
+    const body = req.body as { storeUrl?: string; hp?: string };
+    if (body.hp) return res.status(400).json({ error: "Request rejected." });
+    if (!rateLimit(`storeurl:${clientIp(req)}`, 12, 60_000)) return res.status(429).json({ error: "Too many requests — give it a minute." });
+
+    const url = normalizeStoreUrl(body.storeUrl ?? "");
+    if (!url) return res.status(400).json({ error: "That doesn't look like a store URL — try yourstore.com" });
+
+    // Don't let a late edit change a report that's already been generated. Best-effort — a DB hiccup
+    // must not block capture (fail-friendly), it just skips this guard.
+    const existing = await getPaidReportByRun(runId).catch(() => null);
+    if (existing?.status === "complete") return res.status(409).json({ error: "Your report is already generated." });
+
+    const saved = await setRunStoreUrl(runId, url);
+    if (!saved) return res.status(404).json({ error: "Report not found." });
+
+    // SSRF-safe liveness probe (tight budget). reachable=false is a SOFT signal, not a block.
+    let reachable = false;
+    try {
+      const r = await safeFetch(url, { maxBytes: 200_000, timeoutMs: 4_000, maxRedirects: 4 });
+      reachable = r.status >= 200 && r.status < 400;
+    } catch { reachable = false; }
+
+    res.json({ ok: true, storeUrl: url, reachable });
   }),
 );
 
