@@ -276,6 +276,9 @@ export interface IndexEntry {
   rank: number;
   mention: number; // 0..1
   recommendation: number; // 0..1
+  /** Rate denominator (AI answers in the scan). Present on indexes built after the
+   *  SSR pages shipped; older rows fall back to the run file (see server/indexSsr.ts). */
+  n?: number;
 }
 export interface CategoryIndexRow {
   slug: string;

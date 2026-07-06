@@ -81,6 +81,7 @@ import {
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
+import { indexSsrFor } from "./indexSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
@@ -175,14 +176,18 @@ app.get("/robots.txt", (req, res) => {
 });
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
-  const paths = ["/", "/demo", "/scan", "/privacy", "/terms", "/support", "/index"];
+  const urls = ["/", "/demo", "/scan", "/privacy", "/terms", "/support", "/index"].map(
+    (p) => `  <url><loc>${base}${p}</loc></url>`,
+  );
   try {
-    for (const idx of await listCategoryIndexes()) paths.push(`/index/${idx.slug}`);
+    for (const idx of await listCategoryIndexes()) {
+      const lastmod = idx.updated_at ? `<lastmod>${new Date(idx.updated_at).toISOString().slice(0, 10)}</lastmod>` : "";
+      urls.push(`  <url><loc>${base}/index/${idx.slug}</loc>${lastmod}</url>`);
+    }
   } catch {
     /* DB down — ship the static paths */
   }
-  const urls = paths.map((p) => `  <url><loc>${base}${p}</loc></url>`).join("\n");
-  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.w3.org/2000/sitemaps/0.9">\n${urls}\n</urlset>\n`);
+  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`);
 });
 
 // Stripe webhook needs the RAW body for signature verification, so it must be
@@ -1032,6 +1037,35 @@ async function serveIndex(req: Request, res: Response) {
       .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`);
   }
 
+  // Server-render the Index leaderboards into the raw HTML: AI crawlers (GPTBot,
+  // OAI-SearchBot, PerplexityBot) and search first-pass indexers don't execute JS,
+  // so the CSR-only pages were invisible to them — and these pages are the
+  // distribution engine. The static snapshot sits inside #root (React clears it on
+  // mount and takes over); category-specific meta + canonical + ItemList JSON-LD go
+  // into <head>. Any failure (DB down, unpublished slug) ⇒ the plain SPA above.
+  if (m || req.path === "/index" || req.path === "/index/") {
+    try {
+      const ssr = await indexSsrFor(req.path, baseUrl(req));
+      if (ssr) {
+        const t = escapeHtml(ssr.title);
+        const d = escapeHtml(ssr.description);
+        const u = escapeHtml(ssr.canonical);
+        html = html
+          .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+          .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
+          .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`)
+          .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
+          .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace("</head>", `<link rel="canonical" href="${u}" />\n    ${ssr.jsonLd}\n  </head>`)
+          .replace(/<div id="root">\s*<\/div>/, `<div id="root">${ssr.bodyHtml}</div>`);
+      }
+    } catch {
+      /* CSR fallback */
+    }
+  }
+
   // Per-report share card: a /report/:id link unfurls into the brand's score + gap with a
   // dynamic OG image. Wrapped in try/catch so a missing/failed report falls back to the
   // default meta rather than 500-ing the page itself.
@@ -1206,7 +1240,7 @@ async function startCategoryIndexBuild(
     try {
       await runScanJob(runId, config, { maxCostUsd: SCAN_MODES[mode].maxCostUsd, keys, mode });
       const results = (await getResults(runId)) as
-        | { analysis?: { leaderboard?: Array<{ brand: string; mention: { rate: number }; recommendation: { rate: number } }> } }
+        | { analysis?: { leaderboard?: Array<{ brand: string; mention: { rate: number; total?: number }; recommendation: { rate: number } }> } }
         | null;
       const lb = results?.analysis?.leaderboard;
       if (lb?.length) {
@@ -1215,6 +1249,8 @@ async function startCategoryIndexBuild(
           rank: i + 1,
           mention: r.mention.rate,
           recommendation: r.recommendation.rate,
+          // Rate denominator (answers in the scan) — the SSR page cites it as n=.
+          ...(r.mention.total ? { n: r.mention.total } : {}),
         }));
         await upsertCategoryIndex({ slug, label, run_id: runId, entries });
         await insertEvent("index_build_completed", runId, { slug, brands: entries.length });
