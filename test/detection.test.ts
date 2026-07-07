@@ -152,3 +152,36 @@ test("first-mention order recorded", () => {
   const text = "GreenPan is popular, and Caraway is too.";
   assert.ok(compFor(text, c, "GreenPan").firstIndex < own(text, c).firstIndex);
 });
+
+// ---- REFERENCE-FRAMING guard (the (b) mis-attribution: a merely-referenced rival counted as
+// "recommended" because the recommendation language for the OTHER brand sat in its clause) ----
+
+test("REFERENCE: 'alternatives to X include Y (best overall)' → X NOT recommended (real ARMRA/Sovereign bug)", () => {
+  const c = cfg("ARMRA", ["Sovereign Laboratories"]);
+  const text = "Good alternatives to Sovereign Laboratories include ARMRA (best overall) and WonderCow.";
+  assert.equal(own(text, c).status, "recommended", "ARMRA, the alternative being offered, IS recommended");
+  const sov = compFor(text, c, "Sovereign Laboratories");
+  assert.equal(sov.mentioned, true);
+  assert.notEqual(sov.status, "recommended", "Sovereign is only the reference being replaced, not recommended");
+});
+
+test("REFERENCE: 'unlike X, Y is the best' → X NOT recommended despite 'best' in the clause", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  const text = "Unlike GreenPan, Caraway is the best for even heating.";
+  assert.notEqual(compFor(text, c, "GreenPan").status, "recommended");
+  assert.equal(own(text, c).status, "recommended");
+});
+
+test("REFERENCE: 'instead of X' and 'better than X' → X NOT recommended", () => {
+  const c = cfg("Caraway", ["GreenPan"]);
+  for (const text of ["Instead of GreenPan, go with Caraway.", "Caraway is a top pick, far better than GreenPan."]) {
+    assert.notEqual(compFor(text, c, "GreenPan").status, "recommended", text);
+    assert.equal(own(text, c).status, "recommended", text);
+  }
+});
+
+test("REFERENCE guard does NOT over-fire: a lone 'alternative' (no 'to X') still allows recommendation", () => {
+  // The subject of "X is a great alternative" is not the OBJECT of "alternatives to", so it isn't suppressed.
+  const d = own("Caraway is the best option and a great alternative.", cfg("Caraway"));
+  assert.equal(d.status, "recommended");
+});

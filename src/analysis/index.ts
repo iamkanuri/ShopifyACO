@@ -34,12 +34,26 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
   const mentionGap = computeMentionGap(results, cfg);
   const threat = computeThreat(results, cfg, clusters);
   const categoryLeader = computeCategoryLeader(results, cfg);
+  // The merchant leads the category when it out-recommends the top competitor. In that case the "category
+  // leader" is the merchant, not a rival — so the renderers reframe (you lead / nearest challenger to
+  // watch) instead of contradicting the winning hero by crowning a competitor.
+  const ownLeadsCategory =
+    mentionGap.recommendation.count > 0 &&
+    mentionGap.recommendation.rate > (categoryLeader?.recommendation.rate ?? 0);
+  // For the category LEADER, the mention→recommend gap is HEADROOM, not a "known but not chosen" deficit —
+  // reframe the summary so the gap section doesn't misframe the leader's upside as a loss.
+  if (ownLeadsCategory) {
+    mentionGap.summary =
+      `Even as the most-recommended brand in ${cfg.category}, ${cfg.brand.name} is mentioned ${fmtRate(mentionGap.mention)} of answers ` +
+      `but recommended ${fmtRate(mentionGap.recommendation)} — ${fmtRate(mentionGap.mentionedNotChosen)} name it without yet picking it. ` +
+      `Converting that awareness is how you extend the lead.`;
+  }
   const { engines: engineWeakness, weakest } = computeEngineWeakness(results, cfg);
   const leaderboard = computeLeaderboard(results, cfg);
   const proofPoints = extractProofPoints(results, cfg);
   const lostPrompts = computeLostPrompts(results, cfg);
   const citedSources = analyzeCitedSources(results, cfg);
-  const fixCards = buildFixCards(cfg, threat, clusters, proofPoints, lostPrompts, citedSources);
+  const fixCards = buildFixCards(cfg, threat, clusters, proofPoints, lostPrompts, citedSources, ownLeadsCategory);
 
   // Link each lost prompt to the first fix card that references it.
   for (const lp of lostPrompts) {
@@ -62,6 +76,8 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
   const transactionalLost = clusters.filter((c) => c.transactional && c.absent);
   const executiveInsight = buildExecutiveInsight({
     brand: cfg.brand.name,
+    category: cfg.category,
+    ownLeadsCategory,
     mentionGap,
     threat,
     weakest,
@@ -69,16 +85,21 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     n: ok.length,
   });
 
-  // Plain-English "what this means" framing (Part 7).
+  // Plain-English "what this means" framing (Part 7). The headline is also copied verbatim into the
+  // "Copy summary" clipboard text (ExportBar), so it must cohere with the winning hero for a leader.
   const headline =
-    mentionGap.mention.rate > mentionGap.recommendation.rate * 1.4
-      ? `AI assistants mention ${cfg.brand.name} more than they recommend it.`
-      : mentionGap.mention.rate === 0
-        ? `AI assistants don't surface ${cfg.brand.name} yet.`
-        : `${cfg.brand.name} has room to win more AI recommendations.`;
+    ownLeadsCategory
+      ? `${cfg.brand.name} is AI's most-recommended ${cfg.category} brand — with a mention-to-recommendation gap to close.`
+      : mentionGap.mention.rate > mentionGap.recommendation.rate * 1.4
+        ? `AI assistants mention ${cfg.brand.name} more than they recommend it.`
+        : mentionGap.mention.rate === 0
+          ? `AI assistants don't surface ${cfg.brand.name} yet.`
+          : `${cfg.brand.name} has room to win more AI recommendations.`;
   const whatThisMeans: string[] = [
     `Discoverability: ${cfg.brand.name} is mentioned in ${fmtRate(mentionGap.mention)} of answers — assistants do know it exists.`,
-    `Persuasion: it's recommended in only ${fmtRate(mentionGap.recommendation)} — when listed, it isn't the pick.`,
+    ownLeadsCategory
+      ? `Persuasion: recommended in ${fmtRate(mentionGap.recommendation)} of answers — the most of any brand in the category. Keep the lead.`
+      : `Persuasion: it's recommended in only ${fmtRate(mentionGap.recommendation)} — when listed, it isn't the pick.`,
   ];
   if (transactionalLost.length) {
     whatThisMeans.push(
@@ -104,6 +125,7 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
     whatThisMeans,
     threat,
     categoryLeader,
+    ownLeadsCategory,
     mentionGap,
     engineWeakness,
     weakestEngine: weakest,
@@ -118,18 +140,26 @@ export function analyzeRun(run: RunResults): MerchantAnalysis {
 
 function buildExecutiveInsight(args: {
   brand: string;
+  category: string;
+  ownLeadsCategory: boolean;
   mentionGap: ReturnType<typeof computeMentionGap>;
   threat: ReturnType<typeof computeThreat>;
   weakest: string | null;
   transactionalLostLabels: string[];
   n: number;
 }): string {
-  const { brand, mentionGap, threat, weakest, transactionalLostLabels, n } = args;
+  const { brand, category, ownLeadsCategory, mentionGap, threat, weakest, transactionalLostLabels, n } = args;
   const parts: string[] = [];
+  // A category leader's executive insight must OPEN on the win, then note the gap — never lead with the
+  // mention>recommend "known but not chosen" framing (which reads as a losing brand and contradicts the hero).
   parts.push(
-    `Across ${n} grounded answers in this scan, AI assistants mention ${brand} ` +
-      `(${fmtRate(mentionGap.mention)}) more often than they recommend it ` +
-      `(${fmtRate(mentionGap.recommendation)}).`,
+    ownLeadsCategory
+      ? `Across ${n} grounded answers in this scan, AI assistants recommend ${brand} (${fmtRate(mentionGap.recommendation)}) — ` +
+          `more than any rival in ${category}. The gap to close: it's mentioned more often (${fmtRate(mentionGap.mention)}) ` +
+          `than it's recommended, so some answers name it without yet picking it.`
+      : `Across ${n} grounded answers in this scan, AI assistants mention ${brand} ` +
+          `(${fmtRate(mentionGap.mention)}) more often than they recommend it ` +
+          `(${fmtRate(mentionGap.recommendation)}).`,
   );
   if (threat) {
     const mult = threat.recommendationMultiplier;

@@ -8,12 +8,18 @@ function YesNo({ v, good }: { v: boolean; good?: boolean }) {
 
 const PRETTY: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity" };
 
-export function LostPrompts({ lost, brand }: { lost: LostPrompt[]; brand: string }) {
+export function LostPrompts({ lost, brand, ownLeads = false }: { lost: LostPrompt[]; brand: string; ownLeads?: boolean }) {
   if (lost.length === 0) {
     return <div className="card" style={{ padding: 20 }}>No lost prompts — {brand} held its own everywhere in this scan.</div>;
   }
   return (
     <div className="card cardpad">
+      {/* For a category leader these aren't "losses" — they're the few answers a rival edged ahead. */}
+      {ownLeads && (
+        <p className="muted" style={{ margin: "0 0 12px" }}>
+          {brand} leads overall — these are the only answers a competitor edged ahead. Your growth edges.
+        </p>
+      )}
       <table>
         <thead>
           <tr>
@@ -21,7 +27,7 @@ export function LostPrompts({ lost, brand }: { lost: LostPrompt[]; brand: string
             <th>Engine</th>
             <th>You mentioned</th>
             <th>You recommended</th>
-            <th>Winner(s)</th>
+            <th>{ownLeads ? "Rival that edged ahead" : "Winner(s)"}</th>
             <th>What the AI said</th>
           </tr>
         </thead>

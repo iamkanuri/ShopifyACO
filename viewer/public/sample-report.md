@@ -4,26 +4,30 @@
 **Run:** LIVE · openai, gemini, perplexity · 16 prompts × 3 engines = 48 calls
 **Generated:** 2026-06-29T00:20:09.494Z
 
-## AI Visibility Score: 72/100
+## Olipop owns the AI recommendation in prebiotic soda — recommended in 28 of 48 answers, more than any rival.
 
-> **AI assistants mention Olipop more than they recommend it.**
+> **Watch your position: Poppi (7), Culture Pop (1) and Health-Ade (1) are the rivals AI recommends next.**
 
 `Standard scan` · **Strong signal** (based on 48 grounded responses)
 
 _These are single-scan, small-sample rates. AI assistant answers vary run-to-run; treat figures as directional signal, not settled fact. Multi-run aggregation is on the roadmap._
+
+### AI Visibility Score: 72/100
+
+_Your AI Visibility Score of 72/100 is the summary of this: 28 of 48 answers recommend Olipop._
 
 | Component | Weight | Value | Points | Detail |
 |---|---|---|---|---|
 | Recommendation rate | 50% | 58% | 29.2 | Explicitly recommended in 28/48 grounded answers. |
 | Mention rate | 20% | 85% | 17.1 | Mentioned at all in 41/48 grounded answers. |
 | Rank quality when listed | 15% | 80% | 12.0 | Average list position 2.0 when ranked (lower is better). |
-| Competitive win rate | 15% | 94% | 14.1 | A competitor out-ranked the brand in 3/48 answers. |
+| Competitive win rate | 15% | 94% | 14.1 | Out-ranked every competitor in 45/48 answers (a rival edged ahead in 3). |
 
 > Formula: `score = 100 × (0.50·recommendationRate + 0.20·mentionRate + 0.15·rankQuality + 0.15·competitiveWinRate)`
 
 ## Executive insight
 
-Across 48 grounded answers in this scan, AI assistants mention Olipop (85% (41/48)) more often than they recommend it (58% (28/48)). ChatGPT is the weakest engine for Olipop.
+Across 48 grounded answers in this scan, AI assistants recommend Olipop (58% (28/48)) — more than any rival in prebiotic soda. The gap to close: it's mentioned more often (85% (41/48)) than it's recommended, so some answers name it without yet picking it. ChatGPT is the weakest engine for Olipop.
 
 ## Executive summary
 
@@ -134,7 +138,9 @@ Across 48 grounded answers in this scan, AI assistants mention Olipop (85% (41/4
 | Popular prebiotic soda people recommend right now? | gemini | recommended #1 | 3 | Poppi (mentioned_neutral) |
 | Popular prebiotic soda people recommend right now? | perplexity | recommended #1 | 1 | Poppi (mentioned_neutral) |
 
-## Top prompts where competitors beat us
+## The few prompts where a rival edged ahead (3 of 48)
+
+_You lead overall; these are the only answers a competitor out-ranked Olipop — your growth edges._
 
 | Prompt | Engine | Brand | Winning competitor |
 |---|---|---|---|
@@ -154,18 +160,18 @@ Across 48 grounded answers in this scan, AI assistants mention Olipop (85% (41/4
 
 ## Mention snippets (brand)
 
-- **perplexity** (recommended): "The best prebiotic soda brands are **Wildwonder**, **Olipop**, and **Poppi**, which are consistently highlighted by dietitians and experts…"
+- **perplexity** (recommended): "The best prebiotic soda brands are Wildwonder, Olipop, and Poppi, which are consistently highlighted by dietitians and experts…"
 - **gemini** (recommended): "…he top, praised for their taste and gut-health benefits. Leading the market are Olipop, Poppi, and Wildwonder, frequently cited as popular and well-regarded choices.…"
-- **openai** (recommended): "…t the **best-known prebiotic soda brands**, the top names to look at are: 1. **OLIPOP** — probably the most established brand in the category. It uses a proprietary…"
-- **openai** (mentioned_neutral): "…?utm_source=openai)) - **If you specifically want prebiotic fiber**: consider **Olipop** or **Poppi** instead of Zevia, since those are the well-known prebiotic soda…"
-- **perplexity** (recommended): "For cutting back on sugar, **Olipop** is the top prebiotic soda recommendation because it offers the lowest sugar c…"
-- **openai** (recommended): "A solid pick is **OLIPOP**, especially if your goal is **gut-friendly soda**. It’s a prebiotic soda made…"
-- **gemini** (recommended): "…ontent and added gut health benefits. Here are some top recommendations: * **Olipop** is frequently cited as a leader in the prebiotic soda category, offering 2 to…"
-- **gemini** (recommended): "…eteners. Here are some popular and well-regarded prebiotic soda brands: * **Olipop**: Often cited as a top choice, Olipop is known for its wide variety of flavors…"
-- **perplexity** (mentioned_neutral): "For gut health, **Olipop** is the top recommended prebiotic soda, frequently cited by dietitians as one…"
-- **openai** (recommended): "If you want **one easy recommendation**, I’d go with **OLIPOP**—it’s a popular prebiotic soda brand, and its formulas include fiber plus bota…"
-- **perplexity** (mentioned_neutral): "For a healthier soda craving with prebiotic benefits, **Olipop** is the top recommendation. It is frequently praised by dietitians as one of t…"
-- **gemini** (recommended): "…ying fizz with added benefits. Here are some of the top recommendations: * **Olipop** is frequently cited as a leading prebiotic soda brand, known for its variety…"
+- **openai** (recommended): "…t the best-known prebiotic soda brands, the top names to look at are: 1. OLIPOP — probably the most established brand in the category. It uses a proprietary…"
+- **openai** (mentioned_neutral): "…)) If you specifically want prebiotic fiber: consider Olipop or Poppi instead of Zevia, since those are the well-known prebiotic soda…"
+- **perplexity** (recommended): "For cutting back on sugar, Olipop is the top prebiotic soda recommendation because it offers the lowest sugar c…"
+- **openai** (recommended): "A solid pick is OLIPOP, especially if your goal is gut-friendly soda. It’s a prebiotic soda made…"
+- **gemini** (recommended): "…ontent and added gut health benefits. Here are some top recommendations: * Olipop is frequently cited as a leader in the prebiotic soda category, offering 2 to…"
+- **gemini** (recommended): "…eteners. Here are some popular and well-regarded prebiotic soda brands: * Olipop: Often cited as a top choice, Olipop is known for its wide variety of flavors…"
+- **perplexity** (mentioned_neutral): "For gut health, Olipop is the top recommended prebiotic soda, frequently cited by dietitians as one…"
+- **openai** (recommended): "If you want one easy recommendation, I’d go with OLIPOP—it’s a popular prebiotic soda brand, and its formulas include fiber plus bota…"
+- **perplexity** (mentioned_neutral): "For a healthier soda craving with prebiotic benefits, Olipop is the top recommendation. It is frequently praised by dietitians as one of t…"
+- **gemini** (recommended): "…ying fizz with added benefits. Here are some of the top recommendations: * Olipop is frequently cited as a leading prebiotic soda brand, known for its variety…"
 
 ## Cost & token usage (estimated)
 
@@ -180,9 +186,11 @@ _Costs are estimates from per-model pricing constants, not billing data._
 
 ## Gap analysis
 
-**Category leader (overall):** Poppi — recommended 15% (7/48) across the whole scan.
+**Olipop is the most-recommended brand in prebiotic soda** — recommended 58% (28/48) across the scan, ahead of every competitor. Nearest challenger: **Poppi** (15% (7/48)) — worth watching, but not out-recommending Olipop in this scan.
 
-**Mention → recommendation gap:** Olipop is mentioned more often than it's recommended in this scan: mentioned 85% (41/48) of answers but recommended 58% (28/48). That leaves 27% (13/48) "mentioned but not chosen".
+**Direct niche threat:** none — no competitor out-recommends Olipop in its own niche in this scan. Olipop leads the category.
+
+**Mention → recommendation gap:** Even as the most-recommended brand in prebiotic soda, Olipop is mentioned 85% (41/48) of answers but recommended 58% (28/48) — 27% (13/48) name it without yet picking it. Converting that awareness is how you extend the lead.
 
 **Weakest engine:** ChatGPT.
 
@@ -192,27 +200,36 @@ _Costs are estimates from per-model pricing constants, not billing data._
 | Gemini | 81% (13/16) | 63% (10/16) | 2.1 |
 | ChatGPT ⚠️ | 75% (12/16) | 50% (8/16) | 1.9 |
 
-**Query categories lost** (high-intent buying queries):
+**Buyer-intent categories — you lead every one:**
 
-| Category | Responses | You mentioned | You recommended | Status |
-|---|---|---|---|---|
-| Alternatives to a competitor | 12 | 67% (8/12) | 50% (6/12) | partial |
+| Category | Responses | You recommended | Standing |
+|---|---|---|---|
+| Use case & fit | 12 | 42% (5/12) | ✅ you lead (nearest: Poppi 3/12) |
+| Alternatives to a competitor | 12 | 50% (6/12) | ✅ you lead (nearest: Poppi 4/12) |
+| Brand comparison & quality | 12 | 58% (7/12) | ✅ you lead (nearest: Poppi 2/12) |
+| Top recommendation ('what's best') | 21 | 86% (18/21) | ✅ you lead (nearest: Poppi 3/21) |
 
 ## Recommended next steps
 
 ### Evidence-backed (cite this scan's lost prompts)
 
-_No evidence-backed steps triggered._
+#### [MEDIUM] State the details AI assistants quote — so you keep winning these comparisons
+
+- **Why:** Olipop already leads, but in the few answers where a rival was picked instead, assistants leaned on concrete, quotable specifics: ingredients & formulation and sustainability & ethics. State these in plain text to protect the lead and close even those gaps.
+- **Suggested step:** On every product and collection page, state in plain text the details shoppers in prebiotic soda compare — here, assistants rewarded ingredients & formulation and sustainability & ethics — for each product. Assistants quote what's written, so don't leave it in images.
+- **Evidence:** "…resulting in 5 to 20 calories and 0 to 4 grams of sugar per can, and no artificial sweeteners. * Spindrift: Uses a spl…" / "…acteria and yeast (SCOBY), is a popular choice for its probiotics and organic acids. Kombucha can support digestion an…"
+- ⚠️ **Verify before publishing:** State each detail only if it's true for that product; verify before publishing.
+
 ### General hygiene — not checked against your live store
 
 #### [MEDIUM] Add/verify structured product schema (Product, Offer, AggregateRating)
 
-- **Why:** Structured data helps AI crawlers extract price, availability, ratings, and specs reliably instead of guessing from prose.
-- **Suggested step:** Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, material, offers, and aggregateRating where available.
+- **Why:** Structured data helps AI crawlers extract price, availability, ratings, and attributes reliably instead of guessing from prose.
+- **Suggested step:** Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, key attributes, offers, and aggregateRating where available.
 - ⚠️ **Verify before publishing:** Not checked against your live store — verify whether this already exists before acting.
 
 #### [LOW] Publish an AI-readable brand summary (llms.txt candidate) for Olipop
 
 - **Why:** A concise, factual brand/product summary at a stable URL gives assistants a canonical source to ground answers about you.
-- **Suggested step:** Draft an /llms.txt (or a clean "About Olipop" page) listing product lines, materials, safety claims, price ranges, and differentiators in plain text.
+- **Suggested step:** Draft an /llms.txt (or a clean "About Olipop" page) listing product lines, key attributes, price ranges, and differentiators in plain text.
 - ⚠️ **Verify before publishing:** Not checked against your live store — verify whether this already exists before acting.

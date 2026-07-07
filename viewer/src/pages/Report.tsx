@@ -16,6 +16,7 @@ import { ExportBar } from "../components/ExportBar";
 import { Pricing } from "../components/Pricing";
 import { FunnelCta } from "../components/FunnelCta";
 import { CitedSources } from "../components/CitedSources";
+import { useConfig } from "../config";
 
 export function Report({
   run,
@@ -46,6 +47,7 @@ export function Report({
   failed?: boolean;
 }) {
   const a = run.analysis as MerchantAnalysis;
+  const { plans } = useConfig(); // gate the "See all plans" accordion — never render it empty
 
   // Friendly engine names for the status chips (data uses provider ids).
   const ENG: Record<string, string> = { openai: "ChatGPT", gemini: "Gemini", perplexity: "Perplexity" };
@@ -95,10 +97,22 @@ export function Report({
         {failedEntries.length > 0 && " Failed calls are excluded — rates reflect only answers that succeeded."}
       </p>
 
-      {/* Lead: one verdict headline + the key sub-metrics. */}
-      <h1 className="report-headline">{a.headline}</h1>
+      {/* Lead: the substitution frame — where you stand in AI's recommendation decision, naming who
+          AI recommends instead. Severity-selected copy (brutal → stark number-led; mild → reframe-led).
+          Falls back to the legacy score-led headline for pre-frame results (frame absent). */}
+      {a.substitutionFrame ? (
+        <section className="frame-lead" data-severity={a.substitutionFrame.severity ?? "neutral"}>
+          <h1 className="frame-headline">{a.substitutionFrame.headline}</h1>
+          <p className="frame-subline">{a.substitutionFrame.subline}</p>
+        </section>
+      ) : (
+        <h1 className="report-headline">{a.headline}</h1>
+      )}
 
       <ExportBar run={run} reportMdUrl={reportMdUrl} />
+
+      {/* The score, DEMOTED below the verdict — the summary of it, not the lead. */}
+      {a.substitutionFrame && <p className="frame-scoreproof">{a.substitutionFrame.scoreProof}</p>}
 
       <section className="hero section">
         <ScorePanel score={a.visibilityScore} />
@@ -133,7 +147,7 @@ export function Report({
       )}
 
       {/* Detail: collapsed by default, expand on demand. */}
-      <Collapse title="Category leader vs your direct niche threat" open>
+      <Collapse title={a.ownLeadsCategory ? "Your category standing + nearest challenger" : "Category leader vs your direct niche threat"} open>
         <ThreatCard a={a} />
       </Collapse>
 
@@ -145,12 +159,12 @@ export function Report({
         <EngineCards engines={a.engineWeakness} brand={a.brand} />
       </Collapse>
 
-      <Collapse title="Gap analysis — why AI picks your competitor">
+      <Collapse title={a.ownLeadsCategory ? "Category performance — where you lead and who's closest" : "Gap analysis — why AI picks your competitor"}>
         <GapAnalysis a={a} />
       </Collapse>
 
-      <Collapse title="Lost prompts">
-        <LostPrompts lost={a.lostPrompts} brand={a.brand} />
+      <Collapse title={a.ownLeadsCategory ? `The few prompts where a rival edged ahead (${a.lostPrompts.length} of ${a.basedOnResponses})` : "Lost prompts"}>
+        <LostPrompts lost={a.lostPrompts} brand={a.brand} ownLeads={a.ownLeadsCategory} />
       </Collapse>
 
       {a.citedSources && a.citedSources.overall.n > 0 && (
@@ -164,7 +178,7 @@ export function Report({
       </Collapse>
 
       <section className="section no-print" id="full-report-cta">
-        <h2>{failed ? "Prefer to run this on your store?" : purchased || isShopify ? "Fix this on your store" : "Get the full report"}</h2>
+        <h2>{failed ? "Prefer to run this on your store?" : purchased || isShopify ? "Fix this on your store" : "Get your done-for-you fixes"}</h2>
         <p className="muted">
           {failed
             ? "Install AisleLens to run your AI-visibility report right inside Shopify — and apply the fixes automatically."
@@ -172,12 +186,13 @@ export function Report({
             ? "You've got the full report. Install AisleLens on your Shopify store to apply these fixes and keep watching your AI visibility automatically."
             : isShopify
             ? "AisleLens installs on your Shopify store to diagnose why AI picks competitors — and helps you fix it."
-            : "A deep, automatically-generated report, or install AisleLens free if you're on Shopify."}
+            : "Everything above is your free diagnosis. The paid report adds the done-for-you fix drafts — a “you vs your rival” comparison page, llms.txt, and Product schema, written from your real store data and ready to paste. On Shopify? Install AisleLens free instead."}
         </p>
         {/* On a genuine failure, suppress the $29 same-run re-buy (retry is a fresh scan, in the
             banner above) — show only the Shopify-install bridge. `purchased || failed` = install-only. */}
         <FunnelCta isShopify={isShopify} runId={runId} purchased={purchased || failed} storeUrlHint={storeUrlHint} />
-        {!purchased && !failed && (
+        {/* Only offer the plans accordion when plans actually loaded — never an expander that opens to nothing. */}
+        {!purchased && !failed && plans.length > 0 && (
           <details className="report-collapse" style={{ marginTop: 18 }}>
             <summary>See all plans</summary>
             <div className="rc-body"><Pricing runId={runId} /></div>

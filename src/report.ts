@@ -11,6 +11,8 @@ import type {
 } from "./types.js";
 import { aggregate } from "./aggregate.js";
 import { analyzeRun } from "./analysis/index.js";
+import { buildSubstitutionFrame } from "./analysis/buildFrame.js";
+import { clusterStanding } from "./analysis/queryClusters.js";
 import { sanitizeSnippet } from "./analysis/text.js";
 import type { FixCard, MerchantAnalysis, RateStat } from "./analysis/types.js";
 
@@ -49,6 +51,11 @@ export async function writeReports(
   const runResults: RunResults = { meta: opts.meta, config: cfg, results, aggregate: agg };
   const analysis = analyzeRun(runResults);
   if (opts.discoveredBrands?.length) analysis.discoveredBrands = opts.discoveredBrands;
+  // The substitution frame — how the report leads. Attached here (not in the pure analyzeRun) so it can
+  // use the discovered rivals; covers both the public scan (scanJob) and the CLI, which share this path.
+  analysis.substitutionFrame = buildSubstitutionFrame(
+    analysis, results, cfg, (opts.discoveredBrands ?? []).map((b) => b.name),
+  );
   runResults.analysis = analysis;
 
   const jsonPath = join(opts.outDir, "results.json");
@@ -83,20 +90,44 @@ function buildMarkdown(
   L.push(`**Generated:** ${meta.finishedAt}`);
   L.push("");
 
-  // ---- AI Visibility Score + executive insight (analysis-driven) -----------
+  // ---- Lead: the substitution frame (score DEMOTED below it) ---------------
+  // The report leads with WHERE the merchant stands in AI's recommendation decision — naming who AI
+  // recommends instead — not the abstract score. The frame copy is already severity-selected (a brutal
+  // shutout leads with the stark number; a mild loss leads with the reframe), so the renderer just lays
+  // it out. Falls back to the legacy score-led headline for pre-frame results.json (frame absent).
   const vs = analysis.visibilityScore;
   const runSizeLabel = { mini: "Mini scan", standard: "Standard scan", deep: "Deep scan" }[analysis.runSize];
-  L.push(vs.score == null ? `## AI Visibility Score: not enough data` : `## AI Visibility Score: ${vs.score}/100`);
-  L.push("");
-  L.push(`> **${analysis.headline}**`);
-  L.push("");
-  L.push(
-    `\`${runSizeLabel}\` · **${analysis.confidence.label}** ` +
-      `(based on ${vs.basedOnResponses} grounded responses)`,
-  );
-  L.push("");
-  L.push(`_${analysis.caveat}_`);
-  L.push("");
+  const frame = analysis.substitutionFrame;
+  if (frame) {
+    L.push(`## ${frame.headline}`);
+    L.push("");
+    L.push(`> **${frame.subline}**`);
+    L.push("");
+    L.push(
+      `\`${runSizeLabel}\` · **${analysis.confidence.label}** ` +
+        `(based on ${vs.basedOnResponses} grounded responses)`,
+    );
+    L.push("");
+    L.push(`_${analysis.caveat}_`);
+    L.push("");
+    // The score, demoted to proof — the summary of the verdict above, not the lead.
+    L.push(vs.score == null ? `### AI Visibility Score: not enough data` : `### AI Visibility Score: ${vs.score}/100`);
+    L.push("");
+    L.push(`_${frame.scoreProof}_`);
+    L.push("");
+  } else {
+    L.push(vs.score == null ? `## AI Visibility Score: not enough data` : `## AI Visibility Score: ${vs.score}/100`);
+    L.push("");
+    L.push(`> **${analysis.headline}**`);
+    L.push("");
+    L.push(
+      `\`${runSizeLabel}\` · **${analysis.confidence.label}** ` +
+        `(based on ${vs.basedOnResponses} grounded responses)`,
+    );
+    L.push("");
+    L.push(`_${analysis.caveat}_`);
+    L.push("");
+  }
   L.push("| Component | Weight | Value | Points | Detail |");
   L.push("|---|---|---|---|---|");
   for (const c of vs.components) {
@@ -195,9 +226,7 @@ function buildMarkdown(
   }
   L.push("");
 
-  // ---- Where competitors beat us ------------------------------------------
-  L.push("## Top prompts where competitors beat us");
-  L.push("");
+  // ---- Where a rival edged ahead ------------------------------------------
   const losses = results
     .filter((r) => !r.error)
     .map((r) => {
@@ -208,6 +237,18 @@ function buildMarkdown(
     })
     .filter((x) => x.gap > 0)
     .sort((a, b) => b.gap - a.gap);
+  // A category leader isn't being "beaten" wholesale — these are the few answers a rival edged ahead.
+  const okCount = results.filter((r) => !r.error).length;
+  L.push(
+    analysis.ownLeadsCategory
+      ? `## The few prompts where a rival edged ahead (${losses.length} of ${okCount})`
+      : "## Top prompts where competitors beat us",
+  );
+  L.push("");
+  if (analysis.ownLeadsCategory && losses.length) {
+    L.push(`_You lead overall; these are the only answers a competitor out-ranked ${brandName} — your growth edges._`);
+    L.push("");
+  }
   if (losses.length === 0) {
     L.push("_None — the brand was at least as visible as every competitor in all answers._");
   } else {
@@ -273,7 +314,16 @@ function buildMarkdown(
   // ---- Gap analysis --------------------------------------------------------
   L.push("## Gap analysis");
   L.push("");
-  if (analysis.categoryLeader) {
+  if (analysis.ownLeadsCategory && analysis.categoryLeader) {
+    // Winning brand: the merchant IS the leader — name the nearest challenger to watch, never crown a rival.
+    L.push(
+      `**${brandName} is the most-recommended brand in ${cfg.category}** — ` +
+        `recommended ${fmtRateStat(analysis.mentionGap.recommendation)} across the scan, ahead of every competitor. ` +
+        `Nearest challenger: **${analysis.categoryLeader.competitor}** (${fmtRateStat(analysis.categoryLeader.recommendation)}) — ` +
+        `worth watching, but not out-recommending ${brandName} in this scan.`,
+    );
+    L.push("");
+  } else if (analysis.categoryLeader) {
     L.push(
       `**Category leader (overall):** ${analysis.categoryLeader.competitor} — ` +
         `recommended ${fmtRateStat(analysis.categoryLeader.recommendation)} across the whole scan.`,
@@ -283,6 +333,13 @@ function buildMarkdown(
   if (analysis.threat) {
     L.push(`**Direct niche threat:** ${analysis.threat.summary}`);
     L.push(`_Basis: ${analysis.threat.basisLabel}. ${analysis.threat.confidence.label}_`);
+    L.push("");
+  } else {
+    // Honest "no threat" — never a blank. When the brand leads, say so.
+    L.push(
+      `**Direct niche threat:** none — no competitor out-recommends ${brandName} in its own niche in this scan.` +
+        (analysis.ownLeadsCategory ? ` ${brandName} leads the category.` : ""),
+    );
     L.push("");
   }
   L.push(`**Mention → recommendation gap:** ${analysis.mentionGap.summary}`);
@@ -302,26 +359,55 @@ function buildMarkdown(
 
   const transactional = analysis.clusters.filter((c) => c.transactional);
   if (transactional.length) {
-    L.push("**Query categories lost** (high-intent buying queries):");
+    // Per-cluster STANDING (merchant vs top rival) — never "won by <rival>" on a cluster the merchant leads.
+    const losing = transactional.filter((c) => {
+      const s = clusterStanding(c);
+      return s === "trails" || s === "absent";
+    });
+    const heading =
+      losing.length === 0 && analysis.ownLeadsCategory
+        ? "**Buyer-intent categories — you lead every one:**"
+        : losing.length > 0 && analysis.ownLeadsCategory
+          ? "**You lead overall — but a rival is ahead in these categories:**"
+          : losing.length > 0
+            ? "**Buyer-intent categories you're losing** (high-intent buying queries):"
+            : "**Buyer-intent category performance:**";
+    L.push(heading);
     L.push("");
-    L.push("| Category | Responses | You mentioned | You recommended | Status |");
-    L.push("|---|---|---|---|---|");
+    L.push("| Category | Responses | You recommended | Standing |");
+    L.push("|---|---|---|---|");
     for (const c of transactional) {
-      const status = c.absent ? "❌ absent" : c.brandRecommendation.count > 0 ? "partial" : "mention-only";
-      L.push(
-        `| ${c.label} | ${c.responses} | ${fmtRateStat(c.brandMention)} | ${fmtRateStat(c.brandRecommendation)} | ${status} |`,
-      );
+      const s = clusterStanding(c);
+      const rival = c.topWinners[0];
+      const standing =
+        s === "leads"
+          ? `✅ you lead${rival ? ` (nearest: ${rival.brand} ${rival.recommendations}/${c.responses})` : ""}`
+          : s === "trails"
+            ? `⚠️ ${rival!.brand} ahead (${rival!.recommendations}/${c.responses} vs your ${c.brandRecommendation.count}/${c.responses})`
+            : s === "absent"
+              ? `❌ absent${rival ? ` (${rival.brand} ${rival.recommendations}/${c.responses})` : ""}`
+              : `contested (tied ${c.brandRecommendation.count}/${c.responses})`;
+      L.push(`| ${c.label} | ${c.responses} | ${fmtRateStat(c.brandRecommendation)} | ${standing} |`);
     }
     L.push("");
   }
 
   if (analysis.proofPoints.length) {
-    L.push("**Reasons AI cited in answers where you weren't recommended** (by frequency):");
-    L.push("");
-    for (const p of analysis.proofPoints.slice(0, 8)) {
-      L.push(`- **${p.label}** — ${p.hits} answer(s)`);
+    // For a category leader this is the MINORITY of answers where a rival was picked — reframe it, and
+    // suppress it when the data is too thin to say anything (no 1×/1× "reasons" contradicting a winner).
+    const proofHits = analysis.proofPoints.reduce((s, p) => s + p.hits, 0);
+    if (!(analysis.ownLeadsCategory && proofHits < 3)) {
+      L.push(
+        analysis.ownLeadsCategory
+          ? "**In the answers where a rival was picked instead, AI cited** (by frequency):"
+          : "**Reasons AI cited in answers where you weren't recommended** (by frequency):",
+      );
+      L.push("");
+      for (const p of analysis.proofPoints.slice(0, 8)) {
+        L.push(`- **${p.label}** — ${p.hits} answer(s)`);
+      }
+      L.push("");
     }
-    L.push("");
   }
 
   if (analysis.discoveredBrands?.length) {

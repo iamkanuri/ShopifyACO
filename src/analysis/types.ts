@@ -6,6 +6,8 @@
 
 import type { CitedSourcesReport } from "./citedSources.js"; // type-only (no runtime cycle)
 export type { CitedSource, CitedSourceBucket, CitedSourcesReport } from "./citedSources.js";
+import type { SubstitutionFrame } from "./substitutionFrame.js"; // type-only (no runtime cycle)
+export type { SubstitutionFrame, FrameBucket, FrameRival, FrameSeverity } from "./substitutionFrame.js";
 
 export interface RateStat {
   count: number;
@@ -167,6 +169,11 @@ export interface MerchantAnalysis {
   whatThisMeans: string[];
   threat: CompetitorThreat | null;
   categoryLeader: CategoryLeader | null;
+  /** True when the MERCHANT out-recommends the top competitor — i.e. the merchant is the category's
+   *  most-recommended brand. When set, `categoryLeader` is the NEAREST CHALLENGER (to watch), not the
+   *  leader, and `threat` is typically null — renderers must present a "you lead" story, never call a
+   *  rival "the leader" (a self-contradiction with the winning hero). */
+  ownLeadsCategory: boolean;
   mentionGap: MentionGap;
   engineWeakness: EngineWeakness[];
   weakestEngine: string | null;
@@ -181,4 +188,10 @@ export interface MerchantAnalysis {
   /** Brands the AI recommended that weren't in the configured competitor list (Fix 1).
    *  Populated by a live LLM pass in the scan orchestration — NOT by the pure analyzeRun. */
   discoveredBrands?: DiscoveredBrand[];
+  /** The substitution frame — how the report LEADS: where the merchant stands in AI's
+   *  recommendation decision, naming who AI recommends instead, severity-selected (brutal
+   *  number-led / mild reframe-led). Populated by the scan orchestration (needs the recommendation-
+   *  verified rivals + discovered brands) — NOT the pure analyzeRun. Absent → renderers fall back to
+   *  the legacy score-led headline (back-compat with pre-frame results.json). */
+  substitutionFrame?: SubstitutionFrame;
 }

@@ -126,5 +126,25 @@ export function analyzeClusters(results: PromptEngineResult[], cfg: Config): Que
   });
 }
 
+export type ClusterStanding = "leads" | "trails" | "contested" | "absent";
+
+/**
+ * Honest per-cluster win/loss: who has MORE recommendations in the cluster — the merchant or the top
+ * rival. `topWinners` lists competitors ONLY (the merchant is excluded), so comparing the merchant's own
+ * recommendation count against `topWinners[0]` is the real winner — NOT `topWinners[0]` itself, which is
+ * merely the top competitor and must never be rendered as "who won" (that mislabels a cluster the
+ * merchant dominates, e.g. Olipop recommended 18/21 while Poppi got 3, as "won by Poppi").
+ * KEEP IN SYNC with viewer/src/components/GapAnalysis.tsx (separate bundle, can't import this).
+ */
+export function clusterStanding(
+  c: Pick<QueryClusterResult, "absent" | "brandRecommendation" | "topWinners">,
+): ClusterStanding {
+  if (c.absent) return "absent";
+  const rivalRecs = c.topWinners[0]?.recommendations ?? 0;
+  if (c.brandRecommendation.count > rivalRecs) return "leads";
+  if (c.brandRecommendation.count < rivalRecs) return "trails";
+  return "contested";
+}
+
 // Re-export for callers that want the avg helper alongside cluster math.
 export { avg, detScore };

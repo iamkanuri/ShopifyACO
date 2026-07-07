@@ -188,6 +188,19 @@ function negatedBeforeMention(text: string, index: number): boolean {
   return /(?:^|[\s,;:])(?:not|except|but not|excluding|skip|avoid)\s+$/.test(before);
 }
 
+/** True when the brand mention is the OBJECT of a reference/comparison construction —
+ *  "alternatives to X", "instead of X", "better than X", "similar to X", "switch from X",
+ *  "unlike X", "dupe for X". The brand is what's being COMPARED-AGAINST or REPLACED, not
+ *  recommended; the recommendation language in the same clause belongs to the OTHER brand(s).
+ *  This is the mis-attribution that named a merely-referenced rival as "AI recommended X"
+ *  ("Good alternatives to Sovereign Laboratories include ARMRA (best overall)" wrongly marked
+ *  Sovereign recommended because ARMRA's "best overall" sat in the same clause). */
+const REFERENCE_CUE =
+  /(?:^|[\s,;:(])(?:alternatives?\s+to|instead\s+of|in\s+place\s+of|replacements?\s+for|replace|switch(?:ing)?\s+from|moving?\s+away\s+from|dupes?\s+(?:for|of)|similar\s+to|comparable\s+to|compared\s+to|better\s+than|worse\s+than|unlike)\s+(?:the\s+|a\s+|an\s+)?$/;
+function referencedBeforeMention(text: string, index: number): boolean {
+  return REFERENCE_CUE.test(text.slice(Math.max(0, index - 36), index).toLowerCase());
+}
+
 /** Detect one brand's visibility within a single answer. */
 function detectBrand(text: string, brand: BrandConfig, isOwn: boolean): BrandDetection {
   const variants = buildVariants(brand);
@@ -216,11 +229,16 @@ function detectBrand(text: string, brand: BrandConfig, isOwn: boolean): BrandDet
 
   const sentence = localSentence(text, match.index);
   const negated = hasNegatedRecommend(sentence) || negatedBeforeMention(text, match.index);
+  // The brand is named only as a comparison/alternative REFERENCE ("alternatives to X") → the clause's
+  // recommendation language is about the OTHER brand, so this one must not be counted "recommended".
+  const referenced = referencedBeforeMention(text, match.index);
   let status: RecommendationStatus = "mentioned_neutral";
   let reason: string | undefined;
 
   if (negated) {
     reason = "mentioned with a negative / avoid cue";
+  } else if (referenced) {
+    reason = "named as an alternative/comparison reference, not a recommendation";
   } else if (listRank === 1) {
     status = "recommended";
     reason = "top of list (rank 1)";
@@ -254,4 +272,12 @@ export function detectMentions(text: string, cfg: Config): BrandDetection[] {
     detections.push(detectBrand(text, competitor, false));
   }
   return detections;
+}
+
+/** Classify one arbitrary brand (name-only is fine) in one answer with the SAME recommendation-vs-
+ *  mention logic used for configured competitors. Lets the nameable-rivals check apply the identical
+ *  recommendation bar to LLM-discovered brands, so nothing is NAMED as "AI recommends it" unless the
+ *  detector agrees it was genuinely recommended (not merely mentioned/referenced). */
+export function detectBrandInAnswer(text: string, brand: BrandConfig): BrandDetection {
+  return detectBrand(text, brand, false);
 }

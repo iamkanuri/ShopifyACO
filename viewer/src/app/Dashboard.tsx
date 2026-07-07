@@ -26,6 +26,11 @@ export function Dashboard() {
   const brand = connected ? env.brand : DEMO.brand;
   const category = connected ? env.category : DEMO.category;
 
+  // Standing-aware CTA: "why you're losing" only when a competitor actually tops the share of voice.
+  // A category leader (or an empty scan) gets a neutral "where you stand", never "why you're losing".
+  const topSov = d.shareOfVoice[0];
+  const losing = topSov != null && topSov.key.trim().toLowerCase() !== brand.trim().toLowerCase();
+
   return (
     <div>
       <div className="al-page-head">
@@ -48,7 +53,7 @@ export function Dashboard() {
             </p>
           )}
         </div>
-        <Link to="/app/evidence" className="btn btn-primary">See why you're losing →</Link>
+        <Link to="/app/evidence" className="btn btn-primary">{losing ? "See why you're losing →" : "See where you stand →"}</Link>
       </div>
 
       {demo && <Onboarding />}
@@ -68,7 +73,8 @@ export function Dashboard() {
           <div className="card al-kpi">
             <div className="al-kpi-label">Recommendation rate</div>
             <div className="al-kpi-val"><Pct p={d.recommendationRate} /></div>
-            <CiBar p={d.recommendationRate} tone="bad" />
+            {/* The leader's flagship metric shouldn't be red — tone follows standing. */}
+            <CiBar p={d.recommendationRate} tone={losing ? "bad" : topSov != null ? "good" : "neutral"} />
           </div>
           <div className="card al-kpi">
             <div className="al-kpi-label">Mention rate</div>
@@ -81,9 +87,10 @@ export function Dashboard() {
             <div className="muted al-kpi-sub">{d.weakestEngine ? "recommends you least often" : "not enough data yet"}</div>
           </div>
           <div className="card al-kpi">
-            <div className="al-kpi-label">Top in-niche threat</div>
+            {/* For a leader the top rival isn't "winning the queries you lose" — it's the one to watch. */}
+            <div className="al-kpi-label">{losing ? "Top in-niche threat" : "Closest rival"}</div>
             <div className="al-kpi-val"><b>{d.topThreat ?? "—"}</b></div>
-            <div className="muted al-kpi-sub">{d.topThreat ? "winning the queries you lose" : "no competitor recommended yet"}</div>
+            <div className="muted al-kpi-sub">{d.topThreat ? (losing ? "winning the queries you lose" : "the rival AI recommends next") : "no competitor recommended yet"}</div>
           </div>
         </div>
       </div>

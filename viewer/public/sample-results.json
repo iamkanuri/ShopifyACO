@@ -11063,45 +11063,45 @@
       "components": [
         {
           "key": "recommendation",
-          "label": "Recommendation rate",
           "weight": 0.5,
           "value": 0.5833333333333334,
           "contribution": 29.166666666666668,
+          "label": "Recommendation rate",
           "detail": "Explicitly recommended in 28/48 grounded answers."
         },
         {
           "key": "mention",
-          "label": "Mention rate",
           "weight": 0.2,
           "value": 0.8541666666666666,
           "contribution": 17.083333333333332,
+          "label": "Mention rate",
           "detail": "Mentioned at all in 41/48 grounded answers."
         },
         {
           "key": "rank",
-          "label": "Rank quality when listed",
           "weight": 0.15,
           "value": 0.8,
           "contribution": 12,
+          "label": "Rank quality when listed",
           "detail": "Average list position 2.0 when ranked (lower is better)."
         },
         {
           "key": "win",
-          "label": "Competitive win rate",
           "weight": 0.15,
           "value": 0.9375,
           "contribution": 14.0625,
-          "detail": "A competitor out-ranked the brand in 3/48 answers."
+          "label": "Competitive win rate",
+          "detail": "Out-ranked every competitor in 45/48 answers (a rival edged ahead in 3)."
         }
       ],
       "formula": "score = 100 × (0.50·recommendationRate + 0.20·mentionRate + 0.15·rankQuality + 0.15·competitiveWinRate)",
       "basedOnResponses": 48
     },
-    "executiveInsight": "Across 48 grounded answers in this scan, AI assistants mention Olipop (85% (41/48)) more often than they recommend it (58% (28/48)). ChatGPT is the weakest engine for Olipop.",
-    "headline": "AI assistants mention Olipop more than they recommend it.",
+    "executiveInsight": "Across 48 grounded answers in this scan, AI assistants recommend Olipop (58% (28/48)) — more than any rival in prebiotic soda. The gap to close: it's mentioned more often (85% (41/48)) than it's recommended, so some answers name it without yet picking it. ChatGPT is the weakest engine for Olipop.",
+    "headline": "Olipop is AI's most-recommended prebiotic soda brand — with a mention-to-recommendation gap to close.",
     "whatThisMeans": [
       "Discoverability: Olipop is mentioned in 85% (41/48) of answers — assistants do know it exists.",
-      "Persuasion: it's recommended in only 58% (28/48) — when listed, it isn't the pick."
+      "Persuasion: recommended in 58% (28/48) of answers — the most of any brand in the category. Keep the lead."
     ],
     "threat": null,
     "categoryLeader": {
@@ -11117,6 +11117,7 @@
         "rate": 0.7916666666666666
       }
     },
+    "ownLeadsCategory": true,
     "mentionGap": {
       "brand": "Olipop",
       "mention": {
@@ -11134,7 +11135,7 @@
         "total": 48,
         "rate": 0.2708333333333333
       },
-      "summary": "Olipop is mentioned more often than it's recommended in this scan: mentioned 85% (41/48) of answers but recommended 58% (28/48). That leaves 27% (13/48) \"mentioned but not chosen\"."
+      "summary": "Even as the most-recommended brand in prebiotic soda, Olipop is mentioned 85% (41/48) of answers but recommended 58% (28/48) — 27% (13/48) name it without yet picking it. Converting that awareness is how you extend the lead."
     },
     "engineWeakness": [
       {
@@ -11189,6 +11190,43 @@
     "weakestEngine": "ChatGPT",
     "clusters": [
       {
+        "cluster": "use_case",
+        "label": "Use case & fit",
+        "transactional": true,
+        "prompts": [
+          "Recommend a prebiotic soda for a healthier soda craving.",
+          "Best soda alternatives for cutting back on sugar?",
+          "Best soda alternatives for gut health?",
+          "Best soda alternatives for a healthier soda craving?"
+        ],
+        "responses": 12,
+        "brandMention": {
+          "count": 8,
+          "total": 12,
+          "rate": 0.6666666666666666
+        },
+        "brandRecommendation": {
+          "count": 5,
+          "total": 12,
+          "rate": 0.4166666666666667
+        },
+        "absent": false,
+        "topWinners": [
+          {
+            "brand": "Poppi",
+            "recommendations": 3
+          },
+          {
+            "brand": "Culture Pop",
+            "recommendations": 1
+          },
+          {
+            "brand": "Health-Ade",
+            "recommendations": 1
+          }
+        ]
+      },
+      {
         "cluster": "alternatives",
         "label": "Alternatives to a competitor",
         "transactional": true,
@@ -11224,9 +11262,91 @@
             "recommendations": 1
           }
         ]
+      },
+      {
+        "cluster": "comparison",
+        "label": "Brand comparison & quality",
+        "transactional": true,
+        "prompts": [
+          "Which prebiotic soda brand has the least sugar?",
+          "Which prebiotic soda brand has the most fiber?",
+          "Which prebiotic soda brand has the best flavor?",
+          "Olipop vs Poppi — which should I buy?"
+        ],
+        "responses": 12,
+        "brandMention": {
+          "count": 11,
+          "total": 12,
+          "rate": 0.9166666666666666
+        },
+        "brandRecommendation": {
+          "count": 7,
+          "total": 12,
+          "rate": 0.5833333333333334
+        },
+        "absent": false,
+        "topWinners": [
+          {
+            "brand": "Poppi",
+            "recommendations": 2
+          }
+        ]
+      },
+      {
+        "cluster": "high_intent",
+        "label": "Top recommendation ('what's best')",
+        "transactional": true,
+        "prompts": [
+          "What are the best prebiotic soda brands?",
+          "Recommend a prebiotic soda for cutting back on sugar.",
+          "Recommend a prebiotic soda for gut health.",
+          "Recommend a prebiotic soda for a healthier soda craving.",
+          "Which prebiotic soda brand has the best flavor?",
+          "Olipop vs Poppi — which should I buy?",
+          "Popular prebiotic soda people recommend right now?"
+        ],
+        "responses": 21,
+        "brandMention": {
+          "count": 21,
+          "total": 21,
+          "rate": 1
+        },
+        "brandRecommendation": {
+          "count": 18,
+          "total": 21,
+          "rate": 0.8571428571428571
+        },
+        "absent": false,
+        "topWinners": [
+          {
+            "brand": "Poppi",
+            "recommendations": 3
+          }
+        ]
       }
     ],
-    "proofPoints": [],
+    "proofPoints": [
+      {
+        "id": "ingredients_formulation",
+        "label": "Ingredients & formulation",
+        "hits": 1,
+        "competitors": [
+          "Spindrift"
+        ],
+        "examplePrompt": "Best soda alternatives for cutting back on sugar?",
+        "exampleSnippet": "…resulting in 5 to 20 calories and 0 to 4 grams of sugar per can, and no artificial sweeteners. * Spindrift: Uses a splash of real fruit juice or…"
+      },
+      {
+        "id": "sustainability",
+        "label": "Sustainability & ethics",
+        "hits": 1,
+        "competitors": [
+          "Health-Ade"
+        ],
+        "examplePrompt": "Best soda alternatives for gut health?",
+        "exampleSnippet": "…acteria and yeast (SCOBY), is a popular choice for its probiotics and organic acids. Kombucha can support digestion and a healthy gut microbiome, a…"
+      }
+    ],
     "leaderboard": [
       {
         "brand": "Olipop",
@@ -11346,7 +11466,7 @@
         "winners": [
           "Spindrift"
         ],
-        "snippet": "…es clean taste, and some flavors also include a light caffeine boost. * **Spindrift:** Uses a splash of real fruit juice or puree for flavor, resulting in 5 to 20…"
+        "snippet": "…es clean taste, and some flavors also include a light caffeine boost. * Spindrift: Uses a splash of real fruit juice or puree for flavor, resulting in 5 to 20…"
       },
       {
         "prompt": "Best soda alternatives for gut health?",
@@ -11358,7 +11478,7 @@
         "winners": [
           "Health-Ade"
         ],
-        "snippet": "…ands may contain significant added sugar. Brands like GT's Synergy Kombucha and Health-Ade Kombucha are widely available. * **Probiotic Yogurt Drinks** These convenient…"
+        "snippet": "…ands may contain significant added sugar. Brands like GT's Synergy Kombucha and Health-Ade Kombucha are widely available. * Probiotic Yogurt Drinks These convenient…"
       },
       {
         "prompt": "Which prebiotic soda brand has the least sugar?",
@@ -11371,19 +11491,33 @@
           "Poppi",
           "Culture Pop"
         ],
-        "snippet": "…](https://drinkculturepop.com/pages/faq-1?utm_source=openai)) By comparison, **poppi** products shown on the brand’s site have **5g sugar per can** across flavors l…"
+        "snippet": "…]) By comparison, poppi products shown on the brand’s site have 5g sugar per can across flavors l…"
       }
     ],
     "fixCards": [
+      {
+        "id": "expose_specs",
+        "tier": "evidence_backed",
+        "impact": "medium",
+        "title": "State the details AI assistants quote — so you keep winning these comparisons",
+        "why": "Olipop already leads, but in the few answers where a rival was picked instead, assistants leaned on concrete, quotable specifics: ingredients & formulation and sustainability & ethics. State these in plain text to protect the lead and close even those gaps.",
+        "relatedPrompts": [],
+        "relatedSnippets": [
+          "…resulting in 5 to 20 calories and 0 to 4 grams of sugar per can, and no artificial sweeteners. * Spindrift: Uses a splash of real fruit juice or…",
+          "…acteria and yeast (SCOBY), is a popular choice for its probiotics and organic acids. Kombucha can support digestion and a healthy gut microbiome, a…"
+        ],
+        "suggestedFix": "On every product and collection page, state in plain text the details shoppers in prebiotic soda compare — here, assistants rewarded ingredients & formulation and sustainability & ethics — for each product. Assistants quote what's written, so don't leave it in images.",
+        "verifyNote": "State each detail only if it's true for that product; verify before publishing."
+      },
       {
         "id": "schema",
         "tier": "general_hygiene",
         "impact": "medium",
         "title": "Add/verify structured product schema (Product, Offer, AggregateRating)",
-        "why": "Structured data helps AI crawlers extract price, availability, ratings, and specs reliably instead of guessing from prose.",
+        "why": "Structured data helps AI crawlers extract price, availability, ratings, and attributes reliably instead of guessing from prose.",
         "relatedPrompts": [],
         "relatedSnippets": [],
-        "suggestedFix": "Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, material, offers, and aggregateRating where available.",
+        "suggestedFix": "Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, key attributes, offers, and aggregateRating where available.",
         "verifyNote": "Not checked against your live store — verify whether this already exists before acting."
       },
       {
@@ -11394,9 +11528,43 @@
         "why": "A concise, factual brand/product summary at a stable URL gives assistants a canonical source to ground answers about you.",
         "relatedPrompts": [],
         "relatedSnippets": [],
-        "suggestedFix": "Draft an /llms.txt (or a clean \"About Olipop\" page) listing product lines, materials, safety claims, price ranges, and differentiators in plain text.",
+        "suggestedFix": "Draft an /llms.txt (or a clean \"About Olipop\" page) listing product lines, key attributes, price ranges, and differentiators in plain text.",
         "verifyNote": "Not checked against your live store — verify whether this already exists before acting."
       }
-    ]
+    ],
+    "citedSources": {
+      "overall": {
+        "n": 0,
+        "sources": []
+      },
+      "onLostAnswers": {
+        "n": 0,
+        "sources": []
+      },
+      "byEngine": {}
+    },
+    "substitutionFrame": {
+      "bucket": "winning",
+      "headline": "Olipop owns the AI recommendation in prebiotic soda — recommended in 28 of 48 answers, more than any rival.",
+      "subline": "Watch your position: Poppi (7), Culture Pop (1) and Health-Ade (1) are the rivals AI recommends next.",
+      "scoreProof": "Your AI Visibility Score of 72/100 is the summary of this: 28 of 48 answers recommend Olipop.",
+      "namedRivals": [
+        {
+          "name": "Poppi",
+          "recCount": 7,
+          "source": "configured"
+        },
+        {
+          "name": "Culture Pop",
+          "recCount": 1,
+          "source": "configured"
+        },
+        {
+          "name": "Health-Ade",
+          "recCount": 1,
+          "source": "configured"
+        }
+      ]
+    }
   }
 }

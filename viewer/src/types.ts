@@ -185,6 +185,9 @@ export interface MerchantAnalysis {
   whatThisMeans: string[];
   threat: CompetitorThreat | null;
   categoryLeader: CategoryLeader | null;
+  /** True when the merchant out-recommends the top competitor (merchant IS the category leader). Then
+   *  `categoryLeader` is the nearest CHALLENGER to watch, not the leader, and `threat` is usually null. */
+  ownLeadsCategory: boolean;
   mentionGap: MentionGap;
   engineWeakness: EngineWeakness[];
   weakestEngine: string | null;
