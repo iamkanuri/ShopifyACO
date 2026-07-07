@@ -31,7 +31,8 @@ const DEFAULTS: AppConfig = {
   baseUrl: "",
   contactEmail: "",
   tagline: "See if AI shoppers recommend your store — or your competitors.",
-  demoNote: "Demo data shown for illustration.",
+  demoNote:
+    "Sample data, shown for illustration. “Sennen” is a fictional brand; The Ordinary, CeraVe, La Roche-Posay and Paula's Choice are trademarks of their respective owners, referenced for illustration only and not affiliated with AisleLens.",
   plans: [],
   miniPrompts: 5,
   fullReportPrompts: 30,

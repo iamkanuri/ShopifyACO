@@ -16,7 +16,9 @@ import { ExportBar } from "../components/ExportBar";
 import { Pricing } from "../components/Pricing";
 import { FunnelCta } from "../components/FunnelCta";
 import { CitedSources } from "../components/CitedSources";
+import { PaidArtifacts } from "../components/PaidArtifacts";
 import { useConfig } from "../config";
+import type { ArtifactBundle } from "../types";
 
 export function Report({
   run,
@@ -27,6 +29,8 @@ export function Report({
   paid = true,
   purchased = false,
   failed = false,
+  demo = false,
+  artifacts,
 }: {
   run: RunResults;
   runId?: string;
@@ -45,6 +49,12 @@ export function Report({
    *  just suppress the $29 same-run re-buy (which would recur on the same failed config) — the
    *  retry is a fresh scan — while keeping the Shopify-install bridge. */
   failed?: boolean;
+  /** The /demo showcase: render the FULL paid product (incl. the done-for-you fix drafts) with NO
+   *  upsell CTA and NO plans — the demo IS the full report, so an "upgrade" button on it is nonsensical. */
+  demo?: boolean;
+  /** Done-for-you fix drafts to reveal in-report (demo passes a fake-data sample; the real paid report
+   *  page renders its own PaidArtifacts). Shown with the verify-before-publishing framing. */
+  artifacts?: ArtifactBundle | null;
 }) {
   const a = run.analysis as MerchantAnalysis;
   const { plans } = useConfig(); // gate the "See all plans" accordion — never render it empty
@@ -177,6 +187,14 @@ export function Report({
         <FixCards cards={a.fixCards} paid={paid} runId={runId} />
       </Collapse>
 
+      {/* Done-for-you fix drafts — the paid deliverable. On /demo this is the withheld thing REVEALED
+          (fake-data sample, verify-before-publishing framing); a real paid report renders its own copy
+          in ReportPage above. */}
+      {artifacts && artifacts.artifacts.length > 0 && <PaidArtifacts bundle={artifacts} demo={demo} />}
+
+      {/* Upsell CTA + plans accordion — hidden on /demo: the demo IS the full report, so an "upgrade"
+          button (and plans selection, past the free-scan decision) is nonsensical there. */}
+      {!demo && (
       <section className="section no-print" id="full-report-cta">
         <h2>{failed ? "Prefer to run this on your store?" : purchased || isShopify ? "Fix this on your store" : "Get your done-for-you fixes"}</h2>
         <p className="muted">
@@ -199,6 +217,7 @@ export function Report({
           </details>
         )}
       </section>
+      )}
 
       <footer className="disclaimer">
         <p>

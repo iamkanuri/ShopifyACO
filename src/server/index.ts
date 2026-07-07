@@ -94,7 +94,8 @@ const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
 const SUGGEST_COST_CAP_USD = 0.02;
 const TAGLINE =
   "Test whether ChatGPT, Gemini, and Perplexity recommend your store, see which competitors appear instead, and find the shopper prompts where your brand is missing.";
-const DEMO_NOTE = "Demo data shown for illustration; not affiliated with or endorsed by Olipop.";
+const DEMO_NOTE =
+  "Sample data, shown for illustration. “Sennen” is a fictional brand; The Ordinary, CeraVe, La Roche-Posay and Paula's Choice are trademarks of their respective owners, referenced for illustration only and not affiliated with AisleLens.";
 const ALLOWED_EVENTS = new Set([
   "report_viewed",
   "cta_full_report",

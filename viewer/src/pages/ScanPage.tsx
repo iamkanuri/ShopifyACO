@@ -216,7 +216,7 @@ export function ScanPage() {
     if (!base) return;
     setBusy("suggesting");
     try {
-      const { prompts: extra, costUsd, error: sErr } = await suggestPrompts(buildForm());
+      const { prompts: extra, error: sErr } = await suggestPrompts(buildForm());
       if (sErr) {
         setSuggestErr(`Couldn't get AI suggestions: ${sErr}`);
         return;
@@ -232,7 +232,7 @@ export function ScanPage() {
         return;
       }
       setPrompts((prev) => [...prev, ...added]);
-      setSuggestMsg(`Added ${added.length} suggestion${added.length === 1 ? "" : "s"} (cost $${costUsd.toFixed(4)}). Select any to include.`);
+      setSuggestMsg(`Added ${added.length} suggestion${added.length === 1 ? "" : "s"}. Select any to include.`);
     } catch (e) {
       setSuggestErr((e as Error).message || "AI suggestion request failed.");
     } finally {
@@ -480,9 +480,7 @@ export function ScanPage() {
                     <b>{selected.length}</b> prompts × <b>{enabledEngines.length}</b> engines ={" "}
                     <b>{selected.length * enabledEngines.length}</b> calls
                   </div>
-                  <div className={overCap ? "over" : ""}>
-                    Est. max cost <b>${estMaxCost.toFixed(3)}</b> (cap ${scanCostCapUsd.toFixed(2)})
-                  </div>
+                  {/* Scan dollar cost is NOT shown to the user — see #3 (don't anchor on the few-cents cost). */}
                 </div>
               </div>
             </>
@@ -492,7 +490,7 @@ export function ScanPage() {
 
       {overCap && (
         <div className="banner-error">
-          Over the ${scanCostCapUsd.toFixed(2)} mini-scan cap. Deselect prompts or engines in “Customize prompts”.
+          This scan is too large for a free mini-scan. Deselect prompts or engines in “Customize prompts”.
         </div>
       )}
       {enabledEngines.length === 0 && (
