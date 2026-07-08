@@ -169,7 +169,12 @@ export function renderIndexSlugSsr(row: CategoryIndexRow, base: string, brandNam
   const dividerNote = "Also recommended — ordered by how often AI named each brand; positions a few recommendations apart can flip between scans.";
   const rowsHtml = rows
     .map((r, i) => {
-      const claim = `/scan?brand=${encodeURIComponent(r.brand)}&category=${encodeURIComponent(row.label)}`;
+      // Prefill the scan form with this brand + category + the OTHER top leaderboard brands as
+      // competitors (the form requires ≥1), so a merchant clicking their row can run in one click.
+      const comps = rows.filter((x) => x.brand !== r.brand).slice(0, 4).map((x) => x.brand);
+      const claim =
+        `/scan?brand=${encodeURIComponent(r.brand)}&category=${encodeURIComponent(row.label)}` +
+        (comps.length ? `&competitors=${encodeURIComponent(comps.join(","))}` : "");
       const recCell = r.count != null ? `${pct(r.recommendation)} <span class="rec-count">${r.count}/${n}</span>` : pct(r.recommendation);
       const isCrown = gated && i === 0;
       const badge = isCrown ? `<span class="lead-badge">★ Leader</span> ` : "";
@@ -183,7 +188,7 @@ export function renderIndexSlugSsr(row: CategoryIndexRow, base: string, brandNam
         `<td class="brand">${badge}${esc(r.brand)}</td>` +
         `<td>${pct(r.mention)}</td>` +
         `<td>${recCell}</td>` +
-        `<td><a href="${esc(claim)}" class="linkbtn">This is us →</a></td></tr>`
+        `<td><a href="${esc(claim)}" class="linkbtn">See your own scan →</a></td></tr>`
       );
     })
     .join("");

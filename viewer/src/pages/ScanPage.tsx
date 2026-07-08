@@ -40,6 +40,11 @@ export function ScanPage() {
   const qpUrl = qp.get("url") ?? "";
   const qpBrand = qp.get("brand") ?? "";
   const qpCategory = qp.get("category") ?? "";
+  // Index leaderboard rows also prefill the competitors (the other top brands) so a click-through
+  // from a leaderboard can run in one step (the form otherwise requires ≥1 competitor to be typed).
+  const qpCompetitors = (qp.get("competitors") ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6)
+    .map((name) => ({ name, storeUrl: "" }));
 
   const [storeInput, setStoreInput] = useState(qpUrl);
   const [brand, setBrand] = useState<ScanBrand>({ name: qpBrand, storeUrl: looksLikeUrl(qpUrl) ? qpUrl : "" });
@@ -47,7 +52,7 @@ export function ScanPage() {
   const [persona] = useState("");
   const [location] = useState("");
   const [priceRange] = useState("");
-  const [competitors, setCompetitors] = useState<ScanBrand[]>([{ name: "", storeUrl: "" }]);
+  const [competitors, setCompetitors] = useState<ScanBrand[]>(qpCompetitors.length ? qpCompetitors : [{ name: "", storeUrl: "" }]);
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [engines, setEngines] = useState({ openai: true, gemini: true, perplexity: true });
   const [hp, setHp] = useState(""); // honeypot — must stay empty

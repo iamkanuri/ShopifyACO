@@ -101,6 +101,10 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
           <tbody>
             {rows.flatMap((r, i) => {
               const isCrown = gated && i === 0;
+              // Prefill the scan form with the other top leaderboard brands as competitors (form
+              // requires ≥1) so a merchant clicking their row can run in one click. Sync with indexSsr.ts.
+              const comps = rows.filter((x) => x.brand !== r.brand).slice(0, 4).map((x) => x.brand);
+              const compParam = comps.length ? `&competitors=${encodeURIComponent(comps.join(","))}` : "";
               const out = [];
               if (i === leadCount && leadCount < rows.length) {
                 out.push(
@@ -128,11 +132,11 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
                   </td>
                   <td>
                     <Link
-                      to={`/scan?brand=${encodeURIComponent(r.brand)}&category=${encodeURIComponent(idx.label)}`}
+                      to={`/scan?brand=${encodeURIComponent(r.brand)}&category=${encodeURIComponent(idx.label)}${compParam}`}
                       className="linkbtn"
                       onClick={() => trackEvent("index_claim_click", idx.run_id ?? undefined, { slug, brand: r.brand })}
                     >
-                      This is us →
+                      See your own scan →
                     </Link>
                   </td>
                 </tr>,
