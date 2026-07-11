@@ -351,6 +351,15 @@ page + the competitor pages the assistants cited, then diagnosing the structural
   `EngineResult.citations`, `src/engines/citations.ts`) into `observations.citations`, the diagnose
   route honors `CRAWLER_MODE` as the default, and live diagnosis derives competitor URLs from those
   citations PLUS the merchant's own page from the synced catalog (`getStorefrontUrl`).
+  ✅ **MOCK-HONESTY GUARDRAILS (2026-07-11, migration `0025`):** fixture pages can never masquerade
+  as a merchant's store — a CONNECTED shop's mock diagnosis never substitutes `MOCK_*` fixture URLs
+  (degrades to the honest "no product URL" finding; tests/demos must pass fixture URLs explicitly);
+  a live request on a mock-mode process THROWS (no silent fixture 404s → no false "unreachable"
+  finding; the resolved mode is threaded through `crawlSeeds`); every finding is stamped
+  `findings.crawl_mode` and the Evidence UI badges mock-crawl findings; prod boot warns if
+  `SHOPIFY_MODE`/`CRAWLER_MODE` are left mock. Fix Studio apply now also VERIFIES EFFECT: a write
+  whose re-read value is unchanged reports failed "no observable effect" instead of applied, and
+  the audit logs the store's actual post-write value.
 
 **Phase 6 (Fix Studio — gated, reversible write-back) is built on branch `phase6-fixes`** (off
 `phase5-crawler`), mock-verified end-to-end at $0. It turns diagnosis findings + catalog data

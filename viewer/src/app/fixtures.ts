@@ -9,6 +9,10 @@ export interface AppFindingRow {
   citations: string[]; merchant_gap: string[]; competitor_advantage: string[];
   confidence_level: string; basis_n: number; limits: string;
   recommended_intervention: string; expected_mechanism: string;
+  /** Crawl provenance: "live" = observed on real pages; "mock" = fixture crawl (badged in
+   *  the UI so it can never read as an observation of the merchant's store). Absent on
+   *  legacy rows and demo fixtures. */
+  crawl_mode?: "mock" | "live" | null;
 }
 
 export interface AppProposalRow {

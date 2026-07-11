@@ -42,6 +42,11 @@ export interface CrawlOptions {
   limits?: FetchLimits;
   /** Restrict discovered links to these origins (defaults to the seeds' origins). */
   sameOriginOnly?: boolean;
+  /** Fixture (mock) vs network (live) fetching. Defaults to the process env
+   *  (CRAWLER_MODE); callers that RESOLVE a mode (e.g. a diagnosis honoring an
+   *  explicit request) must pass it so the fetch layer can't disagree with them —
+   *  a split-brain here serves fixture 404s for real URLs. */
+  mode?: "mock" | "live";
 }
 
 export function originOf(u: string): string | null {
@@ -55,9 +60,10 @@ export function originOf(u: string): string | null {
 
 /** Mode-aware single fetch: fixtures under mock, the SSRF-safe fetcher under live. Exported so
  *  seed discovery (src/crawler/seeds.ts) fetches `/products.json` / sitemap through the SAME
- *  mock-vs-live switch and SSRF-hardened path the crawl itself uses. */
-export async function modeFetch(url: string, limits: FetchLimits): Promise<FetchResult> {
-  if (ENV.crawler.mode === "mock") {
+ *  mock-vs-live switch and SSRF-hardened path the crawl itself uses. `mode` defaults to the
+ *  process env; pass the caller's RESOLVED mode when one was negotiated per-request. */
+export async function modeFetch(url: string, limits: FetchLimits, mode: "mock" | "live" = ENV.crawler.mode): Promise<FetchResult> {
+  if (mode === "mock") {
     const r = mockFetch(url);
     return {
       requestedUrl: url, finalUrl: url, status: r.status, contentType: r.contentType,
@@ -69,9 +75,9 @@ export async function modeFetch(url: string, limits: FetchLimits): Promise<Fetch
 
 /** Mode-aware robots policy: mock fixtures under mock, a real robots.txt fetch under live.
  *  Exported so seed discovery can honor robots on `/products.json` before requesting it. */
-export async function robotsFor(origin: string, respect: boolean): Promise<RobotsPolicy> {
+export async function robotsFor(origin: string, respect: boolean, mode: "mock" | "live" = ENV.crawler.mode): Promise<RobotsPolicy> {
   if (!respect) return { rules: [], fetched: false };
-  if (ENV.crawler.mode === "mock") {
+  if (mode === "mock") {
     const text = mockRobots(origin);
     return text ? (await loadRobots(origin, text)) : { rules: [], fetched: false };
   }
@@ -111,7 +117,7 @@ function extractSameOriginLinks(html: string, baseUrl: string, allowedOrigins: S
 
 /** Crawl one URL into a CrawledPage. Never throws — failures are captured on the
  *  page (ok:false, error). Honors robots unless `policy` says allowed/absent. */
-export async function crawlOne(url: string, opts: { limits: FetchLimits; policy?: RobotsPolicy; allowedOrigins?: Set<string> }): Promise<CrawledPage> {
+export async function crawlOne(url: string, opts: { limits: FetchLimits; policy?: RobotsPolicy; allowedOrigins?: Set<string>; mode?: "mock" | "live" }): Promise<CrawledPage> {
   const base: CrawledPage = {
     url, finalUrl: null, origin: originOf(url), ok: false, status: null, contentType: null,
     error: null, bytes: 0, truncated: false, title: null, canonicalUrl: null, robotsIndex: null,
@@ -126,7 +132,7 @@ export async function crawlOne(url: string, opts: { limits: FetchLimits; policy?
   }
 
   try {
-    const res = await modeFetch(url, opts.limits);
+    const res = await modeFetch(url, opts.limits, opts.mode);
     base.finalUrl = res.finalUrl;
     base.origin = originOf(res.finalUrl) ?? base.origin;
     base.status = res.status;
@@ -165,6 +171,7 @@ export async function crawlSeeds(seeds: string[], opts: CrawlOptions = {}): Prom
   const maxPages = Math.max(1, Math.min(opts.maxPages ?? ENV.crawler.maxPages, 50));
   const maxDepth = Math.max(0, Math.min(opts.maxDepth ?? ENV.crawler.maxDepth, 3));
   const respectRobots = opts.respectRobots ?? ENV.crawler.respectRobots;
+  const mode = opts.mode ?? ENV.crawler.mode;
   const limits = opts.limits ?? { maxBytes: ENV.crawler.maxBytes, timeoutMs: ENV.crawler.timeoutMs, maxRedirects: ENV.crawler.maxRedirects };
 
   const seedOrigins = new Set(seeds.map(originOf).filter((o): o is string => Boolean(o)));
@@ -185,12 +192,12 @@ export async function crawlSeeds(seeds: string[], opts: CrawlOptions = {}): Prom
     if (origin) {
       policy = robotsCache.get(origin);
       if (!policy) {
-        policy = await robotsFor(origin, respectRobots);
+        policy = await robotsFor(origin, respectRobots, mode);
         robotsCache.set(origin, policy);
       }
     }
 
-    const page = await crawlOne(url, { limits, policy, allowedOrigins: depth < maxDepth ? allowedOrigins : undefined });
+    const page = await crawlOne(url, { limits, policy, mode, allowedOrigins: depth < maxDepth ? allowedOrigins : undefined });
     pages.push(page);
 
     if (page.ok && depth < maxDepth) {

@@ -84,9 +84,14 @@ worker/scheduler run a minimal `/healthz` server (`src/health.ts`) so the shared
 ## 5b. Evidence & diagnosis crawler (Phase 5) — no new credentials
 - ☐ Apply migration `0010_crawler.sql` (`crawl_pages`, `findings`) — happens automatically
   with `npm run migrate` / at Railway deploy.
-- ☐ Leave `CRAWLER_MODE=mock` (default) for $0/no-network operation. Set `CRAWLER_MODE=live`
-  on **BOTH the `web` and `worker` services** when you want real crawling — web sets the live
-  default at enqueue, the worker runs the actual fetch (set only one → still mock). It makes
+- ☐ **Set `CRAWLER_MODE=live` on BOTH the `web` and `worker` services — this is the required
+  posture for any deployment real merchants use.** (Set on prod 2026-06-26; re-verify after env
+  changes.) The `mock` default exists ONLY for $0/no-network local testing and CI: since
+  2026-07-11 a connected shop's diagnosis never substitutes fixture pages — under mock it
+  degrades to the honest "no product URL could be resolved" finding, a live request against a
+  mock process fails loudly instead of 404-ing real URLs, any mock-crawl finding is stored with
+  `crawl_mode='mock'` and badged in the UI, and prod boot warns if either mode flag is mock.
+  Web sets the live default at enqueue, the worker runs the actual fetch. Live crawling makes
   **outbound HTTP requests** (no API spend, no new secrets) and is SSRF-hardened (private/
   link-local/metadata IPs blocked). Tune `CRAWLER_MAX_PAGES/DEPTH/BYTES`, `CRAWLER_TIMEOUT_MS`,
   `CRAWLER_MAX_REDIRECTS`, `CRAWLER_RESPECT_ROBOTS` as needed. The `evidence_diagnose` job runs on

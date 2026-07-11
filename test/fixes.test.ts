@@ -199,6 +199,44 @@ test("rollback compares against the post-apply value, not the raw proposal (norm
   }
 });
 
+// The mutation response proves Shopify ACCEPTED the write, not that anything changed.
+// A write that leaves the store's value identical (e.g. Shopify normalizing it back to
+// the default — the shipped placebo bug) must NOT be reported "applied".
+test("apply reports failure when the write has no observable effect", { skip: !gate }, async () => {
+  const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
+  const { createProposal, getProposal } = await import("../src/db/fixes.js");
+  const { approveProposal, applyProposal } = await import("../src/fixes/apply.js");
+  const { __resetMockWrites } = await import("../src/fixes/source.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `fixnoop-${Date.now()}.myshopify.com`;
+  const gid = "gid://shopify/Product/1001"; // mock reread → seoDescription "SEO desc 1"
+  __resetMockWrites();
+  try {
+    await upsertShop(shop, { status: "active", scopes: "read_products,write_products" });
+    await storeCredentials(shop, "mock_token", "read_products,write_products");
+    // Proposes the value the store ALREADY holds → the write is accepted but changes nothing.
+    const id = await createProposal(shop, null, null, {
+      productGid: gid, kind: "write_products", target: "seo.description", label: "no-op",
+      currentValue: "SEO desc 1", proposedValue: "SEO desc 1", basedOn: "SEO desc 1", rationale: "t", evidence: {},
+    });
+    await approveProposal(shop, id, "merchant");
+    const out = await applyProposal(shop, id, "merchant");
+    assert.equal(out.ok, false);
+    assert.equal(out.status, "failed");
+    assert.match(out.detail ?? "", /no observable effect/i);
+    assert.equal((await getProposal(id))!.status, "failed");
+  } finally {
+    __resetMockWrites();
+    await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+    await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
+  }
+});
+
 test("apply is refused on stale baseline (conflict) and without write scope", { skip: !gate }, async () => {
   const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
   const { createProposal } = await import("../src/db/fixes.js");

@@ -88,6 +88,11 @@ export function Evidence() {
               <div className="al-finding-top">
                 <KindTag kind={finding.kind} />
                 <ConfidenceBadge level={finding.confidence_level} />
+                {finding.crawl_mode === "mock" && (
+                  <span className="al-demo al-demo-err" title="This finding came from a mock (fixture) crawl — the pages behind it were NOT your live store. Re-run diagnosis on a live-crawl deployment for real observations.">
+                    Fixture crawl — not your live store
+                  </span>
+                )}
                 {finding.basis_n > 0 && <span className="muted al-basis">{finding.basis_n} lost responses</span>}
               </div>
 

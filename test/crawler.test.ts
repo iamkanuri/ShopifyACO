@@ -295,6 +295,25 @@ test("diagnose returns no evidence findings when there is no competitive loss", 
   assert.equal(findings.filter((f) => f.kind === "evidence_backed").length, 0);
 });
 
+// A live crawl on a mock-mode process must FAIL LOUDLY, not silently serve fixture
+// 404s for real URLs (which used to produce a false "page unreachable" finding).
+// The guard fires before any DB access, so this runs in the pure suite.
+test("diagnoseRun refuses a live request when CRAWLER_MODE=mock (no silent fixtures)", async () => {
+  const { diagnoseRun } = await import("../src/diagnosis/execute.js");
+  await assert.rejects(
+    () => diagnoseRun({ runId: 1, shopDomain: null, merchantBrand: "X", mock: false }),
+    /CRAWLER_MODE=mock/,
+  );
+});
+
+// The crawl layer honors an explicitly threaded mode (the resolved per-request mode),
+// so the fetch layer can never disagree with the caller's negotiated mode.
+test("crawlSeeds serves fixtures when the caller threads mode:'mock'", async () => {
+  const pages = await crawlSeeds([MOCK_MERCHANT_URL], { maxDepth: 0, mode: "mock" });
+  assert.equal(pages.length, 1);
+  assert.equal(pages[0]!.ok, true); // fixture answered — no network involved
+});
+
 // ===========================================================================
 // DB-gated: full mock diagnoseRun end-to-end (persists pages + findings).
 // ===========================================================================
@@ -325,6 +344,8 @@ test("diagnoseRun (mock) crawls, diagnoses, and persists findings", { skip: !RUN
 
     const findings = await listFindings(shop, { runId });
     assert.ok(findings.length >= 5);
+    // Provenance is stored per finding so the UI can badge fixture-derived output.
+    assert.ok(findings.every((f) => f.crawl_mode === "mock"), "mock-crawl findings must be stamped crawl_mode='mock'");
     const pages = await listCrawlPages(shop, runId);
     assert.ok(pages.length >= 2);
 
@@ -340,6 +361,48 @@ test("diagnoseRun (mock) crawls, diagnoses, and persists findings", { skip: !RUN
     await diagnoseRun({ runId, shopDomain: shop, merchantBrand: "MyBrand", benchmarkId, mock: true });
     const findings2 = await listFindings(shop, { runId });
     assert.equal(findings2.length, findings.length);
+  } finally {
+    await pgQuery("delete from findings where shop_domain=$1", [shop]);
+    await pgQuery("delete from crawl_pages where shop_domain=$1", [shop]);
+    await pgQuery("delete from observations where run_id=$1", [runId]);
+    await pgQuery("delete from benchmark_runs where id=$1", [runId]);
+    await pgQuery("delete from benchmarks where id=$1", [benchmarkId]);
+  }
+});
+
+// A CONNECTED shop never gets fixture pages substituted for its own store: with no
+// resolvable merchant URL and no citations, a mock diagnosis degrades to the honest
+// "no product URL could be resolved" finding — zero pages crawled, zero fixture-derived
+// gaps ("3284 reviews", fixture GTIN, noindex) masquerading as the merchant's reality.
+test("diagnoseRun (mock) for a connected shop never falls back to fixture pages", { skip: !RUN_DB }, async () => {
+  const { createBenchmark, createRun, insertObservation } = await import("../src/db/benchmarks.js");
+  const { diagnoseRun } = await import("../src/diagnosis/execute.js");
+  const { listFindings } = await import("../src/db/crawler.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `evshop-${Date.now()}.myshopify.com`;
+  // No storeUrl in the config; observations carry NO citations → nothing to crawl.
+  const config = { brand: { name: "MyBrand" }, category: "cookware", competitors: [{ name: "GreenPan" }], prompts: [{ intent: "comparison", text: "best pan?" }], engines: ["mock"] };
+  const benchmarkId = await createBenchmark(shop, "diag-nourl", "free_diagnostic", config as never);
+  const runId = await createRun(benchmarkId, shop, "free_diagnostic", ["openai"], 1, 1);
+  try {
+    for (const o of lossObs()) {
+      await insertObservation({
+        runId, benchmarkId, shopDomain: shop, responseId: o.responseId!, promptText: o.promptText, intent: o.intent ?? undefined,
+        engine: o.engine, model: "mock", groundingMode: "web_grounded", targetBrand: o.targetBrand,
+        recommendationStatus: o.recommendationStatus, rank: o.rank, evidenceSnippet: o.evidenceSnippet, citations: [],
+      });
+    }
+    const r = await diagnoseRun({ runId, shopDomain: shop, merchantBrand: "MyBrand", benchmarkId, mock: true });
+    assert.equal(r.mode, "mock");
+    assert.equal(r.pagesCrawled, 0, "no fixture page may be crawled for a connected shop");
+
+    const findings = await listFindings(shop, { runId });
+    assert.ok(findings.length >= 1, "the honest 'no product URL' finding should be present");
+    assert.ok(findings.every((f) => f.crawl_mode === "mock"));
+    const raw = JSON.stringify(findings);
+    assert.ok(!raw.includes("3284"), "fixture review count must never reach a connected shop's findings");
+    assert.ok(!raw.includes("0850008791234"), "fixture GTIN must never reach a connected shop's findings");
   } finally {
     await pgQuery("delete from findings where shop_domain=$1", [shop]);
     await pgQuery("delete from crawl_pages where shop_domain=$1", [shop]);

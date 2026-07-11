@@ -127,15 +127,28 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     // sent it), so the stored value often isn't byte-identical to proposed_value. Rollback
     // compares against THIS (via the same read path), so only a genuine later merchant edit —
     // not Shopify's own normalization — counts as a conflict.
+    let verified = false; // re-read succeeded, so snapshot.applied is the store's real value
     try {
       const after = await rereadProduct(shop, token, p.product_gid);
       snapshot.applied = (after?.[field] as string | null) ?? null;
+      verified = true;
       await mirrorToCatalog(shop, after);
     } catch {
       snapshot.applied = p.proposed_value; // best effort if the verify re-read fails
     }
+    // The mutation response proves Shopify ACCEPTED the write, not that anything changed.
+    // If the verified post-write value equals the pre-write value (e.g. Shopify normalized
+    // it back to the default), the fix had no observable effect — report that instead of
+    // claiming success. This is the structural guard against placebo fixes (the App Store
+    // 2.1.4 lesson): "applied" must always mean "the store now holds something different."
+    if (verified && (snapshot.applied ?? "") === (liveValue ?? "")) {
+      await updateProposal(id, { status: "failed", error: "write accepted but the store value is unchanged (no observable effect)" });
+      return { ok: false, status: "failed", detail: "Shopify accepted the write but the store's value is unchanged — this change would have no observable effect, so it was not marked applied." };
+    }
     await updateProposal(id, { status: "applied", appliedSnapshot: snapshot, markApplied: true, error: null });
-    await audit(shop, actor, "fix_applied", "product", { target: p.target, before: liveValue }, { after: p.proposed_value });
+    // Audit the value the store ACTUALLY holds (the verified re-read), not the raw intent —
+    // Shopify normalizes SEO fields, so the two can legitimately differ.
+    await audit(shop, actor, "fix_applied", "product", { target: p.target, before: liveValue }, { after: snapshot.applied ?? p.proposed_value });
     return { ok: true, status: "applied", detail: `${p.target} updated` };
   } catch (err) {
     await updateProposal(id, { status: "failed", error: (err as Error).message });
