@@ -1,14 +1,34 @@
 import { useState } from "react";
 import { applyFix, approveFix, dismissFix, getBenchmarks, getCatalog, getFixes, proposeFixes, rollbackFix } from "./appApi";
-import { DemoBadge, KindTag, StatePane, useLoaded } from "./ui";
+import type { AppProposalRow } from "./fixtures";
+import { DemoBadge, KindTag, StatePane, useLoaded, useRefetchOnFocus } from "./ui";
 
 // Fix Studio: evidence-backed proposals. write_products are auto-applied (gated:
 // approve → scope → re-read conflict check → rollback snapshot, server-side);
 // copy_ready are validated snippets the merchant pastes into their theme. Arriving
 // with ?run=, the merchant can GENERATE proposals for a product from that run.
+
+/** What the store holds NOW for a write_products target — the server enriches each row
+ *  from the webhook-synced catalog; fall back to the proposal-time snapshot (demo rows). */
+function liveValue(p: AppProposalRow): string | null {
+  return p.live_current_value !== undefined ? p.live_current_value : p.current_value;
+}
+
+/** Honest empty-state: an unset seo.title isn't a blank page — Shopify falls back to the
+ *  product title, which is exactly what the merchant sees in the admin's Page-title field. */
+function currentDisplay(p: AppProposalRow): string {
+  const v = liveValue(p);
+  if (v) return v;
+  if (p.target === "seo.title") {
+    return p.product_title ? `(not set — the page falls back to "${p.product_title}")` : "(not set — the page falls back to the product title)";
+  }
+  return "(not set)";
+}
+
 export function Fixes() {
   const runId = Number(new URLSearchParams(window.location.search).get("run")) || undefined;
   const f = useLoaded(() => getFixes(), []);
+  useRefetchOnFocus(f.reload);
   const proposals = f.data?.proposals ?? [];
   const [busy, setBusy] = useState<number | null>(null);
   const [note, setNote] = useState<{ id: number; text: string; ok: boolean } | null>(null);
@@ -18,7 +38,9 @@ export function Fixes() {
     const r = await fn(id);
     setBusy(null);
     setNote({ id, text: r.ok ? okText : r.error ?? "Action unavailable", ok: r.ok });
-    if (r.ok) f.reload();
+    // Reload on EVERY outcome — a failed/conflicted apply also changes the stored status,
+    // and the card must reflect what the database (and the store) actually hold.
+    f.reload();
   }
 
   return (
@@ -46,11 +68,21 @@ export function Fixes() {
 
               {p.kind === "write_products" ? (
                 <div className="al-diff">
-                  <div className="al-diff-row"><span className="al-diff-k del">current</span><code>{p.current_value || "(empty)"}</code></div>
+                  <div className="al-diff-row"><span className="al-diff-k del">current</span><code>{currentDisplay(p)}</code></div>
                   <div className="al-diff-row"><span className="al-diff-k add">proposed</span><code>{p.proposed_value}</code></div>
                 </div>
               ) : (
                 <pre className="al-snippet"><code>{p.proposed_value}</code></pre>
+              )}
+
+              {p.status === "applied" && liveValue(p) === p.proposed_value && (
+                <div className="al-note ok">Verified in your store — the live value matches this change.</div>
+              )}
+              {p.drifted && (
+                <div className="al-note err">This value changed in Shopify after the proposal was drafted. Applying is blocked so we never overwrite a newer edit — dismiss this and regenerate to draft from the latest data.</div>
+              )}
+              {p.status === "conflict" && (
+                <div className="al-note err">Not applied: the value in Shopify changed after this was proposed, so we refused to overwrite it. Dismiss and regenerate to pick up the current data.</div>
               )}
 
               {note?.id === p.id && <div className={note.ok ? "al-note ok" : "al-note err"}>{note.text}</div>}
@@ -106,7 +138,12 @@ function GeneratePanel({ pinnedRunId, onCreated }: { pinnedRunId?: number; onCre
     setBusy(true); setMsg(null);
     const r = await proposeFixes(runId, chosen);
     setBusy(false);
-    if (r.ok) setMsg({ text: `Generated ${(r.data as { created?: number })?.created ?? ""} proposal(s).`, tone: "ok" });
+    if (r.ok) {
+      const created = (r.data as { created?: number })?.created ?? 0;
+      setMsg(created > 0
+        ? { text: `Generated ${created} proposal(s).`, tone: "ok" }
+        : { text: "Nothing to propose — this product's SEO fields are already set (or already say what Shopify shows by default). We only draft fixes that would visibly change your store.", tone: "info" });
+    }
     else if (r.demo) setMsg({ text: "Open the app from the Shopify admin to generate fixes for your products.", tone: "info" });
     else setMsg({ text: r.error ?? "Could not generate.", tone: "err" });
     if (r.ok) onCreated();

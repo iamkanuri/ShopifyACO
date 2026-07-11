@@ -15,6 +15,12 @@ export interface AppProposalRow {
   id: number; kind: string; target: string; label: string; current_value: string | null;
   proposed_value: string; rationale: string | null; status: string;
   evidence: { mechanism?: string; intervention?: string };
+  /** Live store value for the target field (from the webhook-synced catalog), so the card
+   *  always agrees with the Shopify admin. Absent on copy_ready rows and demo fixtures. */
+  live_current_value?: string | null;
+  product_title?: string | null;
+  /** True when the store value changed under a still-actionable proposal (apply would conflict). */
+  drifted?: boolean;
 }
 
 export interface AppExperimentRow {

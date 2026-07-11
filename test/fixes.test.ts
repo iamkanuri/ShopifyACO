@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { proposeFixes, proposeSeoBackfill, writableField, type CatalogProduct } from "../src/fixes/propose.js";
+import { composeSeoTitle, proposeFixes, proposeSeoBackfill, writableField, type CatalogProduct } from "../src/fixes/propose.js";
 import { buildProductInput } from "../src/fixes/source.js";
 import { hasWriteScope } from "../src/fixes/apply.js";
 import type { Finding } from "../src/diagnosis/diagnose.js";
@@ -34,9 +34,31 @@ test("proposeSeoBackfill backfills empty SEO and never overwrites non-empty", ()
   const backfills = proposeSeoBackfill(PRODUCT);
   assert.equal(backfills.length, 2);
   assert.ok(backfills.every((p) => p.kind === "write_products"));
-  assert.equal(backfills.find((p) => p.target === "seo.title")?.proposedValue, "Ceramic Sauté Pan");
+  // The proposed title must DIFFER from the bare product title — when seo.title is unset,
+  // Shopify already falls back to the product title, so proposing it verbatim would be an
+  // unobservable no-op write (the App Store 2.1.4 kickback).
+  assert.equal(backfills.find((p) => p.target === "seo.title")?.proposedValue, "Ceramic Sauté Pan | AisleLens Test Co");
   // With SEO already set, nothing is proposed (no clobber).
   assert.equal(proposeSeoBackfill({ ...PRODUCT, seoTitle: "x", seoDescription: "y" }).length, 0);
+});
+
+test("composeSeoTitle only composes values that visibly differ from the fallback", () => {
+  // Vendor is the preferred suffix.
+  assert.equal(composeSeoTitle(PRODUCT), "Ceramic Sauté Pan | AisleLens Test Co");
+  // Vendor already conveyed by the title → fall through to the product type.
+  assert.equal(
+    composeSeoTitle({ ...PRODUCT, title: "AisleLens Test Co Ceramic Pan" }),
+    "AisleLens Test Co Ceramic Pan | Cookware",
+  );
+  // Nothing factual to add → no proposal at all (never a placebo identical to the fallback).
+  assert.equal(composeSeoTitle({ ...PRODUCT, vendor: null, productType: null }), null);
+  assert.equal(composeSeoTitle({ ...PRODUCT, vendor: "Ceramic", productType: "Pan" }), null);
+  // Composed value must fit the 60-char SEO budget — no truncated/ellipsized titles.
+  const long = "An Exceptionally Long Handcrafted Ceramic Sauté Pan Edition";
+  assert.equal(composeSeoTitle({ ...PRODUCT, title: long }), null);
+  // And a proposed title never equals the bare title.
+  const p = proposeSeoBackfill(PRODUCT).find((x) => x.target === "seo.title")!;
+  assert.notEqual(p.proposedValue, PRODUCT.title);
 });
 
 test("proposeFixes builds factual Product JSON-LD and placeholder templates (no fabrication)", () => {
@@ -115,14 +137,26 @@ test("apply lifecycle: approve → conflict-checked apply → rollback (mock)", 
     assert.equal((afterApply!.applied_snapshot as { before: string }).before, "SEO desc 1");
     // The post-write value the store actually holds is captured for an accurate rollback check.
     assert.equal((afterApply!.applied_snapshot as { applied: string }).applied, "New, better SEO description");
+    // The synced catalog mirrors the write IMMEDIATELY (2.1.4: app data == store data), so
+    // the proposals list's live value shows the applied change without waiting for a webhook.
+    const mirrored = await pgQuery<{ seo_description: string | null }>(
+      "select seo_description from products where shop_domain=$1 and product_gid=$2", [shop, gid]);
+    assert.equal(mirrored.rows[0]?.seo_description, "New, better SEO description");
 
     // Rollback restores the snapshot (reread now reflects our applied value → no conflict).
     const rolled = await rollbackProposal(shop, id, "merchant");
     assert.equal(rolled.ok, true);
     assert.equal(rolled.status, "rolled_back");
+    // ...and the catalog mirror follows the rollback too.
+    const restored = await pgQuery<{ seo_description: string | null }>(
+      "select seo_description from products where shop_domain=$1 and product_gid=$2", [shop, gid]);
+    assert.equal(restored.rows[0]?.seo_description, "SEO desc 1");
   } finally {
     __resetMockWrites();
     await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
     await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
     await pgQuery("delete from shops where shop_domain=$1", [shop]);
   }
@@ -157,6 +191,9 @@ test("rollback compares against the post-apply value, not the raw proposal (norm
   } finally {
     __resetMockWrites();
     await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
     await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
     await pgQuery("delete from shops where shop_domain=$1", [shop]);
   }

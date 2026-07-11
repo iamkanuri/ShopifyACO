@@ -241,8 +241,30 @@ export class LiveClient implements ShopifyClient {
         body: JSON.stringify({ query: query.replace("TOPIC_PLACEHOLDER", topic), variables: { url: endpoint } }),
         signal: AbortSignal.timeout(15_000),
       });
-      if (res.ok) registered.push(topic);
-      else console.error(`[shopify] webhook register ${topic} failed: HTTP ${res.status}`);
+      // HTTP 200 alone is NOT success — GraphQL rejections arrive as userErrors/errors in a 200
+      // body. A silently-failed registration means no real-time catalog sync for the shop, so
+      // count a topic registered only on a subscription id (or the idempotent "already taken",
+      // which Shopify returns when the subscription exists from a prior install).
+      let failure = `HTTP ${res.status}`;
+      if (res.ok) {
+        try {
+          const json = (await res.json()) as {
+            data?: { webhookSubscriptionCreate?: { webhookSubscription?: { id?: string } | null; userErrors?: Array<{ message?: string }> } };
+            errors?: Array<{ message?: string }>;
+          };
+          const node = json.data?.webhookSubscriptionCreate;
+          const msgs = [...(json.errors ?? []), ...(node?.userErrors ?? [])].map((e) => e.message ?? "").filter(Boolean);
+          const alreadyRegistered = msgs.some((m) => /already (been )?taken|already exists/i.test(m));
+          if (node?.webhookSubscription?.id || alreadyRegistered) {
+            registered.push(topic);
+            continue;
+          }
+          failure = msgs.join("; ") || "no subscription id returned";
+        } catch (err) {
+          failure = `unparseable response: ${(err as Error).message}`;
+        }
+      }
+      console.error(`[shopify] webhook register ${topic} failed: ${failure}`);
     }
     return registered;
   }

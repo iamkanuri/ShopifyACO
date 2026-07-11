@@ -4,6 +4,20 @@ import { getProposal, updateProposal, type ProposalRow } from "../db/fixes.js";
 import { writableField, type WritableField } from "./propose.js";
 import { buildProductInput, productUpdate, rereadProduct } from "./source.js";
 import { hasScope } from "../shopify/scopes.js";
+import { upsertProduct } from "../db/catalog.js";
+import type { NormalizedProduct } from "../catalog/normalize.js";
+
+/** Best-effort: mirror a just-written product back into the synced catalog so every
+ *  screen (Fix Studio live values, Catalog) agrees with the Shopify admin IMMEDIATELY
+ *  after our own write — the products/update webhook is the eventual backstop. */
+async function mirrorToCatalog(shop: string, product: NormalizedProduct | null | undefined): Promise<void> {
+  if (!product) return;
+  try {
+    await upsertProduct(shop, product);
+  } catch (err) {
+    console.error(`[fixes] post-write catalog mirror failed for ${shop}:`, (err as Error).message);
+  }
+}
 
 // ===========================================================================
 // Fix Studio write-back engine (Phase 6). The ONLY place this app mutates a
@@ -116,6 +130,7 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     try {
       const after = await rereadProduct(shop, token, p.product_gid);
       snapshot.applied = (after?.[field] as string | null) ?? null;
+      await mirrorToCatalog(shop, after);
     } catch {
       snapshot.applied = p.proposed_value; // best effort if the verify re-read fails
     }
@@ -166,6 +181,9 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
       return { ok: false, status: "failed", detail };
     }
     await updateProposal(id, { status: "rolled_back", error: null });
+    try {
+      await mirrorToCatalog(shop, await rereadProduct(shop, token, p.product_gid));
+    } catch { /* webhook backstop will re-sync */ }
     await audit(shop, actor, "fix_rolled_back", "product", { after: p.proposed_value }, { restored: snap.before });
     return { ok: true, status: "rolled_back", detail: `${p.target} restored` };
   } catch (err) {

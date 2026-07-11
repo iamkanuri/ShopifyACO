@@ -49,7 +49,7 @@ export async function listProposals(shop: string, opts: { runId?: number; status
   const limit = Math.min(200, Math.max(1, opts.limit ?? 100));
   const { rows } = await pgQuery(
     `select id, run_id, finding_id, product_gid, kind, target, label, current_value, proposed_value,
-            rationale, evidence, status, error, created_at, applied_at
+            based_on, rationale, evidence, status, error, created_at, applied_at
        from fix_proposals
       where shop_domain=$1
         and ($2::bigint is null or run_id=$2)
@@ -88,6 +88,23 @@ export async function updateProposal(
     [id, fields.status ?? null, fields.appliedSnapshot !== undefined, fields.appliedSnapshot != null ? JSON.stringify(fields.appliedSnapshot) : null,
      fields.error ?? null, fields.actor ?? null, Boolean(fields.markApproved), Boolean(fields.markApplied), "error" in fields],
   );
+}
+
+/** Batch-load the LIVE (webhook-synced) SEO fields for a set of products, so the
+ *  proposals list can show what the store holds NOW — not the point-in-time snapshot
+ *  taken when a proposal was created. Keyed by product_gid. */
+export async function getLiveSeoFields(
+  shop: string,
+  productGids: string[],
+): Promise<Map<string, { title: string | null; seoTitle: string | null; seoDescription: string | null }>> {
+  const out = new Map<string, { title: string | null; seoTitle: string | null; seoDescription: string | null }>();
+  if (productGids.length === 0) return out;
+  const { rows } = await pgQuery<{ product_gid: string; title: string | null; seo_title: string | null; seo_description: string | null }>(
+    "select product_gid, title, seo_title, seo_description from products where shop_domain=$1 and product_gid = any($2)",
+    [shop, productGids],
+  );
+  for (const r of rows) out.set(r.product_gid, { title: r.title, seoTitle: r.seo_title, seoDescription: r.seo_description });
+  return out;
 }
 
 /** Load the catalog data needed to propose fixes for one product (incl. a price). */

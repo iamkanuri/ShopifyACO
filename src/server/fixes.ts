@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import { shopOf } from "./shopify.js";
 import { getRun } from "../db/benchmarks.js";
 import { listFindings } from "../db/crawler.js";
-import { createProposal, getProductForFix, listProposals } from "../db/fixes.js";
+import { createProposal, getLiveSeoFields, getProductForFix, listProposals } from "../db/fixes.js";
+import { writableField } from "../fixes/propose.js";
 import { proposeFixes } from "../fixes/propose.js";
 import type { Finding } from "../diagnosis/diagnose.js";
 import { applyProposal, approveProposal, dismissProposal, rollbackProposal } from "../fixes/apply.js";
@@ -68,12 +69,35 @@ export async function proposeHandler(req: Request, res: Response): Promise<void>
   });
 }
 
-/** GET /app/api/fixes?runId=&status= — list proposals (write_products first). */
+/** GET /app/api/fixes?runId=&status= — list proposals (write_products first), each
+ *  write_products row enriched with the LIVE store value for its target field (from the
+ *  webhook-synced catalog) + a `drifted` flag when the store changed under an actionable
+ *  proposal. The stored snapshot stays untouched (it's the conflict-check basis); the live
+ *  value is what keeps the app consistent with the Shopify admin (App Store req 2.1.4). */
 export async function listFixesHandler(req: Request, res: Response): Promise<void> {
   const shop = shopOf(req);
   const runId = req.query.runId != null ? Number(req.query.runId) : undefined;
   const status = typeof req.query.status === "string" ? req.query.status : undefined;
   const proposals = await listProposals(shop, { runId: Number.isInteger(runId) ? runId : undefined, status });
+
+  const gids = [...new Set(proposals
+    .filter((p) => p.kind === "write_products" && typeof p.product_gid === "string")
+    .map((p) => p.product_gid as string))];
+  const live = await getLiveSeoFields(shop, gids);
+
+  for (const p of proposals) {
+    if (p.kind !== "write_products") continue;
+    const row = typeof p.product_gid === "string" ? live.get(p.product_gid) : undefined;
+    const field = writableField(String(p.target));
+    if (!row || !field) continue;
+    const liveValue = field === "seoTitle" ? row.seoTitle : row.seoDescription;
+    p.live_current_value = liveValue;
+    p.product_title = row.title;
+    // Drift only matters while the proposal is still actionable — the apply conflict
+    // check enforces it; this flag lets the UI say so BEFORE the merchant clicks Apply.
+    const actionable = p.status === "proposed" || p.status === "approved" || p.status === "failed";
+    p.drifted = actionable && (liveValue ?? "") !== ((p.based_on as string | null) ?? "");
+  }
   res.json({ count: proposals.length, proposals });
 }
 

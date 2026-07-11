@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Loaded } from "./appApi";
 import type { Proportion } from "./fixtures";
 import { useModalFocus } from "../useModalFocus";
@@ -14,15 +14,38 @@ export function useLoaded<T>(fn: () => Promise<Loaded<T>>, deps: unknown[] = [])
   const [demo, setDemo] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [nonce, setNonce] = useState(0);
+  const lastNonce = useRef(0);
   useEffect(() => {
     let live = true;
-    setLoading(true);
+    // Stale-while-revalidate for reload() refetches (after an action, or a focus refetch):
+    // keep the current data on screen and swap in the fresh result — no loading flash, and
+    // the screen still ends up store-accurate. First load and deps-driven fetches (e.g.
+    // pagination, whose controls gate on `loading`) keep the loading pane.
+    const isReload = nonce !== lastNonce.current && data !== null;
+    lastNonce.current = nonce;
+    if (!isReload) setLoading(true);
     fn().then((r) => { if (!live) return; setData(r.data); setDemo(r.demo); setError(r.error); setLoading(false); })
       .catch((e) => { if (!live) return; setError((e as Error).message); setLoading(false); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce]);
   return { data, loading, demo, error, reload: () => setNonce((n) => n + 1) };
+}
+
+/** Refetch when the tab/iframe regains focus or becomes visible again — a merchant who
+ *  edits a product in the Shopify admin and switches back should see the change without a
+ *  manual reload (App Store req 2.1.4: app data consistent with the admin in real time). */
+export function useRefetchOnFocus(reload: () => void): void {
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") reload(); };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
 
 export function DemoBadge({ show, error }: { show: boolean; error?: string }) {

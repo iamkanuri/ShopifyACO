@@ -362,9 +362,15 @@ into reviewable proposals and applies approved ones to the store.
   conflict-checked. `src/fixes/apply.ts` + `src/fixes/source.ts` (`productUpdate`/`rereadProduct`;
   mock simulates + records writes so the lifecycle runs at $0).
 - **Proposals never fabricate** (`src/fixes/propose.ts`, pure): direct **write_products** is limited
-  to SEO title/description backfill (exact reformats of existing data); everything else is
+  to SEO title/description backfill composed only from existing catalog data; everything else is
   **copy_ready** validated JSON-LD — a factual Product snippet from the catalog, plus clearly
   placeholdered AggregateRating/shipping/return/FAQ templates the merchant fills with real numbers.
+  **And never propose a placebo** (App Store 2.1.4 kickback, fixed 2026-07-11): when `seo.title` is
+  unset Shopify falls back to the product title, so proposing the title verbatim writes a change no
+  one can observe — `composeSeoTitle` now composes a visibly-different `{title} | {vendor|type}` (or
+  proposes nothing). The proposals list is enriched with the LIVE catalog value per row (`drifted`
+  flag; apply/rollback mirror the re-read product straight into the catalog) so Fix Studio always
+  agrees with the Shopify admin; the UI refetches on tab focus.
 - `migrations/0011_fixes.sql` (`fix_proposals` + `findings.signal`; additive). Shop-scoped API
   `src/server/fixes.ts` (`/app/api/fixes/propose|…/{approve,apply,rollback,dismiss}`, tenant-isolated).
   `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **`write_products` is now in

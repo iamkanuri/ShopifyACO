@@ -106,18 +106,41 @@ const TEMPLATE: Partial<Record<string, (p: CatalogProduct) => { label: string; v
   }),
 };
 
+/** Compose an explicit SEO title that VISIBLY differs from Shopify's fallback (the bare
+ *  product title): "{title} | {vendor}" (or product type). Purely existing catalog facts —
+ *  no fabrication. Returns null when nothing distinct fits: when seo.title is unset Shopify
+ *  already renders the product title, so proposing the title verbatim would be a write the
+ *  merchant can't observe anywhere (the admin looks identical before and after — the exact
+ *  "did nothing" failure an App Store reviewer flagged under 2.1.4). */
+export function composeSeoTitle(p: CatalogProduct): string | null {
+  const title = p.title?.replace(/\s+/g, " ").trim();
+  if (!title) return null;
+  for (const raw of [p.vendor, p.productType]) {
+    const suffix = raw?.replace(/\s+/g, " ").trim();
+    if (!suffix) continue;
+    if (title.toLowerCase().includes(suffix.toLowerCase())) continue; // already conveyed by the title
+    const composed = `${title} | ${suffix}`;
+    if (composed.length <= SEO_TITLE_MAX) return composed;
+  }
+  return null;
+}
+
 /** SEO backfill: the only DIRECT write — reformat existing factual fields when the
- *  merchant left SEO empty. Never overwrites a non-empty SEO value. */
+ *  merchant left SEO empty. Never overwrites a non-empty SEO value, and never proposes
+ *  a value identical to what Shopify already shows via fallback (no placebo fixes). */
 export function proposeSeoBackfill(p: CatalogProduct, finding?: Finding): FixProposal[] {
   const out: FixProposal[] = [];
   if (!p.seoTitle && p.title) {
-    out.push({
-      productGid: p.productGid, kind: "write_products", target: "seo.title",
-      label: "Backfill the SEO title from the product title",
-      currentValue: p.seoTitle, proposedValue: trunc(p.title, SEO_TITLE_MAX), basedOn: p.seoTitle,
-      rationale: "The SEO title is empty; assistants and search use it as the page's machine-readable title. This only reuses your existing product title.",
-      evidence: evidenceOf(finding),
-    });
+    const composed = composeSeoTitle(p);
+    if (composed) {
+      out.push({
+        productGid: p.productGid, kind: "write_products", target: "seo.title",
+        label: "Set an explicit SEO title (adds your brand to the page title)",
+        currentValue: p.seoTitle, proposedValue: composed, basedOn: p.seoTitle,
+        rationale: "No custom SEO title is set, so the page title falls back to the bare product title. This sets an explicit, brand-qualified title assistants and search can attribute — composed only from your existing catalog data.",
+        evidence: evidenceOf(finding),
+      });
+    }
   }
   if (!p.seoDescription && p.description) {
     out.push({

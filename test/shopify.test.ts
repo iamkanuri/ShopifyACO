@@ -11,6 +11,34 @@ import { shouldRefreshToken } from "../src/shopify/tokens.js";
 const KEY = Buffer.alloc(32, 9).toString("base64");
 const KEY2 = Buffer.alloc(32, 4).toString("base64");
 
+// ---- webhook registration: GraphQL userErrors are FAILURES, not silent successes ----
+test("registerWebhooks counts a topic only on a subscription id or the idempotent already-taken", async () => {
+  const { LiveClient } = await import("../src/shopify/client.js");
+  const realFetch = globalThis.fetch;
+  // Per-topic responses: a real userError must NOT count as registered (it used to — any
+  // HTTP 200 did, silently killing real-time catalog sync); "already been taken" (a
+  // re-install) and a returned subscription id both count.
+  globalThis.fetch = (async (_url: unknown, init: { body: string }) => {
+    const q = (JSON.parse(init.body) as { query: string }).query;
+    const topic = /topic:\s*([A-Z_]+)/.exec(q)?.[1] ?? "";
+    const payload =
+      topic === "PRODUCTS_UPDATE"
+        ? { webhookSubscription: null, userErrors: [{ message: "Invalid callback url" }] }
+        : topic === "APP_UNINSTALLED"
+          ? { webhookSubscription: null, userErrors: [{ message: "Address for this topic has already been taken" }] }
+          : { webhookSubscription: { id: `gid://shopify/WebhookSubscription/${topic}` }, userErrors: [] };
+    return { ok: true, json: async () => ({ data: { webhookSubscriptionCreate: payload } }) };
+  }) as unknown as typeof fetch;
+  try {
+    const registered = await new LiveClient().registerWebhooks("s.myshopify.com", "tok");
+    assert.ok(registered.includes("APP_UNINSTALLED")); // already-taken = idempotent success
+    assert.ok(registered.includes("PRODUCTS_CREATE"));
+    assert.ok(!registered.includes("PRODUCTS_UPDATE")); // userError = real failure, surfaced
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 // ---- web pixel activation: self-heal a stale stored id ---------------------
 test("activateWebPixel falls back to create when the stored pixel id is stale", async () => {
   const { LiveClient } = await import("../src/shopify/client.js");
