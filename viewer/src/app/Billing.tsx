@@ -1,6 +1,6 @@
 import type { AppBilling } from "./fixtures";
 import { getBilling } from "./appApi";
-import { DemoBadge, StatePane, useLoaded } from "./ui";
+import { DemoBadge, StatePane, useLoaded, useRefetchOnFocus } from "./ui";
 
 // Billing & entitlements (Phase 11) for Shopify-installed merchants. Charges go through
 // Shopify MANAGED PRICING (App Store req 1.2 — no off-platform/Stripe checkout in the
@@ -27,6 +27,10 @@ function StatusPill({ status, active }: { status: string; active: boolean }) {
 
 export function Billing() {
   const b = useLoaded<AppBilling>(() => getBilling(), []);
+  // A plan change happens on Shopify's hosted pricing page (another tab/top frame);
+  // refetch on return so the screen shows the plan Shopify holds now (the endpoint
+  // re-syncs from the Admin API on each read).
+  useRefetchOnFocus(b.reload);
   const data = b.data;
   const pricingUrl = data?.managedPricingUrl ?? null;
   // Shopify's plan page is top-level (admin.shopify.com) — break out of the app iframe.

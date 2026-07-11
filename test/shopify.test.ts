@@ -39,6 +39,40 @@ test("registerWebhooks counts a topic only on a subscription id or the idempoten
   }
 });
 
+test("registerWebhooks repoints an already-taken subscription whose callbackUrl is stale", async () => {
+  const { LiveClient } = await import("../src/shopify/client.js");
+  const realFetch = globalThis.fetch;
+  const updates: Array<{ id: string; url: string }> = [];
+  globalThis.fetch = (async (_url: unknown, init: { body: string }) => {
+    const body = JSON.parse(init.body) as { query: string; variables?: { id?: string; url?: string } };
+    if (/webhookSubscriptionUpdate/.test(body.query)) {
+      updates.push({ id: body.variables?.id ?? "", url: body.variables?.url ?? "" });
+      return { ok: true, json: async () => ({ data: { webhookSubscriptionUpdate: { userErrors: [] } } }) };
+    }
+    if (/webhookSubscriptions\(first/.test(body.query)) {
+      // The existing subscription points at a PREVIOUS app domain.
+      return { ok: true, json: async () => ({ data: { webhookSubscriptions: { nodes: [
+        { id: "gid://shopify/WebhookSubscription/7", endpoint: { __typename: "WebhookHttpEndpoint", callbackUrl: "https://old-domain.example.com/api/shopify/webhooks" } },
+      ] } } }) };
+    }
+    const topic = /topic:\s*([A-Z_]+)/.exec(body.query)?.[1] ?? "";
+    const payload = topic === "APP_UNINSTALLED"
+      ? { webhookSubscription: null, userErrors: [{ message: "Address for this topic has already been taken" }] }
+      : { webhookSubscription: { id: `gid://shopify/WebhookSubscription/${topic}` }, userErrors: [] };
+    return { ok: true, json: async () => ({ data: { webhookSubscriptionCreate: payload } }) };
+  }) as unknown as typeof fetch;
+  try {
+    const registered = await new LiveClient().registerWebhooks("s.myshopify.com", "tok");
+    assert.ok(registered.includes("APP_UNINSTALLED")); // still counted registered
+    assert.equal(updates.length, 1); // ...but the stale endpoint was repointed
+    assert.equal(updates[0]!.id, "gid://shopify/WebhookSubscription/7");
+    assert.match(updates[0]!.url, /\/api\/shopify\/webhooks$/);
+    assert.notEqual(updates[0]!.url, "https://old-domain.example.com/api/shopify/webhooks");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 // ---- web pixel activation: self-heal a stale stored id ---------------------
 test("activateWebPixel falls back to create when the stored pixel id is stale", async () => {
   const { LiveClient } = await import("../src/shopify/client.js");

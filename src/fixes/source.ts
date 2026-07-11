@@ -24,7 +24,7 @@ mutation FixProductUpdate($input: ProductInput!) {
 // apply → re-read → rollback lifecycle (and conflict detection) is exercisable at
 // $0. We record applied fields per (shop, product) — shop-scoped so two mock shops
 // operating on the same fixture GID don't contaminate each other's state.
-const mockWrites = new Map<string, Partial<Record<"seoTitle" | "seoDescription" | "descriptionHtml", string>>>();
+const mockWrites = new Map<string, Partial<Record<"seoTitle" | "seoDescription", string>>>();
 const mockKey = (shop: string, gid: string) => `${shop}::${gid}`;
 /** Test/maintenance helper — clear simulated mock writes. */
 export function __resetMockWrites(): void {
@@ -41,7 +41,6 @@ export async function rereadProduct(shop: string, token: string, productGid: str
     if (ov) {
       if (ov.seoTitle !== undefined) norm.seoTitle = ov.seoTitle;
       if (ov.seoDescription !== undefined) norm.seoDescription = ov.seoDescription;
-      if (ov.descriptionHtml !== undefined) norm.description = ov.descriptionHtml;
     }
   }
   return norm;
@@ -49,12 +48,12 @@ export async function rereadProduct(shop: string, token: string, productGid: str
 
 /** Build a minimal ProductInput for one writable field. An empty value clears the field with
  *  `null` (not ""), which is how Shopify reliably removes an SEO override — important for
- *  rollback, where the original value was empty (a backfill). */
-export function buildProductInput(productGid: string, field: "seoTitle" | "seoDescription" | "descriptionHtml", value: string): Record<string, unknown> {
+ *  rollback, where the original value was empty (a backfill). Only the two SEO fields are
+ *  writable (matches `writableField`); nothing may write the raw product body. */
+export function buildProductInput(productGid: string, field: "seoTitle" | "seoDescription", value: string): Record<string, unknown> {
   switch (field) {
     case "seoTitle": return { id: productGid, seo: { title: value || null } };
     case "seoDescription": return { id: productGid, seo: { description: value || null } };
-    case "descriptionHtml": return { id: productGid, descriptionHtml: value };
   }
 }
 
@@ -71,7 +70,6 @@ export async function productUpdate(shop: string, token: string, input: Record<s
       const seo = input.seo as { title?: string; description?: string } | undefined;
       if (seo?.title !== undefined) ov.seoTitle = seo.title;
       if (seo?.description !== undefined) ov.seoDescription = seo.description;
-      if (typeof input.descriptionHtml === "string") ov.descriptionHtml = input.descriptionHtml;
       mockWrites.set(key, ov);
     }
     return { ok: true, userErrors: [] };

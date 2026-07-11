@@ -172,15 +172,19 @@ export function buildFixCards(
     id: "schema",
     tier: "general_hygiene",
     impact: "medium",
-    title: "Add/verify structured product schema (Product, Offer, AggregateRating)",
+    title: "Fill the structured-data gaps most platforms leave (AggregateRating, shipping, returns)",
     why:
-      "Structured data helps AI crawlers extract price, availability, ratings, and attributes reliably " +
-      "instead of guessing from prose.",
+      "Structured data helps AI crawlers extract ratings, shipping terms, and return policies reliably " +
+      "instead of guessing from prose — and these specific fields are the ones standard storefront " +
+      "platforms do NOT emit by default.",
     relatedPrompts: [],
     relatedSnippets: [],
     suggestedFix:
-      "Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, key attributes, offers, " +
-      "and aggregateRating where available.",
+      "Add AggregateRating (your real review counts), OfferShippingDetails, and hasMerchantReturnPolicy " +
+      "to your existing product schema. Note: modern platforms (e.g. Shopify OS 2.0 themes) already emit " +
+      "a Product + Offer JSON-LD block — extend that block rather than adding a second Product node, " +
+      "and if a reviews app is installed it may already emit AggregateRating (check your page source " +
+      "first; duplicates conflict).",
     verifyNote: SITE_NOT_AUDITED,
   });
 

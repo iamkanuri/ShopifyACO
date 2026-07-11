@@ -113,18 +113,27 @@ export function Catalog() {
               <tr><th>Product</th><th>Type</th><th>Variants</th><th>SEO</th><th>Metafields</th></tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <tr key={p.product_gid}>
-                  <td><b>{p.title}</b><div className="muted al-table-sub">{p.vendor}</div></td>
-                  <td className="muted">{p.product_type ?? "—"}</td>
-                  <td>
-                    {p.variant_count}
-                    {p.nested_truncated && <span className="al-gapmark" style={{ marginLeft: 6 }} title="This product has more variants/collections/metafields than were synced (capped at 50/20/20). Diagnosis uses what was synced.">partial</span>}
-                  </td>
-                  <td title="Explicit SEO title/description set on the product. When unset, Shopify falls back to the product title/description — the page still renders, but there's no intentional, machine-readable summary.">{p.seo_title && p.seo_description ? <span className="al-ok">complete</span> : <span className="al-gapmark">{p.seo_title || p.seo_description ? "partial" : "missing"}</span>}</td>
-                  <td>{p.metafield_count}</td>
-                </tr>
-              ))}
+              {products.map((p) => {
+                // nested_truncated is product-level; a displayed count sitting AT its sync cap is
+                // the one that overflowed — render it as "N+" (the admin shows the full count).
+                // Truncation on a connection we don't display (collections) gets a generic marker.
+                const varCapped = Boolean(p.nested_truncated) && p.variant_count >= 50;
+                const metaCapped = Boolean(p.nested_truncated) && p.metafield_count >= 20;
+                const otherTruncated = Boolean(p.nested_truncated) && !varCapped && !metaCapped;
+                return (
+                  <tr key={p.product_gid}>
+                    <td>
+                      <b>{p.title}</b>
+                      {otherTruncated && <span className="al-gapmark" style={{ marginLeft: 6 }} title="Some of this product's nested data (e.g. collections) has more entries than were synced (caps: 50 variants / 20 collections / 20 metafields). The Shopify admin shows the full data; diagnosis uses what was synced.">partially synced</span>}
+                      <div className="muted al-table-sub">{p.vendor}</div>
+                    </td>
+                    <td className="muted">{p.product_type ?? "—"}</td>
+                    <td title={varCapped ? "This product has more variants than the 50 that were synced — the Shopify admin shows the full count." : undefined}>{varCapped ? `${p.variant_count}+` : p.variant_count}</td>
+                    <td title="Explicit SEO title/description set on the product. When unset, Shopify falls back to the product title/description — the page still renders with defaults, but there's no intentional, machine-readable summary.">{p.seo_title && p.seo_description ? <span className="al-ok">complete</span> : <span className="al-gapmark">{p.seo_title || p.seo_description ? "partial" : "default"}</span>}</td>
+                    <td title={metaCapped ? "This product has more metafields than the 20 that were synced — the Shopify admin shows the full count." : undefined}>{metaCapped ? `${p.metafield_count}+` : p.metafield_count}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -77,12 +77,17 @@ function productJsonLd(p: CatalogProduct): string {
 // Copy-ready TEMPLATES for facts we won't invent. Placeholders are obvious.
 const TEMPLATE: Partial<Record<string, (p: CatalogProduct) => { label: string; value: string }>> = {
   reviews: () => ({
-    label: "Add review structured data (fill in your REAL counts — do not invent)",
+    // Duplicate-schema guard: reviews apps (Judge.me, Loox, Shopify Reviews…) often already
+    // inject AggregateRating client-side, which our raw-HTML crawl can't see — so tell the
+    // merchant to check before pasting a second rating block (duplicates conflict).
+    label: "Add review structured data (your REAL counts — check first: a reviews app may already emit AggregateRating; don't add a duplicate)",
     value: `"aggregateRating": {\n  "@type": "AggregateRating",\n  "ratingValue": "<YOUR_AVERAGE_RATING>",\n  "reviewCount": "<YOUR_REVIEW_COUNT>"\n}`,
   }),
   shipping: () => ({
     label: "Declare shipping terms in your Offer",
-    value: `"shippingDetails": {\n  "@type": "OfferShippingDetails",\n  "shippingRate": { "@type": "MonetaryAmount", "value": "<COST_OR_0>", "currency": "USD" },\n  "deliveryTime": { "@type": "ShippingDeliveryTime" }\n}`,
+    // <YOUR_CURRENCY> like every other placeholder — we don't know the store's currency,
+    // and hardcoding USD would assert wrong data for non-US merchants.
+    value: `"shippingDetails": {\n  "@type": "OfferShippingDetails",\n  "shippingRate": { "@type": "MonetaryAmount", "value": "<COST_OR_0>", "currency": "<YOUR_CURRENCY>" },\n  "deliveryTime": { "@type": "ShippingDeliveryTime" }\n}`,
   }),
   returns: () => ({
     label: "Declare your return policy in your Offer",

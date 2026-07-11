@@ -257,6 +257,16 @@ export class LiveClient implements ShopifyClient {
           const alreadyRegistered = msgs.some((m) => /already (been )?taken|already exists/i.test(m));
           if (node?.webhookSubscription?.id || alreadyRegistered) {
             registered.push(topic);
+            if (alreadyRegistered) {
+              // "Already taken" proves a subscription EXISTS — possibly created against a
+              // PREVIOUS appUrl. Repoint it if stale, else a reinstall after a domain change
+              // keeps delivering webhooks to the old endpoint while we report healthy.
+              try {
+                await this.reconcileWebhookUrl(shop, accessToken, topic, endpoint);
+              } catch (err) {
+                console.error(`[shopify] webhook ${topic} exists but callbackUrl reconcile failed: ${(err as Error).message}`);
+              }
+            }
             continue;
           }
           failure = msgs.join("; ") || "no subscription id returned";
@@ -267,6 +277,40 @@ export class LiveClient implements ShopifyClient {
       console.error(`[shopify] webhook register ${topic} failed: ${failure}`);
     }
     return registered;
+  }
+
+  /** Read back an existing subscription for `topic` and repoint its callbackUrl at the
+   *  current endpoint when it differs (HTTP endpoints only — the id/url travel as typed
+   *  GraphQL variables; the topic stays inline from the fixed allowlist). Best-effort:
+   *  the caller logs failures without un-registering the topic. */
+  private async reconcileWebhookUrl(shop: string, accessToken: string, topic: string, endpoint: string): Promise<void> {
+    const gql = async (query: string, variables: Record<string, unknown>) => {
+      const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as Record<string, unknown>;
+    };
+    const listQuery = `query subs { webhookSubscriptions(first: 5, topics: [TOPIC_PLACEHOLDER]) {
+      nodes { id endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } } }`;
+    const json = (await gql(listQuery.replace("TOPIC_PLACEHOLDER", topic), {})) as {
+      data?: { webhookSubscriptions?: { nodes?: Array<{ id?: string; endpoint?: { callbackUrl?: string } }> } };
+    };
+    const stale = (json.data?.webhookSubscriptions?.nodes ?? [])
+      .filter((n) => n.id && n.endpoint?.callbackUrl && n.endpoint.callbackUrl !== endpoint);
+    for (const n of stale) {
+      const upd = (await gql(
+        `mutation fix($id: ID!, $url: URL!) { webhookSubscriptionUpdate(id: $id,
+           webhookSubscription: { callbackUrl: $url }) { userErrors { message } } }`,
+        { id: n.id, url: endpoint },
+      )) as { data?: { webhookSubscriptionUpdate?: { userErrors?: Array<{ message?: string }> } } };
+      const errs = (upd.data?.webhookSubscriptionUpdate?.userErrors ?? []).map((e) => e.message).filter(Boolean);
+      if (errs.length) throw new Error(`webhookSubscriptionUpdate: ${errs.join("; ")}`);
+      console.log(`[shopify] repointed stale ${topic} webhook for ${shop} → ${endpoint}`);
+    }
   }
   async activateWebPixel(shop: string, accessToken: string, settings: string, existingId?: string): Promise<{ id: string }> {
     // Try UPDATE when we have a stored id, but the stored id can go stale (the pixel was

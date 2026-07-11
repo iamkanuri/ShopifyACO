@@ -40,7 +40,12 @@ export interface Proportion { successes: number; n: number; rate: number | null;
 
 export interface AppShopInfo { shop: string; status: string; plan: string | null; scopes: string[]; writeProducts: boolean; }
 export interface AppScheduleRow { id: number; kind: string; cadence: string; enabled: boolean; next_run_at: string; last_run_at: string | null; benchmark_name?: string | null; brand?: string | null; category?: string | null; }
-export interface AppAlertRow { id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string; }
+export interface AppAlertRow {
+  id: number; type: string; severity: string; metric: string | null; title: string; detail: string; status: string; created_at: string;
+  /** CI-backed comparison behind the alert; runModes carries provenance so a mock-run
+   *  alert (pipeline test output) can be badged and never read as a real measurement. */
+  comparison?: { runModes?: { current?: string | null; previous?: string | null } } & Record<string, unknown>;
+}
 export interface AppProductRow { product_gid: string; title: string; vendor: string | null; product_type: string | null; status: string | null; seo_title: string | null; seo_description: string | null; variant_count: number; metafield_count: number; nested_truncated?: boolean; }
 export interface AppRunRow { id: number; benchmark_id: number | null; tier: string; status: string; mode?: string; observation_count: number; cost_usd: string | number; prompt_count: number; started_at: string; }
 
@@ -160,14 +165,14 @@ export const DEMO = {
       expected_mechanism: "Health-intent answers weigh benefits the assistant can read. Making yours explicit + machine-readable MAY make you eligible for ‘healthiest soda’ answers — a mechanism to test, not a promised lift.",
     },
     {
-      id: 3, kind: "general_hygiene", signal: "indexable", intent: null, prompt_text: null, engine: null,
+      id: 3, kind: "general_hygiene", signal: "shipping", intent: null, prompt_text: null, engine: null,
       winning_competitor: null, ai_answer_snippet: null, citations: [],
-      merchant_gap: ["Several flavor pages have no Product structured data"],
+      merchant_gap: ["Shipping terms are not machine-readable (no OfferShippingDetails in the product schema)"],
       competitor_advantage: [],
       confidence_level: "directional", basis_n: 0,
-      limits: "General readiness item, not checked against a specific lost query. Best practice for machine readability.",
-      recommended_intervention: "Add Product JSON-LD to each flavor page (name, brand, offers, identifiers).",
-      expected_mechanism: "Structured product data is the most machine-readable form of your catalog; assistants preferentially draw from pages that expose it. Necessary, though not on its own sufficient.",
+      limits: "General readiness item, not checked against a specific lost query. Standard themes emit Product + Offer schema but NOT shipping terms — this fills a genuine gap, not a duplicate.",
+      recommended_intervention: "Add OfferShippingDetails (cost/speed) to your existing Offer schema so shipping terms are machine-readable.",
+      expected_mechanism: "Buyer-intent answers often compare shipping; assistants can only weigh terms they can read. Structuring yours MAY make you eligible for shipping-sensitive answers — a mechanism to test, not a promised lift.",
     },
   ],
 
@@ -179,13 +184,13 @@ export const DEMO = {
       status: "proposed", evidence: { mechanism: "Exposes a clean machine-readable summary assistants and search can quote." },
     },
     {
-      id: 12, kind: "copy_ready", target: "jsonld:Product", label: "Add Product structured data (built from your catalog)",
-      current_value: null, proposed_value: '<script type="application/ld+json">\n{\n  "@context": "https://schema.org",\n  "@type": "Product",\n  "name": "Olipop Vintage Cola",\n  "brand": { "@type": "Brand", "name": "Olipop" }\n}\n</script>',
-      rationale: "Add Product JSON-LD (name, brand, offers, identifiers) to the flavor page.",
-      status: "proposed", evidence: { mechanism: "Structured product data is the most machine-readable form of your catalog." },
+      id: 12, kind: "copy_ready", target: "guidance:shipping", label: "Declare shipping terms in your Offer",
+      current_value: null, proposed_value: '"shippingDetails": {\n  "@type": "OfferShippingDetails",\n  "shippingRate": { "@type": "MonetaryAmount", "value": "<COST_OR_0>", "currency": "<YOUR_CURRENCY>" },\n  "deliveryTime": { "@type": "ShippingDeliveryTime" }\n}',
+      rationale: "Extend your theme's existing Offer schema with shipping terms — a field standard themes don't emit by default.",
+      status: "proposed", evidence: { mechanism: "Assistants can only weigh shipping terms they can read; structuring yours makes you eligible for shipping-sensitive answers." },
     },
     {
-      id: 13, kind: "copy_ready", target: "guidance:reviews", label: "Add review structured data (fill in your REAL counts)",
+      id: 13, kind: "copy_ready", target: "guidance:reviews", label: "Add review structured data (your REAL counts — check first: a reviews app may already emit AggregateRating)",
       current_value: null, proposed_value: '"aggregateRating": {\n  "@type": "AggregateRating",\n  "ratingValue": "<YOUR_AVERAGE_RATING>",\n  "reviewCount": "<YOUR_REVIEW_COUNT>"\n}',
       rationale: "Publish AggregateRating reflecting your real, verifiable review counts — the signal Poppi wins on in ChatGPT.",
       status: "applied", evidence: { mechanism: "Assistants cite ratings/volume as a decision factor." },

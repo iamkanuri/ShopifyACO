@@ -1,7 +1,7 @@
 import { registerHandler } from "../queue/handlers.js";
 import { enqueue } from "../queue/jobs.js";
 import { executeBenchmark } from "../benchmarks/execute.js";
-import { aggregateRun, getBenchmark } from "../db/benchmarks.js";
+import { aggregateRun, getBenchmark, getRun } from "../db/benchmarks.js";
 import { runVerification } from "../experiments/execute.js";
 import { evaluateAlerts, nextRunAt, type AlertDraft, type Cadence } from "./alerts.js";
 import { advanceSchedule, claimDueSchedules, createAlert, getSchedule, recordNotification } from "../db/monitoring.js";
@@ -60,6 +60,11 @@ export async function monitorRun(scheduleId: number, opts: { mock?: boolean } = 
     if (!gate.allowed) return { scheduleId, runId: null, alerts: 0, skipped: "not_entitled" };
   }
 
+  // Provenance for every alert this run produces: an alert raised from a MOCK run is
+  // pipeline-test output, not a measurement — it must carry that fact so the UI can
+  // badge it (mock data may never masquerade as the merchant's reality).
+  const currentMode: "mock" | "live" = opts.mock ? "mock" : "live";
+
   if (schedule.kind === "verification") {
     if (schedule.experiment_id == null) return { scheduleId, runId: null, alerts: 0, skipped: "no experiment" };
     const result = await runVerification(shop, schedule.experiment_id, { mock: opts.mock });
@@ -69,7 +74,7 @@ export async function monitorRun(scheduleId: number, opts: { mock?: boolean } = 
         type: "regression", severity: "critical", metric: result.primary.metric,
         title: `A verified fix appears to have regressed (${result.primary.metric})`,
         detail: `Re-verifying your intervention now classifies ${result.primary.metric} as regressed vs the original baseline (CI of the change excludes 0). Re-investigate; this is a measured change, not a proven cause.`,
-        comparison: result.primary,
+        comparison: { ...result.primary, runModes: { current: currentMode } },
         scheduleId, runId: result.verificationRunId, prevRunId: result.baselineRunId,
       });
     }
@@ -85,8 +90,21 @@ export async function monitorRun(scheduleId: number, opts: { mock?: boolean } = 
   const brand = bench.config.brand.name;
 
   const run = await executeBenchmark(schedule.benchmark_id, { mock: opts.mock });
-  const prevMetrics = schedule.last_run_id != null ? (await aggregateRun(schedule.last_run_id, brand)).metrics : null;
-  const drafts = evaluateAlerts(run.metrics, prevMetrics).map((d) => ({ ...d, scheduleId, runId: run.runId, prevRunId: schedule.last_run_id }));
+  // Only compare runs of the SAME mode: diffing a mock run against a live one (or vice
+  // versa) measures the difference between fake and real numbers — a guaranteed-spurious
+  // "change". Cross-mode → evaluate threshold-style alerts on the current run only.
+  let prevMetrics = null;
+  let prevMode: string | null = null;
+  if (schedule.last_run_id != null) {
+    const prevRun = await getRun(schedule.last_run_id);
+    prevMode = (prevRun as { mode?: string } | null)?.mode ?? "live"; // pre-0020 rows default live
+    if (prevMode === currentMode) prevMetrics = (await aggregateRun(schedule.last_run_id, brand)).metrics;
+  }
+  const drafts = evaluateAlerts(run.metrics, prevMetrics).map((d) => ({
+    ...d,
+    comparison: { ...d.comparison, runModes: { current: currentMode, previous: prevMetrics ? prevMode : null } },
+    scheduleId, runId: run.runId, prevRunId: prevMetrics ? schedule.last_run_id : null,
+  }));
   const alerts = await dispatch(shop, drafts);
 
   await advanceSchedule(scheduleId, run.runId, nextRunAt(cadence));
