@@ -95,7 +95,7 @@ function rasterize(svg: string): Buffer {
 
 // ---- report card (doctrine: category-framed, never loser-headlined) --------
 
-function reportInner(p: ReportPreview, opts: { sample?: boolean } = {}): string {
+function reportInner(p: ReportPreview): string {
   const brand = p.brand || "This store";
   const cat = p.category || "its category";
   const title = fittedLines(brand, 1040, 64, 40);
@@ -106,11 +106,6 @@ function reportInner(p: ReportPreview, opts: { sample?: boolean } = {}): string 
   const nLine = `measured across ChatGPT, Gemini & Perplexity${p.basedOnResponses > 0 ? ` — ${p.basedOnResponses} AI answers` : ""}`;
   let y = 250;
   const parts: string[] = [];
-  if (opts.sample) {
-    // Honest sample labeling — the demo brand is fictional, and the card says so.
-    parts.push(`<rect x="820" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
-    parts.push(textEl(970, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
-  }
   for (const l of title.lines) {
     parts.push(textEl(80, y, title.size, INK, xml(l), { weight: 700 }));
     y += title.size + 12;
@@ -133,29 +128,55 @@ export function buildReportCardSvg(p: ReportPreview, brandName: string): string 
   return frame(GREEN, brandName, "AI VISIBILITY REPORT", reportInner(p));
 }
 
-/** The /demo share card: the full rich treatment (it exists to sell), labeled a sample. */
-export function buildDemoCardSvg(p: ReportPreview, brandName: string): string {
-  const inner = p.headline
-    ? (() => {
-        // Lead with the report's own headline (the substitution story) — fitted, 2 lines max.
-        const brand = p.brand || "Sample brand";
-        const head = fittedLines(p.headline, 1040, 40, 24);
-        const parts: string[] = [];
-        parts.push(`<rect x="820" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
-        parts.push(textEl(970, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
-        parts.push(textEl(80, 240, 44, INK, xml(brand), { weight: 700 }));
-        parts.push(textEl(80, 288, 26, MUTED, xml(`Sample AI Visibility Report${p.category ? ` · ${p.category}` : ""}`)));
-        let y = 380;
-        for (const l of head.lines) {
-          parts.push(textEl(80, y, head.size, INK, xml(l), { weight: 700 }));
-          y += head.size + 14;
-        }
-        parts.push(textEl(80, 520, 26, GREEN, xml("Explore the full sample report →"), { weight: 700 }));
-        parts.push(engineFooter());
-        return parts.join("\n  ");
-      })()
-    : reportInner(p, { sample: true });
-  return frame(GOLD, brandName, "SAMPLE REPORT", inner);
+/** Everything the demo card renders — extracted from the sample report's own
+ *  substitution frame so the card and the page tell the SAME story. */
+export interface DemoCardModel {
+  brand: string;
+  category: string;
+  /** The substitution-frame lead the demo page renders (NOT the retired mention-gap line). */
+  headline: string;
+  /** Named rivals with real recommendation counts, leaderboard-style. */
+  rivals: Array<{ name: string; recCount: number }>;
+  merchantCount: number | null;
+  total: number | null;
+}
+
+/** The /demo share card — the RICHEST card of the family (fictional data built to sell;
+ *  the SAMPLE badge is what licenses full disclosure). Index-card layout: substitution
+ *  headline + named rivals with counts + the sample brand's own count against them. */
+export function buildDemoCardSvg(m: DemoCardModel, brandName: string): string {
+  const RED = "#d07a7a";
+  const parts: string[] = [];
+  parts.push(`<rect x="820" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
+  parts.push(textEl(970, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
+
+  parts.push(textEl(80, 208, 44, INK, xml(`${m.brand} — ${m.category}`), { weight: 700 }));
+
+  // The substitution verdict IS the pitch — same lead as the page.
+  const head = fittedLines(m.headline, 1040, 30, 20);
+  let y = 262;
+  for (const l of head.lines) {
+    parts.push(textEl(80, y, head.size, GOLD, xml(l), { weight: 700 }));
+    y += head.size + 10;
+  }
+
+  // Leaderboard rows: rivals + the sample brand, sorted by count, its row marked in red.
+  const rows: Array<{ name: string; count: number | null; own: boolean }> = [
+    ...m.rivals.map((r) => ({ name: r.name, count: r.recCount as number | null, own: false })),
+    ...(m.merchantCount != null ? [{ name: m.brand, count: m.merchantCount as number | null, own: true }] : []),
+  ].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 4);
+  let ry = Math.max(y + 30, 356);
+  for (const r of rows) {
+    const color = r.own ? RED : INK;
+    parts.push(textEl(80, ry, 30, color, xml(`${r.own ? "→ " : ""}${r.name}`), { weight: r.own ? 700 : 400 }));
+    if (r.count != null) {
+      parts.push(textEl(1120, ry, 30, r.own ? RED : MUTED, xml(m.total ? `${r.count} of ${m.total}` : String(r.count)), { anchor: "end" }));
+    }
+    ry += 44;
+  }
+
+  parts.push(engineFooter(`${m.total ? `· n=${m.total} answers ` : ""}· fictional sample data`));
+  return frame(GOLD, brandName, "SAMPLE REPORT", parts.join("\n  "));
 }
 
 // ---- index cards (dominance-gated — same gate as the page) -----------------

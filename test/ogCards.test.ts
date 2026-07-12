@@ -79,11 +79,23 @@ test("report card is category-framed and NEVER headlines the merchant's score or
   assert.ok(!svg.includes("gap is demand"), "the losing gap line stays on the page, not the poster");
 });
 
-test("demo card is rich but honestly labeled a fictional sample", () => {
-  const svg = buildDemoCardSvg(PREVIEW, "AisleLens");
-  assert.ok(svg.includes("SAMPLE"));
-  assert.ok(svg.includes("FICTIONAL"));
-  assert.ok(svg.includes("When shoppers ask AI, competitors get named instead."));
+test("demo card carries the FULL substitution story — headline, named rivals, counts — and the sample label", () => {
+  const svg = buildDemoCardSvg({
+    brand: "Sennen", category: "skincare",
+    headline: "AI recommends Sennen in just 2 of 36 answers about skincare — you're barely a candidate.",
+    rivals: [{ name: "The Ordinary", recCount: 14 }, { name: "CeraVe", recCount: 9 }, { name: "La Roche-Posay", recCount: 7 }],
+    merchantCount: 2, total: 36,
+  }, "AisleLens");
+  // The substitution verdict — the same lead the demo page renders, not the retired mention-gap line.
+  assert.ok(svg.includes("barely a candidate"));
+  assert.ok(!svg.includes("mention Sennen more than"), "retired mention-gap framing must not appear");
+  // Named rivals with counts, leaderboard-style, with the sample brand's own count against them.
+  assert.ok(svg.includes("The Ordinary") && svg.includes("14 of 36"));
+  assert.ok(svg.includes("CeraVe") && svg.includes("9 of 36"));
+  assert.ok(svg.includes("→ Sennen") && svg.includes("2 of 36"));
+  // Honesty labels stay.
+  assert.ok(svg.includes("SAMPLE") && svg.includes("FICTIONAL"));
+  assert.ok(svg.includes("n=36 answers"));
 });
 
 test("cards rasterize to a real 1200×630 PNG", () => {

@@ -85,7 +85,7 @@ import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
-import { buildDefaultCardSvg, buildDemoCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, renderCardPng, renderOgPng } from "./ogCard.js";
+import { buildDefaultCardSvg, buildDemoCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, buildReportCardSvg, renderCardPng, renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 
@@ -739,19 +739,48 @@ function ogFromCache(name: string, key: string, build: () => string): Buffer {
 const sendOg = (res: Response, png: Buffer, maxAge: number) =>
   res.type("png").setHeader("Cache-Control", `public, max-age=${maxAge}`).send(png);
 
-/** The demo sample's preview (fictional brand) — read once per process from the built fixture. */
-let demoPreviewCache: ReturnType<typeof reportPreview> | undefined;
-function demoPreview(): ReturnType<typeof reportPreview> {
-  if (demoPreviewCache !== undefined) return demoPreviewCache;
-  demoPreviewCache = null;
+/** The demo sample (fictional brand) — read once per process from the built fixture.
+ *  `card` carries the SAME substitution frame the demo page leads with (headline + named
+ *  rivals + counts), so the share card and the page tell one story — never the retired
+ *  mention-gap line. */
+interface DemoShare { preview: NonNullable<ReturnType<typeof reportPreview>>; card: import("./ogCard.js").DemoCardModel | null; frameHeadline: string | null }
+let demoShareCache: DemoShare | null | undefined;
+function demoShare(): DemoShare | null {
+  if (demoShareCache !== undefined) return demoShareCache;
+  demoShareCache = null;
   for (const p of ["viewer/dist/sample-results.json", "viewer/public/sample-results.json"]) {
     const abs = resolve(p);
-    if (existsSync(abs)) {
-      try { demoPreviewCache = reportPreview(JSON.parse(readFileSync(abs, "utf8"))); } catch { demoPreviewCache = null; }
-      break;
+    if (!existsSync(abs)) continue;
+    try {
+      const raw = JSON.parse(readFileSync(abs, "utf8")) as {
+        analysis?: {
+          substitutionFrame?: { headline?: string; namedRivals?: Array<{ name?: string; recCount?: number }> };
+          mentionGap?: { recommendation?: { count?: number; total?: number } };
+        };
+      };
+      const preview = reportPreview(raw);
+      if (!preview) break;
+      const frame = raw.analysis?.substitutionFrame;
+      const rec = raw.analysis?.mentionGap?.recommendation;
+      const card: import("./ogCard.js").DemoCardModel | null = frame?.headline
+        ? {
+            brand: preview.brand,
+            category: preview.category,
+            headline: frame.headline,
+            rivals: (frame.namedRivals ?? [])
+              .filter((r): r is { name: string; recCount: number } => typeof r.name === "string" && typeof r.recCount === "number")
+              .map((r) => ({ name: r.name, recCount: r.recCount })),
+            merchantCount: typeof rec?.count === "number" ? rec.count : null,
+            total: typeof rec?.total === "number" ? rec.total : preview.basedOnResponses || null,
+          }
+        : null;
+      demoShareCache = { preview, card, frameHeadline: frame?.headline ?? null };
+    } catch {
+      demoShareCache = null;
     }
+    break;
   }
-  return demoPreviewCache;
+  return demoShareCache;
 }
 
 app.get("/og/default.png", (_req, res) => {
@@ -759,9 +788,12 @@ app.get("/og/default.png", (_req, res) => {
 });
 
 app.get("/og/demo.png", (_req, res) => {
-  const p = demoPreview();
-  if (!p) return res.status(404).end();
-  sendOg(res, ogFromCache("demo", "v1", () => buildDemoCardSvg(p, ENV.publicBrandName)), 86_400);
+  const share = demoShare();
+  // The rich card needs the substitution frame; without it, fall back to the restrained
+  // report card rather than resurrect retired framing.
+  if (!share) return res.status(404).end();
+  sendOg(res, ogFromCache("demo", "v2", () =>
+    share.card ? buildDemoCardSvg(share.card, ENV.publicBrandName) : buildReportCardSvg(share.preview, ENV.publicBrandName)), 86_400);
 });
 
 app.get("/og/index.png", wrap(async (_req, res) => {
@@ -1139,13 +1171,16 @@ async function serveIndex(req: Request, res: Response) {
   }
 
   // The demo (fictional sample brand) gets the full rich treatment — it exists to sell —
-  // labeled a sample in both the text and the card.
+  // labeled a sample in both the text and the card. The description carries the SAME
+  // substitution frame the page leads with (never the retired mention-gap line).
   if (req.path === "/demo" || req.path === "/demo/") {
-    const p = demoPreview();
-    if (p && p.brand) {
+    const share = demoShare();
+    const p = share?.preview;
+    if (share && p && p.brand) {
       const base = baseUrl(req);
       const t = escapeHtml(`Sample AI Visibility Report: ${p.brand}${p.category ? ` (${p.category})` : ""} — ${ENV.publicBrandName}`);
-      const d = escapeHtml(`${p.headline ?? p.gapLine} A complete sample report on a fictional brand — see exactly what a scan finds.`);
+      const lead = share.frameHeadline ?? `Which brands AI assistants recommend in ${p.category || "this category"}.`;
+      const d = escapeHtml(`${lead} A complete sample report on a fictional brand — see exactly what a scan finds.`);
       const img = escapeHtml(`${base}/og/demo.png`);
       html = html
         .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
