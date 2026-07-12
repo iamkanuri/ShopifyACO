@@ -3,60 +3,249 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import type { ReportPreview } from "./reportPreview.js";
+import type { IndexOgModel } from "./indexSsr.js";
 
-// Dynamic 1200×630 OG/social share card for a report. Hand-built SVG → PNG via resvg, with a
-// BUNDLED Inter font (resvg renders no text without a font on a slim container). No PII — only
-// brand, category, score, and the mention→recommend gap. The PNG is deterministic per report,
-// so the caller caches it to the volume (rasterize once; social scrapers re-fetch).
+// ===========================================================================
+// Dynamic 1200×630 OG/social share cards (hand-built SVG → PNG via resvg, with a
+// BUNDLED Inter font — a slim container renders no text without one). One shared
+// visual frame, several card bodies:
+//   • report   — a merchant's report. DOCTRINE: public artifacts are winner- or
+//     field-headlined, never loser-headlined. The card names the brand + category
+//     and frames the finding at CATEGORY level; the merchant's score/losing rate
+//     lives on the page, NOT on the poster that travels through feeds.
+//   • index    — a category leaderboard. Obeys the SAME dominance gate as the page
+//     (rankView): a crown renders ONLY when the page crowns; otherwise the card
+//     says "no single favorite / no runaway leader". An image that crowns someone
+//     the page doesn't would be a lie that travels further than the page.
+//   • demo     — the sample report (fictional brand) — rich, and labeled a sample.
+//   • default  — brand card for the landing/utility pages (replaces og-image.svg,
+//     which LinkedIn/Facebook/Slack refuse to render — SVG isn't a valid og:image).
+// No PII anywhere: all content derives from public brands and public AI answers.
+// ===========================================================================
 
-// The bundled Inter font path, resolved relative to THIS file (works regardless of cwd). It
-// ships in the repo (assets/fonts), so it's in the deployed image. fontFiles + loadSystemFonts:
-// false → resvg uses ONLY this font (no reliance on system fonts on a slim container).
+// The bundled Inter font path, resolved relative to THIS file (works regardless of cwd).
 const FONT_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "assets", "fonts", "Inter.ttf");
 // Fail fast at boot if the font is missing (otherwise cards would render blank text).
 readFileSync(FONT_PATH);
 
+const W = 1200;
+const H = 630;
+const INK = "#ECEAE3";
+const MUTED = "#8a8882";
+const GOLD = "#cba35c";
+const GREEN = "#6bbf9a";
+const BG = "#14161f";
+
 const xml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
-function scoreColor(score: number | null): string {
-  if (score == null) return "#8a8882";
-  if (score >= 70) return "#6bbf9a"; // good (green)
-  if (score >= 40) return "#cba35c"; // moderate (amber)
-  return "#d07a7a"; // weak (red)
+// resvg doesn't wrap <text>: fit a single line by shrinking, and split long text onto
+// two lines when even the minimum size would overflow. ~0.53em average glyph width.
+const fitSize = (text: string, maxPx: number, max: number, min: number) =>
+  Math.max(min, Math.min(max, Math.floor(maxPx / (Math.max(1, text.length) * 0.53))));
+
+function splitTwo(text: string): [string, string] {
+  const words = text.split(" ");
+  let l1 = "";
+  for (const w of words) {
+    if (l1 && (l1 + " " + w).length > Math.ceil(text.length / 2)) break;
+    l1 = l1 ? `${l1} ${w}` : w;
+  }
+  return [l1, text.slice(l1.length).trim()];
 }
 
-/** Build the SVG card for a report preview. brandName = the AisleLens public brand. */
-export function buildOgSvg(p: ReportPreview, brandName: string): string {
-  const score = p.score;
-  const title = p.brand ? `${p.brand}${p.category ? ` · ${p.category}` : ""}` : (p.category || "Your store");
-  const gapLine = p.gapLine;
-  // resvg doesn't wrap <text>; shrink the font so the longer edge-case sentences (e.g. the
-  // "invisible" line) still fit the ~1120px content width instead of running off the card.
-  const gapFontSize = Math.max(20, Math.min(30, Math.floor(1120 / (gapLine.length * 0.53))));
-  const c = scoreColor(score);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#14161f"/>
-  <rect x="0" y="0" width="1200" height="8" fill="${c}"/>
-  <text x="80" y="96" font-family="Inter" font-size="30" font-weight="700" fill="#ECEAE3" letter-spacing="0.5">${xml(brandName)}</text>
-  <text x="80" y="132" font-family="Inter" font-size="22" fill="#8a8882">AI Shopping Visibility</text>
+/** Fit text into maxPx wide; returns 1–2 lines + the font size to render them at. */
+function fittedLines(text: string, maxPx: number, max: number, min: number): { lines: string[]; size: number } {
+  if (text.length * 0.53 * min <= maxPx) {
+    return { lines: [text], size: fitSize(text, maxPx, max, min) };
+  }
+  const [l1, l2] = splitTwo(text);
+  const longest = Math.max(l1.length, l2.length);
+  let size = fitSize("x".repeat(longest), maxPx, max, min);
+  // Even two lines can overflow at min size for very long text → hard-truncate line 2.
+  const capChars = Math.floor(maxPx / (size * 0.53));
+  const lines = [l1, l2.length > capChars ? `${l2.slice(0, capChars - 1).trimEnd()}…` : l2];
+  return { lines, size };
+}
 
-  <text x="80" y="250" font-family="Inter" font-size="46" font-weight="700" fill="#ECEAE3">${xml(title)}</text>
+const textEl = (x: number, y: number, size: number, fill: string, content: string, opts: { weight?: number; spacing?: string; anchor?: string } = {}) =>
+  `<text x="${x}" y="${y}" font-family="Inter" font-size="${size}"${opts.weight ? ` font-weight="${opts.weight}"` : ""}${opts.spacing ? ` letter-spacing="${opts.spacing}"` : ""}${opts.anchor ? ` text-anchor="${opts.anchor}"` : ""} fill="${fill}">${content}</text>`;
 
-  <text x="80" y="430" font-family="Inter" font-size="180" font-weight="700" fill="${c}">${score == null ? "—" : score}</text>
-  <text x="${80 + (score == null ? 70 : String(score).length * 108)}" y="430" font-family="Inter" font-size="56" fill="#8a8882">/ 100</text>
-  <text x="84" y="478" font-family="Inter" font-size="26" font-weight="700" fill="#8a8882" letter-spacing="1">AI VISIBILITY SCORE</text>
-
-  <text x="80" y="560" font-family="Inter" font-size="${gapFontSize}" fill="#ECEAE3">${xml(gapLine)}</text>
+/** Shared card chrome: background, accent bar, brand header, kicker label. */
+function frame(accent: string, brandName: string, headerLabel: string, inner: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${BG}"/>
+  <rect x="0" y="0" width="${W}" height="8" fill="${accent}"/>
+  ${textEl(80, 92, 30, INK, xml(brandName), { weight: 700, spacing: "0.5" })}
+  ${textEl(80, 126, 20, MUTED, xml(headerLabel), { weight: 700, spacing: "2" })}
+  ${inner}
 </svg>`;
 }
 
-/** Rasterize the card to a 1200×630 PNG buffer. */
-export function renderOgPng(p: ReportPreview, brandName: string): Buffer {
-  const svg = buildOgSvg(p, brandName);
+const engineFooter = (extra?: string) =>
+  textEl(80, 578, 22, MUTED, xml(`ChatGPT · Gemini · Perplexity${extra ? ` ${extra}` : ""}`));
+
+function rasterize(svg: string): Buffer {
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: 1200 },
+    fitTo: { mode: "width", value: W },
     font: { fontFiles: [FONT_PATH], defaultFontFamily: "Inter", loadSystemFonts: false },
   });
   return resvg.render().asPng();
+}
+
+// ---- report card (doctrine: category-framed, never loser-headlined) --------
+
+function reportInner(p: ReportPreview, opts: { sample?: boolean } = {}): string {
+  const brand = p.brand || "This store";
+  const cat = p.category || "its category";
+  const title = fittedLines(brand, 1040, 64, 40);
+  const frameLine = fittedLines(
+    `Which brands AI assistants recommend in ${cat}`,
+    1040, 34, 22,
+  );
+  const nLine = `measured across ChatGPT, Gemini & Perplexity${p.basedOnResponses > 0 ? ` — ${p.basedOnResponses} AI answers` : ""}`;
+  let y = 250;
+  const parts: string[] = [];
+  if (opts.sample) {
+    // Honest sample labeling — the demo brand is fictional, and the card says so.
+    parts.push(`<rect x="820" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
+    parts.push(textEl(970, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
+  }
+  for (const l of title.lines) {
+    parts.push(textEl(80, y, title.size, INK, xml(l), { weight: 700 }));
+    y += title.size + 12;
+  }
+  parts.push(textEl(80, y + 8, 28, MUTED, xml(`AI Visibility Report · ${cat}`)));
+  y += 100;
+  for (const l of frameLine.lines) {
+    parts.push(textEl(80, y, frameLine.size, INK, xml(l)));
+    y += frameLine.size + 12;
+  }
+  parts.push(textEl(80, y + 4, 26, MUTED, xml(nLine)));
+  parts.push(textEl(80, 520, 26, GREEN, xml("See the full breakdown →"), { weight: 700 }));
+  parts.push(engineFooter());
+  return parts.join("\n  ");
+}
+
+/** The /report/:id share card. NO score, NO losing rate — the poster frames the
+ *  category question; the merchant's numbers live on the page they lead to. */
+export function buildReportCardSvg(p: ReportPreview, brandName: string): string {
+  return frame(GREEN, brandName, "AI VISIBILITY REPORT", reportInner(p));
+}
+
+/** The /demo share card: the full rich treatment (it exists to sell), labeled a sample. */
+export function buildDemoCardSvg(p: ReportPreview, brandName: string): string {
+  const inner = p.headline
+    ? (() => {
+        // Lead with the report's own headline (the substitution story) — fitted, 2 lines max.
+        const brand = p.brand || "Sample brand";
+        const head = fittedLines(p.headline, 1040, 40, 24);
+        const parts: string[] = [];
+        parts.push(`<rect x="820" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
+        parts.push(textEl(970, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
+        parts.push(textEl(80, 240, 44, INK, xml(brand), { weight: 700 }));
+        parts.push(textEl(80, 288, 26, MUTED, xml(`Sample AI Visibility Report${p.category ? ` · ${p.category}` : ""}`)));
+        let y = 380;
+        for (const l of head.lines) {
+          parts.push(textEl(80, y, head.size, INK, xml(l), { weight: 700 }));
+          y += head.size + 14;
+        }
+        parts.push(textEl(80, 520, 26, GREEN, xml("Explore the full sample report →"), { weight: 700 }));
+        parts.push(engineFooter());
+        return parts.join("\n  ");
+      })()
+    : reportInner(p, { sample: true });
+  return frame(GOLD, brandName, "SAMPLE REPORT", inner);
+}
+
+// ---- index cards (dominance-gated — same gate as the page) -----------------
+
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** The /index/:slug share card. `model` comes from indexOgModel(), which runs the SAME
+ *  rankView dominance gate as the SSR page — crown here ⇔ crown on the page. */
+export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): string {
+  const parts: string[] = [];
+  const label = fittedLines(model.label, 1040, 54, 34);
+  let y = 210;
+  for (const l of label.lines) {
+    parts.push(textEl(80, y, label.size, INK, xml(l), { weight: 700 }));
+    y += label.size + 10;
+  }
+  // Honesty-gated headline: gold + ★ ONLY when the dominance gate passed.
+  const head = fittedLines(model.headline, 1040, 30, 20);
+  y += 24;
+  for (const [i, l] of head.lines.entries()) {
+    parts.push(textEl(80, y, head.size, model.gated ? GOLD : INK, xml(i === 0 && model.gated ? `★ ${l}` : l), { weight: 700 }));
+    y += head.size + 10;
+  }
+
+  // Top rows with raw counts so closeness is self-evident (tie-aware ranks).
+  const rows = model.rows.slice(0, 4);
+  let ry = Math.max(y + 34, 386);
+  for (const [i, r] of rows.entries()) {
+    const isCrown = model.gated && i === 0;
+    const countLabel = r.count != null && model.n ? `${r.count} of ${model.n}` : `${Math.round(r.recommendation * 100)}%`;
+    parts.push(textEl(80, ry, 30, isCrown ? GOLD : INK, xml(`${r.rank}. ${r.brand}${isCrown ? "  ★" : ""}`), { weight: isCrown ? 700 : 400 }));
+    parts.push(textEl(1120, ry, 30, isCrown ? GOLD : MUTED, xml(countLabel), { anchor: "end" }));
+    ry += 44;
+  }
+
+  const metaBits = [
+    model.updatedAt ? `· scanned ${fmtDate(model.updatedAt)}` : "",
+    `· ${model.brandsRanked} brands ranked`,
+    model.n ? `· n=${model.n} answers` : "",
+  ].filter(Boolean).join(" ");
+  parts.push(engineFooter(metaBits));
+  return frame(model.gated ? GOLD : GREEN, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
+}
+
+/** The /index (category list) share card. */
+export function buildIndexListCardSvg(categories: Array<{ label: string; brands: number }>, brandName: string): string {
+  const parts: string[] = [];
+  parts.push(textEl(80, 230, 56, INK, xml("The AI Visibility Index"), { weight: 700 }));
+  const sub = fittedLines("Which brands ChatGPT, Gemini & Perplexity actually recommend when shoppers ask what to buy", 1040, 28, 20);
+  let y = 286;
+  for (const l of sub.lines) {
+    parts.push(textEl(80, y, sub.size, MUTED, xml(l)));
+    y += sub.size + 10;
+  }
+  let ry = Math.max(y + 30, 370);
+  for (const c of categories.slice(0, 4)) {
+    parts.push(textEl(80, ry, 30, INK, xml(c.label), { weight: 700 }));
+    parts.push(textEl(1120, ry, 26, MUTED, xml(`${c.brands} brands ranked`), { anchor: "end" }));
+    ry += 46;
+  }
+  if (categories.length > 4) parts.push(textEl(80, ry, 24, MUTED, xml(`+ ${categories.length - 4} more categories`)));
+  parts.push(engineFooter("· measured by scan, not vibes"));
+  return frame(GREEN, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
+}
+
+// ---- default brand card (landing + utility pages) ---------------------------
+
+export function buildDefaultCardSvg(brandName: string, tagline: string): string {
+  const parts: string[] = [];
+  parts.push(textEl(80, 280, 72, INK, xml(brandName), { weight: 700 }));
+  parts.push(textEl(80, 336, 30, GREEN, xml("Does AI recommend your store — or your competitors?"), { weight: 700 }));
+  const tag = fittedLines(tagline, 1040, 26, 19);
+  let y = 410;
+  for (const l of tag.lines) {
+    parts.push(textEl(80, y, tag.size, MUTED, xml(l)));
+    y += tag.size + 10;
+  }
+  parts.push(engineFooter());
+  return frame(GREEN, brandName, "AI SHOPPING VISIBILITY", parts.join("\n  "));
+}
+
+// ---- rasterization -----------------------------------------------------------
+
+/** Rasterize any card SVG to a 1200×630 PNG buffer. */
+export function renderCardPng(svg: string): Buffer {
+  return rasterize(svg);
+}
+
+/** The /report/:id card (kept as the entry point the report route uses). */
+export function renderOgPng(p: ReportPreview, brandName: string): Buffer {
+  return rasterize(buildReportCardSvg(p, brandName));
 }

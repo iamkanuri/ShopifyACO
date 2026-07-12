@@ -81,11 +81,11 @@ import {
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
-import { indexSsrFor } from "./indexSsr.js";
+import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
-import { renderOgPng } from "./ogCard.js";
+import { buildDefaultCardSvg, buildDemoCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, renderCardPng, renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 
@@ -723,6 +723,65 @@ app.get("/report/:runId/og.png", wrap(async (req, res) => {
   res.type("png").setHeader("Cache-Control", "public, max-age=86400, immutable").send(png);
 }));
 
+// --- OG share cards for the rest of the shareable pages ----------------------
+// PNG only: LinkedIn/Facebook/Slack refuse SVG og:images (that's how every preview
+// rendered naked). Rendered server-side via resvg — no headless browser. Small
+// in-memory cache keyed by a content discriminator: index cards change only when
+// the category index is rebuilt; demo/default change only per deploy.
+const ogMemCache = new Map<string, { key: string; png: Buffer }>();
+function ogFromCache(name: string, key: string, build: () => string): Buffer {
+  const hit = ogMemCache.get(name);
+  if (hit && hit.key === key) return hit.png;
+  const png = renderCardPng(build());
+  ogMemCache.set(name, { key, png });
+  return png;
+}
+const sendOg = (res: Response, png: Buffer, maxAge: number) =>
+  res.type("png").setHeader("Cache-Control", `public, max-age=${maxAge}`).send(png);
+
+/** The demo sample's preview (fictional brand) — read once per process from the built fixture. */
+let demoPreviewCache: ReturnType<typeof reportPreview> | undefined;
+function demoPreview(): ReturnType<typeof reportPreview> {
+  if (demoPreviewCache !== undefined) return demoPreviewCache;
+  demoPreviewCache = null;
+  for (const p of ["viewer/dist/sample-results.json", "viewer/public/sample-results.json"]) {
+    const abs = resolve(p);
+    if (existsSync(abs)) {
+      try { demoPreviewCache = reportPreview(JSON.parse(readFileSync(abs, "utf8"))); } catch { demoPreviewCache = null; }
+      break;
+    }
+  }
+  return demoPreviewCache;
+}
+
+app.get("/og/default.png", (_req, res) => {
+  sendOg(res, ogFromCache("default", "v1", () => buildDefaultCardSvg(ENV.publicBrandName, TAGLINE)), 86_400);
+});
+
+app.get("/og/demo.png", (_req, res) => {
+  const p = demoPreview();
+  if (!p) return res.status(404).end();
+  sendOg(res, ogFromCache("demo", "v1", () => buildDemoCardSvg(p, ENV.publicBrandName)), 86_400);
+});
+
+app.get("/og/index.png", wrap(async (_req, res) => {
+  const rows = await listCategoryIndexes();
+  if (!rows.length) return res.status(404).end();
+  const cats = rows.map((r) => ({ label: r.label, brands: r.entries?.length ?? 0 }));
+  const key = JSON.stringify(cats);
+  sendOg(res, ogFromCache("index", key, () => buildIndexListCardSvg(cats, ENV.publicBrandName)), 3_600);
+}));
+
+// The per-category card — the distribution artifact itself. Content passes through the
+// SAME dominance gate as the page (indexOgModel → rankView), so the image can never
+// crown a brand the page calls contested.
+app.get("/og/index/:slug([a-z0-9-]+).png", wrap(async (req, res) => {
+  const model = await loadIndexOgModel(String(req.params.slug));
+  if (!model) return res.status(404).end();
+  const key = `${model.updatedAt ?? ""}|${model.brandsRanked}|${model.headline}`;
+  sendOg(res, ogFromCache(`index:${model.slug}`, key, () => buildIndexSlugCardSvg(model, ENV.publicBrandName)), 3_600);
+}));
+
 app.get("/api/runs/:runId/report.md", wrap(async (req, res) => {
   if (!isValidRunId(req.params.runId)) return res.status(404).send("Report not ready.");
   // The downloadable report.md carries the full write-up incl. the executed fixes — it's part
@@ -1051,14 +1110,19 @@ async function serveIndex(req: Request, res: Response) {
         const t = escapeHtml(ssr.title);
         const d = escapeHtml(ssr.description);
         const u = escapeHtml(ssr.canonical);
+        // The dynamic leaderboard card — the preview IS the artifact traveling. Same
+        // dominance gate as the page (see /og/index/:slug.png), so it can't out-claim it.
+        const img = escapeHtml(`${baseUrl(req)}/og/index${m ? `/${m[1]}` : ""}.png`);
         html = html
           .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
           .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
           .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
           .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
           .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`)
           .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
           .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`)
           .replace("</head>", `<link rel="canonical" href="${u}" />\n    ${ssr.jsonLd}\n  </head>`)
           .replace(/<div id="root">\s*<\/div>/, `<div id="root">${ssr.bodyHtml}</div>`);
       }
@@ -1067,18 +1131,52 @@ async function serveIndex(req: Request, res: Response) {
     }
   }
 
-  // Per-report share card: a /report/:id link unfurls into the brand's score + gap with a
-  // dynamic OG image. Wrapped in try/catch so a missing/failed report falls back to the
-  // default meta rather than 500-ing the page itself.
+  // Utility pages: correct the per-page og:url (the template default says "/", which
+  // mis-canonicalizes every share of these paths). Image/title stay the brand defaults.
+  if (["/demo", "/scan", "/privacy", "/terms", "/support", "/data-deletion", "/thanks", "/pricing"].includes(req.path)) {
+    const u = escapeHtml(baseUrl(req) + req.path);
+    html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`);
+  }
+
+  // The demo (fictional sample brand) gets the full rich treatment — it exists to sell —
+  // labeled a sample in both the text and the card.
+  if (req.path === "/demo" || req.path === "/demo/") {
+    const p = demoPreview();
+    if (p && p.brand) {
+      const base = baseUrl(req);
+      const t = escapeHtml(`Sample AI Visibility Report: ${p.brand}${p.category ? ` (${p.category})` : ""} — ${ENV.publicBrandName}`);
+      const d = escapeHtml(`${p.headline ?? p.gapLine} A complete sample report on a fictional brand — see exactly what a scan finds.`);
+      const img = escapeHtml(`${base}/og/demo.png`);
+      html = html
+        .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+        .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
+        .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
+        .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+        .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
+        .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
+        .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+        .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`);
+    }
+  }
+
+  // Per-report share card: a /report/:id link unfurls into a rich preview. DOCTRINE:
+  // public artifacts are winner- or field-headlined, never loser-headlined — the merchant
+  // chose to share this link, so the poster names the brand + frames the CATEGORY question;
+  // their score/losing rate lives on the page, not in the preview that travels feeds.
+  // Wrapped in try/catch so a missing/failed report falls back to the default meta.
   const rm = req.path.match(/^\/report\/(\d{8}-\d{6}-[0-9a-f]{20})\/?$/);
   if (rm) {
     try {
       const runId = rm[1]!;
       const preview = reportPreview(await getResults(runId));
-      if (preview && preview.score != null) {
+      if (preview && (preview.brand || preview.category)) {
         const base = baseUrl(req);
-        const t = escapeHtml(`${preview.brand || "This store"}: ${preview.score}/100 AI Visibility Score — ${ENV.publicBrandName}`);
-        const d = escapeHtml(`${preview.gapLine} See the full breakdown.`);
+        const cat = preview.category || "their category";
+        const t = escapeHtml(`${preview.brand || "This store"} — AI Visibility Report, ${cat} — ${ENV.publicBrandName}`);
+        const d = escapeHtml(
+          `Which brands AI assistants recommend in ${cat}` +
+          `${preview.basedOnResponses > 0 ? ` — ${preview.basedOnResponses} answers` : ""} across ChatGPT, Gemini & Perplexity. See the full breakdown.`,
+        );
         const img = escapeHtml(`${base}/report/${runId}/og.png`);
         const url = escapeHtml(`${base}/report/${runId}`);
         html = html

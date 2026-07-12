@@ -74,6 +74,61 @@ export function rankView(entries: IndexEntry[], n: number | null): RankView {
   return { rows, top, runnerUp, topTied, gated };
 }
 
+// ---- OG share-card model (same dominance gate as the page) ------------------
+// The card content the /og/index/:slug.png renderer draws. Derived through the SAME
+// rankView() as the SSR page above, so the image can never crown a brand the page
+// doesn't crown — an OG image travels further than the page; it must not out-claim it.
+
+export interface IndexOgModel {
+  label: string;
+  slug: string;
+  gated: boolean;
+  /** Plain-text, honesty-gated headline (crown / tied / narrow-lead). */
+  headline: string;
+  rows: Array<{ rank: number; brand: string; count: number | null; recommendation: number }>;
+  n: number | null;
+  updatedAt: string | null;
+  brandsRanked: number;
+}
+
+export function indexOgModel(row: CategoryIndexRow, n: number | null): IndexOgModel | null {
+  if (!row.entries?.length) return null;
+  const { rows, top, runnerUp, topTied, gated } = rankView(row.entries, n);
+  if (!top) return null;
+  const recShort = (r: RankRow) => (r.count != null && n ? `${r.count} of ${n}` : pct(r.recommendation));
+
+  let headline: string;
+  if (gated) {
+    headline = `${top.brand} — the clear AI favorite: recommended in ${recShort(top)} answers, over 2× any other brand`;
+  } else if (topTied.length > 1) {
+    headline = `No single favorite — ${andList(topTied.map((r) => r.brand))} tied at the top (${recShort(top)} each)`;
+  } else {
+    headline = `${top.brand} leads (${recShort(top)})${runnerUp ? `, ${runnerUp.brand} close behind (${recShort(runnerUp)})` : ""} — no runaway leader`;
+  }
+
+  return {
+    label: row.label,
+    slug: row.slug,
+    gated,
+    headline,
+    rows: rows.map((r) => ({ rank: r.rank, brand: r.brand, count: r.count, recommendation: r.recommendation })),
+    n,
+    updatedAt: row.updated_at ?? null,
+    brandsRanked: rows.length,
+  };
+}
+
+/** Load the OG model for a slug (DB + n resolution), or null (unknown slug / DB down). */
+export async function loadIndexOgModel(slug: string): Promise<IndexOgModel | null> {
+  try {
+    const row = await getCategoryIndex(slug);
+    if (!row?.entries?.length) return null;
+    return indexOgModel(row, await answersN(row));
+  } catch {
+    return null;
+  }
+}
+
 // ---- pure renderers (exported for tests) -----------------------------------
 
 export function renderIndexListSsr(rows: CategoryIndexRow[], base: string, brandName: string): IndexSsr | null {

@@ -138,7 +138,9 @@ export async function setClaimed(runId: string): Promise<void> {
   await writeFile(join(runDir(runId), "claim.json"), JSON.stringify({ claimed: true, claimedAt: new Date().toISOString() }), "utf8");
 }
 
-/** Path of the cached OG card PNG for a report (rasterized once, then served from disk). */
+/** Path of the cached OG card PNG for a report (rasterized once, then served from disk).
+ *  Versioned filename: bumping it invalidates every cached card when the DESIGN changes
+ *  (v2 = the doctrine redesign — category-framed, no merchant score on the poster). */
 export function ogPngPath(runId: string): string {
-  return join(runDir(runId), "og.png");
+  return join(runDir(runId), "og-v2.png");
 }
