@@ -140,7 +140,8 @@ export async function setClaimed(runId: string): Promise<void> {
 
 /** Path of the cached OG card PNG for a report (rasterized once, then served from disk).
  *  Versioned filename: bumping it invalidates every cached card when the DESIGN changes
- *  (v2 = the doctrine redesign — category-framed, no merchant score on the poster). */
+ *  (v2 = the doctrine redesign — category-framed, no merchant score on the poster;
+ *  v3 = safe-area margins so platform tile crops can't cut content). */
 export function ogPngPath(runId: string): string {
-  return join(runDir(runId), "og-v2.png");
+  return join(runDir(runId), "og-v3.png");
 }

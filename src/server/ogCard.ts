@@ -30,6 +30,12 @@ readFileSync(FONT_PATH);
 
 const W = 1200;
 const H = 630;
+// SAFE AREA: og:images are 1.91:1, but LinkedIn's Featured tiles (and some other
+// surfaces) render ~1.6:1 and CENTER-CROP, eating ~80-100px off each side. All content
+// lives inside these margins so a platform crop can never cut it off.
+const MX = 140;        // left content margin
+const RX = W - MX;     // right-aligned numbers anchor (1060)
+const CW = W - 2 * MX; // max content width for fitted text (920)
 const INK = "#ECEAE3";
 const MUTED = "#8a8882";
 const GOLD = "#cba35c";
@@ -76,14 +82,14 @@ function frame(accent: string, brandName: string, headerLabel: string, inner: st
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${BG}"/>
   <rect x="0" y="0" width="${W}" height="8" fill="${accent}"/>
-  ${textEl(80, 92, 30, INK, xml(brandName), { weight: 700, spacing: "0.5" })}
-  ${textEl(80, 126, 20, MUTED, xml(headerLabel), { weight: 700, spacing: "2" })}
+  ${textEl(MX, 92, 30, INK, xml(brandName), { weight: 700, spacing: "0.5" })}
+  ${textEl(MX, 126, 20, MUTED, xml(headerLabel), { weight: 700, spacing: "2" })}
   ${inner}
 </svg>`;
 }
 
 const engineFooter = (extra?: string) =>
-  textEl(80, 578, 22, MUTED, xml(`ChatGPT · Gemini · Perplexity${extra ? ` ${extra}` : ""}`));
+  textEl(MX, 578, 22, MUTED, xml(`ChatGPT · Gemini · Perplexity${extra ? ` ${extra}` : ""}`));
 
 function rasterize(svg: string): Buffer {
   const resvg = new Resvg(svg, {
@@ -98,26 +104,26 @@ function rasterize(svg: string): Buffer {
 function reportInner(p: ReportPreview): string {
   const brand = p.brand || "This store";
   const cat = p.category || "its category";
-  const title = fittedLines(brand, 1040, 64, 40);
+  const title = fittedLines(brand, CW, 64, 40);
   const frameLine = fittedLines(
     `Which brands AI assistants recommend in ${cat}`,
-    1040, 34, 22,
+    CW, 34, 22,
   );
   const nLine = `measured across ChatGPT, Gemini & Perplexity${p.basedOnResponses > 0 ? ` — ${p.basedOnResponses} AI answers` : ""}`;
   let y = 250;
   const parts: string[] = [];
   for (const l of title.lines) {
-    parts.push(textEl(80, y, title.size, INK, xml(l), { weight: 700 }));
+    parts.push(textEl(MX, y, title.size, INK, xml(l), { weight: 700 }));
     y += title.size + 12;
   }
-  parts.push(textEl(80, y + 8, 28, MUTED, xml(`AI Visibility Report · ${cat}`)));
+  parts.push(textEl(MX, y + 8, 28, MUTED, xml(`AI Visibility Report · ${cat}`)));
   y += 100;
   for (const l of frameLine.lines) {
-    parts.push(textEl(80, y, frameLine.size, INK, xml(l)));
+    parts.push(textEl(MX, y, frameLine.size, INK, xml(l)));
     y += frameLine.size + 12;
   }
-  parts.push(textEl(80, y + 4, 26, MUTED, xml(nLine)));
-  parts.push(textEl(80, 520, 26, GREEN, xml("See the full breakdown →"), { weight: 700 }));
+  parts.push(textEl(MX, y + 4, 26, MUTED, xml(nLine)));
+  parts.push(textEl(MX, 520, 26, GREEN, xml("See the full breakdown →"), { weight: 700 }));
   parts.push(engineFooter());
   return parts.join("\n  ");
 }
@@ -147,16 +153,16 @@ export interface DemoCardModel {
 export function buildDemoCardSvg(m: DemoCardModel, brandName: string): string {
   const RED = "#d07a7a";
   const parts: string[] = [];
-  parts.push(`<rect x="820" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
-  parts.push(textEl(970, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
+  parts.push(`<rect x="760" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
+  parts.push(textEl(910, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
 
-  parts.push(textEl(80, 208, 44, INK, xml(`${m.brand} — ${m.category}`), { weight: 700 }));
+  parts.push(textEl(MX, 208, 44, INK, xml(`${m.brand} — ${m.category}`), { weight: 700 }));
 
   // The substitution verdict IS the pitch — same lead as the page.
-  const head = fittedLines(m.headline, 1040, 30, 20);
+  const head = fittedLines(m.headline, CW, 30, 20);
   let y = 262;
   for (const l of head.lines) {
-    parts.push(textEl(80, y, head.size, GOLD, xml(l), { weight: 700 }));
+    parts.push(textEl(MX, y, head.size, GOLD, xml(l), { weight: 700 }));
     y += head.size + 10;
   }
 
@@ -168,9 +174,9 @@ export function buildDemoCardSvg(m: DemoCardModel, brandName: string): string {
   let ry = Math.max(y + 30, 356);
   for (const r of rows) {
     const color = r.own ? RED : INK;
-    parts.push(textEl(80, ry, 30, color, xml(`${r.own ? "→ " : ""}${r.name}`), { weight: r.own ? 700 : 400 }));
+    parts.push(textEl(MX, ry, 30, color, xml(`${r.own ? "→ " : ""}${r.name}`), { weight: r.own ? 700 : 400 }));
     if (r.count != null) {
-      parts.push(textEl(1120, ry, 30, r.own ? RED : MUTED, xml(m.total ? `${r.count} of ${m.total}` : String(r.count)), { anchor: "end" }));
+      parts.push(textEl(RX, ry, 30, r.own ? RED : MUTED, xml(m.total ? `${r.count} of ${m.total}` : String(r.count)), { anchor: "end" }));
     }
     ry += 44;
   }
@@ -188,17 +194,17 @@ const fmtDate = (iso: string) =>
  *  rankView dominance gate as the SSR page — crown here ⇔ crown on the page. */
 export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): string {
   const parts: string[] = [];
-  const label = fittedLines(model.label, 1040, 54, 34);
+  const label = fittedLines(model.label, CW, 54, 34);
   let y = 210;
   for (const l of label.lines) {
-    parts.push(textEl(80, y, label.size, INK, xml(l), { weight: 700 }));
+    parts.push(textEl(MX, y, label.size, INK, xml(l), { weight: 700 }));
     y += label.size + 10;
   }
   // Honesty-gated headline: gold + ★ ONLY when the dominance gate passed.
-  const head = fittedLines(model.headline, 1040, 30, 20);
+  const head = fittedLines(model.headline, CW, 30, 20);
   y += 24;
   for (const [i, l] of head.lines.entries()) {
-    parts.push(textEl(80, y, head.size, model.gated ? GOLD : INK, xml(i === 0 && model.gated ? `★ ${l}` : l), { weight: 700 }));
+    parts.push(textEl(MX, y, head.size, model.gated ? GOLD : INK, xml(i === 0 && model.gated ? `★ ${l}` : l), { weight: 700 }));
     y += head.size + 10;
   }
 
@@ -208,8 +214,8 @@ export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): s
   for (const [i, r] of rows.entries()) {
     const isCrown = model.gated && i === 0;
     const countLabel = r.count != null && model.n ? `${r.count} of ${model.n}` : `${Math.round(r.recommendation * 100)}%`;
-    parts.push(textEl(80, ry, 30, isCrown ? GOLD : INK, xml(`${r.rank}. ${r.brand}${isCrown ? "  ★" : ""}`), { weight: isCrown ? 700 : 400 }));
-    parts.push(textEl(1120, ry, 30, isCrown ? GOLD : MUTED, xml(countLabel), { anchor: "end" }));
+    parts.push(textEl(MX, ry, 30, isCrown ? GOLD : INK, xml(`${r.rank}. ${r.brand}${isCrown ? "  ★" : ""}`), { weight: isCrown ? 700 : 400 }));
+    parts.push(textEl(RX, ry, 30, isCrown ? GOLD : MUTED, xml(countLabel), { anchor: "end" }));
     ry += 44;
   }
 
@@ -225,20 +231,20 @@ export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): s
 /** The /index (category list) share card. */
 export function buildIndexListCardSvg(categories: Array<{ label: string; brands: number }>, brandName: string): string {
   const parts: string[] = [];
-  parts.push(textEl(80, 230, 56, INK, xml("The AI Visibility Index"), { weight: 700 }));
-  const sub = fittedLines("Which brands ChatGPT, Gemini & Perplexity actually recommend when shoppers ask what to buy", 1040, 28, 20);
+  parts.push(textEl(MX, 230, 56, INK, xml("The AI Visibility Index"), { weight: 700 }));
+  const sub = fittedLines("Which brands ChatGPT, Gemini & Perplexity actually recommend when shoppers ask what to buy", CW, 28, 20);
   let y = 286;
   for (const l of sub.lines) {
-    parts.push(textEl(80, y, sub.size, MUTED, xml(l)));
+    parts.push(textEl(MX, y, sub.size, MUTED, xml(l)));
     y += sub.size + 10;
   }
   let ry = Math.max(y + 30, 370);
   for (const c of categories.slice(0, 4)) {
-    parts.push(textEl(80, ry, 30, INK, xml(c.label), { weight: 700 }));
-    parts.push(textEl(1120, ry, 26, MUTED, xml(`${c.brands} brands ranked`), { anchor: "end" }));
+    parts.push(textEl(MX, ry, 30, INK, xml(c.label), { weight: 700 }));
+    parts.push(textEl(RX, ry, 26, MUTED, xml(`${c.brands} brands ranked`), { anchor: "end" }));
     ry += 46;
   }
-  if (categories.length > 4) parts.push(textEl(80, ry, 24, MUTED, xml(`+ ${categories.length - 4} more categories`)));
+  if (categories.length > 4) parts.push(textEl(MX, ry, 24, MUTED, xml(`+ ${categories.length - 4} more categories`)));
   parts.push(engineFooter("· measured by scan, not vibes"));
   return frame(GREEN, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
 }
@@ -247,12 +253,12 @@ export function buildIndexListCardSvg(categories: Array<{ label: string; brands:
 
 export function buildDefaultCardSvg(brandName: string, tagline: string): string {
   const parts: string[] = [];
-  parts.push(textEl(80, 280, 72, INK, xml(brandName), { weight: 700 }));
-  parts.push(textEl(80, 336, 30, GREEN, xml("Does AI recommend your store — or your competitors?"), { weight: 700 }));
-  const tag = fittedLines(tagline, 1040, 26, 19);
+  parts.push(textEl(MX, 280, 72, INK, xml(brandName), { weight: 700 }));
+  parts.push(textEl(MX, 336, 30, GREEN, xml("Does AI recommend your store — or your competitors?"), { weight: 700 }));
+  const tag = fittedLines(tagline, CW, 26, 19);
   let y = 410;
   for (const l of tag.lines) {
-    parts.push(textEl(80, y, tag.size, MUTED, xml(l)));
+    parts.push(textEl(MX, y, tag.size, MUTED, xml(l)));
     y += tag.size + 10;
   }
   parts.push(engineFooter());
