@@ -141,6 +141,50 @@ export async function runJourney(provider: string, role: SnapshotRole, trialNumb
   return result;
 }
 
+// ---- full experiment matrix (CP4): 2 models × 3 snapshots × 3 trials -------
+
+export async function runMatrix(): Promise<void> {
+  assertRunnable(process.env, TEST_SHOP_ID);
+  const manifest = readManifest();
+  const { resultsDir, readCumulativeSpend } = await import("./trace-recorder.js");
+  const { PROMPT_VERSION_V1 } = await import("./agent-runner.js");
+
+  // Idempotent: journeys already persisted for this (provider, snapshot, trial,
+  // promptVersion) are counted, not re-run — the smoke journeys are part of the
+  // matrix, and a crashed matrix resumes instead of double-spending.
+  const indexFile = join(resultsDir(), "index.jsonl");
+  const done = new Set<string>();
+  try {
+    for (const line of readFileSync(indexFile, "utf8").trim().split("\n")) {
+      if (!line) continue;
+      const e = JSON.parse(line) as { provider: string; snapshotId: string; trialNumber: number; promptVersion: string };
+      done.add(`${e.provider}|${e.snapshotId}|${e.trialNumber}|${e.promptVersion}`);
+    }
+  } catch {
+    /* no index yet */
+  }
+
+  const roles: SnapshotRole[] = ["base", "faulty", "restored"];
+  let ran = 0;
+  let skipped = 0;
+  for (const provider of ["openai", "gemini"]) {
+    for (const role of roles) {
+      const snapshotId = snapshotIdForRole(manifest, role);
+      for (let trial = 1; trial <= 3; trial++) {
+        const key = `${provider}|${snapshotId}|${trial}|${PROMPT_VERSION_V1}`;
+        if (done.has(key)) {
+          skipped++;
+          console.log(`[matrix] skip ${provider}/${role}/trial${trial} (already persisted)`);
+          continue;
+        }
+        await runJourney(provider, role, trial);
+        ran++;
+      }
+    }
+  }
+  console.log(`[matrix] complete: ${ran} journeys run, ${skipped} already persisted, cumulative spend $${readCumulativeSpend().toFixed(4)}`);
+}
+
 // ---- mock dry run (spec 4.10 — zero-cost gate before any paid call) --------
 
 export async function mockDryRun(): Promise<void> {
@@ -208,6 +252,9 @@ if (isMain) {
       }
       case "mock-dry-run":
         await mockDryRun();
+        break;
+      case "matrix":
+        await runMatrix();
         break;
       default:
         console.error("usage: npx tsx src/agentic-test/run-experiment.ts <prepare|journey|mock-dry-run>");
