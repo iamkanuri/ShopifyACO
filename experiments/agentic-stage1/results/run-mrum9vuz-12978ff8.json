@@ -1,0 +1,634 @@
+{
+  "runId": "run-mrum9vuz-12978ff8",
+  "contractId": "stage1-aluminum-free-cookware",
+  "snapshotId": "snap-b584dab5794ecf14",
+  "snapshotContentHash": "9f4986e7a2ed87e115f25e764d4bfdb4da202324af0d031e66cb50603c2d4e48",
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
+  "promptVersion": "stage1-v1",
+  "trialNumber": 3,
+  "constraintEvaluations": [
+    {
+      "constraintId": "aluminum-free",
+      "status": "satisfied",
+      "observedValue": true,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-6d512d39d0fb3cf3",
+          "surface": "product_metafields",
+          "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+          "exactText": "true",
+          "structuredValue": {
+            "namespace": "custom",
+            "key": "aluminum_free",
+            "value": "true",
+            "type": "boolean"
+          },
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-81f40c4bee9b0095",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/1001",
+          "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+          "snapshotId": "snap-b584dab5794ecf14"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-6d512d39d0fb3cf3",
+        "ev-81f40c4bee9b0095"
+      ],
+      "explanation": "The product metafield custom.aluminum_free is explicitly true, and the product description also states the pan is completely aluminum-free."
+    }
+  ],
+  "claimedEvidenceReferences": [
+    {
+      "evidenceId": "ev-6d512d39d0fb3cf3",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+      "exactText": "true",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "aluminum_free",
+        "value": "true",
+        "type": "boolean"
+      },
+      "snapshotId": "snap-b584dab5794ecf14"
+    },
+    {
+      "evidenceId": "ev-81f40c4bee9b0095",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1001",
+      "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+      "snapshotId": "snap-b584dab5794ecf14"
+    }
+  ],
+  "traceEvents": [
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:31.211Z",
+      "sequence": 0,
+      "type": "RUN_STARTED",
+      "payload": {
+        "contractId": "stage1-aluminum-free-cookware",
+        "snapshotId": "snap-b584dab5794ecf14",
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "trialNumber": 3
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.615Z",
+      "sequence": 1,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product",
+        "args": {
+          "productId": "gid://shopify/Product/1001"
+        }
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.617Z",
+      "sequence": 2,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product",
+        "output": {
+          "found": true,
+          "product": {
+            "productId": "gid://shopify/Product/1001",
+            "title": "Mock Product 1",
+            "description": "Description for product 1 . This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+            "vendor": "AisleLens Test Co",
+            "productType": "Cookware",
+            "tags": [
+              "mock",
+              "tag1"
+            ],
+            "status": "ACTIVE",
+            "options": [
+              {
+                "name": "Title",
+                "value": "Default"
+              }
+            ],
+            "variants": [
+              {
+                "variantId": "gid://shopify/ProductVariant/2001",
+                "title": "Default",
+                "sku": "SKU-1",
+                "price": 20.99,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Title",
+                    "value": "Default"
+                  }
+                ]
+              }
+            ]
+          },
+          "fieldEvidence": {
+            "title": [
+              {
+                "evidenceId": "ev-671c8972abf64f49",
+                "surface": "product_title",
+                "sourceObjectId": "gid://shopify/Product/1001",
+                "exactText": "Mock Product 1",
+                "snapshotId": "snap-b584dab5794ecf14"
+              }
+            ],
+            "description": [
+              {
+                "evidenceId": "ev-1294c43dde3087cd",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/1001",
+                "exactText": "Description for product 1 .",
+                "snapshotId": "snap-b584dab5794ecf14"
+              },
+              {
+                "evidenceId": "ev-81f40c4bee9b0095",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/1001",
+                "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+                "snapshotId": "snap-b584dab5794ecf14"
+              }
+            ],
+            "variants": [
+              {
+                "evidenceId": "ev-5ad5527cbd9db7e3",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/2001",
+                "exactText": "Default",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/2001",
+                  "title": "Default",
+                  "sku": "SKU-1",
+                  "price": 20.99,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Title",
+                      "value": "Default"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-b584dab5794ecf14"
+              }
+            ],
+            "options": [
+              {
+                "evidenceId": "ev-08906190cc23a649",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/2001#Title",
+                "exactText": "Title: Default",
+                "structuredValue": {
+                  "name": "Title",
+                  "value": "Default"
+                },
+                "snapshotId": "snap-b584dab5794ecf14"
+              }
+            ]
+          },
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-671c8972abf64f49",
+              "surface": "product_title",
+              "sourceObjectId": "gid://shopify/Product/1001",
+              "exactText": "Mock Product 1",
+              "snapshotId": "snap-b584dab5794ecf14"
+            },
+            {
+              "evidenceId": "ev-1294c43dde3087cd",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/1001",
+              "exactText": "Description for product 1 .",
+              "snapshotId": "snap-b584dab5794ecf14"
+            },
+            {
+              "evidenceId": "ev-81f40c4bee9b0095",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/1001",
+              "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+              "snapshotId": "snap-b584dab5794ecf14"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-671c8972abf64f49",
+          "surface": "product_title",
+          "sourceObjectId": "gid://shopify/Product/1001",
+          "exactText": "Mock Product 1",
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-1294c43dde3087cd",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/1001",
+          "exactText": "Description for product 1 .",
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-81f40c4bee9b0095",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/1001",
+          "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-5ad5527cbd9db7e3",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/2001",
+          "exactText": "Default",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/2001",
+            "title": "Default",
+            "sku": "SKU-1",
+            "price": 20.99,
+            "available": true,
+            "options": [
+              {
+                "name": "Title",
+                "value": "Default"
+              }
+            ]
+          },
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-08906190cc23a649",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/2001#Title",
+          "exactText": "Title: Default",
+          "structuredValue": {
+            "name": "Title",
+            "value": "Default"
+          },
+          "snapshotId": "snap-b584dab5794ecf14"
+        }
+      ],
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.619Z",
+      "sequence": 3,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/1001"
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.620Z",
+      "sequence": 4,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product_metafields",
+        "args": {
+          "productId": "gid://shopify/Product/1001"
+        }
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.621Z",
+      "sequence": 5,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product_metafields",
+        "output": {
+          "found": true,
+          "metafields": [
+            {
+              "namespace": "custom",
+              "key": "material",
+              "value": "ceramic",
+              "type": "single_line_text_field",
+              "evidenceReference": {
+                "evidenceId": "ev-d7c9167668123ccf",
+                "surface": "product_metafields",
+                "sourceObjectId": "gid://shopify/Product/1001#custom.material",
+                "exactText": "ceramic",
+                "structuredValue": {
+                  "namespace": "custom",
+                  "key": "material",
+                  "value": "ceramic",
+                  "type": "single_line_text_field"
+                },
+                "snapshotId": "snap-b584dab5794ecf14"
+              }
+            },
+            {
+              "namespace": "custom",
+              "key": "aluminum_free",
+              "value": "true",
+              "type": "boolean",
+              "evidenceReference": {
+                "evidenceId": "ev-6d512d39d0fb3cf3",
+                "surface": "product_metafields",
+                "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+                "exactText": "true",
+                "structuredValue": {
+                  "namespace": "custom",
+                  "key": "aluminum_free",
+                  "value": "true",
+                  "type": "boolean"
+                },
+                "snapshotId": "snap-b584dab5794ecf14"
+              }
+            }
+          ],
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-d7c9167668123ccf",
+              "surface": "product_metafields",
+              "sourceObjectId": "gid://shopify/Product/1001#custom.material",
+              "exactText": "ceramic",
+              "structuredValue": {
+                "namespace": "custom",
+                "key": "material",
+                "value": "ceramic",
+                "type": "single_line_text_field"
+              },
+              "snapshotId": "snap-b584dab5794ecf14"
+            },
+            {
+              "evidenceId": "ev-6d512d39d0fb3cf3",
+              "surface": "product_metafields",
+              "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+              "exactText": "true",
+              "structuredValue": {
+                "namespace": "custom",
+                "key": "aluminum_free",
+                "value": "true",
+                "type": "boolean"
+              },
+              "snapshotId": "snap-b584dab5794ecf14"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-d7c9167668123ccf",
+          "surface": "product_metafields",
+          "sourceObjectId": "gid://shopify/Product/1001#custom.material",
+          "exactText": "ceramic",
+          "structuredValue": {
+            "namespace": "custom",
+            "key": "material",
+            "value": "ceramic",
+            "type": "single_line_text_field"
+          },
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-6d512d39d0fb3cf3",
+          "surface": "product_metafields",
+          "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+          "exactText": "true",
+          "structuredValue": {
+            "namespace": "custom",
+            "key": "aluminum_free",
+            "value": "true",
+            "type": "boolean"
+          },
+          "snapshotId": "snap-b584dab5794ecf14"
+        }
+      ],
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.622Z",
+      "sequence": 6,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/1001"
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.623Z",
+      "sequence": 7,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_faq_or_policy",
+        "args": {
+          "topic": "materials"
+        }
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.624Z",
+      "sequence": 8,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_faq_or_policy",
+        "output": {
+          "results": [],
+          "surfacesAbsentFromStore": [
+            "structured_data",
+            "faq",
+            "shipping_policy",
+            "returns_policy"
+          ],
+          "note": "No FAQ or policy content exists in this store snapshot. The listed surfaces are absent — this is an explicit empty result, not an error."
+        }
+      },
+      "evidenceReferences": [],
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.626Z",
+      "sequence": 9,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "search_store",
+        "args": {
+          "query": "gid://shopify/Product/1001 aluminum free"
+        }
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:32.627Z",
+      "sequence": 10,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "search_store",
+        "output": {
+          "matches": [
+            {
+              "objectType": "product",
+              "objectId": "gid://shopify/Product/1001",
+              "title": "Mock Product 1",
+              "snippet": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+              "evidenceReferences": [
+                {
+                  "evidenceId": "ev-81f40c4bee9b0095",
+                  "surface": "product_description",
+                  "sourceObjectId": "gid://shopify/Product/1001",
+                  "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+                  "snapshotId": "snap-b584dab5794ecf14"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-81f40c4bee9b0095",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/1001",
+          "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+          "snapshotId": "snap-b584dab5794ecf14"
+        }
+      ],
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:34.359Z",
+      "sequence": 11,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "aluminum-free",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-6d512d39d0fb3cf3",
+          "ev-81f40c4bee9b0095"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-6d512d39d0fb3cf3",
+          "surface": "product_metafields",
+          "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+          "exactText": "true",
+          "structuredValue": {
+            "namespace": "custom",
+            "key": "aluminum_free",
+            "value": "true",
+            "type": "boolean"
+          },
+          "snapshotId": "snap-b584dab5794ecf14"
+        },
+        {
+          "evidenceId": "ev-81f40c4bee9b0095",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/1001",
+          "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+          "snapshotId": "snap-b584dab5794ecf14"
+        }
+      ],
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:34.360Z",
+      "sequence": 12,
+      "type": "DECISION_MADE",
+      "payload": {
+        "adjudicatedOutcome": "PASS",
+        "modelDeclaredOutcome": "PASS",
+        "selectedProductId": "gid://shopify/Product/1001"
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    },
+    {
+      "runId": "run-mrum9vuz-12978ff8",
+      "timestamp": "2026-07-21T12:15:34.361Z",
+      "sequence": 13,
+      "type": "RUN_COMPLETED",
+      "payload": {
+        "outcome": "PASS",
+        "totalToolCalls": 4,
+        "totalSteps": 2
+      },
+      "model": {
+        "provider": "openai",
+        "model": "gpt-5.4-mini",
+        "promptVersion": "stage1-v1"
+      }
+    }
+  ],
+  "totalToolCalls": 4,
+  "totalSteps": 2,
+  "estimatedCostUsd": 0.003699,
+  "outcome": "PASS",
+  "modelDeclaredOutcome": "PASS",
+  "selectedProductId": "gid://shopify/Product/1001",
+  "selectedVariantId": "gid://shopify/ProductVariant/2001",
+  "rawFinalResponse": "{\"selectedProductId\":\"gid://shopify/Product/1001\",\"selectedVariantId\":\"gid://shopify/ProductVariant/2001\",\"constraints\":[{\"constraintId\":\"aluminum-free\",\"status\":\"satisfied\",\"observedValue\":true,\"evidenceIds\":[\"ev-6d512d39d0fb3cf3\",\"ev-81f40c4bee9b0095\"],\"explanation\":\"The product metafield custom.aluminum_free is explicitly true, and the product description also states the pan is completely aluminum-free.\"}],\"outcome\":\"PASS\",\"explanation\":\"The required product is identified and the aluminum-free constraint is directly supported by both metafield and description evidence.\"}",
+  "validationNotes": [],
+  "unsupportedPositiveClaim": false
+}

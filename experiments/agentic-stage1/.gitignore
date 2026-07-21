@@ -1,0 +1,4 @@
+# The root .gitignore excludes every `results/` dir (CLI scan outputs). Stage 1
+# journey results + traces ARE the experiment's audit trail — re-include them
+# here, scoped to this directory only.
+!results/
