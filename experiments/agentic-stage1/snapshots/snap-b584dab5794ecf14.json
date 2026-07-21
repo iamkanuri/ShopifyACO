@@ -1,0 +1,666 @@
+{
+  "id": "snap-b584dab5794ecf14",
+  "shopId": "agentic-stage1-test.myshopify.com",
+  "createdAt": "2026-07-21T12:05:56.189Z",
+  "sourceVersion": "local-mock-catalog(products=7)+merchant-edit-v1",
+  "products": [
+    {
+      "productId": "gid://shopify/Product/1001",
+      "handle": "mock-product-1",
+      "title": "Mock Product 1",
+      "description": "Description for product 1 . This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+      "vendor": "AisleLens Test Co",
+      "productType": "Cookware",
+      "tags": [
+        "mock",
+        "tag1"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "ceramic",
+          "type": "single_line_text_field"
+        },
+        {
+          "namespace": "custom",
+          "key": "aluminum_free",
+          "value": "true",
+          "type": "boolean"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2001",
+          "title": "Default",
+          "sku": "SKU-1",
+          "price": 20.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/1002",
+      "handle": "mock-product-2",
+      "title": "Mock Product 2",
+      "description": "Description for product 2 .",
+      "vendor": "AisleLens Test Co",
+      "productType": "Accessories",
+      "tags": [
+        "mock",
+        "tag2"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "steel",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2002",
+          "title": "Default",
+          "sku": "SKU-2",
+          "price": 21.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/1003",
+      "handle": "mock-product-3",
+      "title": "Mock Product 3",
+      "description": "Description for product 3 .",
+      "vendor": "AisleLens Test Co",
+      "productType": "Cookware",
+      "tags": [
+        "mock",
+        "tag3"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "ceramic",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2003",
+          "title": "Default",
+          "sku": "SKU-3",
+          "price": 22.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/1004",
+      "handle": "mock-product-4",
+      "title": "Mock Product 4",
+      "description": "Description for product 4 .",
+      "vendor": "AisleLens Test Co",
+      "productType": "Accessories",
+      "tags": [
+        "mock",
+        "tag4"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "steel",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2004",
+          "title": "Default",
+          "sku": "SKU-4",
+          "price": 23.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/1005",
+      "handle": "mock-product-5",
+      "title": "Mock Product 5",
+      "description": "Description for product 5 .",
+      "vendor": "AisleLens Test Co",
+      "productType": "Cookware",
+      "tags": [
+        "mock",
+        "tag5"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "ceramic",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2005",
+          "title": "Default",
+          "sku": "SKU-5",
+          "price": 24.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/1006",
+      "handle": "mock-product-6",
+      "title": "Mock Product 6",
+      "description": "Description for product 6 .",
+      "vendor": "AisleLens Test Co",
+      "productType": "Accessories",
+      "tags": [
+        "mock",
+        "tag6"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "steel",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2006",
+          "title": "Default",
+          "sku": "SKU-6",
+          "price": 25.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/1007",
+      "handle": "mock-product-7",
+      "title": "Mock Product 7",
+      "description": "Description for product 7 .",
+      "vendor": "AisleLens Test Co",
+      "productType": "Cookware",
+      "tags": [
+        "mock",
+        "tag7"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "material",
+          "value": "ceramic",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/2007",
+          "title": "Default",
+          "sku": "SKU-7",
+          "price": 26.99,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pages": [],
+  "policies": [],
+  "surfacesAbsent": [
+    "structured_data",
+    "faq",
+    "shipping_policy",
+    "returns_policy"
+  ],
+  "evidence": [
+    {
+      "evidenceId": "ev-671c8972abf64f49",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1001",
+      "exactText": "Mock Product 1"
+    },
+    {
+      "evidenceId": "ev-1294c43dde3087cd",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1001",
+      "exactText": "Description for product 1 ."
+    },
+    {
+      "evidenceId": "ev-81f40c4bee9b0095",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1001",
+      "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum."
+    },
+    {
+      "evidenceId": "ev-d7c9167668123ccf",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1001#custom.material",
+      "exactText": "ceramic",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "ceramic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-6d512d39d0fb3cf3",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+      "exactText": "true",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "aluminum_free",
+        "value": "true",
+        "type": "boolean"
+      }
+    },
+    {
+      "evidenceId": "ev-5ad5527cbd9db7e3",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2001",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2001",
+        "title": "Default",
+        "sku": "SKU-1",
+        "price": 20.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-08906190cc23a649",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2001#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    },
+    {
+      "evidenceId": "ev-8348e5049b99d1b1",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1002",
+      "exactText": "Mock Product 2"
+    },
+    {
+      "evidenceId": "ev-fa19b6461068e163",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1002",
+      "exactText": "Description for product 2 ."
+    },
+    {
+      "evidenceId": "ev-1acae263a9c7c6c2",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1002#custom.material",
+      "exactText": "steel",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "steel",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-bdf03a558bcfc727",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2002",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2002",
+        "title": "Default",
+        "sku": "SKU-2",
+        "price": 21.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-63e8c03873723143",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2002#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    },
+    {
+      "evidenceId": "ev-fd03f87a40fef566",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1003",
+      "exactText": "Mock Product 3"
+    },
+    {
+      "evidenceId": "ev-8571c0f9271e9dac",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1003",
+      "exactText": "Description for product 3 ."
+    },
+    {
+      "evidenceId": "ev-ecbbcfb702c6cb59",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1003#custom.material",
+      "exactText": "ceramic",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "ceramic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-022274476bb4fbf9",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2003",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2003",
+        "title": "Default",
+        "sku": "SKU-3",
+        "price": 22.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-32aaef298847060e",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2003#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    },
+    {
+      "evidenceId": "ev-87c732eccde4ddb6",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1004",
+      "exactText": "Mock Product 4"
+    },
+    {
+      "evidenceId": "ev-83e14bae01f0b64d",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1004",
+      "exactText": "Description for product 4 ."
+    },
+    {
+      "evidenceId": "ev-278a139e4766d418",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1004#custom.material",
+      "exactText": "steel",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "steel",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-5208710cee868562",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2004",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2004",
+        "title": "Default",
+        "sku": "SKU-4",
+        "price": 23.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-b7b85408d69e8b68",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2004#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    },
+    {
+      "evidenceId": "ev-c5cbd684b14d9fb7",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1005",
+      "exactText": "Mock Product 5"
+    },
+    {
+      "evidenceId": "ev-f360c846f0ec1383",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1005",
+      "exactText": "Description for product 5 ."
+    },
+    {
+      "evidenceId": "ev-da5ba1a940810516",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1005#custom.material",
+      "exactText": "ceramic",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "ceramic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-b03554f68618ff58",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2005",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2005",
+        "title": "Default",
+        "sku": "SKU-5",
+        "price": 24.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-dea4d97978f3733c",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2005#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    },
+    {
+      "evidenceId": "ev-061719e85b0305b4",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1006",
+      "exactText": "Mock Product 6"
+    },
+    {
+      "evidenceId": "ev-2aa1f6c01c2b7d72",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1006",
+      "exactText": "Description for product 6 ."
+    },
+    {
+      "evidenceId": "ev-b68ec8d3884b203b",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1006#custom.material",
+      "exactText": "steel",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "steel",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-172742c86450f795",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2006",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2006",
+        "title": "Default",
+        "sku": "SKU-6",
+        "price": 25.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-21db197ab1811ae5",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2006#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    },
+    {
+      "evidenceId": "ev-3a6816933ae2af09",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/1007",
+      "exactText": "Mock Product 7"
+    },
+    {
+      "evidenceId": "ev-2aec030dd2e479a1",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1007",
+      "exactText": "Description for product 7 ."
+    },
+    {
+      "evidenceId": "ev-8b78ecf379e6ef58",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1007#custom.material",
+      "exactText": "ceramic",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "material",
+        "value": "ceramic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-903dfae9d6593aeb",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/2007",
+      "exactText": "Default",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/2007",
+        "title": "Default",
+        "sku": "SKU-7",
+        "price": 26.99,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-6e1f3bbe2ee9628f",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/2007#Title",
+      "exactText": "Title: Default",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default"
+      }
+    }
+  ],
+  "contentHash": "9f4986e7a2ed87e115f25e764d4bfdb4da202324af0d031e66cb50603c2d4e48"
+}

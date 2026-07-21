@@ -1,0 +1,49 @@
+{
+  "mutationId": "mut-98550459cf646ec9",
+  "type": "REMOVE_ATTRIBUTE_EVIDENCE",
+  "attribute": "aluminum_free",
+  "removedEvidence": [
+    {
+      "evidenceId": "ev-81f40c4bee9b0095",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/1001",
+      "exactText": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum.",
+      "snapshotId": "snap-0b747b1ec8e6a143"
+    },
+    {
+      "evidenceId": "ev-6d512d39d0fb3cf3",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/1001#custom.aluminum_free",
+      "exactText": "true",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "aluminum_free",
+        "value": "true",
+        "type": "boolean"
+      },
+      "snapshotId": "snap-0b747b1ec8e6a143"
+    }
+  ],
+  "restoreHints": [
+    {
+      "kind": "sentence",
+      "productId": "gid://shopify/Product/1001",
+      "field": "description",
+      "sentenceIndex": 1,
+      "sentence": "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum."
+    },
+    {
+      "kind": "metafield",
+      "productId": "gid://shopify/Product/1001",
+      "metafieldIndex": 1,
+      "metafield": {
+        "namespace": "custom",
+        "key": "aluminum_free",
+        "value": "true",
+        "type": "boolean"
+      }
+    }
+  ],
+  "originalSnapshotId": "snap-0b747b1ec8e6a143",
+  "mutatedSnapshotId": "snap-aa0945aa82e7d5b7"
+}

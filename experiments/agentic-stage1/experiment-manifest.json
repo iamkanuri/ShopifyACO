@@ -1,0 +1,12 @@
+{
+  "experimentId": "agentic-stage1-2026-07-21",
+  "shopId": "agentic-stage1-test.myshopify.com",
+  "productId": "gid://shopify/Product/1001",
+  "snapshots": {
+    "baseId": "snap-0b747b1ec8e6a143",
+    "faultyId": "snap-aa0945aa82e7d5b7",
+    "restoredId": "snap-b584dab5794ecf14"
+  },
+  "mutationId": "mut-98550459cf646ec9",
+  "createdAt": "2026-07-21T12:05:56.192Z"
+}
