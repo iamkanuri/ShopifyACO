@@ -106,6 +106,41 @@ export function loadSnapshotById(id: string) {
   return loadSnapshot(id);
 }
 
+// ---- single journey (CP2+) -------------------------------------------------
+
+export type SnapshotRole = "base" | "faulty" | "restored";
+
+export function snapshotIdForRole(manifest: ExperimentManifest, role: SnapshotRole): string {
+  return role === "base" ? manifest.snapshots.baseId : role === "faulty" ? manifest.snapshots.faultyId : manifest.snapshots.restoredId;
+}
+
+/** Run ONE journey. `role` maps to a snapshot id EVALUATOR-SIDE only — the
+ *  agent receives the pinned snapshot through tools and never the label. */
+export async function runJourney(provider: string, role: SnapshotRole, trialNumber: number) {
+  assertRunnable(process.env, TEST_SHOP_ID);
+  const manifest = readManifest();
+  const snapshot = loadSnapshot(snapshotIdForRole(manifest, role));
+  const { createToolClient } = await import("./model-client.js");
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { persistJourneyResult, readCumulativeSpend } = await import("./trace-recorder.js");
+
+  const client = createToolClient(provider);
+  const result = await runShoppingAgent({
+    contract: aluminumFreeTask,
+    snapshot,
+    client,
+    trialNumber,
+  });
+  const file = persistJourneyResult(result);
+  console.log(
+    `[journey] ${provider}/${client.model} snapshot=${snapshot.id} trial=${trialNumber} → ` +
+      `${result.outcome} (model declared: ${result.modelDeclaredOutcome ?? "n/a"}) ` +
+      `toolCalls=${result.totalToolCalls} steps=${result.totalSteps} cost=$${result.estimatedCostUsd.toFixed(4)}`,
+  );
+  console.log(`[journey] persisted ${file} · cumulative spend $${readCumulativeSpend().toFixed(4)}`);
+  return result;
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -114,8 +149,20 @@ if (isMain) {
       case "prepare":
         await prepare();
         break;
+      case "journey": {
+        const provider = process.argv[3] ?? "";
+        const role = process.argv[4] as SnapshotRole;
+        const trial = Number(process.argv[5] ?? 1);
+        if (!provider || !["base", "faulty", "restored"].includes(role)) {
+          console.error("usage: … journey <openai|gemini> <base|faulty|restored> [trial]");
+          process.exitCode = 2;
+          break;
+        }
+        await runJourney(provider, role, trial);
+        break;
+      }
       default:
-        console.error("usage: npx tsx src/agentic-test/run-experiment.ts <prepare>");
+        console.error("usage: npx tsx src/agentic-test/run-experiment.ts <prepare|journey>");
         process.exitCode = 2;
     }
   };
