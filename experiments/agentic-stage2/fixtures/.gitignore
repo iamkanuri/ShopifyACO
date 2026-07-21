@@ -1,0 +1,4 @@
+# Wild-probe captures stay uncommitted: the meta file carries the source store's
+# URL and the product JSON can embed the store domain (Appendix C rule 5).
+wild-product.json
+wild-meta.json
