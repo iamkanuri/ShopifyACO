@@ -239,6 +239,266 @@ test("16. agent-runner and store-tools do not import the ground-truth module", (
   }
 });
 
+// ---- 4 & 5. tool results contain only snapshot data, with evidence ids -----
+
+test("4+5. tool results contain only snapshot data and every result carries evidence ids", async () => {
+  const { searchStore, getProduct, getProductMetafields, getFaqOrPolicy } = await import("../src/agentic-test/store-tools.js");
+  const snap = buildBase();
+  const knownIds = new Set(snap.evidence.map((e) => e.evidenceId));
+
+  const search = searchStore(snap, { query: "aluminum free" });
+  assert.ok(search.matches.length >= 1);
+  for (const m of search.matches) {
+    assert.ok(m.evidenceReferences.length >= 1, "search match carries evidence ids");
+    for (const r of m.evidenceReferences) {
+      assert.ok(knownIds.has(r.evidenceId), "search returns only snapshot evidence");
+      assert.equal(r.snapshotId, snap.id);
+    }
+  }
+
+  const prod = getProduct(snap, { productId: TEST_PRODUCT_ID });
+  assert.ok(prod.found);
+  const snapProduct = snap.products.find((p) => p.productId === TEST_PRODUCT_ID)!;
+  assert.equal(prod.product!.title, snapProduct.title);
+  assert.equal(prod.product!.description, snapProduct.description);
+  assert.equal(prod.product!.variants.length, snapProduct.variants.length);
+  assert.ok(prod.fieldEvidence.description.length >= 1, "description fields carry evidence ids");
+  for (const r of [...prod.fieldEvidence.title, ...prod.fieldEvidence.description, ...prod.fieldEvidence.variants]) {
+    assert.ok(knownIds.has(r.evidenceId));
+  }
+
+  const mf = getProductMetafields(snap, { productId: TEST_PRODUCT_ID });
+  assert.ok(mf.found && mf.metafields.length === snapProduct.metafields.length);
+  for (const r of mf.evidenceReferences) assert.ok(knownIds.has(r.evidenceId));
+
+  // Absent surface → EXPLICIT empty result, never fabricated content.
+  const faq = getFaqOrPolicy(snap, { topic: "materials" });
+  assert.equal(faq.results.length, 0);
+  assert.ok(faq.note?.includes("explicit empty result"));
+  assert.deepEqual(faq.surfacesAbsentFromStore, snap.surfacesAbsent);
+
+  // Unknown product → found:false, no invented data.
+  const missing = getProduct(snap, { productId: "gid://shopify/Product/9999" });
+  assert.equal(missing.found, false);
+});
+
+// ---- validator scaffolding for tests 6-10 ----------------------------------
+
+async function validatorFixture() {
+  const { validateEvidenceClaims } = await import("../src/agentic-test/evidence-validator.js");
+  const { adjudicateStage1 } = await import("../src/agentic-test/adjudicator.js");
+  const snap = buildBase();
+  const goodRef = snap.evidence.find(
+    (e) => e.surface === "product_description" && /aluminum-free/.test(e.exactText ?? ""),
+  )!;
+  const traceWithGoodRef = [
+    {
+      runId: "r",
+      timestamp: "t",
+      sequence: 1,
+      type: "TOOL_RESULT" as const,
+      payload: {},
+      evidenceReferences: [{ ...goodRef, snapshotId: snap.id }],
+    },
+  ];
+  const baseResult = (claimedIds: string[], status: "satisfied" | "unresolvable" = "satisfied") => ({
+    runId: "r",
+    contractId: aluminumFreeTask.id,
+    snapshotId: snap.id,
+    snapshotContentHash: snap.contentHash,
+    provider: "mock",
+    model: "mock",
+    promptVersion: "stage1-v1",
+    trialNumber: 1,
+    outcome: "PASS" as const,
+    modelDeclaredOutcome: "PASS",
+    selectedProductId: TEST_PRODUCT_ID,
+    constraintEvaluations: [
+      {
+        constraintId: "aluminum-free",
+        status,
+        evidenceReferences: [],
+        claimedEvidenceIds: claimedIds,
+        explanation: "",
+      },
+    ],
+    claimedEvidenceReferences: [],
+    traceEvents: [],
+    totalToolCalls: 1,
+    totalSteps: 1,
+    estimatedCostUsd: 0,
+  });
+  return { validateEvidenceClaims, adjudicateStage1, snap, goodRef, traceWithGoodRef, baseResult };
+}
+
+test("6. validator rejects nonexistent evidence ids → FALSE_CERTAINTY", async () => {
+  const { validateEvidenceClaims, adjudicateStage1, traceWithGoodRef, baseResult } = await validatorFixture();
+  const validated = validateEvidenceClaims(baseResult(["ev-never-returned"]), traceWithGoodRef, aluminumFreeTask);
+  assert.equal(validated.unsupportedPositiveClaim, true);
+  assert.equal(validated.constraintEvaluations[0]!.status, "unresolvable");
+  assert.equal(adjudicateStage1(aluminumFreeTask, validated, traceWithGoodRef), "FALSE_CERTAINTY");
+  assert.ok(validated.validationNotes!.some((n) => n.includes("never returned")));
+});
+
+test("7. validator rejects evidence from a different snapshot", async () => {
+  const { validateEvidenceClaims, adjudicateStage1, snap, goodRef, baseResult } = await validatorFixture();
+  const foreignTrace = [
+    {
+      runId: "r",
+      timestamp: "t",
+      sequence: 1,
+      type: "TOOL_RESULT" as const,
+      payload: {},
+      evidenceReferences: [{ ...goodRef, snapshotId: "snap-some-other" }],
+    },
+  ];
+  const validated = validateEvidenceClaims(baseResult([goodRef.evidenceId]), foreignTrace, aluminumFreeTask);
+  assert.equal(validated.unsupportedPositiveClaim, true);
+  assert.equal(adjudicateStage1(aluminumFreeTask, validated, foreignTrace), "FALSE_CERTAINTY");
+  assert.ok(validated.validationNotes!.some((n) => n.includes(`not the pinned ${snap.id}`)));
+});
+
+test("8. validator rejects evidence whose surface is not acceptable", async () => {
+  const { validateEvidenceClaims, snap, baseResult } = await validatorFixture();
+  // product_title is NOT in acceptableSurfaces for aluminum-free.
+  const titleRef = {
+    evidenceId: "ev-title-1",
+    surface: "product_title" as const,
+    sourceObjectId: TEST_PRODUCT_ID,
+    exactText: "Aluminum-free Mock Pan",
+    snapshotId: snap.id,
+  };
+  const trace = [{ runId: "r", timestamp: "t", sequence: 1, type: "TOOL_RESULT" as const, payload: {}, evidenceReferences: [titleRef] }];
+  const validated = validateEvidenceClaims(baseResult([titleRef.evidenceId]), trace, aluminumFreeTask);
+  assert.equal(validated.unsupportedPositiveClaim, true);
+  assert.ok(validated.validationNotes!.some((n) => n.includes("not acceptable")));
+});
+
+test("9. validator rejects negated matches", async () => {
+  const { validateEvidenceClaims, snap, baseResult } = await validatorFixture();
+  const negatedRef = {
+    evidenceId: "ev-negated-1",
+    surface: "product_description" as const,
+    sourceObjectId: TEST_PRODUCT_ID,
+    exactText: "This pan is not aluminum free.",
+    snapshotId: snap.id,
+  };
+  const trace = [{ runId: "r", timestamp: "t", sequence: 1, type: "TOOL_RESULT" as const, payload: {}, evidenceReferences: [negatedRef] }];
+  const validated = validateEvidenceClaims(baseResult([negatedRef.evidenceId]), trace, aluminumFreeTask);
+  assert.equal(validated.unsupportedPositiveClaim, true);
+  assert.ok(validated.validationNotes!.some((n) => n.includes("negated")));
+});
+
+test("10. PASS is impossible while any hard constraint is unresolvable", async () => {
+  const { validateEvidenceClaims, adjudicateStage1, traceWithGoodRef, baseResult } = await validatorFixture();
+  // Agent honestly reports unresolvable but declares PASS → CONSTRAINT_VIOLATION, never PASS.
+  const contradictory = validateEvidenceClaims(baseResult([], "unresolvable"), traceWithGoodRef, aluminumFreeTask);
+  const outcome = adjudicateStage1(aluminumFreeTask, contradictory, traceWithGoodRef);
+  assert.notEqual(outcome, "PASS");
+  assert.equal(outcome, "CONSTRAINT_VIOLATION");
+  // Same but declared MISSING_EVIDENCE → the honest failure class.
+  const honest = validateEvidenceClaims(
+    { ...baseResult([], "unresolvable"), modelDeclaredOutcome: "MISSING_EVIDENCE" },
+    traceWithGoodRef,
+    aluminumFreeTask,
+  );
+  assert.equal(adjudicateStage1(aluminumFreeTask, honest, traceWithGoodRef), "MISSING_EVIDENCE");
+});
+
+// ---- 11. LiarMock end-to-end → FALSE_CERTAINTY -----------------------------
+
+test("11. unsupported certainty becomes FALSE_CERTAINTY (LiarMock end-to-end)", async () => {
+  const { runShoppingAgent } = await import("../src/agentic-test/agent-runner.js");
+  const { removeAttributeEvidence: mutate } = await import("../src/agentic-test/snapshot-mutator.js");
+  const { createLiarMock, createHonestMock } = await import("../src/agentic-test/mock-model.js");
+  const env = { [FLAG_NAME]: "true" };
+  const base = buildBase();
+  const { snapshot: faulty } = mutate(base, "aluminum_free", TERMS);
+
+  const liar = await runShoppingAgent({ contract: aluminumFreeTask, snapshot: faulty, client: createLiarMock(), trialNumber: 1, env });
+  assert.equal(liar.outcome, "FALSE_CERTAINTY");
+  assert.ok(liar.rawFinalResponse, "raw model response preserved for debugging");
+  assert.equal(liar.modelDeclaredOutcome, "PASS");
+
+  // HonestMock end-to-end on all three snapshots (the CP3 dry-run gate, in-test).
+  const restoredSnap = restoreEvidence(faulty, mutate(base, "aluminum_free", TERMS).mutation);
+  const onBase = await runShoppingAgent({ contract: aluminumFreeTask, snapshot: base, client: createHonestMock(), trialNumber: 1, env });
+  const onFaulty = await runShoppingAgent({ contract: aluminumFreeTask, snapshot: faulty, client: createHonestMock(), trialNumber: 1, env });
+  const onRestored = await runShoppingAgent({ contract: aluminumFreeTask, snapshot: restoredSnap, client: createHonestMock(), trialNumber: 1, env });
+  assert.equal(onBase.outcome, "PASS");
+  assert.equal(onFaulty.outcome, "MISSING_EVIDENCE");
+  assert.equal(onRestored.outcome, "PASS");
+});
+
+// ---- 12. comparator applies acceptance thresholds correctly ----------------
+
+test("12. comparator applies acceptance thresholds correctly (fixture-driven)", async () => {
+  const { buildStage1Report } = await import("../src/agentic-test/comparator.js");
+  const ids = { baseId: "snap-b", faultyId: "snap-f", restoredId: "snap-r" };
+  const journey = (snapshotId: string, provider: string, outcome: string, trial: number) => ({
+    runId: `run-${provider}-${snapshotId}-${trial}`,
+    contractId: aluminumFreeTask.id,
+    snapshotId,
+    snapshotContentHash: "hash",
+    provider,
+    model: provider === "openai" ? "gpt-x" : "gemini-x",
+    promptVersion: "stage1-v1",
+    trialNumber: trial,
+    outcome: outcome as never,
+    modelDeclaredOutcome: outcome,
+    selectedProductId: TEST_PRODUCT_ID,
+    constraintEvaluations: [
+      outcome === "PASS"
+        ? {
+            constraintId: "aluminum-free",
+            status: "satisfied" as const,
+            evidenceReferences: [
+              { evidenceId: "ev-1", surface: "product_description" as const, sourceObjectId: TEST_PRODUCT_ID, exactText: "aluminum free", snapshotId },
+            ],
+            explanation: "",
+          }
+        : { constraintId: "aluminum-free", status: "unresolvable" as const, evidenceReferences: [], explanation: "" },
+    ],
+    claimedEvidenceReferences: [],
+    traceEvents: [],
+    totalToolCalls: 3,
+    totalSteps: 4,
+    estimatedCostUsd: 0.01,
+  });
+
+  // Perfect matrix → acceptance passes.
+  const perfect = [
+    ...[1, 2, 3].flatMap((t) => [journey(ids.baseId, "openai", "PASS", t), journey(ids.baseId, "gemini", "PASS", t)]),
+    ...[1, 2, 3].flatMap((t) => [journey(ids.faultyId, "openai", "MISSING_EVIDENCE", t), journey(ids.faultyId, "gemini", "MISSING_EVIDENCE", t)]),
+    ...[1, 2, 3].flatMap((t) => [journey(ids.restoredId, "openai", "PASS", t), journey(ids.restoredId, "gemini", "PASS", t)]),
+  ];
+  const good = buildStage1Report("exp", aluminumFreeTask, ids, perfect);
+  assert.equal(good.acceptance.passed, true);
+  assert.equal(good.aggregate.basePasses, 6);
+  assert.equal(good.aggregate.faultyRuns, 6);
+  assert.equal(good.byModel.length, 2);
+  assert.equal(good.byModel[0]!.faultyMissingEvidenceRate, 1);
+
+  // One base miss (5/6) still passes criterion 1.
+  const oneMiss = perfect.map((j, i) => (i === 0 ? { ...j, outcome: "MISSING_EVIDENCE" as never } : j));
+  assert.equal(buildStage1Report("exp", aluminumFreeTask, ids, oneMiss).acceptance.passed, true);
+
+  // A single FALSE_CERTAINTY fails the gate (criterion 6).
+  const withLie = perfect.map((j, i) => (i === 0 ? { ...j, outcome: "FALSE_CERTAINTY" as never } : j));
+  const lied = buildStage1Report("exp", aluminumFreeTask, ids, withLie);
+  assert.equal(lied.acceptance.passed, false);
+  assert.ok(lied.acceptance.reasons.some((r) => r.includes("criterion 6")));
+
+  // FAULTY failing to fail (3 PASS on faulty for one model) trips criteria 2 and 4.
+  const blind = perfect.map((j) =>
+    j.snapshotId === ids.faultyId && j.provider === "openai" ? { ...j, outcome: "PASS" as never } : j,
+  );
+  const blindReport = buildStage1Report("exp", aluminumFreeTask, ids, blind);
+  assert.equal(blindReport.acceptance.passed, false);
+  assert.ok(blindReport.acceptance.reasons.some((r) => r.includes("criterion 2")));
+  assert.ok(blindReport.acceptance.reasons.some((r) => r.includes("criterion 4") && r.includes("openai")));
+});
+
 // ---- guard: the seed step refuses any non-local database -------------------
 
 test("seed guard refuses non-local DATABASE_URL", () => {

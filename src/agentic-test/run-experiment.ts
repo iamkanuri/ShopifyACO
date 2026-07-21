@@ -141,6 +141,51 @@ export async function runJourney(provider: string, role: SnapshotRole, trialNumb
   return result;
 }
 
+// ---- mock dry run (spec 4.10 — zero-cost gate before any paid call) --------
+
+export async function mockDryRun(): Promise<void> {
+  assertRunnable(process.env, TEST_SHOP_ID);
+  const manifest = readManifest();
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { createHonestMock, createLiarMock } = await import("./mock-model.js");
+
+  const expectations: Array<{ role: SnapshotRole; expected: string }> = [
+    { role: "base", expected: "PASS" },
+    { role: "faulty", expected: "MISSING_EVIDENCE" },
+    { role: "restored", expected: "PASS" },
+  ];
+  let failed = false;
+  for (const { role, expected } of expectations) {
+    const snapshot = loadSnapshot(snapshotIdForRole(manifest, role));
+    const result = await runShoppingAgent({
+      contract: aluminumFreeTask,
+      snapshot,
+      client: createHonestMock(),
+      trialNumber: 0,
+    });
+    const ok = result.outcome === expected;
+    if (!ok) failed = true;
+    console.log(`[dry-run] HonestMock on ${role.toUpperCase()} → ${result.outcome} (expected ${expected}) ${ok ? "✓" : "✗"}`);
+  }
+  const liarSnapshot = loadSnapshot(manifest.snapshots.faultyId);
+  const liar = await runShoppingAgent({
+    contract: aluminumFreeTask,
+    snapshot: liarSnapshot,
+    client: createLiarMock(),
+    trialNumber: 0,
+  });
+  const liarOk = liar.outcome === "FALSE_CERTAINTY";
+  if (!liarOk) failed = true;
+  console.log(`[dry-run] LiarMock on FAULTY → ${liar.outcome} (expected FALSE_CERTAINTY) ${liarOk ? "✓" : "✗"}`);
+
+  if (failed) {
+    throw new Error(
+      "DRY-RUN GATE FAILED: the instrument cannot be trusted (validator/adjudicator misbehaved) — do not spend money",
+    );
+  }
+  console.log("[dry-run] gate PASSED: pipeline adjudicates HonestMock correctly and catches the LiarMock");
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -161,8 +206,11 @@ if (isMain) {
         await runJourney(provider, role, trial);
         break;
       }
+      case "mock-dry-run":
+        await mockDryRun();
+        break;
       default:
-        console.error("usage: npx tsx src/agentic-test/run-experiment.ts <prepare|journey>");
+        console.error("usage: npx tsx src/agentic-test/run-experiment.ts <prepare|journey|mock-dry-run>");
         process.exitCode = 2;
     }
   };
