@@ -185,6 +185,64 @@ export async function runMatrix(): Promise<void> {
   console.log(`[matrix] complete: ${ran} journeys run, ${skipped} already persisted, cumulative spend $${readCumulativeSpend().toFixed(4)}`);
 }
 
+// ---- acceptance report (CP5) -----------------------------------------------
+
+export async function buildReport(): Promise<void> {
+  assertRunnable(process.env, TEST_SHOP_ID);
+  const manifest = readManifest();
+  const { resultsDir } = await import("./trace-recorder.js");
+  const { buildStage1Report, formatHumanReport } = await import("./comparator.js");
+  const { PROMPT_VERSION_V1 } = await import("./agent-runner.js");
+  const { TEST_PRODUCT_ID: productId } = await import("./contract.js");
+  type Journey = import("./types.js").JourneyResult;
+
+  // Load the full persisted journeys for the real matrix (providers openai/gemini,
+  // trials 1..3, prompt stage1-v1) — mock dry-runs are excluded by construction.
+  const index = readFileSync(join(resultsDir(), "index.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l) as { runId: string; provider: string; trialNumber: number; promptVersion: string });
+  const journeys: Journey[] = index
+    .filter((e) => ["openai", "gemini"].includes(e.provider) && e.trialNumber >= 1 && e.promptVersion === PROMPT_VERSION_V1)
+    .map((e) => JSON.parse(readFileSync(join(resultsDir(), `${e.runId}.json`), "utf8")) as Journey);
+
+  const report = buildStage1Report(manifest.experimentId, aluminumFreeTask, manifest.snapshots, journeys);
+  writeFileSync(join(EXPERIMENT_DIR, "stage1-report.json"), JSON.stringify(report, null, 2), "utf8");
+
+  // Detail lines from the mutation manifest + the faulty-run traces.
+  const mutation = JSON.parse(
+    readFileSync(join(EXPERIMENT_DIR, "snapshots", `mutation-${manifest.mutationId}.json`), "utf8"),
+  ) as import("./types.js").SnapshotMutation;
+  const evidenceLine = mutation.restoreHints
+    .map((h) =>
+      h.kind === "sentence"
+        ? `product_description: "${h.sentence}"`
+        : h.kind === "metafield"
+          ? `product_metafields: ${h.metafield.namespace}.${h.metafield.key} = "${h.metafield.value}"`
+          : h.kind,
+    )
+    .join(" · ");
+  const faultySurfaces = new Set<string>();
+  for (const j of journeys.filter((x) => x.snapshotId === manifest.snapshots.faultyId)) {
+    for (const e of j.traceEvents) {
+      if (e.type === "TOOL_CALLED") faultySurfaces.add(String(e.payload.name));
+    }
+  }
+  const unsupportedReferenceCount = journeys
+    .flatMap((j) => j.validationNotes ?? [])
+    .filter((n) => /never returned|not the pinned|not acceptable|does not support/.test(n)).length;
+
+  const human = formatHumanReport(report, {
+    taskLine: `Verify that Mock Product 1 (${productId}) is explicitly aluminum-free.`,
+    baseEvidenceLine: evidenceLine,
+    faultySurfacesLine: [...faultySurfaces].sort().join(", "),
+    restoredEvidenceLine: evidenceLine,
+    unsupportedReferenceCount,
+  });
+  console.log(human);
+  writeFileSync(join(EXPERIMENT_DIR, "stage1-report.txt"), `${human}\n`, "utf8");
+}
+
 // ---- mock dry run (spec 4.10 — zero-cost gate before any paid call) --------
 
 export async function mockDryRun(): Promise<void> {
@@ -255,6 +313,9 @@ if (isMain) {
         break;
       case "matrix":
         await runMatrix();
+        break;
+      case "report":
+        await buildReport();
         break;
       default:
         console.error("usage: npx tsx src/agentic-test/run-experiment.ts <prepare|journey|mock-dry-run>");

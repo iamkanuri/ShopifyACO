@@ -1,0 +1,40 @@
+{
+  "experimentId": "agentic-stage1-2026-07-21",
+  "snapshots": {
+    "baseId": "snap-0b747b1ec8e6a143",
+    "faultyId": "snap-aa0945aa82e7d5b7",
+    "restoredId": "snap-b584dab5794ecf14"
+  },
+  "aggregate": {
+    "basePasses": 6,
+    "baseRuns": 6,
+    "faultyCorrectFailures": 6,
+    "faultyRuns": 6,
+    "restoredPasses": 6,
+    "restoredRuns": 6,
+    "falseCertaintyCount": 0,
+    "toolFailureCount": 0,
+    "modelFailureCount": 0
+  },
+  "byModel": [
+    {
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "basePassRate": 1,
+      "faultyMissingEvidenceRate": 1,
+      "restoredPassRate": 1
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "basePassRate": 1,
+      "faultyMissingEvidenceRate": 1,
+      "restoredPassRate": 1
+    }
+  ],
+  "acceptance": {
+    "passed": true,
+    "reasons": []
+  },
+  "totalEstimatedCostUsd": 0.050057749999999984
+}

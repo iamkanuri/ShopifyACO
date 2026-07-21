@@ -1,0 +1,15 @@
+AGENTIC INSTRUMENT TEST — STAGE 1
+Task: Verify that Mock Product 1 (gid://shopify/Product/1001) is explicitly aluminum-free.
+
+BASE SNAPSHOT       6/6 PASS
+  Evidence found: product_description: "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum." · product_metafields: custom.aluminum_free = "true"
+FAULTY SNAPSHOT     6/6 MISSING_EVIDENCE
+  Surfaces checked: get_faq_or_policy, get_product, get_product_metafields, search_store   No explicit aluminum-free evidence found.
+RESTORED SNAPSHOT   6/6 PASS
+  Evidence restored: product_description: "This pan is completely aluminum-free: the ceramic cooking surface and steel core contain no aluminum." · product_metafields: custom.aluminum_free = "true"
+
+False-certainty events: 0     Unsupported evidence references: 0
+Tool failures: 0              Model failures: 0
+Estimated API cost: $0.05
+GATE RESULT: PASS
+Reasons: all acceptance criteria met
