@@ -242,6 +242,42 @@ test("claim-rescue: real in-scope paraphrase citation → SEMANTIC_VERIFIED, not
   assert.notEqual(adjudicateStage2(stage2PrimaryContract, out.result, trace).outcome, "FALSE_CERTAINTY");
 });
 
+// ---- 34. pre-registration guard (mechanical Rule 5) ------------------------
+
+test("34. probe-parsing refuses to run without the pre-registration record", async () => {
+  const { assertPreregistered } = await import("../src/agentic-test/preregistration.js");
+  const prev = process.env.AGENTIC_STAGE3_PREREG;
+
+  // Missing file → hard refusal.
+  process.env.AGENTIC_STAGE3_PREREG = join(tmpdir(), "nonexistent-prereg.json");
+  assert.throws(() => assertPreregistered(), /PRE-REGISTRATION GUARD/);
+
+  // The real record (when present) verifies: files exist + hashes match.
+  process.env.AGENTIC_STAGE3_PREREG = prev ?? "";
+  delete process.env.AGENTIC_STAGE3_PREREG;
+  const realPrereg = join(process.cwd(), "experiments", "agentic-stage3", "preregistration.json");
+  if (existsSync(realPrereg)) {
+    const reg = assertPreregistered();
+    assert.ok(reg.gitCommit.length >= 7);
+    assert.ok(Object.keys(reg.files).includes("src/agentic-test/manual-contracts.ts"));
+  }
+
+  // Hash mismatch → refusal (doctored copy in a temp dir).
+  const { writeFileSync, mkdirSync } = await import("node:fs");
+  const dir = mkdtempSync(join(tmpdir(), "prereg-test-"));
+  mkdirSync(dir, { recursive: true });
+  const doctored = join(dir, "prereg.json");
+  writeFileSync(doctored, JSON.stringify({
+    gitCommit: "deadbeef",
+    registeredAt: "t",
+    files: { "src/agentic-test/manual-contracts.ts": "0".repeat(64) },
+  }));
+  process.env.AGENTIC_STAGE3_PREREG = doctored;
+  assert.throws(() => assertPreregistered(), /hash mismatch/);
+  delete process.env.AGENTIC_STAGE3_PREREG;
+  if (prev) process.env.AGENTIC_STAGE3_PREREG = prev;
+});
+
 // ---- 31. coverage metric on a constructed case -----------------------------
 
 test("31. coverage metric computes missed-relevant surfaces correctly", () => {
