@@ -44,15 +44,19 @@ required.** What IS required:
    (`{ shop { myshopifyDomain } }` asserted) immediately before every write
    step, since Fix Studio itself has no such gate (backlog note).
 
-**Latent production finding (disclosed, NOT fixed here):** for
-`descriptionHtml` targets, the conflict check reads `live["descriptionHtml"]`
-but `rereadProduct` returns a `NormalizedProduct`, which stores the STRIPPED
-plain text under `description` and has no `descriptionHtml` property — the
-comparison degrades to `"" === based_on`, i.e. the conflict gate is
-**vacuous for description writes**. Stage 4 exercises it as-is and records the
-vacuous pass honestly; REAL conflict semantics are demonstrated on the
-`seo.description` rollback probe (fully-mapped path). Fixing the field
-read is Fix Studio backlog, not experiment scope.
+**Latent production finding — surfaced by the compiler, then resolved:** the
+old code read `live[field]` for the conflict check; for `descriptionHtml` that
+property does not exist on `NormalizedProduct` (which stores STRIPPED text
+under `description`), so the check would have been vacuous. Widening the type
+made this a compile error, forcing the read to be DEFINED as part of the
+additive enablement: a typed `liveFieldValue()` helper maps
+`descriptionHtml → live.description`, so the conflict baseline (`based_on`)
+and rollback expectation for description targets are the NORMALIZED plain
+text — the conflict check is now REAL for the new path, and seo paths are
+byte-identical to before. Remaining backlog note: a description ROLLBACK would
+restore stripped text (the snapshot holds the normalized read), acceptable for
+Stage 4 (the description fix is never rolled back; rollback capability is
+demonstrated on the fully-mapped `seo.description` probe).
 
 **Metafields are outside Fix Studio's writable universe entirely.** The Stage 4
 fault removes the description sentence AND the `custom.aluminum_free`

@@ -32,6 +32,19 @@ export function hasWriteScope(scopes: string | null | undefined): boolean {
   return hasScope(scopes, "write_products");
 }
 
+/** What the live product currently holds for a writable field. The re-read
+ *  returns a NormalizedProduct, whose description is the HTML-STRIPPED text —
+ *  so for descriptionHtml targets the conflict baseline (`based_on`) and the
+ *  rollback expectation are the NORMALIZED text, not raw HTML. (Added with the
+ *  Stage 4 descriptionHtml enablement; seo paths are byte-identical to before.) */
+function liveFieldValue(live: { seoTitle: string | null; seoDescription: string | null; description: string | null }, field: WritableField): string | null {
+  switch (field) {
+    case "seoTitle": return live.seoTitle;
+    case "seoDescription": return live.seoDescription;
+    case "descriptionHtml": return live.description;
+  }
+}
+
 /** Load a proposal and confirm it belongs to this shop (tenant isolation). */
 async function loadOwned(shop: string, id: number): Promise<ProposalRow | null> {
   const p = await getProposal(id);
@@ -91,7 +104,7 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     return { ok: false, status: "failed", detail: "product no longer exists" };
   }
 
-  const liveValue = (live[field] as string | null) ?? null;
+  const liveValue = liveFieldValue(live, field);
   // Conflict: the field changed since we based the proposal on it. Never clobber.
   if ((liveValue ?? "") !== (p.based_on ?? "")) {
     await updateProposal(id, { status: "conflict", error: `live value changed since proposal (now: ${truncErr(liveValue)})` });
@@ -115,7 +128,7 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     // not Shopify's own normalization — counts as a conflict.
     try {
       const after = await rereadProduct(shop, token, p.product_gid);
-      snapshot.applied = (after?.[field] as string | null) ?? null;
+      snapshot.applied = after ? liveFieldValue(after, field) : null;
     } catch {
       snapshot.applied = p.proposed_value; // best effort if the verify re-read fails
     }
@@ -151,7 +164,7 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
   // held right after apply (snap.applied), NOT the raw proposed value: Shopify normalizes SEO
   // fields, so proposed_value rarely matches the stored form byte-for-byte. Fall back to
   // proposed_value for snapshots written before snap.applied existed.
-  const liveValue = (live?.[snap.field] as string | null) ?? null;
+  const liveValue = live ? liveFieldValue(live, snap.field) : null;
   const expected = snap.applied !== undefined ? snap.applied : (p.proposed_value ?? null);
   if ((liveValue ?? "") !== (expected ?? "")) {
     await updateProposal(id, { status: "conflict", error: `value changed after apply (live: ${truncErr(liveValue)}, expected: ${truncErr(expected)})` });
