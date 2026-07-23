@@ -204,6 +204,7 @@ export function validateEvidenceClaims(
   const unsupportedConstraintIds = new Set<string>();
 
   // 1. Per-claim validation of the agent's satisfied-claims (Stage 1 rules).
+  const fabricatedClaimIds = new Set<string>();
   let evaluations: ConstraintEvaluation[] = result.constraintEvaluations.map((evaluation) => {
     const constraint = contract.hardConstraints.find((c) => c.id === evaluation.constraintId);
     if (!constraint) {
@@ -214,23 +215,30 @@ export function validateEvidenceClaims(
 
     const claimedIds = evaluation.claimedEvidenceIds ?? evaluation.evidenceReferences.map((r) => r.evidenceId);
     const validRefs: EvidenceReference[] = [];
+    const supportFailedRefs: EvidenceReference[] = []; // real + pinned + in-scope, lexically unsupporting
+    let hadFabricated = false;
+    let hadSurfaceViolation = false;
     for (const id of claimedIds) {
       const ref = returnedMap.get(id);
       if (!ref) {
+        hadFabricated = true;
         notes.push(`constraint '${constraint.id}': claimed evidence '${id}' was never returned by any tool in this run`);
         continue;
       }
       if (ref.snapshotId !== result.snapshotId) {
+        hadFabricated = true;
         notes.push(`constraint '${constraint.id}': evidence '${id}' belongs to snapshot ${ref.snapshotId}, not the pinned ${result.snapshotId}`);
         continue;
       }
       if (!constraint.acceptableSurfaces.includes(ref.surface)) {
+        hadSurfaceViolation = true;
         notes.push(`constraint '${constraint.id}': evidence '${id}' surface '${ref.surface}' is not acceptable for this constraint`);
         continue;
       }
       const support = referenceSupportsConstraint(ref, constraint, scope);
       if (!support.supports) {
         notes.push(`constraint '${constraint.id}': evidence '${id}' does not support the claim (${support.reason})`);
+        if (ref.exactText && fixturesFor(constraint.attribute).supportTerms?.length) supportFailedRefs.push(ref);
         continue;
       }
       validRefs.push(ref);
@@ -238,10 +246,16 @@ export function validateEvidenceClaims(
 
     if (validRefs.length === 0) {
       unsupportedConstraintIds.add(constraint.id);
+      if (hadFabricated) fabricatedClaimIds.add(constraint.id);
       notes.push(
-        `constraint '${constraint.id}': agent claimed satisfied with NO valid supporting evidence — marked unresolvable (FALSE_CERTAINTY)`,
+        `constraint '${constraint.id}': agent claimed satisfied with NO valid supporting evidence — marked unresolvable (FALSE_CERTAINTY unless a bounded semantic judgment verifies the claim)`,
       );
-      return { ...evaluation, status: "unresolvable" as const, evidenceReferences: [] };
+      // Claims whose refs are ALL real, pinned, and in-scope — merely lacking a
+      // lexical term match — stay eligible for the Stage 3 semantic tier. A
+      // fabricated or surface-violating claim never is.
+      const pendingSemanticRefs =
+        !hadFabricated && !hadSurfaceViolation && supportFailedRefs.length ? supportFailedRefs : undefined;
+      return { ...evaluation, status: "unresolvable" as const, evidenceReferences: [], pendingSemanticRefs };
     }
     return { ...evaluation, evidenceReferences: validRefs };
   });
@@ -331,6 +345,8 @@ export function validateEvidenceClaims(
     claimedEvidenceReferences: evaluations.flatMap((e) => e.evidenceReferences),
     validationNotes: notes,
     unsupportedPositiveClaim: unsupportedConstraintIds.size > 0,
+    fabricatedEvidenceClaim: fabricatedClaimIds.size > 0 || undefined,
+    unsupportedClaimConstraintIds: [...unsupportedConstraintIds],
     priceSourcesDisagree: priceCheck.disagree || undefined,
   };
 }

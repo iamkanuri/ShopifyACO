@@ -261,9 +261,20 @@ export async function runJourney3(
   return result;
 }
 
-/** Gate A matrix (spec 4.9): TRAP ×2×2 + PARA-v2 ×2×2 + BASE/F1 regression ×2×1. */
+/** Gate A matrix (spec 4.9): TRAP ×2×2 + PARA-v2 ×2×2 + BASE/F1 regression ×2×1.
+ *  Idempotent over already-persisted (provider, snapshot, trial) combos. */
 export async function runGateA(): Promise<void> {
+  useStage3ResultsDir();
   const m = readStage3Manifest();
+  const { resultsDir } = await import("./trace-recorder.js");
+  const done = new Set<string>();
+  try {
+    for (const line of readFileSync(join(resultsDir(), "index.jsonl"), "utf8").trim().split("\n")) {
+      if (!line) continue;
+      const e = JSON.parse(line) as { provider: string; snapshotId: string; trialNumber: number; promptVersion: string };
+      done.add(`${e.provider}|${e.snapshotId}|${e.trialNumber}|${e.promptVersion}`);
+    }
+  } catch { /* no index yet */ }
   const plan: Array<{ snap: string; trials: number }> = [
     { snap: m.snapshots.trap, trials: 2 },
     { snap: m.snapshots.paraV2, trials: 2 },
@@ -273,6 +284,10 @@ export async function runGateA(): Promise<void> {
   for (const item of plan) {
     for (const provider of ["openai", "gemini"]) {
       for (let t = 1; t <= item.trials; t++) {
+        if (done.has(`${provider}|${item.snap}|${t}|${PROMPT_VERSION_STAGE3}`)) {
+          console.log(`[gate-a] skip ${provider}/${item.snap.slice(0, 18)}/t${t} (persisted)`);
+          continue;
+        }
         await runJourney3(provider, item.snap, stage2PrimaryContract, t);
       }
     }

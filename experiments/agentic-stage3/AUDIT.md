@@ -59,3 +59,31 @@ Proceed. Semantic-tier designated model: **gemini-2.5-flash** (cheapest
 qualifying, min temperature, thinking disabled), promptVersion `sem-v1`.
 Compiler LLM-extraction model: **gpt-5.4-mini** (the stronger of the two cheap
 models per Stage 1/2 behavior), strict JSON schema, min temperature.
+
+---
+
+# GATE A EXECUTION RECORD (2026-07-22)
+
+Three defects were caught by the gates themselves and fixed with disclosure:
+1. **Veto scope bug (paid smoke caught):** variant/price/metafield STRUCTURED
+   support was being sent to the aboutness judge (variant titles judged "about
+   a scent"); Rule 6 scopes vetoes to explicit LEXICAL matches only. Fixed;
+   regression-tested (paranoid-judge test).
+2. **Claim-rescue design collision (PARA-v2 4/4 FALSE_CERTAINTY):** agents
+   citing REAL retrieved paraphrase sentences were condemned by the lexical
+   floor before the semantic tier could judge the claim. Fixed: real+pinned+
+   in-scope citations failing ONLY the lexical check go to quote-bounded
+   semantic judgment (rescue → SEMANTIC_VERIFIED); fabricated ids still hard-
+   disable the tier. Deterministic-only behavior (Stage 1/2) unchanged.
+3. **sem-v1 → sem-v2 (the one allowed prompt revision, full Gate A rerun):**
+   sem-v1's "about THE PRODUCT ITSELF" made the judge veto LEGITIMATE
+   shipping-policy evidence for delivery_timing (caught by the BASE regression
+   cell: gemini BASE → POLICY_OPACITY). sem-v2 derives the legitimate subject
+   from the constraint's surfaces (policy attributes ≙ store policy). Both
+   versions' full Gate A results are preserved: `results-prebugfix/` (code
+   bugs), `results-semv1/` (prompt bug), `results/` (final).
+
+**Gate A final (sem-v2): 12/12** — TRAP 4/4 REJECTED_ABOUTNESS→MISSING_EVIDENCE;
+PARA-v2 4/4 PASS@SEMANTIC_VERIFIED; BASE 2/2 PASS (EXPLICIT c1); F1 2/2
+MISSING_EVIDENCE/EVIDENCE_GAP. Scan gate F1/F2/F5 100% with quotes. LiarMock +
+SemanticLiarMock caught at $0. Zero fabricated citations credited anywhere.

@@ -233,6 +233,9 @@ export interface ConstraintEvaluation {
   /** Stage 3: an explicit lexical match was vetoed as being about another
    *  subject (the TRAP fix); the constraint is NOT satisfied by it. */
   rejectedAboutness?: boolean;
+  /** Stage 3: agent-claimed refs that are REAL, pinned, and in-scope but failed
+   *  only the lexical support check — eligible for semantic-tier judgment. */
+  pendingSemanticRefs?: EvidenceReference[];
   observedValue?: unknown;
   /** Resolved references for claimed ids that WERE returned by tools this run. */
   evidenceReferences: EvidenceReference[];
@@ -270,6 +273,12 @@ export interface JourneyResult {
   validationNotes?: string[];
   /** Set by the validator when a satisfied-claim had no trace-backed valid support. */
   unsupportedPositiveClaim?: boolean;
+  /** Stage 3: the HARD kind — a claim cited an id no tool returned (or from a
+   *  different snapshot). Disables the semantic tier entirely (floor wins). */
+  fabricatedEvidenceClaim?: boolean;
+  /** Constraint ids whose satisfied-claims remain unsupported (semantic pass
+   *  removes the ones it rescues with verified quotes). */
+  unsupportedClaimConstraintIds?: string[];
   /** Stage 2: deterministic root cause assigned by the adjudicator (spec 4.1). */
   rootCauseCode?: RootCauseCode;
   /** Stage 2: validator-observed disagreement between price-bearing surfaces

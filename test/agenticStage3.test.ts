@@ -163,10 +163,83 @@ test("29. grant path: verified supporting quote → SEMANTIC_VERIFIED satisfied"
   assert.equal(c1.confidenceTier, "SEMANTIC_VERIFIED");
   assert.equal(c1.evidenceReferences.length, 1, "grant is trace-backed");
 
-  // The floor still wins: a run with an unsupported positive claim gets NO grants.
-  const flagged = { ...semanticFixture("unresolvable", "Aluminum never makes it into this formula."), unsupportedPositiveClaim: true };
+  // The floor still wins: a run that cited FABRICATED evidence gets NO grants
+  // (real-but-lexically-unsupported citations go through claim-rescue instead).
+  const flagged = {
+    ...semanticFixture("unresolvable", "Aluminum never makes it into this formula."),
+    unsupportedPositiveClaim: true,
+    fabricatedEvidenceClaim: true,
+  };
   const skipped = await applySemanticTier(flagged as never, stage2PrimaryContract, createScriptedSemanticMock());
   assert.equal(skipped.result.constraintEvaluations[0]!.status, "unresolvable");
+  assert.equal(skipped.result.unsupportedPositiveClaim, true, "fabrication flag survives untouched");
+});
+
+// ---- Gate A bug regressions (found by paid smoke, fixed with disclosure) ----
+
+test("veto never applies to structured support (variant availability / price)", async () => {
+  const { applySemanticTier } = await import("../src/agentic-test/semantic-tier.js");
+  // A judge that calls EVERYTHING about_other_subject must still be unable to
+  // veto c3's structured availability evidence.
+  const paranoidJudge = {
+    provider: "mock", model: "paranoid", promptVersion: "sem-mock",
+    propose: async (text: string) => ({
+      candidates: text.split("\n").map((s) => ({ exactQuote: s, verdict: "about_other_subject" as const, subject: "something else" })),
+      costUsd: 0,
+    }),
+  };
+  const variantRef = {
+    evidenceId: "ev-var", surface: "product_variants" as const, sourceObjectId: "v-req",
+    exactText: "Unscented / 2.5 oz",
+    structuredValue: { variantId: stage2PrimaryContract.productScope.variantId, available: true, price: 14 },
+    snapshotId: "snap-sem",
+  };
+  const result = {
+    runId: "r", contractId: stage2PrimaryContract.id, snapshotId: "snap-sem", snapshotContentHash: "h",
+    provider: "mock", model: "mock", promptVersion: "stage3-v1", trialNumber: 1,
+    outcome: "PASS" as const, modelDeclaredOutcome: "PASS",
+    selectedProductId: stage2PrimaryContract.productScope.productId,
+    selectedVariantId: stage2PrimaryContract.productScope.variantId,
+    constraintEvaluations: [
+      { constraintId: "c3-variant-purchasable", status: "satisfied" as const, evidenceReferences: [variantRef], explanation: "" },
+    ],
+    claimedEvidenceReferences: [], traceEvents: [], totalToolCalls: 1, totalSteps: 1, estimatedCostUsd: 0,
+  };
+  const out = await applySemanticTier(result as never, stage2PrimaryContract, paranoidJudge);
+  const c3 = out.result.constraintEvaluations[0]!;
+  assert.equal(c3.status, "satisfied", "structured evidence is not an aboutness question");
+  assert.equal(c3.confidenceTier, "EXPLICIT");
+});
+
+test("claim-rescue: real in-scope paraphrase citation → SEMANTIC_VERIFIED, not FALSE_CERTAINTY", async () => {
+  const { validateEvidenceClaims } = await import("../src/agentic-test/evidence-validator.js");
+  const { applySemanticTier, createScriptedSemanticMock } = await import("../src/agentic-test/semantic-tier.js");
+  const { adjudicateStage2 } = await import("../src/agentic-test/adjudicator.js");
+  const ref = {
+    evidenceId: "ev-para", surface: "product_description" as const, sourceObjectId: "p",
+    exactText: "Aluminum never makes it into this formula.", snapshotId: "snap-x",
+  };
+  const trace = [{ runId: "r", timestamp: "t", sequence: 1, type: "TOOL_RESULT" as const, payload: {}, evidenceReferences: [ref] }];
+  const claimed = {
+    runId: "r", contractId: stage2PrimaryContract.id, snapshotId: "snap-x", snapshotContentHash: "h",
+    provider: "mock", model: "mock", promptVersion: "stage3-v1", trialNumber: 1,
+    outcome: "PASS" as const, modelDeclaredOutcome: "PASS",
+    selectedProductId: stage2PrimaryContract.productScope.productId,
+    selectedVariantId: stage2PrimaryContract.productScope.variantId,
+    constraintEvaluations: [
+      { constraintId: "c1-aluminum-free", status: "satisfied" as const, evidenceReferences: [], claimedEvidenceIds: ["ev-para"], explanation: "" },
+    ],
+    claimedEvidenceReferences: [], traceEvents: [], totalToolCalls: 1, totalSteps: 1, estimatedCostUsd: 0,
+  };
+  const validated = validateEvidenceClaims(claimed as never, trace, stage2PrimaryContract);
+  assert.equal(validated.unsupportedPositiveClaim, true, "deterministic-only view still flags it");
+  assert.ok(!validated.fabricatedEvidenceClaim, "but it is NOT a fabricated claim");
+  const out = await applySemanticTier(validated, stage2PrimaryContract, createScriptedSemanticMock());
+  const c1 = out.result.constraintEvaluations[0]!;
+  assert.equal(c1.status, "satisfied");
+  assert.equal(c1.confidenceTier, "SEMANTIC_VERIFIED");
+  assert.equal(out.result.unsupportedPositiveClaim, false, "rescued claim clears the flag");
+  assert.notEqual(adjudicateStage2(stage2PrimaryContract, out.result, trace).outcome, "FALSE_CERTAINTY");
 });
 
 // ---- 31. coverage metric on a constructed case -----------------------------

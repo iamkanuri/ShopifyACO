@@ -9,6 +9,7 @@ import type {
   ShoppingTaskContract,
 } from "./types.js";
 import { normalizeForMatch } from "./util.js";
+import { referenceSupportsConstraint } from "./evidence-validator.js";
 
 // ===========================================================================
 // SEMANTIC EVIDENCE TIER (Stage 3, spec 4.2) — bounded model judgment above
@@ -23,7 +24,13 @@ import { normalizeForMatch } from "./util.js";
 // path) disables all grants for the run.
 // ===========================================================================
 
-export const SEM_PROMPT_VERSION = "sem-v1";
+/** sem-v2: the single allowed prompt revision (recorded; both versions'
+ *  Gate A results reported). sem-v1 defined support as asserting the attribute
+ *  "for THE PRODUCT ITSELF", which made the judge veto LEGITIMATE store-policy
+ *  evidence (delivery timing's proper subject IS the shipping policy) —
+ *  caught by the BASE regression cell. sem-v2 scopes the legitimate subject by
+ *  attribute kind; packaging-style lookalikes are still rejected. */
+export const SEM_PROMPT_VERSION = "sem-v2";
 
 export interface SemanticCandidate {
   exactQuote: string;
@@ -75,9 +82,23 @@ export interface SemanticPassOutcome {
 
 const isTextEvidence = (r: EvidenceReference): boolean => Boolean(r.exactText && r.exactText.trim());
 
-/** Apply veto + grant per Rule 6. Never touches violated/conflicting statuses
- *  or deterministic overrides; disabled entirely when the run already carries
- *  an agent-level unsupported positive claim (FALSE_CERTAINTY floor wins). */
+/** Rule 6 veto scope: ONLY explicit LEXICAL (term-based) matches are vetoable.
+ *  Structured support (variant availability, prices, keyed metafields) is not
+ *  an aboutness question — sending it to the judge caused the Gate A c3 bug. */
+function isVetoableTextSupport(
+  ref: EvidenceReference,
+  constraint: ShoppingConstraint,
+  scope: { productId?: string; variantId?: string },
+): boolean {
+  if (!isTextEvidence(ref)) return false;
+  const verdict = referenceSupportsConstraint(ref, constraint, scope);
+  return verdict.supports && verdict.reason.startsWith("text matches");
+}
+
+/** Apply claim-rescue + veto + grant per Rule 6. Never touches
+ *  violated/conflicting statuses or deterministic overrides. Disabled entirely
+ *  when the run cited FABRICATED evidence (nonexistent / foreign-snapshot ids)
+ *  — the deterministic floor wins outright there. */
 export async function applySemanticTier(
   result: JourneyResult,
   contract: ShoppingTaskContract,
@@ -87,8 +108,8 @@ export async function applySemanticTier(
   let costUsd = 0;
   let fabrications = 0;
 
-  if (result.unsupportedPositiveClaim) {
-    return { result, costUsd: 0, notes: ["semantic tier skipped: run carries an unsupported positive claim (floor wins)"] };
+  if (result.fabricatedEvidenceClaim) {
+    return { result, costUsd: 0, notes: ["semantic tier skipped: run cited fabricated evidence (floor wins)"] };
   }
 
   const retrieved = result.traceEvents
@@ -98,19 +119,54 @@ export async function applySemanticTier(
   const allRetrieved = [...dedupById.values()];
 
   let evaluations: ConstraintEvaluation[] = [...result.constraintEvaluations];
+  const rescued = new Set<string>();
+  const scope = contract.productScope;
 
   for (const constraint of contract.hardConstraints) {
     const idx = evaluations.findIndex((e) => e.constraintId === constraint.id);
     if (idx === -1) continue;
     const evaluation = evaluations[idx]!;
 
-    // ---- VETO path: explicit satisfied → aboutness check on text evidence --
+    // ---- CLAIM-RESCUE path: the agent cited REAL in-scope refs that failed
+    // only the lexical check (e.g. genuine paraphrases). Quote-bounded
+    // semantic judgment decides whether the claim was honest. --------------
+    if (evaluation.status === "unresolvable" && evaluation.pendingSemanticRefs?.length) {
+      const pending = evaluation.pendingSemanticRefs.filter(isTextEvidence).slice(0, 16);
+      if (pending.length) {
+        const joined = pending.map((r) => r.exactText!).join("\n");
+        const proposal = await client.propose(joined, constraint);
+        costUsd += proposal.costUsd;
+        const { verified, fabrications: f } = verifySemanticCandidates(joined, proposal.candidates);
+        fabrications += f;
+        const supports = verified.filter((c) => c.verdict === "supports");
+        const grantedRefs = pending.filter((r) =>
+          supports.some((c) => normalizeForMatch(r.exactText!).includes(normalizeForMatch(c.exactQuote))),
+        );
+        if (grantedRefs.length) {
+          rescued.add(constraint.id);
+          notes.push(`constraint '${constraint.id}': agent's claim RESCUED at SEMANTIC_VERIFIED (quote "${supports[0]!.exactQuote.slice(0, 60)}…")`);
+          evaluations[idx] = {
+            ...evaluation,
+            status: "satisfied",
+            confidenceTier: "SEMANTIC_VERIFIED",
+            evidenceReferences: grantedRefs,
+            pendingSemanticRefs: undefined,
+            explanation: `${evaluation.explanation} [SEMANTIC RESCUE: quote-verified support for the agent's citation]`,
+          };
+          continue;
+        }
+      }
+      notes.push(`constraint '${constraint.id}': claim NOT rescued — semantic tier found no verified support`);
+      continue;
+    }
+
+    // ---- VETO path: explicit satisfied → aboutness check on LEXICAL matches --
     if (evaluation.status === "satisfied") {
-      const textRefs = evaluation.evidenceReferences.filter(isTextEvidence);
-      const structuredRefs = evaluation.evidenceReferences.filter((r) => !isTextEvidence(r));
+      const textRefs = evaluation.evidenceReferences.filter((r) => isVetoableTextSupport(r, constraint, scope));
+      const structuredRefs = evaluation.evidenceReferences.filter((r) => !textRefs.includes(r));
       if (textRefs.length === 0) {
         evaluations[idx] = { ...evaluation, confidenceTier: "EXPLICIT" };
-        continue; // keyed metafields / variant flags — aboutness does not apply
+        continue; // structured support (availability/price/keyed metafields) — aboutness does not apply
       }
       const joined = textRefs.map((r) => r.exactText!).join("\n");
       const proposal = await client.propose(joined, constraint);
@@ -183,6 +239,10 @@ export async function applySemanticTier(
     }
   }
 
+  // Recompute the FALSE_CERTAINTY flag: rescued claims are no longer
+  // unsupported; fabricated claims can never be rescued (early return above).
+  const remainingUnsupported = (result.unsupportedClaimConstraintIds ?? []).filter((id) => !rescued.has(id));
+
   return {
     result: {
       ...result,
@@ -190,6 +250,8 @@ export async function applySemanticTier(
       claimedEvidenceReferences: evaluations.flatMap((e) => e.evidenceReferences),
       validationNotes: [...(result.validationNotes ?? []), ...notes],
       semanticFabricationsDiscarded: (result.semanticFabricationsDiscarded ?? 0) + fabrications,
+      unsupportedClaimConstraintIds: remainingUnsupported,
+      unsupportedPositiveClaim: Boolean(result.fabricatedEvidenceClaim) || remainingUnsupported.length > 0,
     },
     costUsd,
     notes,
@@ -198,9 +260,19 @@ export async function applySemanticTier(
 
 // ---- real client (designated inexpensive model: gemini-2.5-flash) ----------
 
-const SEM_SYSTEM = `You judge whether STORE TEXT provides evidence about a product attribute. Reply with ONLY a JSON array (no prose, no fences). For each relevant claim in the text output an object:
+const SEM_SYSTEM = `You judge whether STORE TEXT provides evidence about an attribute. Reply with ONLY a JSON array (no prose, no fences). For each relevant claim in the text output an object:
 {"exactQuote": "<VERBATIM substring copied character-for-character from the text>", "verdict": "supports" | "contradicts" | "about_other_subject", "subject": "<what the quoted claim is about>"}
-Rules: "supports" ONLY if the quote asserts the attribute holds for THE PRODUCT ITSELF. If the attribute is asserted about something else (packaging, shipping materials, the store, a different product), the verdict is "about_other_subject" and subject names that thing. "contradicts" if the quote asserts the attribute does NOT hold for the product. Output [] if nothing in the text is relevant. Never paraphrase inside exactQuote.`;
+Rules: "supports" ONLY if the quote asserts the attribute about the LEGITIMATE SUBJECT stated in the request. If the attribute is asserted about anything else (packaging, wrappers, shipping materials, a different product), the verdict is "about_other_subject" and subject names that thing. "contradicts" if the quote asserts the attribute does NOT hold for the legitimate subject. Output [] if nothing in the text is relevant. Never paraphrase inside exactQuote.`;
+
+/** The attribute's legitimate subject, derived deterministically from the
+ *  constraint: policy-surface attributes are properly about the store's
+ *  applicable policy, not the product formula. */
+export function legitimateSubject(constraint: ShoppingConstraint): string {
+  const policyish = constraint.acceptableSurfaces.some((s) => s === "shipping_policy" || s === "returns_policy");
+  return policyish
+    ? "the store's applicable policy or service terms (e.g. shipping/delivery/returns) for its products"
+    : "the product itself (its formula/contents/properties)";
+}
 
 export function createGeminiSemanticClient(apiKey: string | undefined = ENV.keys.google): SemanticClient {
   if (!apiKey) throw new Error("GOOGLE_AI_API_KEY is not configured");
@@ -214,25 +286,38 @@ export function createGeminiSemanticClient(apiKey: string | undefined = ENV.keys
     async propose(surfaceText: string, constraint: ShoppingConstraint): Promise<SemanticProposal> {
       const user =
         `Attribute: ${constraint.attribute} (${constraint.operator}${constraint.expectedValue !== undefined ? ` ${JSON.stringify(constraint.expectedValue)}` : ""})\n` +
+        `LEGITIMATE SUBJECT: ${legitimateSubject(constraint)}\n` +
         `STORE TEXT:\n${surfaceText}`;
-      let json: {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
-      };
-      try {
-        json = await postJson({
-          url,
-          headers: { "x-goog-api-key": apiKey },
-          body: {
-            systemInstruction: { parts: [{ text: SEM_SYSTEM }] },
-            contents: [{ role: "user", parts: [{ text: user }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 1200, thinkingConfig: { thinkingBudget: 0 } },
-          },
-        });
-      } catch (err) {
-        if (err instanceof HttpError && !err.retryable) return { candidates: [], costUsd: 0 }; // conservative: no judgment
-        throw err;
+      let json:
+        | {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
+          }
+        | null = null;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          json = await postJson({
+            url,
+            headers: { "x-goog-api-key": apiKey },
+            body: {
+              systemInstruction: { parts: [{ text: SEM_SYSTEM }] },
+              contents: [{ role: "user", parts: [{ text: user }] }],
+              generationConfig: { temperature: 0, maxOutputTokens: 1200, thinkingConfig: { thinkingBudget: 0 } },
+            },
+          });
+          break;
+        } catch (err) {
+          const retryable = err instanceof HttpError ? err.retryable : true;
+          if (!retryable || attempt === 4) {
+            // Conservative degradation: no judgment → no veto, no grant. Loudly
+            // logged so a degraded run is never mistaken for a clean one.
+            console.warn(`[semantic-tier] propose failed after ${attempt} attempt(s): ${(err as Error).message.slice(0, 140)} — returning no judgment`);
+            return { candidates: [], costUsd: 0 };
+          }
+          await new Promise((r) => setTimeout(r, 2000 * attempt));
+        }
       }
+      if (!json) return { candidates: [], costUsd: 0 };
       const text = (json.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("");
       const costUsd = estimateCostUsd(
         model,
