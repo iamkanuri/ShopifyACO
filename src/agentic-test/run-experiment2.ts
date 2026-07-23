@@ -55,6 +55,15 @@ export interface Stage2Manifest {
   snapshots: Record<Stage2Role, string>;
   mutationIds: Partial<Record<Stage2Role, string>>;
   createdAt: string;
+  /** WILD probe (Appendix C): observational, mutation-free, fixture-only. The
+   *  source store's name/URL live ONLY in the gitignored wild-meta.json. */
+  wild?: {
+    snapshotId: string;
+    productId: string;
+    priceThreshold: number;
+    captureDate: string;
+    groundTruthNote: "as_claimed_by_source";
+  };
 }
 
 /** F2 contradiction sentence — Appendix B, verbatim. */
@@ -233,6 +242,103 @@ export function useStage2ResultsDir(): void {
 
 export const PROMPT_VERSION_STAGE2 = "stage2-v1"; // same text as stage1-v1, recorded distinctly
 
+// ---- WILD probe (Appendix C): fixture loader + observational contract ------
+
+/** Adapt the public storefront `/products/<handle>.js` JSON to the GraphQL node
+ *  shape the EXISTING normalizer consumes (a fixture loader is permitted; new
+ *  live-ingestion code is not). The vendor field is STRIPPED so the source
+ *  store's brand name never enters committed artifacts (Appendix C rule 5). */
+export function adaptWildProductJson(raw: Record<string, unknown>): Record<string, unknown> {
+  const options = (raw.options as Array<{ name?: string }> | undefined) ?? [];
+  const variants = (raw.variants as Array<Record<string, unknown>> | undefined) ?? [];
+  return {
+    id: `gid://wild/Product/${raw.id}`,
+    title: raw.title,
+    handle: raw.handle,
+    descriptionHtml: (raw.body_html as string) || (raw.description as string) || "",
+    vendor: undefined, // stripped — identifies the source store
+    productType: raw.type,
+    tags: raw.tags,
+    status: "ACTIVE",
+    variants: {
+      nodes: variants.map((v) => ({
+        id: `gid://wild/ProductVariant/${v.id}`,
+        title: v.title,
+        sku: typeof v.sku === "string" ? v.sku.slice(0, 4) + "…" : null, // SKUs can encode the brand
+        price: typeof v.price === "number" ? (v.price / 100).toFixed(2) : String(v.price ?? ""),
+        availableForSale: v.available === true,
+        selectedOptions: options
+          .map((o, i) => ({ name: String(o.name ?? `Option${i + 1}`), value: String(v[`option${i + 1}`] ?? "") }))
+          .filter((o) => o.value),
+      })),
+    },
+    collections: { nodes: [] },
+    metafields: { nodes: [] },
+  };
+}
+
+export async function prepareWild(): Promise<void> {
+  const { WILD_PSEUDO_SHOP_ID } = await import("./contract.js");
+  assertRunnable(process.env, WILD_PSEUDO_SHOP_ID);
+  const fixtureFile = join(EXPERIMENT_DIR, "fixtures", "wild-product.json");
+  const { normalizeProduct } = await import("../catalog/normalize.js");
+  const { toSnapshotProduct, buildSnapshot } = await import("./snapshot-service.js");
+  const raw = JSON.parse(readFileSync(fixtureFile, "utf8")) as Record<string, unknown>;
+  const normalized = normalizeProduct(adaptWildProductJson(raw) as never);
+  if (!normalized) throw new Error("wild fixture did not normalize to a product");
+  const product = toSnapshotProduct(normalized);
+  const snapshot = buildSnapshot(
+    WILD_PSEUDO_SHOP_ID,
+    "wild-fixture-v1(single public capture; mutation-free)",
+    [product],
+    [],
+    [],
+    "",
+    new Date().toISOString(),
+    ["structured_data", "faq", "shipping_policy", "returns_policy", "product_metafields"],
+  );
+  saveSnapshot(snapshot, join(EXPERIMENT_DIR, "snapshots"));
+
+  const price = product.variants[0]?.price ?? 0;
+  const threshold = Math.round(price * 1.2 * 100) / 100; // 20% above actual → satisfiable
+  const manifest = readStage2Manifest();
+  manifest.wild = {
+    snapshotId: snapshot.id,
+    productId: product.productId,
+    priceThreshold: threshold,
+    captureDate: JSON.parse(readFileSync(join(EXPERIMENT_DIR, "fixtures", "wild-meta.json"), "utf8")).captureDate as string,
+    groundTruthNote: "as_claimed_by_source",
+  };
+  writeFileSync(MANIFEST_FILE, JSON.stringify(manifest, null, 2), "utf8");
+  console.log(`[prepare-wild] wild ${snapshot.id} (product "${product.title}", ${product.variants.length} variants, price $${price}, c2 threshold $${threshold})`);
+}
+
+/** WILD contract (Appendix C rule 2): c1 + a satisfiable price cap only. */
+export function wildContract(manifest: Stage2Manifest) {
+  if (!manifest.wild) throw new Error("no wild fixture prepared");
+  const c1base = stage2PrimaryContract.hardConstraints.find((c) => c.id === "c1-aluminum-free")!;
+  const contract: typeof stage2PrimaryContract = {
+    id: "stage2-wild-observational",
+    version: "2",
+    objective: "select_purchase_ready_product",
+    productScope: { shopId: "wild-fixture.invalid", productId: manifest.wild.productId },
+    hardConstraints: [
+      { ...c1base, acceptableSurfaces: ["product_description", "structured_data", "faq"] },
+      {
+        id: "c2-price",
+        attribute: "variant_price",
+        operator: "less_than",
+        expectedValue: manifest.wild.priceThreshold,
+        evidenceRequired: true,
+        acceptableSurfaces: ["product_variants", "structured_data"],
+      },
+    ],
+    successConditions: { correctProductRequired: true, allHardConstraintsSatisfied: true, evidenceRequiredForEveryFact: true },
+    limits: { maxSteps: 14, maxToolCalls: 12, maxOutputTokens: 3500 },
+  };
+  return contract;
+}
+
 // ---- zero-cost dry-run gate (S2 4.3) ---------------------------------------
 
 export async function dryRun2(): Promise<void> {
@@ -292,15 +398,20 @@ export async function dryRun2(): Promise<void> {
 
 export async function runJourney2(
   provider: string,
-  role: Stage2Role,
+  role: Stage2Role | "wild",
   trial: number,
-  which: "primary" | "secondary" = "primary",
+  which: "primary" | "secondary" | "wild" = "primary",
 ) {
   assertRunnable(process.env, DEV_SHOP_ID);
   useStage2ResultsDir();
   const manifest = readStage2Manifest();
-  const snapshot = loadStage2Snapshot(manifest.snapshots[role]);
-  const contract = which === "secondary" ? stage2SecondaryContract : stage2PrimaryContract;
+  if (role === "wild") which = "wild";
+  const snapshot =
+    which === "wild"
+      ? loadStage2Snapshot(manifest.wild!.snapshotId)
+      : loadStage2Snapshot(manifest.snapshots[role as Stage2Role]);
+  const contract =
+    which === "wild" ? wildContract(manifest) : which === "secondary" ? stage2SecondaryContract : stage2PrimaryContract;
   const { createToolClient } = await import("./model-client.js");
   const { runShoppingAgent } = await import("./agent-runner.js");
   const { persistJourneyResult, readCumulativeSpend } = await import("./trace-recorder.js");
@@ -344,7 +455,7 @@ export async function runMatrix2(): Promise<void> {
   const manifest = readStage2Manifest();
   const providers = ["openai", "gemini"];
 
-  const plan: Array<{ role: Stage2Role; which: "primary" | "secondary"; trials: number }> = [
+  const plan: Array<{ role: Stage2Role | "wild"; which: "primary" | "secondary" | "wild"; trials: number }> = [
     { role: "base", which: "primary", trials: 3 },
     { role: "f1", which: "primary", trials: 3 },
     { role: "f2", which: "primary", trials: 3 },
@@ -356,14 +467,19 @@ export async function runMatrix2(): Promise<void> {
     { role: "trap", which: "primary", trials: 2 },
     { role: "base", which: "secondary", trials: 2 },
   ];
+  if (manifest.wild) plan.push({ role: "wild", which: "wild", trials: 2 });
 
   let ran = 0;
   let skipped = 0;
   for (const item of plan) {
     for (const provider of providers) {
       for (let trial = 1; trial <= item.trials; trial++) {
-        const contractId = item.which === "secondary" ? stage2SecondaryContract.id : stage2PrimaryContract.id;
-        const key = `${contractId}|${provider}|${manifest.snapshots[item.role]}|${trial}|${PROMPT_VERSION_STAGE2}`;
+        const contractId =
+          item.which === "wild" ? "stage2-wild-observational"
+            : item.which === "secondary" ? stage2SecondaryContract.id
+              : stage2PrimaryContract.id;
+        const snapshotId = item.which === "wild" ? manifest.wild!.snapshotId : manifest.snapshots[item.role as Stage2Role];
+        const key = `${contractId}|${provider}|${snapshotId}|${trial}|${PROMPT_VERSION_STAGE2}`;
         if (done.has(key)) {
           skipped++;
           continue;
@@ -389,12 +505,15 @@ if (isMain) {
         break;
       case "journey2": {
         const provider = process.argv[3] ?? "";
-        const role = process.argv[4] as Stage2Role;
+        const role = process.argv[4] as Stage2Role | "wild";
         const trial = Number(process.argv[5] ?? 1);
-        const which = (process.argv[6] as "primary" | "secondary") ?? "primary";
+        const which = (process.argv[6] as "primary" | "secondary" | "wild") ?? "primary";
         await runJourney2(provider, role, trial, which);
         break;
       }
+      case "prepare-wild":
+        await prepareWild();
+        break;
       case "matrix2":
         await runMatrix2();
         break;

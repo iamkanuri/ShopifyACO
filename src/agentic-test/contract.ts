@@ -16,8 +16,14 @@ export const TEST_PRODUCT_ID = "gid://shopify/Product/1001";
  *  constant before any write. */
 export const DEV_SHOP_ID = "ai-visibility-dev-m2su2ozk.myshopify.com";
 
+/** Stage 2 WILD probe (Appendix C): a PSEUDO shop id for the human/owner-captured
+ *  public fixture. `.invalid` is an IETF reserved TLD that can never resolve —
+ *  this id exists only so the runner's rails accept the mutation-free, fixture-
+ *  only wild snapshot; no store is ever contacted through it. */
+export const WILD_PSEUDO_SHOP_ID = "wild-fixture.invalid";
+
 /** The ONLY shops the experiment runner will ever touch (Rule 10). Hard-coded. */
-export const TEST_SHOP_ALLOWLIST: readonly string[] = [TEST_SHOP_ID, DEV_SHOP_ID];
+export const TEST_SHOP_ALLOWLIST: readonly string[] = [TEST_SHOP_ID, DEV_SHOP_ID, WILD_PSEUDO_SHOP_ID];
 
 /** Spec 4.4 matching terms, compared after identical normalization on both sides. */
 export const ALUMINUM_FREE_MATCHING_TERMS: readonly string[] = [

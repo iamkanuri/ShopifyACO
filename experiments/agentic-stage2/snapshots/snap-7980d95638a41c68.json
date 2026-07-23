@@ -1,0 +1,425 @@
+{
+  "id": "snap-7980d95638a41c68",
+  "shopId": "wild-fixture.invalid",
+  "createdAt": "2026-07-23T02:30:58.305Z",
+  "sourceVersion": "wild-fixture-v1(single public capture; mutation-free)",
+  "products": [
+    {
+      "productId": "gid://wild/Product/7607059185914",
+      "handle": "natural-deodorant",
+      "title": "Deodorant",
+      "description": "An award-winning deodorant formulated for 48 hour protection. Seaweed extracts & hyaluronic acid moisturize the skin while probiotics help neutralize odor. Made without aluminum, parabens and phthalates.",
+      "vendor": null,
+      "productType": "Deodorants",
+      "tags": [
+        "All",
+        "Deodorants",
+        "discount-applies",
+        "full size deodorant",
+        "laborday",
+        "loop-exc_deodorant",
+        "wholesale-discount-applies"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://wild/ProductVariant/42738010095866",
+          "title": "Santal & Vetiver / 2.6 OZ / 75 G",
+          "sku": "DEOD…",
+          "price": 20,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Santal & Vetiver"
+            },
+            {
+              "name": "Size",
+              "value": "2.6 OZ / 75 G"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://wild/ProductVariant/43559470006522",
+          "title": "Bergamot & Hinoki / 2.6 OZ / 75 G",
+          "sku": "DEOD…",
+          "price": 20,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Bergamot & Hinoki"
+            },
+            {
+              "name": "Size",
+              "value": "2.6 OZ / 75 G"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://wild/ProductVariant/46713340854522",
+          "title": "Saffron & Cedar / 2.6 OZ / 75 G",
+          "sku": "DEOD…",
+          "price": 20,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Saffron & Cedar"
+            },
+            {
+              "name": "Size",
+              "value": "2.6 OZ / 75 G"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://wild/ProductVariant/42738010063098",
+          "title": "Neroli & Basil / 2.6 OZ / 75 G",
+          "sku": "DEOD…",
+          "price": 20,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Neroli & Basil"
+            },
+            {
+              "name": "Size",
+              "value": "2.6 OZ / 75 G"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://wild/ProductVariant/44363764924666",
+          "title": "Black Rose & Oud / 2.6 OZ / 75 G",
+          "sku": "DEOD…",
+          "price": 20,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Black Rose & Oud"
+            },
+            {
+              "name": "Size",
+              "value": "2.6 OZ / 75 G"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://wild/ProductVariant/48964459561210",
+          "title": "Lily & Yuzu / 2.6 OZ / 75 G",
+          "sku": "DEOD…",
+          "price": 20,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Lily & Yuzu"
+            },
+            {
+              "name": "Size",
+              "value": "2.6 OZ / 75 G"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pages": [],
+  "policies": [],
+  "surfacesAbsent": [
+    "structured_data",
+    "faq",
+    "shipping_policy",
+    "returns_policy",
+    "product_metafields"
+  ],
+  "evidence": [
+    {
+      "evidenceId": "ev-d51a49f0c2ebe03e",
+      "surface": "product_title",
+      "sourceObjectId": "gid://wild/Product/7607059185914",
+      "exactText": "Deodorant"
+    },
+    {
+      "evidenceId": "ev-ed6cae0cd419fa9e",
+      "surface": "product_description",
+      "sourceObjectId": "gid://wild/Product/7607059185914",
+      "exactText": "An award-winning deodorant formulated for 48 hour protection."
+    },
+    {
+      "evidenceId": "ev-0ac57dc9e9ce16e5",
+      "surface": "product_description",
+      "sourceObjectId": "gid://wild/Product/7607059185914",
+      "exactText": "Seaweed extracts & hyaluronic acid moisturize the skin while probiotics help neutralize odor."
+    },
+    {
+      "evidenceId": "ev-409b8d6146d85fcc",
+      "surface": "product_description",
+      "sourceObjectId": "gid://wild/Product/7607059185914",
+      "exactText": "Made without aluminum, parabens and phthalates."
+    },
+    {
+      "evidenceId": "ev-98683a099f4def90",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://wild/ProductVariant/42738010095866",
+      "exactText": "Santal & Vetiver / 2.6 OZ / 75 G",
+      "structuredValue": {
+        "variantId": "gid://wild/ProductVariant/42738010095866",
+        "title": "Santal & Vetiver / 2.6 OZ / 75 G",
+        "sku": "DEOD…",
+        "price": 20,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Santal & Vetiver"
+          },
+          {
+            "name": "Size",
+            "value": "2.6 OZ / 75 G"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-8a714c95a38f0874",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/42738010095866#Scent",
+      "exactText": "Scent: Santal & Vetiver",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Santal & Vetiver"
+      }
+    },
+    {
+      "evidenceId": "ev-a13981f4b44091df",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/42738010095866#Size",
+      "exactText": "Size: 2.6 OZ / 75 G",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.6 OZ / 75 G"
+      }
+    },
+    {
+      "evidenceId": "ev-6544903f377a559f",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://wild/ProductVariant/43559470006522",
+      "exactText": "Bergamot & Hinoki / 2.6 OZ / 75 G",
+      "structuredValue": {
+        "variantId": "gid://wild/ProductVariant/43559470006522",
+        "title": "Bergamot & Hinoki / 2.6 OZ / 75 G",
+        "sku": "DEOD…",
+        "price": 20,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Bergamot & Hinoki"
+          },
+          {
+            "name": "Size",
+            "value": "2.6 OZ / 75 G"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-bd670f30c717f50d",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/43559470006522#Scent",
+      "exactText": "Scent: Bergamot & Hinoki",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Bergamot & Hinoki"
+      }
+    },
+    {
+      "evidenceId": "ev-7e16f95406c6f22a",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/43559470006522#Size",
+      "exactText": "Size: 2.6 OZ / 75 G",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.6 OZ / 75 G"
+      }
+    },
+    {
+      "evidenceId": "ev-c1080d7b14be4be0",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://wild/ProductVariant/46713340854522",
+      "exactText": "Saffron & Cedar / 2.6 OZ / 75 G",
+      "structuredValue": {
+        "variantId": "gid://wild/ProductVariant/46713340854522",
+        "title": "Saffron & Cedar / 2.6 OZ / 75 G",
+        "sku": "DEOD…",
+        "price": 20,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Saffron & Cedar"
+          },
+          {
+            "name": "Size",
+            "value": "2.6 OZ / 75 G"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-87cda3c90a08a31a",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/46713340854522#Scent",
+      "exactText": "Scent: Saffron & Cedar",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Saffron & Cedar"
+      }
+    },
+    {
+      "evidenceId": "ev-be060e84f95627db",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/46713340854522#Size",
+      "exactText": "Size: 2.6 OZ / 75 G",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.6 OZ / 75 G"
+      }
+    },
+    {
+      "evidenceId": "ev-644b032d0581ba0b",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://wild/ProductVariant/42738010063098",
+      "exactText": "Neroli & Basil / 2.6 OZ / 75 G",
+      "structuredValue": {
+        "variantId": "gid://wild/ProductVariant/42738010063098",
+        "title": "Neroli & Basil / 2.6 OZ / 75 G",
+        "sku": "DEOD…",
+        "price": 20,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Neroli & Basil"
+          },
+          {
+            "name": "Size",
+            "value": "2.6 OZ / 75 G"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-003f577d8f74709d",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/42738010063098#Scent",
+      "exactText": "Scent: Neroli & Basil",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Neroli & Basil"
+      }
+    },
+    {
+      "evidenceId": "ev-da0ad6eaf8b76f72",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/42738010063098#Size",
+      "exactText": "Size: 2.6 OZ / 75 G",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.6 OZ / 75 G"
+      }
+    },
+    {
+      "evidenceId": "ev-71f992303f86340b",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://wild/ProductVariant/44363764924666",
+      "exactText": "Black Rose & Oud / 2.6 OZ / 75 G",
+      "structuredValue": {
+        "variantId": "gid://wild/ProductVariant/44363764924666",
+        "title": "Black Rose & Oud / 2.6 OZ / 75 G",
+        "sku": "DEOD…",
+        "price": 20,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Black Rose & Oud"
+          },
+          {
+            "name": "Size",
+            "value": "2.6 OZ / 75 G"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-e46c8c3b3a87484d",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/44363764924666#Scent",
+      "exactText": "Scent: Black Rose & Oud",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Black Rose & Oud"
+      }
+    },
+    {
+      "evidenceId": "ev-d3b49cef65a1c31d",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/44363764924666#Size",
+      "exactText": "Size: 2.6 OZ / 75 G",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.6 OZ / 75 G"
+      }
+    },
+    {
+      "evidenceId": "ev-02a58e446cfc3f5e",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://wild/ProductVariant/48964459561210",
+      "exactText": "Lily & Yuzu / 2.6 OZ / 75 G",
+      "structuredValue": {
+        "variantId": "gid://wild/ProductVariant/48964459561210",
+        "title": "Lily & Yuzu / 2.6 OZ / 75 G",
+        "sku": "DEOD…",
+        "price": 20,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Lily & Yuzu"
+          },
+          {
+            "name": "Size",
+            "value": "2.6 OZ / 75 G"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-e7c0224a44c12297",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/48964459561210#Scent",
+      "exactText": "Scent: Lily & Yuzu",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Lily & Yuzu"
+      }
+    },
+    {
+      "evidenceId": "ev-ea8e582fce2df9dd",
+      "surface": "product_options",
+      "sourceObjectId": "gid://wild/ProductVariant/48964459561210#Size",
+      "exactText": "Size: 2.6 OZ / 75 G",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.6 OZ / 75 G"
+      }
+    }
+  ],
+  "contentHash": "c697a6e7f5b8c2e8b2078a42da57451201521916b93fbaf1d66bfa354abfba38"
+}

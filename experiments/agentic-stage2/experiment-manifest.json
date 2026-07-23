@@ -24,5 +24,12 @@
     "para": "mut-157cf3cd4149fbfd",
     "trap": "mut-33c7d9d46d4eda83"
   },
-  "createdAt": "2026-07-23T02:16:37.681Z"
+  "createdAt": "2026-07-23T02:16:37.681Z",
+  "wild": {
+    "snapshotId": "snap-7980d95638a41c68",
+    "productId": "gid://wild/Product/7607059185914",
+    "priceThreshold": 24,
+    "captureDate": "2026-07-23T02:28:59.301Z",
+    "groundTruthNote": "as_claimed_by_source"
+  }
 }
