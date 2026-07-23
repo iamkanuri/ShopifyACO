@@ -217,6 +217,9 @@ export interface RunAgentOptions {
   promptVersion?: string;
   systemPrompt?: string;
   env?: Record<string, string | undefined>;
+  /** Stage 3: when present, the bounded semantic tier runs after deterministic
+   *  validation and before adjudication (veto + quote-bounded grant, Rule 6). */
+  semanticClient?: import("./semantic-tier.js").SemanticClient;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -410,6 +413,20 @@ export async function runShoppingAgent(options: RunAgentOptions): Promise<Journe
       };
 
       result = validateEvidenceClaims(result, recorder.events, contract);
+      if (options.semanticClient) {
+        const { applySemanticTier } = await import("./semantic-tier.js");
+        const sem = await applySemanticTier(result, contract, options.semanticClient);
+        result = sem.result;
+        costUsd += sem.costUsd;
+        result.estimatedCostUsd = costUsd;
+        if (sem.costUsd > 0) addSpend(sem.costUsd);
+        recorder.record("CONSTRAINT_CHECKED", {
+          semanticPass: true,
+          promptVersion: options.semanticClient.promptVersion,
+          notes: sem.notes,
+          fabricationsDiscarded: result.semanticFabricationsDiscarded ?? 0,
+        });
+      }
       const verdict = adjudicate(contract, result, recorder.events);
       result.outcome = verdict.outcome;
       result.rootCauseCode = verdict.rootCause;

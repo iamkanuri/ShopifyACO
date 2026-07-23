@@ -152,6 +152,134 @@ export async function scanStage2(): Promise<void> {
   console.log("[scan-stage2] GATE ✓ — F1/F2/F5 detected deterministically from the full snapshot, with quotes");
 }
 
+// ---- $0 dry-run of the semantic upgrades (CP2 gate) ------------------------
+
+export async function dryRun3(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  useStage3ResultsDir();
+  const m = readStage3Manifest();
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { createHonestMock, createLiarMock } = await import("./mock-model.js");
+  const { createScriptedSemanticMock, createSemanticLiarMock } = await import("./semantic-tier.js");
+
+  const run = (snapshotId: string, semantic: import("./semantic-tier.js").SemanticClient) =>
+    runShoppingAgent({
+      contract: stage2PrimaryContract,
+      snapshot: loadStage3Snapshot(snapshotId),
+      client: createHonestMock(),
+      trialNumber: 0,
+      promptVersion: PROMPT_VERSION_STAGE3,
+      semanticClient: semantic,
+    });
+
+  let failed = false;
+  const check = (label: string, ok: boolean, detail: string) => {
+    if (!ok) failed = true;
+    console.log(`[dry-run3] ${label.padEnd(34)} ${ok ? "✓" : "✗"} ${detail}`);
+  };
+
+  // TRAP: explicit packaging match must be vetoed → MISSING_EVIDENCE.
+  const trap = await run(m.snapshots.trap, createScriptedSemanticMock());
+  const trapC1 = trap.constraintEvaluations.find((e) => e.constraintId === "c1-aluminum-free");
+  check("TRAP veto → MISSING_EVIDENCE", trap.outcome === "MISSING_EVIDENCE" && trapC1?.rejectedAboutness === true,
+    `outcome=${trap.outcome} rejectedAboutness=${trapC1?.rejectedAboutness}`);
+
+  // PARA-v2: no explicit match; scripted semantic grant → PASS at SEMANTIC_VERIFIED.
+  const para = await run(m.snapshots.paraV2, createScriptedSemanticMock());
+  const paraC1 = para.constraintEvaluations.find((e) => e.constraintId === "c1-aluminum-free");
+  check("PARA-v2 grant → PASS (semantic)", para.outcome === "PASS" && paraC1?.confidenceTier === "SEMANTIC_VERIFIED",
+    `outcome=${para.outcome} tier=${paraC1?.confidenceTier}`);
+
+  // SemanticLiarMock: plausible non-substring quote → discarded, NO grant.
+  const semLiar = await run(m.snapshots.paraV2, createSemanticLiarMock());
+  check("SemanticLiarMock discarded", semLiar.outcome === "MISSING_EVIDENCE" && (semLiar.semanticFabricationsDiscarded ?? 0) >= 1,
+    `outcome=${semLiar.outcome} fabricationsDiscarded=${semLiar.semanticFabricationsDiscarded}`);
+
+  // BASE regression with semantic tier active: still PASS at EXPLICIT.
+  const base = await run(m.snapshots.base, createScriptedSemanticMock());
+  const baseC1 = base.constraintEvaluations.find((e) => e.constraintId === "c1-aluminum-free");
+  check("BASE regression (EXPLICIT)", base.outcome === "PASS" && baseC1?.confidenceTier === "EXPLICIT",
+    `outcome=${base.outcome} tier=${baseC1?.confidenceTier}`);
+
+  // Agent-level LiarMock with semantic tier ACTIVE: floor still wins.
+  const liar = await runShoppingAgent({
+    contract: stage2PrimaryContract,
+    snapshot: loadStage3Snapshot(m.snapshots.base),
+    client: createLiarMock(),
+    trialNumber: 0,
+    promptVersion: PROMPT_VERSION_STAGE3,
+    semanticClient: createScriptedSemanticMock(),
+  });
+  check("LiarMock floor intact", liar.outcome === "FALSE_CERTAINTY", `outcome=${liar.outcome}`);
+
+  if (failed) throw new Error("DRY-RUN3 GATE FAILED — semantic tier not trustworthy, do not spend");
+  console.log("[dry-run3] gate PASSED: veto, grant, fabrication-discard, and the deterministic floor all proven at $0");
+}
+
+// ---- real journeys (Gate A / Gate B) ---------------------------------------
+
+export async function runJourney3(
+  provider: string,
+  snapshotId: string,
+  contract: import("./types.js").ShoppingTaskContract,
+  trial: number,
+  opts: { semantic?: boolean } = {},
+) {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  useStage3ResultsDir();
+  const snapshot = loadStage3Snapshot(snapshotId);
+  const { createToolClient } = await import("./model-client.js");
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { persistJourneyResult, readCumulativeSpend } = await import("./trace-recorder.js");
+  const { createGeminiSemanticClient } = await import("./semantic-tier.js");
+
+  const client = createToolClient(provider);
+  let result = await runShoppingAgent({
+    contract,
+    snapshot,
+    client,
+    trialNumber: trial,
+    promptVersion: PROMPT_VERSION_STAGE3,
+    semanticClient: opts.semantic === false ? undefined : createGeminiSemanticClient(),
+  });
+
+  // Retrieval-coverage metric (spec 4.4): scan vs what the agent read.
+  const diagnostic = scanStore(snapshot, contract);
+  const { computeCoverage } = await import("./store-diagnostic.js");
+  const cov = computeCoverage(diagnostic, result);
+  result = { ...result, coverageRatio: cov.coverageRatio, missedRelevantSurfaces: cov.missedRelevantSurfaces };
+
+  persistJourneyResult(result);
+  const c1 = result.constraintEvaluations.find((e) => e.constraintId.startsWith("c1"));
+  console.log(
+    `[journey3] ${provider} ${contract.id} snap=${snapshot.id.slice(0, 18)} t${trial} → ${result.outcome}` +
+      `${result.rootCauseCode ? `/${result.rootCauseCode}` : ""}` +
+      ` (c1 tier=${c1?.confidenceTier ?? "-"}${c1?.rejectedAboutness ? " REJECTED_ABOUTNESS" : ""})` +
+      ` coverage=${(result.coverageRatio ?? 1).toFixed(2)} cost=$${result.estimatedCostUsd.toFixed(4)}` +
+      ` · cumulative $${readCumulativeSpend().toFixed(4)}`,
+  );
+  return result;
+}
+
+/** Gate A matrix (spec 4.9): TRAP ×2×2 + PARA-v2 ×2×2 + BASE/F1 regression ×2×1. */
+export async function runGateA(): Promise<void> {
+  const m = readStage3Manifest();
+  const plan: Array<{ snap: string; trials: number }> = [
+    { snap: m.snapshots.trap, trials: 2 },
+    { snap: m.snapshots.paraV2, trials: 2 },
+    { snap: m.snapshots.base, trials: 1 },
+    { snap: m.snapshots.f1, trials: 1 },
+  ];
+  for (const item of plan) {
+    for (const provider of ["openai", "gemini"]) {
+      for (let t = 1; t <= item.trials; t++) {
+        await runJourney3(provider, item.snap, stage2PrimaryContract, t);
+      }
+    }
+  }
+  console.log("[gate-a] all Gate A journeys complete");
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment3.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -163,8 +291,14 @@ if (isMain) {
       case "scan-stage2":
         await scanStage2();
         break;
+      case "dry-run3":
+        await dryRun3();
+        break;
+      case "gate-a":
+        await runGateA();
+        break;
       default:
-        console.error("usage: npx tsx src/agentic-test/run-experiment3.ts <prepare3|scan-stage2>");
+        console.error("usage: npx tsx src/agentic-test/run-experiment3.ts <prepare3|scan-stage2|dry-run3|gate-a>");
         process.exitCode = 2;
     }
   };

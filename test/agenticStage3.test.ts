@@ -85,6 +85,90 @@ test("30. PARA-v2 has zero explicit-tier matches; TRAP has at least one", { skip
   assert.ok(trapScan.explicitHits.every((h) => h.quote.includes("recyclable packaging")));
 });
 
+// ---- 27–29. semantic tier: wrapper, veto, grant ----------------------------
+
+function semanticFixture(status: "satisfied" | "unresolvable", evidenceText: string) {
+  const ref = {
+    evidenceId: "ev-sem-1",
+    surface: "product_description" as const,
+    sourceObjectId: "p1",
+    exactText: evidenceText,
+    snapshotId: "snap-sem",
+  };
+  const result = {
+    runId: "r", contractId: stage2PrimaryContract.id, snapshotId: "snap-sem", snapshotContentHash: "h",
+    provider: "mock", model: "mock", promptVersion: "stage3-v1", trialNumber: 1,
+    outcome: "PASS" as const, modelDeclaredOutcome: "PASS",
+    selectedProductId: stage2PrimaryContract.productScope.productId,
+    selectedVariantId: stage2PrimaryContract.productScope.variantId,
+    constraintEvaluations: [
+      {
+        constraintId: "c1-aluminum-free",
+        status,
+        evidenceReferences: status === "satisfied" ? [ref] : [],
+        explanation: "",
+      },
+    ],
+    claimedEvidenceReferences: [],
+    traceEvents: [
+      { runId: "r", timestamp: "t", sequence: 1, type: "TOOL_RESULT" as const, payload: {}, evidenceReferences: [ref] },
+    ],
+    totalToolCalls: 1, totalSteps: 1, estimatedCostUsd: 0,
+  };
+  return result;
+}
+
+test("27. semantic wrapper discards non-substring quotes (SemanticLiarMock)", async () => {
+  const { verifySemanticCandidates, applySemanticTier, createSemanticLiarMock } = await import("../src/agentic-test/semantic-tier.js");
+  const { verified, fabrications } = verifySemanticCandidates("The formula is gentle.", [
+    { exactQuote: "The formula is gentle", verdict: "supports", subject: "product" },
+    { exactQuote: "certified aluminum-free by a lab", verdict: "supports", subject: "product" },
+  ]);
+  assert.equal(verified.length, 1);
+  assert.equal(fabrications, 1);
+
+  // End-to-end: liar semantic client grants NOTHING on an unresolvable constraint.
+  const out = await applySemanticTier(
+    semanticFixture("unresolvable", "Aluminum never makes it into this formula.") as never,
+    stage2PrimaryContract,
+    createSemanticLiarMock(),
+  );
+  const c1 = out.result.constraintEvaluations[0]!;
+  assert.equal(c1.status, "unresolvable", "fabricated quote must not grant");
+  assert.ok((out.result.semanticFabricationsDiscarded ?? 0) >= 1);
+});
+
+test("28. veto path: explicit match judged about_other_subject → REJECTED_ABOUTNESS", async () => {
+  const { applySemanticTier, createScriptedSemanticMock } = await import("../src/agentic-test/semantic-tier.js");
+  const out = await applySemanticTier(
+    semanticFixture("satisfied", "Ships in 100% aluminum-free recyclable packaging.") as never,
+    stage2PrimaryContract,
+    createScriptedSemanticMock(),
+  );
+  const c1 = out.result.constraintEvaluations[0]!;
+  assert.equal(c1.status, "unresolvable");
+  assert.equal(c1.rejectedAboutness, true);
+  assert.equal(c1.evidenceReferences.length, 0, "vetoed evidence is withdrawn, not kept");
+});
+
+test("29. grant path: verified supporting quote → SEMANTIC_VERIFIED satisfied", async () => {
+  const { applySemanticTier, createScriptedSemanticMock } = await import("../src/agentic-test/semantic-tier.js");
+  const out = await applySemanticTier(
+    semanticFixture("unresolvable", "Aluminum never makes it into this formula.") as never,
+    stage2PrimaryContract,
+    createScriptedSemanticMock(),
+  );
+  const c1 = out.result.constraintEvaluations[0]!;
+  assert.equal(c1.status, "satisfied");
+  assert.equal(c1.confidenceTier, "SEMANTIC_VERIFIED");
+  assert.equal(c1.evidenceReferences.length, 1, "grant is trace-backed");
+
+  // The floor still wins: a run with an unsupported positive claim gets NO grants.
+  const flagged = { ...semanticFixture("unresolvable", "Aluminum never makes it into this formula."), unsupportedPositiveClaim: true };
+  const skipped = await applySemanticTier(flagged as never, stage2PrimaryContract, createScriptedSemanticMock());
+  assert.equal(skipped.result.constraintEvaluations[0]!.status, "unresolvable");
+});
+
 // ---- 31. coverage metric on a constructed case -----------------------------
 
 test("31. coverage metric computes missed-relevant surfaces correctly", () => {
