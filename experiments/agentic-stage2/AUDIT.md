@@ -149,3 +149,39 @@ source".) If absent, WILD runs are skipped and noted.
 Reply **"seeded"** in this session. I will then: start Docker + the local Supabase
 stack if down → verify the token read-only → run the real catalog sync through the
 existing pipeline → verify the seeded content arrived → proceed with CP1.
+
+---
+
+# AMENDMENT 1 (recorded verbatim, 2026-07-22 — supplied by the owner as "STAGE 2 — RESUME DIRECTIVE")
+
+> ## A. Rule 3 is amended (narrow write permission)
+>
+> Programmatic writes to a Shopify store are now permitted under ALL of the following conditions, and no others:
+>
+> 1. Target store: `ai-visibility-dev.myshopify.com` only.
+> 2. Credential: `SHOPIFY_DEV_STORE_TOKEN` only (a custom-app token minted inside that store; it is physically incapable of reaching any other store). Never use the production app's offline tokens, and Rule 8 (no real-merchant data, ever) is unchanged.
+> 3. Before any write, verify identity: query `{ shop { myshopifyDomain } }` with the token and assert the domain equals the dev store. Refuse otherwise.
+> 4. Content: exactly the Appendix A seed kit (plus the approved `custom.price` metafield below). No generated copy, no improvised products.
+> 5. Mechanism: an idempotent, committed seed script (`experiments/agentic-stage2/seed-dev-store.ts`) that (a) prints a dry-run plan of every mutation first, (b) tags every created product with `agentic-stage2-seed`, (c) is safely re-runnable (upsert by handle, not duplicate), and (d) includes a `--cleanup` mode that deletes only tagged objects.
+> 6. FAQ and shipping content: create them as PAGES (titles "FAQ" and "Shipping") via the content scope. If any page write fails, fall back to fixture-only carriage without blocking, and disclose.
+>
+> ## B. The human's single remaining task (~5 minutes, then reply "token added")
+>
+> Dev store admin → Settings → Apps and sales channels → Develop apps → Create app `aislelens-stage2-local-ingest` → Admin API scopes: `read_products, write_products, read_content, write_content` → Install → copy the `shpat_…` token → add to `.env` as `SHOPIFY_DEV_STORE_TOKEN=…`.
+>
+> This step is irreducible by design: minting the token requires an authenticated human in the store admin, and that is the correct boundary. The token's store-scoping is what makes Section A safe to automate.
+>
+> ## C. Your two Phase 0B proposals are approved, with disclosures
+>
+> 1. **Fixture-carried pages:** carry the FAQ/shipping text into the snapshot via `store-pages.json` since real ingestion does not capture pages or policies. The report MUST state the surface split plainly: products, variants, options, and metafields exercised the real ingestion pipeline; faq and shipping_policy surfaces were fixture-carried with disclosed provenance. Additionally, log this as a product finding in the final summary: **AisleLens ingestion cannot see FAQ or policy content today, which the eventual merchant product will require (policy opacity is a core fault class). Stage 3+ backlog item, not a Stage 2 task.**
+> 2. **`custom.price` metafield** (truthful value `$14.00`) as the F4 skew target per Appendix B's fallback. Approved.
+>
+> ## D. WILD probe is now self-service (optional)
+>
+> You may capture the wild fixture yourself instead of skipping: choose one well-known, real, public Shopify-hosted natural-deodorant product that visibly claims aluminum-free; make a SINGLE request to its public `/products/<handle>.js` endpoint; save to the gitignored fixture files per Appendix C. One request total, store name only in the gitignored meta file, all other Appendix C rules unchanged. If anything about the fetch is uncertain, skip and note it.
+>
+> ## E. Everything else in the Stage 2 contract is unchanged
+>
+> Gates, matrix, acceptance criteria, label blindness, cost breaker, honest-fail clause, and the stop-at-report boundary all stand. After the human replies "token added": verify the token read-only, run the dry-run seed plan, execute the seed, sync the catalog through the existing pipeline, verify seeded content arrived in the local stack, then proceed to CP1.
+
+**Amendment noted.** Seeding is now automated under A's conditions; the STOP decision above is superseded to the extent of B being the only human step. One seeding fidelity note: the approved scope list omits `write_inventory`/`read_locations`, so unless those are also granted, seeded variants are created **untracked** (⇒ `availableForSale=true`) instead of "tracked, qty ≥ 5" — observationally identical for this pipeline (ingestion captures only the availability boolean; quantities are never queried) and disclosed here and in the report.
