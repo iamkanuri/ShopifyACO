@@ -34,8 +34,21 @@ export interface PendingRevertMarker {
     metafield: { namespace: string; key: string; value: string; type: string };
   };
   faultedDescriptionHtml: string; // what the fault writes (for verification)
+  /** Stage-4 extension (disclosed): the live FAQ page ALSO evidences c1, so the
+   *  fault must remove its aluminum Q&A too — with page + fixture restoration. */
+  faq?: {
+    pageId: string;
+    restoreBody: string; // verbatim pre-fault page body
+    faultedBody: string;
+    fixtureFile: string;
+    restoreFixtureJson: string; // verbatim pre-fault store-pages.json
+  };
   status: "pending";
 }
+
+/** The seeded FAQ's aluminum Q&A (Stage 2 kit, verbatim; removed by the fault). */
+export const FAQ_ALUMINUM_QA =
+  "Are your deodorants aluminum-free? Yes, every formula we sell is aluminum-free and always will be.";
 
 /** IO seam so ordering (test 36) and restoration content (test 37) are testable
  *  without any network. The real IO talks to the dev store via dev-store-client. */
@@ -86,9 +99,17 @@ export async function injectFault(
 }
 
 /** Standalone revert: restore EXACT content from the marker, then clear it. */
-export async function revertFault(io: FaultIO, marker: PendingRevertMarker): Promise<void> {
+export async function revertFault(
+  io: FaultIO,
+  marker: PendingRevertMarker,
+  pageIo?: { writePageBody(pageId: string, body: string): Promise<void>; writeFixture(file: string, json: string): void },
+): Promise<void> {
   await io.writeDescription(marker.productGid, marker.restore.descriptionHtml);
   await io.setMetafield(marker.productGid, marker.restore.metafield);
+  if (marker.faq && pageIo) {
+    await pageIo.writePageBody(marker.faq.pageId, marker.faq.restoreBody);
+    pageIo.writeFixture(marker.faq.fixtureFile, marker.faq.restoreFixtureJson);
+  }
 }
 
 export function readMarker(): PendingRevertMarker | null {

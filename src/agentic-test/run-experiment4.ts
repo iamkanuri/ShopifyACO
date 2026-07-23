@@ -146,6 +146,48 @@ export async function injectFaultCmd(): Promise<void> {
   console.log(`[inject-fault] fault applied (marker first, ${marker.createdAt}). Store now fails to evidence aluminum_free; ground truth untouched.`);
 }
 
+/** Extend the fault to the FAQ page (disclosed spec-reality correction: the
+ *  seeded live FAQ also evidences c1, so "store fails to evidence" requires
+ *  removing its aluminum Q&A). Marker updated BEFORE the page write. */
+export async function faultFaqCmd(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  const marker = readMarker();
+  if (!marker) throw new Error("no pending-revert marker — run inject-fault first");
+  if (marker.faq) {
+    console.log("[fault-faq] already applied");
+    return;
+  }
+  await assertDevStoreIdentity();
+  const { gqlDevStore } = await import("./dev-store-client.js");
+  const { FAQ_ALUMINUM_QA } = await import("./store-fault.js");
+  const pages = await gqlDevStore<{ pages?: { nodes?: Array<{ id: string; title: string; body?: string }> } }>(
+    `query($q: String!) { pages(first: 5, query: $q) { nodes { id title body } } }`,
+    { q: "title:'FAQ'" },
+  );
+  const faq = pages.pages?.nodes?.find((n) => n.title === "FAQ");
+  if (!faq?.body) throw new Error("FAQ page not found on the store");
+  if (!faq.body.includes("aluminum-free")) throw new Error("FAQ has no aluminum claim — nothing to fault");
+  const faultedBody = faq.body.replace(FAQ_ALUMINUM_QA, "").replace(/\s{2,}/g, " ").trim();
+  if (/alumin/i.test(faultedBody)) throw new Error("FAQ fault would leave an aluminum fragment — expected verbatim Q&A not found");
+
+  const fixtureFile = join(process.cwd(), "experiments", "agentic-stage2", "fixtures", "store-pages.json");
+  const fixtureJson = readFileSync(fixtureFile, "utf8");
+
+  // Marker FIRST (Rule 4), then the page write, then the fixture mirror.
+  const updated = { ...marker, faq: { pageId: faq.id, restoreBody: faq.body, faultedBody, fixtureFile, restoreFixtureJson: fixtureJson } };
+  defaultMarkerWriter(updated);
+  const upd = await gqlDevStore<{ pageUpdate?: { userErrors?: Array<{ message?: string }> } }>(
+    `mutation($id: ID!, $page: PageUpdateInput!) { pageUpdate(id: $id, page: $page) { page { id } userErrors { message } } }`,
+    { id: faq.id, page: { body: faultedBody } },
+  );
+  const errs = upd.pageUpdate?.userErrors ?? [];
+  if (errs.length) throw new Error(`pageUpdate userErrors: ${JSON.stringify(errs).slice(0, 300)}`);
+  const fixture = JSON.parse(fixtureJson) as { faq: { text: string } };
+  fixture.faq.text = faultedBody;
+  writeFileSync(fixtureFile, JSON.stringify(fixture, null, 2), "utf8");
+  console.log("[fault-faq] FAQ aluminum Q&A removed on the live page + fixture mirrored; marker carries restoration");
+}
+
 export async function revertFaultCmd(how = "standalone-revert"): Promise<void> {
   assertRunnable(process.env, DEV_SHOP_ID);
   const marker = readMarker();
@@ -154,7 +196,20 @@ export async function revertFaultCmd(how = "standalone-revert"): Promise<void> {
     return;
   }
   await assertDevStoreIdentity();
-  await revertFault(realFaultIO, marker);
+  const { gqlDevStore } = await import("./dev-store-client.js");
+  await revertFault(realFaultIO, marker, {
+    async writePageBody(pageId, body) {
+      const upd = await gqlDevStore<{ pageUpdate?: { userErrors?: Array<{ message?: string }> } }>(
+        `mutation($id: ID!, $page: PageUpdateInput!) { pageUpdate(id: $id, page: $page) { page { id } userErrors { message } } }`,
+        { id: pageId, page: { body } },
+      );
+      const errs = upd.pageUpdate?.userErrors ?? [];
+      if (errs.length) throw new Error(`FAQ restore userErrors: ${JSON.stringify(errs).slice(0, 300)}`);
+    },
+    writeFixture(file, json) {
+      writeFileSync(file, json, "utf8");
+    },
+  });
   const after = await readProductState(PRIMARY_PRODUCT_ID);
   const check = assertStateMatchesGroundTruth({ descriptionHtml: after.descriptionHtml, metafield: after.metafield });
   if (!check.ok) throw new Error(`revert verification FAILED: ${check.problems.join("; ")} — store needs manual attention`);
@@ -205,6 +260,9 @@ if (isMain) {
         break;
       case "inject-fault":
         await injectFaultCmd();
+        break;
+      case "fault-faq":
+        await faultFaqCmd();
         break;
       case "revert-fault":
         await revertFaultCmd();

@@ -2,7 +2,7 @@
   "provenance": "seeded-fixture: mirrors the dev-store admin FAQ page + shipping policy verbatim. Catalog ingestion has no pages/policies path (AUDIT.md §4), so these surfaces enter the snapshot via this fixture, loaded by the Stage 2 fixture loader. Edit ONLY to keep in sync with what was actually seeded in Shopify admin.",
   "faq": {
     "title": "FAQ",
-    "text": "Do you offer returns? Yes. Free returns within 30 days of delivery, no questions asked. Is this a subscription? No. Everything in the store is a one-time purchase. Are your deodorants aluminum-free? Yes, every formula we sell is aluminum-free and always will be."
+    "text": "Do you offer returns? Yes. Free returns within 30 days of delivery, no questions asked. Is this a subscription? No. Everything in the store is a one-time purchase."
   },
   "shippingPolicy": {
     "text": "Orders placed before 2 PM ET ship the same day. Standard shipping arrives in 2 to 4 business days anywhere in the continental US. Tracking is emailed at fulfillment."

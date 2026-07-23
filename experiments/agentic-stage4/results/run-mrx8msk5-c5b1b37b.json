@@ -1,0 +1,1368 @@
+{
+  "runId": "run-mrx8msk5-c5b1b37b",
+  "contractId": "stage4-case-p1",
+  "snapshotId": "snap-7f9f72bd963dd3ac",
+  "snapshotContentHash": "82f259297e80bdfa1af15b908b76cf5bc491a5c0b590626e08df18fbde705395",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "promptVersion": "stage4-v1",
+  "trialNumber": 1,
+  "constraintEvaluations": [
+    {
+      "constraintId": "x1aluminumfree",
+      "status": "unresolvable",
+      "observedValue": null,
+      "evidenceReferences": [],
+      "claimedEvidenceIds": [],
+      "explanation": "The product description mentions \"natural deodorant\" and the search results for \"aluminum free deodorant\" include this product, but there is no explicit statement that the product is aluminum-free."
+    },
+    {
+      "constraintId": "x2variantprice",
+      "status": "satisfied",
+      "observedValue": 14,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-e45513b23d4e6a8f",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+          "exactText": "Cedar & Sage / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061749350",
+            "title": "Cedar & Sage / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-5ecf689de4316466",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+          "exactText": "Cedar & Sage / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061782118",
+            "title": "Cedar & Sage / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-73e3cec2320608c7",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+          "exactText": "Unscented / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061847654",
+            "title": "Unscented / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-e45513b23d4e6a8f",
+        "ev-5ecf689de4316466",
+        "ev-20b18c7561a7fe83",
+        "ev-73e3cec2320608c7"
+      ],
+      "explanation": "All variants of the Cedar Hollow Natural Deodorant are priced at $14, which is less than $20.",
+      "confidenceTier": "EXPLICIT"
+    },
+    {
+      "constraintId": "x3subscriptionrequired",
+      "status": "satisfied",
+      "observedValue": false,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-176aa5bfd7a82d97",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-176aa5bfd7a82d97"
+      ],
+      "explanation": "The product description explicitly states that it is a one-time purchase and no subscription is required.",
+      "confidenceTier": "EXPLICIT"
+    }
+  ],
+  "claimedEvidenceReferences": [
+    {
+      "evidenceId": "ev-e45513b23d4e6a8f",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+      "exactText": "Cedar & Sage / 2.5 oz",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061749350",
+        "title": "Cedar & Sage / 2.5 oz",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          {
+            "name": "Size",
+            "value": "2.5 oz"
+          }
+        ]
+      },
+      "snapshotId": "snap-7f9f72bd963dd3ac"
+    },
+    {
+      "evidenceId": "ev-5ecf689de4316466",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+      "exactText": "Cedar & Sage / 1 oz Travel",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061782118",
+        "title": "Cedar & Sage / 1 oz Travel",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          {
+            "name": "Size",
+            "value": "1 oz Travel"
+          }
+        ]
+      },
+      "snapshotId": "snap-7f9f72bd963dd3ac"
+    },
+    {
+      "evidenceId": "ev-20b18c7561a7fe83",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+      "exactText": "Unscented / 2.5 oz",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061814886",
+        "title": "Unscented / 2.5 oz",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          {
+            "name": "Size",
+            "value": "2.5 oz"
+          }
+        ]
+      },
+      "snapshotId": "snap-7f9f72bd963dd3ac"
+    },
+    {
+      "evidenceId": "ev-73e3cec2320608c7",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+      "exactText": "Unscented / 1 oz Travel",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061847654",
+        "title": "Unscented / 1 oz Travel",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          {
+            "name": "Size",
+            "value": "1 oz Travel"
+          }
+        ]
+      },
+      "snapshotId": "snap-7f9f72bd963dd3ac"
+    },
+    {
+      "evidenceId": "ev-176aa5bfd7a82d97",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+      "snapshotId": "snap-7f9f72bd963dd3ac"
+    }
+  ],
+  "traceEvents": [
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:57.365Z",
+      "sequence": 0,
+      "type": "RUN_STARTED",
+      "payload": {
+        "contractId": "stage4-case-p1",
+        "snapshotId": "snap-7f9f72bd963dd3ac",
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "trialNumber": 1
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:58.035Z",
+      "sequence": 1,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product",
+        "args": {
+          "productId": "gid://shopify/Product/8114219450470"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:58.054Z",
+      "sequence": 2,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product",
+        "output": {
+          "found": true,
+          "product": {
+            "productId": "gid://shopify/Product/8114219450470",
+            "title": "Cedar Hollow Natural Deodorant",
+            "description": "Small-batch deodorant made in Florida for people who read ingredient labels. Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything. Glides on clear, no white marks on dark shirts. If cedar isn't your thing, the Unscented version has zero added fragrance.",
+            "vendor": "ai-visibility-dev",
+            "productType": null,
+            "tags": [
+              "agentic-stage2-seed"
+            ],
+            "status": "ACTIVE",
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              },
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              },
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              },
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ],
+            "variants": [
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061749350",
+                "title": "Cedar & Sage / 2.5 oz",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Cedar & Sage"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "2.5 oz"
+                  }
+                ]
+              },
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061782118",
+                "title": "Cedar & Sage / 1 oz Travel",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Cedar & Sage"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "1 oz Travel"
+                  }
+                ]
+              },
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061814886",
+                "title": "Unscented / 2.5 oz",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Unscented"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "2.5 oz"
+                  }
+                ]
+              },
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061847654",
+                "title": "Unscented / 1 oz Travel",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Unscented"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "1 oz Travel"
+                  }
+                ]
+              }
+            ]
+          },
+          "fieldEvidence": {
+            "title": [
+              {
+                "evidenceId": "ev-c0db777bd2fed966",
+                "surface": "product_title",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Cedar Hollow Natural Deodorant",
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              }
+            ],
+            "description": [
+              {
+                "evidenceId": "ev-f0cb6afec7896d4a",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-176aa5bfd7a82d97",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-ac8b8540a028be2f",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Glides on clear, no white marks on dark shirts.",
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-19afbc0ed08c37a0",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance.",
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              }
+            ],
+            "variants": [
+              {
+                "evidenceId": "ev-e45513b23d4e6a8f",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+                "exactText": "Cedar & Sage / 2.5 oz",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061749350",
+                  "title": "Cedar & Sage / 2.5 oz",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Cedar & Sage"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "2.5 oz"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-5ecf689de4316466",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+                "exactText": "Cedar & Sage / 1 oz Travel",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061782118",
+                  "title": "Cedar & Sage / 1 oz Travel",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Cedar & Sage"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "1 oz Travel"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-20b18c7561a7fe83",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+                "exactText": "Unscented / 2.5 oz",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061814886",
+                  "title": "Unscented / 2.5 oz",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Unscented"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "2.5 oz"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-73e3cec2320608c7",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+                "exactText": "Unscented / 1 oz Travel",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061847654",
+                  "title": "Unscented / 1 oz Travel",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Unscented"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "1 oz Travel"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              }
+            ],
+            "options": [
+              {
+                "evidenceId": "ev-3499195fd526f73b",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Scent",
+                "exactText": "Scent: Cedar & Sage",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Cedar & Sage"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-8f52b2b26886e743",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Size",
+                "exactText": "Size: 2.5 oz",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "2.5 oz"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-0bec7d76d1f3b7ef",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Scent",
+                "exactText": "Scent: Cedar & Sage",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Cedar & Sage"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-96a94b4398a6cbd4",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Size",
+                "exactText": "Size: 1 oz Travel",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "1 oz Travel"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-e3c0108c6a1dd57c",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Scent",
+                "exactText": "Scent: Unscented",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Unscented"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-4f5d7a9d2a8870a7",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Size",
+                "exactText": "Size: 2.5 oz",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "2.5 oz"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-f7ba3dc8d87d602a",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Scent",
+                "exactText": "Scent: Unscented",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Unscented"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              },
+              {
+                "evidenceId": "ev-ab73124a20231222",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Size",
+                "exactText": "Size: 1 oz Travel",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "1 oz Travel"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              }
+            ]
+          },
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-c0db777bd2fed966",
+              "surface": "product_title",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Cedar Hollow Natural Deodorant",
+              "snapshotId": "snap-7f9f72bd963dd3ac"
+            },
+            {
+              "evidenceId": "ev-f0cb6afec7896d4a",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+              "snapshotId": "snap-7f9f72bd963dd3ac"
+            },
+            {
+              "evidenceId": "ev-176aa5bfd7a82d97",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+              "snapshotId": "snap-7f9f72bd963dd3ac"
+            },
+            {
+              "evidenceId": "ev-ac8b8540a028be2f",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Glides on clear, no white marks on dark shirts.",
+              "snapshotId": "snap-7f9f72bd963dd3ac"
+            },
+            {
+              "evidenceId": "ev-19afbc0ed08c37a0",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance.",
+              "snapshotId": "snap-7f9f72bd963dd3ac"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-c0db777bd2fed966",
+          "surface": "product_title",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Cedar Hollow Natural Deodorant",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-f0cb6afec7896d4a",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-176aa5bfd7a82d97",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-ac8b8540a028be2f",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Glides on clear, no white marks on dark shirts.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-19afbc0ed08c37a0",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-e45513b23d4e6a8f",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+          "exactText": "Cedar & Sage / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061749350",
+            "title": "Cedar & Sage / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-5ecf689de4316466",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+          "exactText": "Cedar & Sage / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061782118",
+            "title": "Cedar & Sage / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-73e3cec2320608c7",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+          "exactText": "Unscented / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061847654",
+            "title": "Unscented / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-3499195fd526f73b",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Scent",
+          "exactText": "Scent: Cedar & Sage",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-8f52b2b26886e743",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Size",
+          "exactText": "Size: 2.5 oz",
+          "structuredValue": {
+            "name": "Size",
+            "value": "2.5 oz"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-0bec7d76d1f3b7ef",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Scent",
+          "exactText": "Scent: Cedar & Sage",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-96a94b4398a6cbd4",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Size",
+          "exactText": "Size: 1 oz Travel",
+          "structuredValue": {
+            "name": "Size",
+            "value": "1 oz Travel"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-e3c0108c6a1dd57c",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Scent",
+          "exactText": "Scent: Unscented",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-4f5d7a9d2a8870a7",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Size",
+          "exactText": "Size: 2.5 oz",
+          "structuredValue": {
+            "name": "Size",
+            "value": "2.5 oz"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-f7ba3dc8d87d602a",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Scent",
+          "exactText": "Scent: Unscented",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-ab73124a20231222",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Size",
+          "exactText": "Size: 1 oz Travel",
+          "structuredValue": {
+            "name": "Size",
+            "value": "1 oz Travel"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:58.054Z",
+      "sequence": 3,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:58.951Z",
+      "sequence": 4,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "search_store",
+        "args": {
+          "query": "aluminum free deodorant"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:58.965Z",
+      "sequence": 5,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "search_store",
+        "output": {
+          "matches": [
+            {
+              "objectType": "product",
+              "objectId": "gid://shopify/Product/8114219450470",
+              "title": "Cedar Hollow Natural Deodorant",
+              "snippet": "Cedar Hollow Natural Deodorant",
+              "evidenceReferences": [
+                {
+                  "evidenceId": "ev-c0db777bd2fed966",
+                  "surface": "product_title",
+                  "sourceObjectId": "gid://shopify/Product/8114219450470",
+                  "exactText": "Cedar Hollow Natural Deodorant",
+                  "snapshotId": "snap-7f9f72bd963dd3ac"
+                },
+                {
+                  "evidenceId": "ev-f0cb6afec7896d4a",
+                  "surface": "product_description",
+                  "sourceObjectId": "gid://shopify/Product/8114219450470",
+                  "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+                  "snapshotId": "snap-7f9f72bd963dd3ac"
+                }
+              ]
+            },
+            {
+              "objectType": "product",
+              "objectId": "gid://shopify/Product/8114219483238",
+              "title": "Harbor Lane Shave Soap",
+              "snippet": "Tallow-free and palm-free, $24 a puck, made to order weekly.",
+              "evidenceReferences": [
+                {
+                  "evidenceId": "ev-05a67eb5deffbffb",
+                  "surface": "product_description",
+                  "sourceObjectId": "gid://shopify/Product/8114219483238",
+                  "exactText": "Tallow-free and palm-free, $24 a puck, made to order weekly.",
+                  "snapshotId": "snap-7f9f72bd963dd3ac"
+                }
+              ]
+            },
+            {
+              "objectType": "page",
+              "objectId": "page:faq",
+              "title": null,
+              "snippet": "Free returns within 30 days of delivery, no questions asked.",
+              "evidenceReferences": [
+                {
+                  "evidenceId": "ev-4d8ea1b511ec56ef",
+                  "surface": "faq",
+                  "sourceObjectId": "page:faq",
+                  "exactText": "Free returns within 30 days of delivery, no questions asked.",
+                  "snapshotId": "snap-7f9f72bd963dd3ac"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-c0db777bd2fed966",
+          "surface": "product_title",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Cedar Hollow Natural Deodorant",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-f0cb6afec7896d4a",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-05a67eb5deffbffb",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219483238",
+          "exactText": "Tallow-free and palm-free, $24 a puck, made to order weekly.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-4d8ea1b511ec56ef",
+          "surface": "faq",
+          "sourceObjectId": "page:faq",
+          "exactText": "Free returns within 30 days of delivery, no questions asked.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:59.672Z",
+      "sequence": 6,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product_metafields",
+        "args": {
+          "productId": "gid://shopify/Product/8114219450470"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:59.673Z",
+      "sequence": 7,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product_metafields",
+        "output": {
+          "found": true,
+          "metafields": [
+            {
+              "namespace": "custom",
+              "key": "price",
+              "value": "$14.00",
+              "type": "single_line_text_field",
+              "evidenceReference": {
+                "evidenceId": "ev-c6419c19b1a17c13",
+                "surface": "product_metafields",
+                "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+                "exactText": "$14.00",
+                "structuredValue": {
+                  "namespace": "custom",
+                  "key": "price",
+                  "value": "$14.00",
+                  "type": "single_line_text_field"
+                },
+                "snapshotId": "snap-7f9f72bd963dd3ac"
+              }
+            }
+          ],
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-c6419c19b1a17c13",
+              "surface": "product_metafields",
+              "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+              "exactText": "$14.00",
+              "structuredValue": {
+                "namespace": "custom",
+                "key": "price",
+                "value": "$14.00",
+                "type": "single_line_text_field"
+              },
+              "snapshotId": "snap-7f9f72bd963dd3ac"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-c6419c19b1a17c13",
+          "surface": "product_metafields",
+          "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+          "exactText": "$14.00",
+          "structuredValue": {
+            "namespace": "custom",
+            "key": "price",
+            "value": "$14.00",
+            "type": "single_line_text_field"
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:16:59.673Z",
+      "sequence": 8,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:17:01.824Z",
+      "sequence": 9,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "x1aluminumfree",
+        "status": "unresolvable",
+        "claimedEvidenceIds": []
+      },
+      "evidenceReferences": [],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:17:01.825Z",
+      "sequence": 10,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "x2variantprice",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-e45513b23d4e6a8f",
+          "ev-5ecf689de4316466",
+          "ev-20b18c7561a7fe83",
+          "ev-73e3cec2320608c7"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-e45513b23d4e6a8f",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+          "exactText": "Cedar & Sage / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061749350",
+            "title": "Cedar & Sage / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-5ecf689de4316466",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+          "exactText": "Cedar & Sage / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061782118",
+            "title": "Cedar & Sage / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        },
+        {
+          "evidenceId": "ev-73e3cec2320608c7",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+          "exactText": "Unscented / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061847654",
+            "title": "Unscented / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:17:01.825Z",
+      "sequence": 11,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "x3subscriptionrequired",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-176aa5bfd7a82d97"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-176aa5bfd7a82d97",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+          "snapshotId": "snap-7f9f72bd963dd3ac"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:17:02.643Z",
+      "sequence": 12,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "semanticPass": true,
+        "promptVersion": "sem-v2",
+        "notes": [],
+        "fabricationsDiscarded": 0
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:17:02.643Z",
+      "sequence": 13,
+      "type": "DECISION_MADE",
+      "payload": {
+        "adjudicatedOutcome": "MISSING_EVIDENCE",
+        "rootCauseCode": "EVIDENCE_GAP",
+        "modelDeclaredOutcome": "MISSING_EVIDENCE",
+        "selectedProductId": "gid://shopify/Product/8114219450470"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    },
+    {
+      "runId": "run-mrx8msk5-c5b1b37b",
+      "timestamp": "2026-07-23T08:17:02.643Z",
+      "sequence": 14,
+      "type": "RUN_COMPLETED",
+      "payload": {
+        "outcome": "MISSING_EVIDENCE",
+        "totalToolCalls": 3,
+        "totalSteps": 4
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage4-v1"
+      }
+    }
+  ],
+  "totalToolCalls": 3,
+  "totalSteps": 4,
+  "estimatedCostUsd": 0.006234,
+  "outcome": "MISSING_EVIDENCE",
+  "modelDeclaredOutcome": "MISSING_EVIDENCE",
+  "selectedProductId": "gid://shopify/Product/8114219450470",
+  "rawFinalResponse": "{\n  \"selectedProductId\": \"gid://shopify/Product/8114219450470\",\n  \"selectedVariantId\": null,\n  \"constraints\": [\n    {\n      \"constraintId\": \"x1aluminumfree\",\n      \"status\": \"unresolvable\",\n      \"observedValue\": null,\n      \"evidenceIds\": [],\n      \"explanation\": \"The product description mentions \\\"natural deodorant\\\" and the search results for \\\"aluminum free deodorant\\\" include this product, but there is no explicit statement that the product is aluminum-free.\"\n    },\n    {\n      \"constraintId\": \"x2variantprice\",\n      \"status\": \"satisfied\",\n      \"observedValue\": 14,\n      \"evidenceIds\": [\n        \"ev-e45513b23d4e6a8f\",\n        \"ev-5ecf689de4316466\",\n        \"ev-20b18c7561a7fe83\",\n        \"ev-73e3cec2320608c7\"\n      ],\n      \"explanation\": \"All variants of the Cedar Hollow Natural Deodorant are priced at $14, which is less than $20.\"\n    },\n    {\n      \"constraintId\": \"x3subscriptionrequired\",\n      \"status\": \"satisfied\",\n      \"observedValue\": false,\n      \"evidenceIds\": [\n        \"ev-176aa5bfd7a82d97\"\n      ],\n      \"explanation\": \"The product description explicitly states that it is a one-time purchase and no subscription is required.\"\n    }\n  ],\n  \"outcome\": \"MISSING_EVIDENCE\",\n  \"explanation\": \"The product satisfies the price and subscription constraints, but there is no explicit evidence to confirm that it is aluminum-free.\"\n}",
+  "validationNotes": [],
+  "unsupportedPositiveClaim": false,
+  "unsupportedClaimConstraintIds": [],
+  "semanticFabricationsDiscarded": 0,
+  "rootCauseCode": "EVIDENCE_GAP",
+  "coverageRatio": 1,
+  "missedRelevantSurfaces": []
+}
