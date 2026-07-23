@@ -155,6 +155,27 @@ test("42. constraint id generator emits round-trip-safe ids (property test)", ()
   assert.notEqual(safeConstraintId("aluminum_free", 0), safeConstraintId("vegan", 0));
 });
 
+// ---- 41. case claims map: no orphan placeholders ---------------------------
+
+test("41. every case-template placeholder resolves to a claims-map entry", async () => {
+  const { renderCase } = await import("../src/agentic-test/case-render.js");
+  const claimsPath = join(process.cwd(), "experiments", "agentic-stage4", "case", "claims-map.json");
+  const { existsSync, readFileSync } = await import("node:fs");
+  if (!existsSync(claimsPath)) return; // artifacts not built yet (pre-CP5 states)
+  const claims = JSON.parse(readFileSync(claimsPath, "utf8"));
+  const html = renderCase(claims);
+  assert.ok(!/\{\{\w+\}\}/.test(html), "no unresolved placeholders remain");
+  // Every claim carries an artifact source.
+  for (const [key, c] of Object.entries(claims) as Array<[string, { value: string; source: string }]>) {
+    assert.ok(c.source && c.source.length > 10, `claim '${key}' names its source artifact`);
+    assert.ok(typeof c.value === "string" && c.value.length > 0, `claim '${key}' has a value`);
+  }
+  // Removing a claim makes rendering THROW (orphan detection).
+  const broken = { ...claims };
+  delete (broken as Record<string, unknown>).probeCount;
+  assert.throws(() => renderCase(broken), /orphan claim/);
+});
+
 // ---- 43. final-state assertion helper --------------------------------------
 
 test("43. store-state vs ground-truth assertion on the evidence fields", () => {

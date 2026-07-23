@@ -1,0 +1,20 @@
+{
+  "caseId": "case-0001-aluminum-free-evidence",
+  "contractId": "stage4-case-p1",
+  "snapshotId": "snap-cace8f07404d8a2c",
+  "expectedOutcome": "PASS",
+  "models": [
+    "openai",
+    "gemini"
+  ],
+  "trials": 1,
+  "versions": {
+    "promptVersion": "stage4-v1",
+    "semanticPromptVersion": "sem-v2"
+  },
+  "productionTriggers": [
+    "product edit touching the evidencing surfaces (description/metafields)",
+    "theme or page changes affecting FAQ/policy content",
+    "assistant model updates (scheduled re-verification)"
+  ]
+}

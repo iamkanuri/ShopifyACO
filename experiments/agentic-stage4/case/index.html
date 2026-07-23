@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><title>AisleLens — Agentic Commerce Case</title><style>body{font-family:system-ui;max-width:720px;margin:2rem auto;padding:0 1rem;line-height:1.55;color:#182026}h1{font-size:1.4rem}h2{font-size:1.05rem;margin-top:1.6rem}blockquote{border-left:3px solid #7aa;padding-left:.8rem;color:#333}.disclosure{background:#fff8e1;padding:.6rem .8rem;border-radius:6px;font-size:.9rem}</style></head><body><!-- AisleLens — Agentic Commerce Case (internal experiment artifact) -->
+<div class="case">
+<h1>Case: “aluminum-free” was invisible to AI shopping agents</h1>
+<p class="disclosure">Internal experiment artifact. Approval and confirmation checkpoints below were executed automatically and are labeled; in production they are merchant decisions.</p>
+
+<h2>1 · The live signal</h2>
+<p>AI assistants answered <b>54</b> shopping questions in your category. You appeared in <b>0</b>. <b>observed competitor A</b> was recommended <b>17</b> times across all <b>3</b> assistants we track.</p>
+
+<h2>2 · The test this generated</h2>
+<p>From those questions we built one concrete shopping test for your store: <i>“Find this deodorant, confirm it’s aluminum-free, under $20, with no subscription required.”</i></p>
+<ul>
+<li>Aluminum-free — <b>Can’t be verified yet</b>: nothing on your store states it</li>
+<li>Under $20 — <b>Proven</b> from your live prices</li>
+<li>No subscription — <b>Proven</b> from your product page</li>
+</ul>
+
+<h2>3 · Confirmation checkpoint</h2>
+<p>“Is this product aluminum-free — and should AI assistants be able to verify that?” <i>(rendered as production would ask it; marked experiment-auto-approved in this experiment)</i></p>
+
+<h2>4 · We shopped your store the way an AI does</h2>
+<p><b>4</b> complete shopping attempts, across <b>2</b> AI models.</p>
+
+<h2>5 · Every attempt hit the same wall</h2>
+<p><b>4/4</b> attempts could not verify the aluminum-free claim. Nothing on your store says “aluminum-free.” We checked your product page, your product details, your store FAQ, and store search.</p>
+
+<h2>6 · Harder versions fail the same way</h2>
+<p>In our wider test battery, the same missing-evidence failure appeared in <b>6/6</b> runs of the full five-requirement version of this test.</p>
+
+<h2>7 · Root cause</h2>
+<p><b>Your product may well be aluminum-free — but no machine can verify it from your store.</b></p>
+
+<h2>8 · The fix</h2>
+<p>Restore your own product copy that states it directly:</p>
+<blockquote>“Our aluminum-free formula uses arrowroot and magnesium hydroxide to keep you fresh through a Tampa summer, with no baking soda to irritate sensitive skin.”</blockquote>
+<p>…and the product detail <code>custom.aluminum_free = true</code>.</p>
+
+<h2>9 · Approval checkpoint</h2>
+<p>In production, this change ships only when you approve it. <i>(This run: experiment-auto-approved, disclosed.)</i></p>
+
+<h2>10 · Verified by re-running the same tests</h2>
+<p>Fixed. The same 4 tests now pass — <b>4/4</b> — on both AI models.</p>
+
+<h2>11 · The live recheck, honestly</h2>
+<p>We re-asked all 54 questions to the live assistants after the fix. You appeared in 0/54 before and 0/52 after.</p>
+<p><i>Store-side failure: FIXED AND PROVEN (simulation layer, deterministic — before/after journeys 0/4 → 4/4 PASS). External visibility: no observed change, as structurally expected for a password-protected store; external verification requires an indexed store, which requires a design partner or a public store — a business step beyond this experiment.</i></p>
+
+<h2>12 · This test is now permanent</h2>
+<p>Saved as <code>case-0001-aluminum-free-evidence</code> and re-run on demand — currently <b>passing</b>. It will flag any future edit that breaks this evidence again.</p>
+</div></body></html>

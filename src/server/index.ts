@@ -1097,6 +1097,19 @@ async function serveIndex(req: Request, res: Response) {
   res.type("html").send(html);
 }
 
+// Agentic-instrument experiment (Stage 4): one internal dev/admin case route,
+// registered ONLY when the experiment flag is on. Additive — no production
+// behavior changes when the flag is unset (the default).
+if (process.env.AGENTIC_INSTRUMENT_TEST_ENABLED === "true") {
+  try {
+    // Top-level await: must register BEFORE the SPA catch-all below.
+    const { registerAgenticCaseRoute } = await import("../agentic-test/case-route.js");
+    registerAgenticCaseRoute(app);
+  } catch (err) {
+    console.error("[agentic-case] route registration failed:", (err as Error).message);
+  }
+}
+
 if (existsSync(dist)) {
   app.use(express.static(dist, { index: false }));
   app.get("*", (req, res, next) => {

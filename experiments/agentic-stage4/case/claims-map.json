@@ -1,0 +1,82 @@
+{
+  "probeCount": {
+    "value": "54",
+    "source": "experiments/agentic-stage3/probes/probe-battery.jsonl (line count)"
+  },
+  "merchantAppearances": {
+    "value": "0",
+    "source": "experiments/agentic-stage3/probes/probe-battery.jsonl (regex cedar hollow|harbor lane|aislelens over responseText)"
+  },
+  "channelCount": {
+    "value": "3",
+    "source": "experiments/agentic-stage3/probes/probe-battery.jsonl (distinct channel values)"
+  },
+  "competitorAlias": {
+    "value": "observed competitor A",
+    "source": "experiments/agentic-stage3/probes/competitors-meta.json (gitignored; alias mapping) — committed derivation: extractBrandCandidates over probe-battery.jsonl"
+  },
+  "competitorMentions": {
+    "value": "17",
+    "source": "derived via src/agentic-test/compiler.ts#extractBrandCandidates over experiments/agentic-stage3/probes/probe-battery.jsonl (also stated in experiments/agentic-stage3/STAGE3_REPORT.md)"
+  },
+  "competitorChannelCount": {
+    "value": "3",
+    "source": "same derivation as competitorMentions"
+  },
+  "journeyCount": {
+    "value": "4",
+    "source": "experiments/agentic-stage4/before-after-diff.json (2 models × 2 trials denominators)"
+  },
+  "modelCount": {
+    "value": "2",
+    "source": "experiments/agentic-stage4/before-after-diff.json (openai + gemini blocks)"
+  },
+  "surfacesChecked": {
+    "value": "your product page, your product details, your store FAQ, and store search",
+    "source": "experiments/agentic-stage4/results/*.trace.jsonl on the faulted snapshot (TOOL_CALLED get_product, get_product_metafields, get_faq_or_policy, search_store)"
+  },
+  "faultedFailures": {
+    "value": "4/4",
+    "source": "experiments/agentic-stage4/before-after-diff.json (before.*.MISSING_EVIDENCE)"
+  },
+  "fixedPasses": {
+    "value": "4/4",
+    "source": "experiments/agentic-stage4/before-after-diff.json (after.*.PASS)"
+  },
+  "harderVersions": {
+    "value": "6/6",
+    "source": "experiments/agentic-stage2/stage2-report.json (report.gate.perRole.f1 — Stage 2 battery record, no new runs)"
+  },
+  "restoredSentence": {
+    "value": "Our aluminum-free formula uses arrowroot and magnesium hydroxide to keep you fresh through a Tampa summer, with no baking soda to irritate sensitive skin.",
+    "source": "experiments/agentic-stage4/revert-log.jsonl (marker.restore.descriptionHtml contains this sentence verbatim)"
+  },
+  "restoredMetafield": {
+    "value": "custom.aluminum_free = true",
+    "source": "experiments/agentic-stage4/revert-log.jsonl (marker.restore.metafield)"
+  },
+  "approvalActor": {
+    "value": "experiment-auto-approved",
+    "source": "experiments/agentic-stage4/results + fix_proposals row (actor recorded on approve/apply); disclosure per Stage 4 Rule 5"
+  },
+  "liveClassification": {
+    "value": "Store-side failure: FIXED AND PROVEN (simulation layer, deterministic — before/after journeys 0/4 → 4/4 PASS). External visibility: no observed change, as structurally expected for a password-protected store; external verification requires an indexed store, which requires a design partner or a public store — a business step beyond this experiment.",
+    "source": "experiments/agentic-stage4/live-comparison.json (classification, rules verbatim from spec 4.4)"
+  },
+  "livePre": {
+    "value": "0/54",
+    "source": "experiments/agentic-stage4/live-comparison.json"
+  },
+  "livePost": {
+    "value": "0/52",
+    "source": "experiments/agentic-stage4/live-comparison.json"
+  },
+  "regressionCaseId": {
+    "value": "case-0001-aluminum-free-evidence",
+    "source": "experiments/agentic-stage4/case/regression-bundle.json"
+  },
+  "regressionResult": {
+    "value": "passing",
+    "source": "experiments/agentic-stage4/case/history.jsonl"
+  }
+}

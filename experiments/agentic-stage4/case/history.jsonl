@@ -1,0 +1,1 @@
+{"executedAt":"2026-07-23T12:30:43.550Z","caseId":"case-0001-aluminum-free-evidence","outcomes":[{"provider":"openai","outcome":"PASS","runId":"run-mrxhoxeq-9e5407fb"},{"provider":"gemini","outcome":"PASS","runId":"run-mrxhp26r-80144fe8"}],"expected":"PASS","pass":true}

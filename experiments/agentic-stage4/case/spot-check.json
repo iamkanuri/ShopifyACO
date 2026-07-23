@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-07-23T12:32:19.860Z",
+  "checks": [
+    {
+      "key": "channelCount",
+      "verified": true,
+      "note": "re-derived from experiments/agentic-stage3/probes/probe-battery.jsonl (distinct channel values)"
+    },
+    {
+      "key": "restoredSentence",
+      "verified": true,
+      "note": "re-derived from experiments/agentic-stage4/revert-log.jsonl (marker.restore.descriptionHtml contains this sentence v"
+    },
+    {
+      "key": "regressionCaseId",
+      "verified": true,
+      "note": "re-derived from experiments/agentic-stage4/case/regression-bundle.json"
+    }
+  ]
+}
