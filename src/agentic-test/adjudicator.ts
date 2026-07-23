@@ -80,6 +80,9 @@ export function rootCauseFor(
   const table: Record<string, Record<Exclude<ConstraintStatus, "satisfied">, RootCauseCode | null>> = {
     aluminum_free: { unresolvable: "EVIDENCE_GAP", violated: "CONTRADICTION", conflicting: "CONTRADICTION" },
     vegan: { unresolvable: "EVIDENCE_GAP", violated: "CONTRADICTION", conflicting: "CONTRADICTION" },
+    baking_soda_free: { unresolvable: "EVIDENCE_GAP", violated: "CONTRADICTION", conflicting: "CONTRADICTION" },
+    tallow_free: { unresolvable: "EVIDENCE_GAP", violated: "CONTRADICTION", conflicting: "CONTRADICTION" },
+    fragrance_free: { unresolvable: "EVIDENCE_GAP", violated: "CONTRADICTION", conflicting: "CONTRADICTION" },
     variant_price: {
       unresolvable: "EVIDENCE_GAP",
       violated: flags.priceDisagree ? "STALE_STRUCTURED_DATA" : "PRICE_VIOLATION",

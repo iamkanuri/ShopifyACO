@@ -172,4 +172,12 @@ export const STAGE2_TERM_FIXTURES: Record<
   subscription_required: { supportTerms: NO_SUBSCRIPTION_TERMS, violatingTerms: SUBSCRIPTION_VIOLATION_TERMS },
   delivery_timing: { supportTerms: DELIVERY_TIMING_TERMS, requiresDigitInSentence: true },
   vegan: { supportTerms: VEGAN_TERMS },
+  // Stage 3 (manual + compiled contracts): catalog-derived attributes.
+  baking_soda_free: {
+    supportTerms: ["no baking soda", "baking soda free", "baking-soda-free", "without baking soda", "free of baking soda"],
+  },
+  tallow_free: { supportTerms: ["tallow-free", "tallow free", "no tallow", "without tallow"] },
+  fragrance_free: {
+    supportTerms: ["fragrance-free", "fragrance free", "no added fragrance", "zero added fragrance", "unscented", "no fragrance"],
+  },
 };
