@@ -47,6 +47,19 @@ export const stage2GroundTruth: MerchantGroundTruth = deepFreeze({
 
 export const stage2SecondaryGroundTruth: MerchantGroundTruth = deepFreeze({
   productId: "gid://shopify/Product/8114219483238", // Harbor Lane Shave Soap
-  facts: { vegan: true, variant_price: 24.0 },
+  facts: { vegan: true, variant_price: 24.0, tallow_free: true },
   sources: [{ attribute: "vegan", sourceType: "merchant_confirmed" }],
+});
+
+// ---- Stage 3: auto-confirmation fixture (the human-confirm stand-in) -------
+// Attributes we seeded TRUTHFULLY into the dev store beyond the Stage 2 facts.
+// Deliberately absent: `fragrance_free` — it is variant-specific in the seeded
+// copy (only Unscented has "zero added fragrance"), so a compiled product-level
+// fragrance constraint is a genuine UNCONFIRMED case, exercising the exclusion
+// path (spec 4.7 step 4 / test 33).
+
+export const stage3ConfirmableFacts: MerchantGroundTruth = deepFreeze({
+  productId: "gid://shopify/Product/8114219450470",
+  facts: { baking_soda_free: true, returns_policy: "free returns within 30 days of delivery" },
+  sources: [{ attribute: "baking_soda_free", sourceType: "merchant_confirmed" }],
 });

@@ -87,3 +87,32 @@ Three defects were caught by the gates themselves and fixed with disclosure:
 PARA-v2 4/4 PASS@SEMANTIC_VERIFIED; BASE 2/2 PASS (EXPLICIT c1); F1 2/2
 MISSING_EVIDENCE/EVIDENCE_GAP. Scan gate F1/F2/F5 100% with quotes. LiarMock +
 SemanticLiarMock caught at $0. Zero fabricated citations credited anywhere.
+
+---
+
+# CP5 EXECUTION RECORD (2026-07-23)
+
+- **Battery:** 54/54 probes (6 prompts × 3 repeats × 3 channels), all
+  web-grounded, full responses + citations persisted (`probes/probe-battery.jsonl`,
+  batch `stage3`). Spend ≈ $0.28. Merchant absent in ALL 54 responses — the
+  canonical observation confirmed.
+- **Compiler:** 6/6 prompt-groups compiled (0 live rejections — the rejection
+  rules are proven on fixture prompts in test 32); 2 UNCONFIRMED constraint
+  exclusions exercised (fragrance_free: variant-specific; returns_policy: no
+  deterministic support fixture).
+- **Two compiler bugs caught + fixed during CP5** (disclosed): (a) per-group
+  alias maps overwrote each other — aliases are now GLOBAL across the battery;
+  (b) the brand extractor's precision — "I'd" (curly-apostrophe contraction)
+  ranked as the top "competitor"; fixed with apostrophe normalization,
+  contraction/retailer/discourse stopwords. Also fixed: full-snapshot price
+  disagreement compared the metafield against OTHER products' variants (Gift
+  Card $100) when no required variant is set — now product-scoped.
+- **Competitor capture (Rule 7):** top global competitor (named 17× across all
+  3 channels) captured via one public `/products/<handle>.js` request —
+  DISCLOSURE: the endpoint was hit twice; the first response was lost to a
+  local ENOENT (missing fixtures dir) before any read, and one retry was made.
+  Real name only in gitignored files; committed artifacts say "observed
+  competitor A". Comparison note: `compiled/competitor-comparison.json`.
+- **Known limitation (disclosed, not churned):** variant price evidence carries
+  no product linkage, so a no-required-variant price scan can quote another
+  product's variant as its sample (verdicts unaffected on our catalog).

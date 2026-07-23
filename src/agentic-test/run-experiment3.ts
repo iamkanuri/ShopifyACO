@@ -295,6 +295,44 @@ export async function runGateA(): Promise<void> {
   console.log("[gate-a] all Gate A journeys complete");
 }
 
+/** Gate B A/B (spec 4.8): {2 manual + 3 compiled} × 2 models × 2 trials on the
+ *  current BASE snapshot, semantic tier active, idempotent. */
+export async function runGateB(): Promise<void> {
+  useStage3ResultsDir();
+  const m = readStage3Manifest();
+  const { MANUAL_CONTRACTS } = await import("./manual-contracts.js");
+  const { loadCompiledCases } = await import("./compiler.js");
+  const compiled = loadCompiledCases()
+    .filter((c) => c.status === "compiled" && c.contract)
+    .slice(0, 3)
+    .map((c) => c.contract!);
+  if (compiled.length < 3) throw new Error(`need ≥3 compiled contracts, have ${compiled.length}`);
+
+  const { resultsDir } = await import("./trace-recorder.js");
+  const done = new Set<string>();
+  try {
+    for (const line of readFileSync(join(resultsDir(), "index.jsonl"), "utf8").trim().split("\n")) {
+      if (!line) continue;
+      const e = JSON.parse(line) as { contractId: string; provider: string; snapshotId: string; trialNumber: number; promptVersion: string };
+      done.add(`${e.contractId}|${e.provider}|${e.snapshotId}|${e.trialNumber}|${e.promptVersion}`);
+    }
+  } catch { /* no index yet */ }
+
+  const contracts = [...MANUAL_CONTRACTS, ...compiled];
+  for (const contract of contracts) {
+    for (const provider of ["openai", "gemini"]) {
+      for (let t = 1; t <= 2; t++) {
+        if (done.has(`${contract.id}|${provider}|${m.snapshots.base}|${t}|${PROMPT_VERSION_STAGE3}`)) {
+          console.log(`[gate-b] skip ${contract.id}/${provider}/t${t} (persisted)`);
+          continue;
+        }
+        await runJourney3(provider, m.snapshots.base, contract, t);
+      }
+    }
+  }
+  console.log(`[gate-b] complete: ${contracts.length} contracts × 2 models × 2 trials on BASE`);
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment3.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -311,6 +349,9 @@ if (isMain) {
         break;
       case "gate-a":
         await runGateA();
+        break;
+      case "gate-b":
+        await runGateB();
         break;
       default:
         console.error("usage: npx tsx src/agentic-test/run-experiment3.ts <prepare3|scan-stage2|dry-run3|gate-a>");

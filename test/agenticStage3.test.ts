@@ -242,6 +242,94 @@ test("claim-rescue: real in-scope paraphrase citation → SEMANTIC_VERIFIED, not
   assert.notEqual(adjudicateStage2(stage2PrimaryContract, out.result, trace).outcome, "FALSE_CERTAINTY");
 });
 
+// ---- 32/33. compiler rejection rules + schema validity ---------------------
+
+const NO_DETERMINISTIC = { merchantPresent: false, competitors: [], pricesMentioned: [], citationHosts: [] };
+
+test("32. compiler rejection rules fire on fixture prompts", async () => {
+  const { draftContract } = await import("../src/agentic-test/compiler.js");
+  const d = (over: Record<string, unknown>) => ({
+    objective: "x", targetBrand: null, hardConstraints: [], softPreferences: [], ambiguityFlags: [], impossibleDataConstraints: [], ...over,
+  });
+
+  const subjective = draftContract("t-subj", "deodorant", d({}) as never, NO_DETERMINISTIC, "mock");
+  assert.equal(subjective.status, "rejected");
+  assert.ok(subjective.rejectionReason!.includes("subjective"));
+
+  const navigational = draftContract("t-nav", "deodorant", d({ targetBrand: "SomeBrand" }) as never, NO_DETERMINISTIC, "mock");
+  assert.equal(navigational.status, "rejected");
+  assert.ok(navigational.rejectionReason!.includes("brand-navigational"));
+
+  const impossible = draftContract(
+    "t-imp", "deodorant",
+    d({
+      hardConstraints: [{ attribute: "other:neighborhood_popularity", operator: "must_be_true", phrasing: "popular with my neighbors" }],
+      impossibleDataConstraints: ["popular with my neighbors"],
+    }) as never,
+    NO_DETERMINISTIC, "mock",
+  );
+  assert.equal(impossible.status, "rejected");
+  assert.ok(impossible.rejectionReason!.includes("cannot possess"));
+
+  const valid = draftContract(
+    "t-ok", "deodorant",
+    d({
+      hardConstraints: [
+        { attribute: "aluminum_free", operator: "must_be_true", value: true, phrasing: "aluminum-free" },
+        { attribute: "variant_price", operator: "less_than", value: 20, phrasing: "under $20" },
+        { attribute: "subscription_required", operator: "must_be_false", value: false, phrasing: "no subscription" },
+      ],
+    }) as never,
+    NO_DETERMINISTIC, "mock",
+  );
+  assert.equal(valid.status, "compiled");
+  assert.equal(valid.contract!.hardConstraints.length, 3);
+  assert.equal(valid.contract!.productScope.productId, stage2PrimaryContract.productScope.productId);
+});
+
+test("33. compiled contracts validate; UNCONFIRMED constraints are excluded", async () => {
+  const { draftContract, validateCompiledContract } = await import("../src/agentic-test/compiler.js");
+  const draft = {
+    objective: "unscented aluminum-free deodorant", targetBrand: null,
+    hardConstraints: [
+      { attribute: "aluminum_free", operator: "must_be_true", value: true, phrasing: "aluminum-free" },
+      { attribute: "fragrance_free", operator: "must_be_true", value: true, phrasing: "unscented" },
+    ],
+    softPreferences: [], ambiguityFlags: [], impossibleDataConstraints: [],
+  };
+  const out = draftContract("t-unconf", "deodorant", draft as never, NO_DETERMINISTIC, "mock");
+  assert.equal(out.status, "compiled");
+  // fragrance_free is deliberately absent from the confirmable facts (variant-
+  // specific in the seeded copy) → excluded from hard constraints, recorded.
+  assert.ok(!out.contract!.hardConstraints.some((c) => c.attribute === "fragrance_free"));
+  assert.equal(out.unconfirmed.length, 1);
+  assert.equal(out.unconfirmed[0]!.attribute, "fragrance_free");
+  assert.ok(out.unconfirmed[0]!.wouldHaveAskedMerchant.includes("fragrance_free"));
+  assert.deepEqual(validateCompiledContract(out.contract!), []);
+
+  const invalid = { ...out.contract!, hardConstraints: [{ id: "z", attribute: "made_up_attr", operator: "must_be_true" as const, evidenceRequired: true, acceptableSurfaces: [] as never[] }] };
+  assert.ok(validateCompiledContract(invalid).length >= 2);
+});
+
+// ---- 35. probe persistence shape (artifact-gated) --------------------------
+
+const PROBE_FILE = join(process.cwd(), "experiments", "agentic-stage3", "probes", "probe-battery.jsonl");
+
+test("35. probe persistence records channel, model, citations, batch tag", { skip: !existsSync(PROBE_FILE) }, () => {
+  const records = readFileSync(PROBE_FILE, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  assert.ok(records.length >= 2);
+  for (const r of records) {
+    assert.equal(r.batchTag, "stage3");
+    assert.ok(["openai", "gemini", "perplexity"].includes(r.channel));
+    assert.ok(typeof r.model === "string" && r.model.length > 0);
+    assert.ok(Array.isArray(r.citations));
+    assert.ok(typeof r.promptId === "string" && typeof r.repeat === "number");
+    assert.ok(typeof r.responseText === "string");
+  }
+  const channels = new Set(records.map((r) => r.channel));
+  assert.ok(channels.size >= 2, "at least two channels probed");
+});
+
 // ---- 34. pre-registration guard (mechanical Rule 5) ------------------------
 
 test("34. probe-parsing refuses to run without the pre-registration record", async () => {

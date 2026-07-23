@@ -1,0 +1,1227 @@
+[
+  {
+    "sourcePromptId": "p1",
+    "category": "deodorant",
+    "unconfirmed": [],
+    "grounding": [
+      {
+        "constraintId": "x1-aluminum-free",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x2-variant-price",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x3-subscription-required",
+        "verdict": "grounded"
+      }
+    ],
+    "deterministic": {
+      "merchantPresent": false,
+      "competitors": [
+        {
+          "alias": "observed competitor A",
+          "count": 4,
+          "channels": [
+            "gemini",
+            "openai"
+          ]
+        },
+        {
+          "alias": "observed competitor D",
+          "count": 3,
+          "channels": [
+            "gemini",
+            "openai"
+          ]
+        }
+      ],
+      "pricesMentioned": [
+        "$20",
+        "$6.99",
+        "$13.99",
+        "$12",
+        "$14",
+        "$9",
+        "$19",
+        "$14.99",
+        "$6.97",
+        "$20.00",
+        "$16",
+        "$18"
+      ],
+      "citationHosts": [
+        {
+          "host": "vertexaisearch.cloud.google.com",
+          "count": 9,
+          "channels": [
+            "gemini"
+          ]
+        },
+        {
+          "host": "womenshealthmag.com",
+          "count": 7,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "goodhousekeeping.com",
+          "count": 3,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "wellandgood.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "thegoodtrade.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "youtube.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "allure.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "target.com",
+          "count": 2,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "healthline.com",
+          "count": 2,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "reddit.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "megababebeauty.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "garagegymreviews.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "marieclaire.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "anthroevolve.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "brit.co",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        }
+      ]
+    },
+    "ambiguityFlags": [
+      "\"best\" is subjective and may require ranking criteria."
+    ],
+    "extractionModel": "gpt-5.4-mini",
+    "status": "compiled",
+    "contract": {
+      "id": "stage3-compiled-p1",
+      "version": "2",
+      "objective": "select_purchase_ready_product",
+      "productScope": {
+        "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "hardConstraints": [
+        {
+          "id": "x1-aluminum-free",
+          "attribute": "aluminum_free",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "product_metafields",
+            "structured_data",
+            "faq"
+          ]
+        },
+        {
+          "id": "x2-variant-price",
+          "attribute": "variant_price",
+          "operator": "less_than",
+          "expectedValue": 20,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_variants",
+            "structured_data"
+          ]
+        },
+        {
+          "id": "x3-subscription-required",
+          "attribute": "subscription_required",
+          "operator": "must_be_false",
+          "expectedValue": false,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "faq"
+          ]
+        }
+      ],
+      "successConditions": {
+        "correctProductRequired": true,
+        "allHardConstraintsSatisfied": true,
+        "evidenceRequiredForEveryFact": true
+      },
+      "limits": {
+        "maxSteps": 14,
+        "maxToolCalls": 12,
+        "maxOutputTokens": 3500
+      }
+    }
+  },
+  {
+    "sourcePromptId": "p2",
+    "category": "deodorant",
+    "unconfirmed": [],
+    "grounding": [
+      {
+        "constraintId": "x1-baking-soda-free",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x2-delivery-timing",
+        "verdict": "grounded"
+      }
+    ],
+    "deterministic": {
+      "merchantPresent": false,
+      "competitors": [
+        {
+          "alias": "observed competitor A",
+          "count": 6,
+          "channels": [
+            "gemini",
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "alias": "observed competitor F",
+          "count": 4,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "alias": "observed competitor G",
+          "count": 4,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        }
+      ],
+      "pricesMentioned": [
+        "$15"
+      ],
+      "citationHosts": [
+        {
+          "host": "youtube.com",
+          "count": 9,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "target.com",
+          "count": 7,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "reddit.com",
+          "count": 6,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "ulta.com",
+          "count": 5,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "vertexaisearch.cloud.google.com",
+          "count": 4,
+          "channels": [
+            "gemini"
+          ]
+        },
+        {
+          "host": "sheknows.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "mommypotamus.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "allure.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "byrdie.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "everydayhealth.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "observer.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "facebook.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "thethingswellmake.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "newdayorganics.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "sephora.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "soapdelinews.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "dayspabodybasics.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "mygreencloset.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "milkandhoney.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "healthychristianhome.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        }
+      ]
+    },
+    "ambiguityFlags": [],
+    "extractionModel": "gpt-5.4-mini",
+    "status": "compiled",
+    "contract": {
+      "id": "stage3-compiled-p2",
+      "version": "2",
+      "objective": "select_purchase_ready_product",
+      "productScope": {
+        "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "hardConstraints": [
+        {
+          "id": "x1-baking-soda-free",
+          "attribute": "baking_soda_free",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "product_metafields",
+            "structured_data",
+            "faq"
+          ]
+        },
+        {
+          "id": "x2-delivery-timing",
+          "attribute": "delivery_timing",
+          "operator": "must_be_resolvable",
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "shipping_policy",
+            "faq"
+          ]
+        }
+      ],
+      "successConditions": {
+        "correctProductRequired": true,
+        "allHardConstraintsSatisfied": true,
+        "evidenceRequiredForEveryFact": true
+      },
+      "limits": {
+        "maxSteps": 14,
+        "maxToolCalls": 12,
+        "maxOutputTokens": 3500
+      }
+    }
+  },
+  {
+    "sourcePromptId": "p3",
+    "category": "deodorant",
+    "unconfirmed": [],
+    "grounding": [
+      {
+        "constraintId": "x1-variant-price",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x2-required-variant-in-stock",
+        "verdict": "grounded"
+      }
+    ],
+    "deterministic": {
+      "merchantPresent": false,
+      "competitors": [
+        {
+          "alias": "observed competitor A",
+          "count": 4,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        }
+      ],
+      "pricesMentioned": [
+        "$3.99",
+        "$15",
+        "$4.99",
+        "$1.99",
+        "$13.99",
+        "$4",
+        "$6",
+        "$15.00",
+        "$7.58",
+        "$9.97"
+      ],
+      "citationHosts": [
+        {
+          "host": "target.com",
+          "count": 6,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "vertexaisearch.cloud.google.com",
+          "count": 5,
+          "channels": [
+            "gemini"
+          ]
+        },
+        {
+          "host": "walmart.com",
+          "count": 2,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "piperwai.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "curealia.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        }
+      ]
+    },
+    "ambiguityFlags": [
+      "'best' is subjective and may depend on ratings, ingredients, or popularity",
+      "'travel-size' could mean mini/sample size but exact size was not specified"
+    ],
+    "extractionModel": "gpt-5.4-mini",
+    "status": "compiled",
+    "contract": {
+      "id": "stage3-compiled-p3",
+      "version": "2",
+      "objective": "select_purchase_ready_product",
+      "productScope": {
+        "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+        "productId": "gid://shopify/Product/8114219450470",
+        "variantId": "gid://shopify/ProductVariant/45972061847654"
+      },
+      "hardConstraints": [
+        {
+          "id": "x1-variant-price",
+          "attribute": "variant_price",
+          "operator": "less_than",
+          "expectedValue": 15,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_variants",
+            "structured_data"
+          ]
+        },
+        {
+          "id": "x2-required-variant-in-stock",
+          "attribute": "required_variant_in_stock",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_variants"
+          ]
+        }
+      ],
+      "successConditions": {
+        "correctProductRequired": true,
+        "allHardConstraintsSatisfied": true,
+        "evidenceRequiredForEveryFact": true
+      },
+      "limits": {
+        "maxSteps": 14,
+        "maxToolCalls": 12,
+        "maxOutputTokens": 3500
+      }
+    }
+  },
+  {
+    "sourcePromptId": "p4",
+    "category": "shave_soap",
+    "unconfirmed": [],
+    "grounding": [
+      {
+        "constraintId": "x1-vegan",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x2-tallow-free",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x3-variant-price",
+        "verdict": "grounded"
+      }
+    ],
+    "deterministic": {
+      "merchantPresent": false,
+      "competitors": [],
+      "pricesMentioned": [
+        "$21.99",
+        "$30",
+        "$16.95",
+        "$16.00",
+        "$22.99",
+        "$22.49",
+        "$24.99",
+        "$19.95",
+        "$18.99"
+      ],
+      "citationHosts": [
+        {
+          "host": "vertexaisearch.cloud.google.com",
+          "count": 11,
+          "channels": [
+            "gemini"
+          ]
+        },
+        {
+          "host": "whollykaw.com",
+          "count": 9,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "host": "etsy.com",
+          "count": 8,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "reddit.com",
+          "count": 6,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "crowneandcrane.com",
+          "count": 3,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "therazorcompany.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "elegantroseboutique.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "sharpologist.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "amazon.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "shoptoxyfree.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "damnfineshave.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "toupsandco.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "youtube.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "moonsoaps.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "westcoastshaving.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "lashavingsoap.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "dayspabodybasics.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        }
+      ]
+    },
+    "ambiguityFlags": [],
+    "extractionModel": "gpt-5.4-mini",
+    "status": "compiled",
+    "contract": {
+      "id": "stage3-compiled-p4",
+      "version": "2",
+      "objective": "select_purchase_ready_product",
+      "productScope": {
+        "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+        "productId": "gid://shopify/Product/8114219483238"
+      },
+      "hardConstraints": [
+        {
+          "id": "x1-vegan",
+          "attribute": "vegan",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "product_metafields",
+            "structured_data",
+            "faq"
+          ]
+        },
+        {
+          "id": "x2-tallow-free",
+          "attribute": "tallow_free",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "product_metafields",
+            "structured_data",
+            "faq"
+          ]
+        },
+        {
+          "id": "x3-variant-price",
+          "attribute": "variant_price",
+          "operator": "less_than",
+          "expectedValue": 30,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_variants",
+            "structured_data"
+          ]
+        }
+      ],
+      "successConditions": {
+        "correctProductRequired": true,
+        "allHardConstraintsSatisfied": true,
+        "evidenceRequiredForEveryFact": true
+      },
+      "limits": {
+        "maxSteps": 14,
+        "maxToolCalls": 12,
+        "maxOutputTokens": 3500
+      }
+    }
+  },
+  {
+    "sourcePromptId": "p5",
+    "category": "deodorant",
+    "unconfirmed": [
+      {
+        "attribute": "fragrance_free",
+        "phrasing": "unscented",
+        "wouldHaveAskedMerchant": "Is \"fragrance_free\" true of this product across all variants? (shopper phrased it: \"unscented\")"
+      }
+    ],
+    "grounding": [
+      {
+        "constraintId": "x1-aluminum-free",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x2-delivery-timing",
+        "verdict": "grounded"
+      },
+      {
+        "constraintId": "x3-subscription-required",
+        "verdict": "grounded"
+      }
+    ],
+    "deterministic": {
+      "merchantPresent": false,
+      "competitors": [
+        {
+          "alias": "observed competitor A",
+          "count": 3,
+          "channels": [
+            "gemini",
+            "openai"
+          ]
+        }
+      ],
+      "pricesMentioned": [],
+      "citationHosts": [
+        {
+          "host": "target.com",
+          "count": 10,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "host": "vertexaisearch.cloud.google.com",
+          "count": 9,
+          "channels": [
+            "gemini"
+          ]
+        },
+        {
+          "host": "amazon.com",
+          "count": 9,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "instacart.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "humblebrands.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "oarsandalps.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "walmart.com",
+          "count": 2,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "host": "attitudeliving.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "youtube.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "secret.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "urbanoutfitters.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "menscience.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "armandhammer.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "iherb.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "shopmando.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "eachandevery.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "reddit.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        }
+      ]
+    },
+    "ambiguityFlags": [],
+    "extractionModel": "gpt-5.4-mini",
+    "status": "compiled",
+    "contract": {
+      "id": "stage3-compiled-p5",
+      "version": "2",
+      "objective": "select_purchase_ready_product",
+      "productScope": {
+        "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "hardConstraints": [
+        {
+          "id": "x1-aluminum-free",
+          "attribute": "aluminum_free",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "product_metafields",
+            "structured_data",
+            "faq"
+          ]
+        },
+        {
+          "id": "x2-delivery-timing",
+          "attribute": "delivery_timing",
+          "operator": "must_be_resolvable",
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "shipping_policy",
+            "faq"
+          ]
+        },
+        {
+          "id": "x3-subscription-required",
+          "attribute": "subscription_required",
+          "operator": "must_be_false",
+          "expectedValue": false,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "faq"
+          ]
+        }
+      ],
+      "successConditions": {
+        "correctProductRequired": true,
+        "allHardConstraintsSatisfied": true,
+        "evidenceRequiredForEveryFact": true
+      },
+      "limits": {
+        "maxSteps": 14,
+        "maxToolCalls": 12,
+        "maxOutputTokens": 3500
+      }
+    }
+  },
+  {
+    "sourcePromptId": "p6",
+    "category": "shave_soap",
+    "unconfirmed": [
+      {
+        "attribute": "returns_policy",
+        "phrasing": "free returns",
+        "wouldHaveAskedMerchant": "Is \"returns_policy\" true of this product across all variants? (shopper phrased it: \"free returns\")"
+      }
+    ],
+    "grounding": [
+      {
+        "constraintId": "x1-tallow-free",
+        "verdict": "grounded"
+      }
+    ],
+    "deterministic": {
+      "merchantPresent": false,
+      "competitors": [],
+      "pricesMentioned": [],
+      "citationHosts": [
+        {
+          "host": "etsy.com",
+          "count": 11,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "host": "vertexaisearch.cloud.google.com",
+          "count": 6,
+          "channels": [
+            "gemini"
+          ]
+        },
+        {
+          "host": "amazon.com",
+          "count": 6,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "moonsoaps.com",
+          "count": 4,
+          "channels": [
+            "openai",
+            "perplexity"
+          ]
+        },
+        {
+          "host": "amishfarmsoap.co.uk",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "whollykaw.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "folksoap.co.uk",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "suezbana.co.uk",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "bumbleholler.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "toupsandco.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "patriotshave.com",
+          "count": 3,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "reddit.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "thesavagehomestead.com",
+          "count": 2,
+          "channels": [
+            "perplexity"
+          ]
+        },
+        {
+          "host": "barberrycoast.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "hudsonvalleyskincare.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "myamericangoods.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "stoneandspear.co",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "battlebrothers.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "soap-of-the-earth.com",
+          "count": 1,
+          "channels": [
+            "openai"
+          ]
+        },
+        {
+          "host": "business.walmart.com",
+          "count": 1,
+          "channels": [
+            "perplexity"
+          ]
+        }
+      ]
+    },
+    "ambiguityFlags": [],
+    "extractionModel": "gpt-5.4-mini",
+    "status": "compiled",
+    "contract": {
+      "id": "stage3-compiled-p6",
+      "version": "2",
+      "objective": "select_purchase_ready_product",
+      "productScope": {
+        "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+        "productId": "gid://shopify/Product/8114219483238"
+      },
+      "hardConstraints": [
+        {
+          "id": "x1-tallow-free",
+          "attribute": "tallow_free",
+          "operator": "must_be_true",
+          "expectedValue": true,
+          "evidenceRequired": true,
+          "acceptableSurfaces": [
+            "product_description",
+            "product_metafields",
+            "structured_data",
+            "faq"
+          ]
+        }
+      ],
+      "successConditions": {
+        "correctProductRequired": true,
+        "allHardConstraintsSatisfied": true,
+        "evidenceRequiredForEveryFact": true
+      },
+      "limits": {
+        "maxSteps": 14,
+        "maxToolCalls": 12,
+        "maxOutputTokens": 3500
+      }
+    }
+  }
+]

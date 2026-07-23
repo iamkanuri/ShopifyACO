@@ -1,0 +1,43 @@
+{
+  "case": "p1 (aluminum-free deodorant under $20, no subscription)",
+  "competitor": "observed competitor A (top-named across all 3 channels; real name gitignored)",
+  "comparison": [
+    {
+      "constraint": "aluminum_free",
+      "ourStore": {
+        "verdict": "evidenced",
+        "sampleQuote": "Our aluminum-free formula uses arrowroot and magnesium hydroxide to keep you fresh through"
+      },
+      "competitorA": {
+        "verdict": "evidenced",
+        "sampleQuote": "Our award-winning aluminum-free formula just got an upgrade!"
+      }
+    },
+    {
+      "constraint": "variant_price",
+      "ourStore": {
+        "verdict": "evidenced",
+        "sampleQuote": "$10"
+      },
+      "competitorA": {
+        "verdict": "evidenced",
+        "sampleQuote": "Coconut & Vanilla / Classic / 2.65oz"
+      }
+    },
+    {
+      "constraint": "subscription_required",
+      "ourStore": {
+        "verdict": "evidenced",
+        "sampleQuote": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you"
+      },
+      "competitorA": {
+        "verdict": "absent",
+        "sampleQuote": null
+      }
+    }
+  ],
+  "structuralNotes": [
+    "competitor A: 64 variants (scent breadth) vs our 4; price $14 (identical to ours)",
+    "competitor A description: 177 chars (terse; claims live in structured bullets our .js capture does not include)"
+  ]
+}

@@ -72,7 +72,7 @@ const asRef = (snapshot: StoreSnapshot, e: SnapshotEvidenceItem): EvidenceRefere
 function scanConstraint(
   snapshot: StoreSnapshot,
   constraint: ShoppingConstraint,
-  scope: { productId: string; variantId?: string },
+  scope: { productId: string; variantId?: string; productVariantIds?: ReadonlySet<string> },
 ): ConstraintDiagnostic {
   const explicitHits: SurfaceEvidenceHit[] = [];
   const outOfScopeHits: SurfaceEvidenceHit[] = [];
@@ -163,7 +163,11 @@ function scanConstraint(
 
 /** The full evaluator-side scan: every hard AND soft constraint, all surfaces. */
 export function scanStore(snapshot: StoreSnapshot, contract: ShoppingTaskContract): StoreDiagnostic {
-  const scope = contract.productScope;
+  const target = snapshot.products.find((p) => p.productId === contract.productScope.productId);
+  const scope = {
+    ...contract.productScope,
+    productVariantIds: new Set((target?.variants ?? []).map((v) => v.variantId)),
+  };
   return {
     snapshotId: snapshot.id,
     contractId: contract.id,

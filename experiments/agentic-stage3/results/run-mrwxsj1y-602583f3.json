@@ -1,0 +1,1424 @@
+{
+  "runId": "run-mrwxsj1y-602583f3",
+  "contractId": "stage2-deodorant-full",
+  "snapshotId": "snap-f68fce1fc466e64e",
+  "snapshotContentHash": "3a3bf4953e820231db4c42f708ded45499ce089108d9a008e89ba3e80e136fa7",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "promptVersion": "stage3-v1",
+  "trialNumber": 2,
+  "constraintEvaluations": [
+    {
+      "constraintId": "c1-aluminum-free",
+      "status": "satisfied",
+      "observedValue": true,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-8bea8ee5f5b7355f",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "You won't find aluminum anywhere in our ingredient list.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-3e18457aa7da2e0b",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Aluminum never makes it into this formula.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-8c459a0705b5684b",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "We skip the aluminum entirely and rely on arrowroot instead.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-8bea8ee5f5b7355f",
+        "ev-3e18457aa7da2e0b",
+        "ev-8c459a0705b5684b"
+      ],
+      "explanation": "The product description explicitly states that it is aluminum-free. [SEMANTIC RESCUE: quote-verified support for the agent's citation]",
+      "confidenceTier": "SEMANTIC_VERIFIED"
+    },
+    {
+      "constraintId": "c2-price",
+      "status": "satisfied",
+      "observedValue": 14,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-20b18c7561a7fe83"
+      ],
+      "explanation": "The price of the selected variant is $14, which is less than $20.",
+      "confidenceTier": "EXPLICIT"
+    },
+    {
+      "constraintId": "c3-variant-purchasable",
+      "status": "satisfied",
+      "observedValue": true,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-20b18c7561a7fe83"
+      ],
+      "explanation": "The selected variant is available for purchase.",
+      "confidenceTier": "EXPLICIT"
+    },
+    {
+      "constraintId": "c4-no-subscription",
+      "status": "satisfied",
+      "observedValue": false,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-176aa5bfd7a82d97",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-176aa5bfd7a82d97"
+      ],
+      "explanation": "The product description states that it is a one-time purchase and no subscription is required.",
+      "confidenceTier": "EXPLICIT"
+    },
+    {
+      "constraintId": "c5-delivery-resolvable",
+      "status": "satisfied",
+      "observedValue": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-6fa9029923ae0ab2",
+          "surface": "shipping_policy",
+          "sourceObjectId": "policy:shipping",
+          "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-6fa9029923ae0ab2"
+      ],
+      "explanation": "The shipping policy provides a clear delivery timeframe.",
+      "confidenceTier": "EXPLICIT"
+    }
+  ],
+  "claimedEvidenceReferences": [
+    {
+      "evidenceId": "ev-8bea8ee5f5b7355f",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "You won't find aluminum anywhere in our ingredient list.",
+      "snapshotId": "snap-f68fce1fc466e64e"
+    },
+    {
+      "evidenceId": "ev-3e18457aa7da2e0b",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Aluminum never makes it into this formula.",
+      "snapshotId": "snap-f68fce1fc466e64e"
+    },
+    {
+      "evidenceId": "ev-8c459a0705b5684b",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "We skip the aluminum entirely and rely on arrowroot instead.",
+      "snapshotId": "snap-f68fce1fc466e64e"
+    },
+    {
+      "evidenceId": "ev-20b18c7561a7fe83",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+      "exactText": "Unscented / 2.5 oz",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061814886",
+        "title": "Unscented / 2.5 oz",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          {
+            "name": "Size",
+            "value": "2.5 oz"
+          }
+        ]
+      },
+      "snapshotId": "snap-f68fce1fc466e64e"
+    },
+    {
+      "evidenceId": "ev-20b18c7561a7fe83",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+      "exactText": "Unscented / 2.5 oz",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061814886",
+        "title": "Unscented / 2.5 oz",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          {
+            "name": "Size",
+            "value": "2.5 oz"
+          }
+        ]
+      },
+      "snapshotId": "snap-f68fce1fc466e64e"
+    },
+    {
+      "evidenceId": "ev-176aa5bfd7a82d97",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+      "snapshotId": "snap-f68fce1fc466e64e"
+    },
+    {
+      "evidenceId": "ev-6fa9029923ae0ab2",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+      "snapshotId": "snap-f68fce1fc466e64e"
+    }
+  ],
+  "traceEvents": [
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:29.207Z",
+      "sequence": 0,
+      "type": "RUN_STARTED",
+      "payload": {
+        "contractId": "stage2-deodorant-full",
+        "snapshotId": "snap-f68fce1fc466e64e",
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "trialNumber": 2
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.076Z",
+      "sequence": 1,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product",
+        "args": {
+          "productId": "gid://shopify/Product/8114219450470"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.106Z",
+      "sequence": 2,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product",
+        "output": {
+          "found": true,
+          "product": {
+            "productId": "gid://shopify/Product/8114219450470",
+            "title": "Cedar Hollow Natural Deodorant",
+            "description": "Small-batch deodorant made in Florida for people who read ingredient labels. Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything. Glides on clear, no white marks on dark shirts. If cedar isn't your thing, the Unscented version has zero added fragrance. You won't find aluminum anywhere in our ingredient list. Aluminum never makes it into this formula. We skip the aluminum entirely and rely on arrowroot instead.",
+            "vendor": "ai-visibility-dev",
+            "productType": null,
+            "tags": [
+              "agentic-stage2-seed"
+            ],
+            "status": "ACTIVE",
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              },
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              },
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              },
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ],
+            "variants": [
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061749350",
+                "title": "Cedar & Sage / 2.5 oz",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Cedar & Sage"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "2.5 oz"
+                  }
+                ]
+              },
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061782118",
+                "title": "Cedar & Sage / 1 oz Travel",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Cedar & Sage"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "1 oz Travel"
+                  }
+                ]
+              },
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061814886",
+                "title": "Unscented / 2.5 oz",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Unscented"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "2.5 oz"
+                  }
+                ]
+              },
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061847654",
+                "title": "Unscented / 1 oz Travel",
+                "sku": null,
+                "price": 14,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Scent",
+                    "value": "Unscented"
+                  },
+                  {
+                    "name": "Size",
+                    "value": "1 oz Travel"
+                  }
+                ]
+              }
+            ]
+          },
+          "fieldEvidence": {
+            "title": [
+              {
+                "evidenceId": "ev-c0db777bd2fed966",
+                "surface": "product_title",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Cedar Hollow Natural Deodorant",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              }
+            ],
+            "description": [
+              {
+                "evidenceId": "ev-f0cb6afec7896d4a",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-176aa5bfd7a82d97",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-ac8b8540a028be2f",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Glides on clear, no white marks on dark shirts.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-19afbc0ed08c37a0",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-8bea8ee5f5b7355f",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "You won't find aluminum anywhere in our ingredient list.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-3e18457aa7da2e0b",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "Aluminum never makes it into this formula.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-8c459a0705b5684b",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219450470",
+                "exactText": "We skip the aluminum entirely and rely on arrowroot instead.",
+                "snapshotId": "snap-f68fce1fc466e64e"
+              }
+            ],
+            "variants": [
+              {
+                "evidenceId": "ev-e45513b23d4e6a8f",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+                "exactText": "Cedar & Sage / 2.5 oz",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061749350",
+                  "title": "Cedar & Sage / 2.5 oz",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Cedar & Sage"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "2.5 oz"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-5ecf689de4316466",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+                "exactText": "Cedar & Sage / 1 oz Travel",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061782118",
+                  "title": "Cedar & Sage / 1 oz Travel",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Cedar & Sage"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "1 oz Travel"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-20b18c7561a7fe83",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+                "exactText": "Unscented / 2.5 oz",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061814886",
+                  "title": "Unscented / 2.5 oz",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Unscented"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "2.5 oz"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-73e3cec2320608c7",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+                "exactText": "Unscented / 1 oz Travel",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061847654",
+                  "title": "Unscented / 1 oz Travel",
+                  "sku": null,
+                  "price": 14,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Scent",
+                      "value": "Unscented"
+                    },
+                    {
+                      "name": "Size",
+                      "value": "1 oz Travel"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              }
+            ],
+            "options": [
+              {
+                "evidenceId": "ev-3499195fd526f73b",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Scent",
+                "exactText": "Scent: Cedar & Sage",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Cedar & Sage"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-8f52b2b26886e743",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Size",
+                "exactText": "Size: 2.5 oz",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "2.5 oz"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-0bec7d76d1f3b7ef",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Scent",
+                "exactText": "Scent: Cedar & Sage",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Cedar & Sage"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-96a94b4398a6cbd4",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Size",
+                "exactText": "Size: 1 oz Travel",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "1 oz Travel"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-e3c0108c6a1dd57c",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Scent",
+                "exactText": "Scent: Unscented",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Unscented"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-4f5d7a9d2a8870a7",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Size",
+                "exactText": "Size: 2.5 oz",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "2.5 oz"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-f7ba3dc8d87d602a",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Scent",
+                "exactText": "Scent: Unscented",
+                "structuredValue": {
+                  "name": "Scent",
+                  "value": "Unscented"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              },
+              {
+                "evidenceId": "ev-ab73124a20231222",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Size",
+                "exactText": "Size: 1 oz Travel",
+                "structuredValue": {
+                  "name": "Size",
+                  "value": "1 oz Travel"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              }
+            ]
+          },
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-c0db777bd2fed966",
+              "surface": "product_title",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Cedar Hollow Natural Deodorant",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-f0cb6afec7896d4a",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-176aa5bfd7a82d97",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-ac8b8540a028be2f",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Glides on clear, no white marks on dark shirts.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-19afbc0ed08c37a0",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-8bea8ee5f5b7355f",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "You won't find aluminum anywhere in our ingredient list.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-3e18457aa7da2e0b",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "Aluminum never makes it into this formula.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            },
+            {
+              "evidenceId": "ev-8c459a0705b5684b",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219450470",
+              "exactText": "We skip the aluminum entirely and rely on arrowroot instead.",
+              "snapshotId": "snap-f68fce1fc466e64e"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-c0db777bd2fed966",
+          "surface": "product_title",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Cedar Hollow Natural Deodorant",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-f0cb6afec7896d4a",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-176aa5bfd7a82d97",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-ac8b8540a028be2f",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Glides on clear, no white marks on dark shirts.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-19afbc0ed08c37a0",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-8bea8ee5f5b7355f",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "You won't find aluminum anywhere in our ingredient list.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-3e18457aa7da2e0b",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Aluminum never makes it into this formula.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-8c459a0705b5684b",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "We skip the aluminum entirely and rely on arrowroot instead.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-e45513b23d4e6a8f",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+          "exactText": "Cedar & Sage / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061749350",
+            "title": "Cedar & Sage / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-5ecf689de4316466",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+          "exactText": "Cedar & Sage / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061782118",
+            "title": "Cedar & Sage / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Cedar & Sage"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-73e3cec2320608c7",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+          "exactText": "Unscented / 1 oz Travel",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061847654",
+            "title": "Unscented / 1 oz Travel",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "1 oz Travel"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-3499195fd526f73b",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Scent",
+          "exactText": "Scent: Cedar & Sage",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-8f52b2b26886e743",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Size",
+          "exactText": "Size: 2.5 oz",
+          "structuredValue": {
+            "name": "Size",
+            "value": "2.5 oz"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-0bec7d76d1f3b7ef",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Scent",
+          "exactText": "Scent: Cedar & Sage",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-96a94b4398a6cbd4",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Size",
+          "exactText": "Size: 1 oz Travel",
+          "structuredValue": {
+            "name": "Size",
+            "value": "1 oz Travel"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-e3c0108c6a1dd57c",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Scent",
+          "exactText": "Scent: Unscented",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-4f5d7a9d2a8870a7",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Size",
+          "exactText": "Size: 2.5 oz",
+          "structuredValue": {
+            "name": "Size",
+            "value": "2.5 oz"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-f7ba3dc8d87d602a",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Scent",
+          "exactText": "Scent: Unscented",
+          "structuredValue": {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-ab73124a20231222",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Size",
+          "exactText": "Size: 1 oz Travel",
+          "structuredValue": {
+            "name": "Size",
+            "value": "1 oz Travel"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.109Z",
+      "sequence": 3,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.110Z",
+      "sequence": 4,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product_metafields",
+        "args": {
+          "productId": "gid://shopify/Product/8114219450470"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.111Z",
+      "sequence": 5,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product_metafields",
+        "output": {
+          "found": true,
+          "metafields": [
+            {
+              "namespace": "custom",
+              "key": "price",
+              "value": "$14.00",
+              "type": "single_line_text_field",
+              "evidenceReference": {
+                "evidenceId": "ev-c6419c19b1a17c13",
+                "surface": "product_metafields",
+                "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+                "exactText": "$14.00",
+                "structuredValue": {
+                  "namespace": "custom",
+                  "key": "price",
+                  "value": "$14.00",
+                  "type": "single_line_text_field"
+                },
+                "snapshotId": "snap-f68fce1fc466e64e"
+              }
+            }
+          ],
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-c6419c19b1a17c13",
+              "surface": "product_metafields",
+              "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+              "exactText": "$14.00",
+              "structuredValue": {
+                "namespace": "custom",
+                "key": "price",
+                "value": "$14.00",
+                "type": "single_line_text_field"
+              },
+              "snapshotId": "snap-f68fce1fc466e64e"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-c6419c19b1a17c13",
+          "surface": "product_metafields",
+          "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+          "exactText": "$14.00",
+          "structuredValue": {
+            "namespace": "custom",
+            "key": "price",
+            "value": "$14.00",
+            "type": "single_line_text_field"
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.113Z",
+      "sequence": 6,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/8114219450470"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.113Z",
+      "sequence": 7,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_faq_or_policy",
+        "args": {
+          "topic": "shipping"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:30.114Z",
+      "sequence": 8,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_faq_or_policy",
+        "output": {
+          "results": [
+            {
+              "surface": "shipping_policy",
+              "id": "policy:shipping",
+              "title": null,
+              "text": "Orders placed before 2 PM ET ship the same day. Standard shipping arrives in 2 to 4 business days anywhere in the continental US. Tracking is emailed at fulfillment.",
+              "evidenceReferences": [
+                {
+                  "evidenceId": "ev-8e584b9a3b071159",
+                  "surface": "shipping_policy",
+                  "sourceObjectId": "policy:shipping",
+                  "exactText": "Orders placed before 2 PM ET ship the same day.",
+                  "snapshotId": "snap-f68fce1fc466e64e"
+                },
+                {
+                  "evidenceId": "ev-6fa9029923ae0ab2",
+                  "surface": "shipping_policy",
+                  "sourceObjectId": "policy:shipping",
+                  "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+                  "snapshotId": "snap-f68fce1fc466e64e"
+                },
+                {
+                  "evidenceId": "ev-1dbf6897b60ab4c4",
+                  "surface": "shipping_policy",
+                  "sourceObjectId": "policy:shipping",
+                  "exactText": "Tracking is emailed at fulfillment.",
+                  "snapshotId": "snap-f68fce1fc466e64e"
+                }
+              ]
+            }
+          ],
+          "surfacesAbsentFromStore": [
+            "structured_data",
+            "returns_policy"
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-8e584b9a3b071159",
+          "surface": "shipping_policy",
+          "sourceObjectId": "policy:shipping",
+          "exactText": "Orders placed before 2 PM ET ship the same day.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-6fa9029923ae0ab2",
+          "surface": "shipping_policy",
+          "sourceObjectId": "policy:shipping",
+          "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-1dbf6897b60ab4c4",
+          "surface": "shipping_policy",
+          "sourceObjectId": "policy:shipping",
+          "exactText": "Tracking is emailed at fulfillment.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:32.860Z",
+      "sequence": 9,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "c1-aluminum-free",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-8bea8ee5f5b7355f",
+          "ev-3e18457aa7da2e0b",
+          "ev-8c459a0705b5684b"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-8bea8ee5f5b7355f",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "You won't find aluminum anywhere in our ingredient list.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-3e18457aa7da2e0b",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Aluminum never makes it into this formula.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        },
+        {
+          "evidenceId": "ev-8c459a0705b5684b",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "We skip the aluminum entirely and rely on arrowroot instead.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:32.862Z",
+      "sequence": 10,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "c2-price",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-20b18c7561a7fe83"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:32.863Z",
+      "sequence": 11,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "c3-variant-purchasable",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-20b18c7561a7fe83"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-20b18c7561a7fe83",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+          "exactText": "Unscented / 2.5 oz",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061814886",
+            "title": "Unscented / 2.5 oz",
+            "sku": null,
+            "price": 14,
+            "available": true,
+            "options": [
+              {
+                "name": "Scent",
+                "value": "Unscented"
+              },
+              {
+                "name": "Size",
+                "value": "2.5 oz"
+              }
+            ]
+          },
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:32.864Z",
+      "sequence": 12,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "c4-no-subscription",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-176aa5bfd7a82d97"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-176aa5bfd7a82d97",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219450470",
+          "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:32.864Z",
+      "sequence": 13,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "c5-delivery-resolvable",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-6fa9029923ae0ab2"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-6fa9029923ae0ab2",
+          "surface": "shipping_policy",
+          "sourceObjectId": "policy:shipping",
+          "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+          "snapshotId": "snap-f68fce1fc466e64e"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:35.200Z",
+      "sequence": 14,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "semanticPass": true,
+        "promptVersion": "sem-v2",
+        "notes": [
+          "constraint 'c1-aluminum-free': agent's claim RESCUED at SEMANTIC_VERIFIED (quote \"You won't find aluminum anywhere in our ingredient list.…\")"
+        ],
+        "fabricationsDiscarded": 0
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:35.204Z",
+      "sequence": 15,
+      "type": "DECISION_MADE",
+      "payload": {
+        "adjudicatedOutcome": "PASS",
+        "modelDeclaredOutcome": "PASS",
+        "selectedProductId": "gid://shopify/Product/8114219450470",
+        "selectedVariantId": "gid://shopify/ProductVariant/45972061814886"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    },
+    {
+      "runId": "run-mrwxsj1y-602583f3",
+      "timestamp": "2026-07-23T03:13:35.206Z",
+      "sequence": 16,
+      "type": "RUN_COMPLETED",
+      "payload": {
+        "outcome": "PASS",
+        "totalToolCalls": 3,
+        "totalSteps": 2
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage3-v1"
+      }
+    }
+  ],
+  "totalToolCalls": 3,
+  "totalSteps": 2,
+  "estimatedCostUsd": 0.0045929,
+  "outcome": "PASS",
+  "modelDeclaredOutcome": "PASS",
+  "selectedProductId": "gid://shopify/Product/8114219450470",
+  "selectedVariantId": "gid://shopify/ProductVariant/45972061814886",
+  "rawFinalResponse": "{\n  \"selectedProductId\": \"gid://shopify/Product/8114219450470\",\n  \"selectedVariantId\": \"gid://shopify/ProductVariant/45972061814886\",\n  \"constraints\": [\n    {\n      \"constraintId\": \"c1-aluminum-free\",\n      \"status\": \"satisfied\",\n      \"observedValue\": true,\n      \"evidenceIds\": [\n        \"ev-8bea8ee5f5b7355f\",\n        \"ev-3e18457aa7da2e0b\",\n        \"ev-8c459a0705b5684b\"\n      ],\n      \"explanation\": \"The product description explicitly states that it is aluminum-free.\"\n    },\n    {\n      \"constraintId\": \"c2-price\",\n      \"status\": \"satisfied\",\n      \"observedValue\": 14,\n      \"evidenceIds\": [\n        \"ev-20b18c7561a7fe83\"\n      ],\n      \"explanation\": \"The price of the selected variant is $14, which is less than $20.\"\n    },\n    {\n      \"constraintId\": \"c3-variant-purchasable\",\n      \"status\": \"satisfied\",\n      \"observedValue\": true,\n      \"evidenceIds\": [\n        \"ev-20b18c7561a7fe83\"\n      ],\n      \"explanation\": \"The selected variant is available for purchase.\"\n    },\n    {\n      \"constraintId\": \"c4-no-subscription\",\n      \"status\": \"satisfied\",\n      \"observedValue\": false,\n      \"evidenceIds\": [\n        \"ev-176aa5bfd7a82d97\"\n      ],\n      \"explanation\": \"The product description states that it is a one-time purchase and no subscription is required.\"\n    },\n    {\n      \"constraintId\": \"c5-delivery-resolvable\",\n      \"status\": \"satisfied\",\n      \"observedValue\": \"Standard shipping arrives in 2 to 4 business days anywhere in the continental US.\",\n      \"evidenceIds\": [\n        \"ev-6fa9029923ae0ab2\"\n      ],\n      \"explanation\": \"The shipping policy provides a clear delivery timeframe.\"\n    }\n  ],\n  \"outcome\": \"PASS\",\n  \"explanation\": \"All hard constraints are satisfied with direct evidence from the store.\"\n}",
+  "validationNotes": [
+    "constraint 'c1-aluminum-free': evidence 'ev-8bea8ee5f5b7355f' does not support the claim (text contains no approved matching term)",
+    "constraint 'c1-aluminum-free': evidence 'ev-3e18457aa7da2e0b' does not support the claim (text contains no approved matching term)",
+    "constraint 'c1-aluminum-free': evidence 'ev-8c459a0705b5684b' does not support the claim (text contains no approved matching term)",
+    "constraint 'c1-aluminum-free': agent claimed satisfied with NO valid supporting evidence — marked unresolvable (FALSE_CERTAINTY unless a bounded semantic judgment verifies the claim)",
+    "constraint 'c1-aluminum-free': agent's claim RESCUED at SEMANTIC_VERIFIED (quote \"You won't find aluminum anywhere in our ingredient list.…\")"
+  ],
+  "unsupportedPositiveClaim": false,
+  "unsupportedClaimConstraintIds": [],
+  "semanticFabricationsDiscarded": 0,
+  "coverageRatio": 0.75,
+  "missedRelevantSurfaces": [
+    "faq"
+  ]
+}

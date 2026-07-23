@@ -153,7 +153,7 @@ function conflictDetected(
  *  price metafield) retrieved in THIS run, disagreeing by more than 1 cent. */
 export function detectPriceDisagreement(
   returned: EvidenceReference[],
-  scope: { productId: string; variantId?: string },
+  scope: { productId: string; variantId?: string; productVariantIds?: ReadonlySet<string> },
 ): { disagree: boolean; detail?: string } {
   let variantPrice: number | null = null;
   let otherPrice: number | null = null;
@@ -161,7 +161,11 @@ export function detectPriceDisagreement(
   for (const r of returned) {
     const sv = r.structuredValue as { variantId?: string; price?: unknown; key?: unknown; value?: unknown } | undefined;
     if (r.surface === "product_variants" && sv && typeof sv.price === "number") {
-      if (!scope.variantId || sv.variantId === scope.variantId) variantPrice = sv.price;
+      // Scope to the target: required variant if set, else the target product's
+      // own variants (a full-snapshot scan streams EVERY product's variants).
+      if (scope.variantId ? sv.variantId === scope.variantId : !scope.productVariantIds || scope.productVariantIds.has(sv.variantId ?? "")) {
+        variantPrice = sv.price;
+      }
     } else if (r.surface === "structured_data" && r.exactText) {
       otherPrice = parsePrice(r.exactText);
       otherSource = "structured_data";

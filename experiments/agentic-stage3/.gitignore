@@ -1,0 +1,8 @@
+# Real competitor/store names live ONLY in these uncommitted meta files
+# (Rule 7 anonymization; committed artifacts say "observed competitor A/B").
+probes/competitors-meta.json
+fixtures/competitor-*.json
+# local scratch during capture (contain real names)
+probes/.*.json
+# root .gitignore excludes results/ — stage-3 journeys are the audit trail
+!results/
