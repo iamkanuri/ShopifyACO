@@ -166,7 +166,20 @@ test("13. experiment refuses non-allowlisted shops", () => {
   const env = { [FLAG_NAME]: "true" };
   assert.doesNotThrow(() => assertRunnable(env, TEST_SHOP_ID));
   assert.throws(() => assertRunnable(env, "some-real-merchant.myshopify.com"), /allowlist/);
-  assert.throws(() => assertRunnable(env, "ai-visibility-dev.myshopify.com"), /allowlist/);
+  assert.throws(() => assertRunnable(env, "agentic-stage1-test.myshopify.com.evil.com"), /allowlist/);
+});
+
+// ---- 24 (Stage 2). allowlist accepts the dev shop, still refuses others ----
+
+test("24. allowlist accepts the dev shop and still refuses every other shop", async () => {
+  const { DEV_SHOP_ID } = await import("../src/agentic-test/contract.js");
+  const env = { [FLAG_NAME]: "true" };
+  assert.equal(DEV_SHOP_ID, "ai-visibility-dev.myshopify.com");
+  assert.doesNotThrow(() => assertRunnable(env, DEV_SHOP_ID));
+  assert.throws(() => assertRunnable(env, "another-store.myshopify.com"), /allowlist/);
+  assert.throws(() => assertRunnable(env, "ai-visibility-dev.myshopify.com.evil.com"), /allowlist/);
+  // The flag still gates the dev shop too.
+  assert.throws(() => assertRunnable({}, DEV_SHOP_ID), /feature flag/);
 });
 
 // ---- 14. feature flag defaults to disabled and blocks the runner -----------

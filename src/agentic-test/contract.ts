@@ -7,8 +7,13 @@ import type { ShoppingTaskContract } from "./types.js";
 export const TEST_SHOP_ID = "agentic-stage1-test.myshopify.com";
 export const TEST_PRODUCT_ID = "gid://shopify/Product/1001";
 
+/** Stage 2 (Rule 4 + Amendment 1): the app owner's own DEV store — the ONLY real
+ *  Shopify store the experiment may read, and (under Amendment 1's conditions,
+ *  via SHOPIFY_DEV_STORE_TOKEN only) seed. Never any production install. */
+export const DEV_SHOP_ID = "ai-visibility-dev.myshopify.com";
+
 /** The ONLY shops the experiment runner will ever touch (Rule 10). Hard-coded. */
-export const TEST_SHOP_ALLOWLIST: readonly string[] = [TEST_SHOP_ID];
+export const TEST_SHOP_ALLOWLIST: readonly string[] = [TEST_SHOP_ID, DEV_SHOP_ID];
 
 /** Spec 4.4 matching terms, compared after identical normalization on both sides. */
 export const ALUMINUM_FREE_MATCHING_TERMS: readonly string[] = [
