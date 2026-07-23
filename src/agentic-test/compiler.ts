@@ -292,7 +292,7 @@ export function draftContract(
   }
 
   const hardConstraints: ShoppingConstraint[] = confirmed.map((c, i) => {
-    const id = `x${i + 1}-${c.attribute.replace(/_/g, "-")}`;
+    const id = safeConstraintId(c.attribute, i);
     if (c.attribute === "variant_price") {
       return { id, attribute: "variant_price", operator: "less_than", expectedValue: Number(c.value ?? 0) || 999, evidenceRequired: true, acceptableSurfaces: SURFACES_BY_ATTRIBUTE.variant_price! };
     }
@@ -330,6 +330,13 @@ export function draftContract(
     limits: { maxSteps: 14, maxToolCalls: 12, maxOutputTokens: 3500 },
   };
   return { ...base, status: "compiled", contract, unconfirmed };
+}
+
+/** Round-trip-safe constraint id (Stage 4 fix for the Stage 3 Gemini finding:
+ *  mixed hyphen/underscore ids got mangled in transcription). Lowercase
+ *  alphanumerics ONLY — no separators for a model to convert — and ≤32 chars. */
+export function safeConstraintId(attribute: string, index: number): string {
+  return `x${index + 1}${attribute.toLowerCase().replace(/[^a-z0-9]/g, "")}`.slice(0, 32);
 }
 
 /** Schema validity used by test 33 and the compile step. */

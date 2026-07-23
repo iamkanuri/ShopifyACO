@@ -167,7 +167,10 @@ export function proposeFixes(product: CatalogProduct, findings: Finding[]): FixP
   return proposals;
 }
 
-export type WritableField = "seoTitle" | "seoDescription";
+// "descriptionHtml" added in Stage 4 (additive union widening, disclosed in
+// experiments/agentic-stage4/AUDIT.md): buildProductInput + the mock write
+// layer implemented it since Phase 6; only the type + target mapping lacked it.
+export type WritableField = "seoTitle" | "seoDescription" | "descriptionHtml";
 
 /** Map a write_products proposal target → the NormalizedProduct field the apply
  *  engine re-reads (for the conflict check) and writes. Returns null for copy_ready
@@ -177,6 +180,12 @@ export function writableField(target: string): WritableField | null {
   switch (target) {
     case "seo.title": return "seoTitle";
     case "seo.description": return "seoDescription";
+    // Additive completion (Stage 4, disclosed in experiments/agentic-stage4/AUDIT.md):
+    // the WritableField type + buildProductInput have implemented descriptionHtml
+    // end-to-end since Phase 6, but no target string mapped to it, so it was
+    // unreachable. The production proposal GENERATOR still never emits this
+    // target — only the experiment's diagnosis→proposal adapter does.
+    case "descriptionHtml": return "descriptionHtml";
     default: return null;
   }
 }
