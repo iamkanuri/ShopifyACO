@@ -62,8 +62,12 @@ export function bothConflictSourcesRetrieved(j: JourneyResult): boolean {
 export function declaredStatuses(j: JourneyResult): Record<string, string> | null {
   if (!j.rawFinalResponse) return null;
   try {
-    const start = j.rawFinalResponse.indexOf("{");
-    const parsed = JSON.parse(j.rawFinalResponse.slice(start)) as {
+    // Same stripping as the runner's parseFinalAnswer: models (Gemini) may
+    // fence-wrap the JSON; slice from the first '{' to the LAST '}'.
+    const stripped = j.rawFinalResponse.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const start = stripped.indexOf("{");
+    const end = stripped.lastIndexOf("}");
+    const parsed = JSON.parse(stripped.slice(start, end + 1)) as {
       constraints?: Array<{ constraintId?: string; status?: string }>;
     };
     const out: Record<string, string> = {};
@@ -74,6 +78,50 @@ export function declaredStatuses(j: JourneyResult): Record<string, string> | nul
   } catch {
     return null;
   }
+}
+
+// ---- observational analysis (PARA / TRAP / WILD — spec 4.5 reporting) ------
+
+export interface ProbeRunAnalysis {
+  runId: string;
+  provider: string;
+  trialNumber: number;
+  declaredC1?: string;
+  validatorC1?: string;
+  adjudicated: string;
+  rootCause?: string;
+  /** Evidence texts the validator ACCEPTED for c1 (post-validation). */
+  c1EvidenceTexts: string[];
+  agentVsValidatorMismatch: boolean;
+}
+
+export function analyzeProbeRun(j: JourneyResult): ProbeRunAnalysis {
+  const declared = declaredStatuses(j) ?? {};
+  const c1 = j.constraintEvaluations.find((e) => e.constraintId === "c1-aluminum-free");
+  const declaredC1 = declared["c1-aluminum-free"];
+  return {
+    runId: j.runId,
+    provider: j.provider,
+    trialNumber: j.trialNumber,
+    declaredC1,
+    validatorC1: c1?.status,
+    adjudicated: j.outcome,
+    rootCause: j.rootCauseCode,
+    c1EvidenceTexts: (c1?.evidenceReferences ?? []).map((r) => r.exactText ?? "").filter(Boolean),
+    agentVsValidatorMismatch: Boolean(declaredC1 && c1 && declaredC1 !== c1.status),
+  };
+}
+
+/** TRAP: did the deterministic tier credit the PACKAGING sentence as product
+ *  evidence, and was the model fooled at the reasoning level? */
+export function analyzeTrapRun(j: JourneyResult): ProbeRunAnalysis & { validatorCreditedPackaging: boolean; modelFooled: boolean } {
+  const base = analyzeProbeRun(j);
+  const validatorCreditedPackaging = base.c1EvidenceTexts.some((t) => t.includes("recyclable packaging"));
+  return {
+    ...base,
+    validatorCreditedPackaging,
+    modelFooled: base.declaredC1 === "satisfied",
+  };
 }
 
 export interface Stage2Report {

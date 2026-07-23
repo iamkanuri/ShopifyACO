@@ -492,6 +492,53 @@ export async function runMatrix2(): Promise<void> {
   console.log(`[matrix2] complete: ${ran} run, ${skipped} already persisted, cumulative spend $${readCumulativeSpend().toFixed(4)}`);
 }
 
+// ---- acceptance report (CP5) -----------------------------------------------
+
+export async function buildReport2(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  useStage2ResultsDir();
+  const { resultsDir } = await import("./trace-recorder.js");
+  const { buildStage2Report, analyzeProbeRun, analyzeTrapRun } = await import("./comparator2.js");
+  type Journey = import("./types.js").JourneyResult;
+
+  const manifest = readStage2Manifest();
+  const index = readFileSync(join(resultsDir(), "index.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l) as { runId: string; provider: string; trialNumber: number; promptVersion: string });
+  const journeys: Journey[] = index
+    .filter((e) => ["openai", "gemini"].includes(e.provider) && e.trialNumber >= 1 && e.promptVersion === PROMPT_VERSION_STAGE2)
+    .map((e) => JSON.parse(readFileSync(join(resultsDir(), `${e.runId}.json`), "utf8")) as Journey);
+
+  const report = buildStage2Report(manifest.experimentId, manifest, journeys);
+  const para = journeys.filter((j) => j.snapshotId === manifest.snapshots.para).map(analyzeProbeRun);
+  const trap = journeys.filter((j) => j.snapshotId === manifest.snapshots.trap).map(analyzeTrapRun);
+  const wild = manifest.wild
+    ? journeys.filter((j) => j.snapshotId === manifest.wild!.snapshotId).map(analyzeProbeRun)
+    : [];
+
+  const out = { report, observational: { para, trap, wild: wild.length ? wild : "skipped-or-empty" } };
+  writeFileSync(join(EXPERIMENT_DIR, "stage2-report.json"), JSON.stringify(out, null, 2), "utf8");
+
+  console.log("=== GATE TABLE ===");
+  for (const [role, r] of Object.entries(report.gate.perRole)) {
+    console.log(`${role.padEnd(12)} ${r.expected}/${r.runs} expected · ${r.outcomes.join("  ")}`);
+  }
+  console.log(`FC=${report.gate.falseCertaintyCount} tool=${report.gate.toolFailureCount} model=${report.gate.modelFailureCount}`);
+  console.log(`F2 both-sources=${report.gate.f2BothSourcesRetrieved}/6 contradictions=${report.gate.f2Contradictions}/6`);
+  console.log(`substitution:`, JSON.stringify(report.gate.substitution));
+  console.log(`secondary ${report.gate.secondaryPasses}/${report.gate.secondaryRuns} PASS`);
+  console.log(`cost $${report.totalEstimatedCostUsd.toFixed(4)}`);
+  console.log(`GATE RESULT: ${report.acceptance.passed ? "PASS" : "FAIL"}`);
+  for (const r of report.acceptance.reasons) console.log(`  - ${r}`);
+  console.log("=== PARA ===");
+  for (const p of para) console.log(`  ${p.provider} t${p.trialNumber}: declared=${p.declaredC1} validator=${p.validatorC1} → ${p.adjudicated}${p.rootCause ? `/${p.rootCause}` : ""} mismatch=${p.agentVsValidatorMismatch}`);
+  console.log("=== TRAP ===");
+  for (const t of trap) console.log(`  ${t.provider} t${t.trialNumber}: declared=${t.declaredC1} validator=${t.validatorC1} creditedPackaging=${t.validatorCreditedPackaging} modelFooled=${t.modelFooled} → ${t.adjudicated}${t.rootCause ? `/${t.rootCause}` : ""}`);
+  console.log("=== WILD ===");
+  for (const w of wild) console.log(`  ${w.provider} t${w.trialNumber}: declared=${w.declaredC1} validator=${w.validatorC1} → ${w.adjudicated} evidence="${w.c1EvidenceTexts[0]?.slice(0, 70) ?? ""}"`);
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment2.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -513,6 +560,9 @@ if (isMain) {
       }
       case "prepare-wild":
         await prepareWild();
+        break;
+      case "report2":
+        await buildReport2();
         break;
       case "matrix2":
         await runMatrix2();

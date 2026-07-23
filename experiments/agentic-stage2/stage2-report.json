@@ -1,0 +1,359 @@
+{
+  "report": {
+    "experimentId": "agentic-stage2-2026-07-23",
+    "snapshots": {
+      "base": "snap-fa17c5ad66576d29",
+      "f1": "snap-35d413c3025bf86e",
+      "f2": "snap-0cc405b152c04bcd",
+      "f3": "snap-0c3379c6833afd50",
+      "f4": "snap-c3949fc9e90dc2a1",
+      "f5": "snap-7f92f9206ea320c9",
+      "restored-f1": "snap-fb67ef94be4653c9",
+      "para": "snap-c29c842fb5b7c6b6",
+      "trap": "snap-7397ec4a5b14430b"
+    },
+    "gate": {
+      "perRole": {
+        "base": {
+          "runs": 6,
+          "expected": 6,
+          "outcomes": [
+            "o1:PASS",
+            "g1:PASS",
+            "o2:PASS",
+            "o3:PASS",
+            "g2:PASS",
+            "g3:PASS"
+          ]
+        },
+        "f1": {
+          "runs": 6,
+          "expected": 6,
+          "outcomes": [
+            "o1:MISSING_EVIDENCE/EVIDENCE_GAP",
+            "o2:MISSING_EVIDENCE/EVIDENCE_GAP",
+            "o3:MISSING_EVIDENCE/EVIDENCE_GAP",
+            "g1:MISSING_EVIDENCE/EVIDENCE_GAP",
+            "g2:MISSING_EVIDENCE/EVIDENCE_GAP",
+            "g3:MISSING_EVIDENCE/EVIDENCE_GAP"
+          ]
+        },
+        "f2": {
+          "runs": 6,
+          "expected": 3,
+          "outcomes": [
+            "o1:CONTRADICTION/CONTRADICTION",
+            "o2:CONTRADICTION/CONTRADICTION",
+            "o3:CONTRADICTION/CONTRADICTION",
+            "g1:PASS",
+            "g2:PASS",
+            "g3:PASS"
+          ]
+        },
+        "f3": {
+          "runs": 6,
+          "expected": 6,
+          "outcomes": [
+            "o1:CONSTRAINT_VIOLATION/INVENTORY_MISMATCH",
+            "o2:CONSTRAINT_VIOLATION/INVENTORY_MISMATCH",
+            "o3:CONSTRAINT_VIOLATION/INVENTORY_MISMATCH",
+            "g1:CONSTRAINT_VIOLATION/INVENTORY_MISMATCH",
+            "g2:CONSTRAINT_VIOLATION/INVENTORY_MISMATCH",
+            "g3:CONSTRAINT_VIOLATION/INVENTORY_MISMATCH"
+          ]
+        },
+        "f4": {
+          "runs": 6,
+          "expected": 6,
+          "outcomes": [
+            "o1:CONTRADICTION/STALE_STRUCTURED_DATA",
+            "o2:CONTRADICTION/STALE_STRUCTURED_DATA",
+            "o3:CONTRADICTION/STALE_STRUCTURED_DATA",
+            "g1:CONTRADICTION/STALE_STRUCTURED_DATA",
+            "g2:CONTRADICTION/STALE_STRUCTURED_DATA",
+            "g3:CONTRADICTION/STALE_STRUCTURED_DATA"
+          ]
+        },
+        "f5": {
+          "runs": 6,
+          "expected": 5,
+          "outcomes": [
+            "o1:FALSE_CERTAINTY",
+            "o2:MISSING_EVIDENCE/POLICY_OPACITY",
+            "o3:MISSING_EVIDENCE/POLICY_OPACITY",
+            "g1:MISSING_EVIDENCE/POLICY_OPACITY",
+            "g2:MISSING_EVIDENCE/POLICY_OPACITY",
+            "g3:MISSING_EVIDENCE/POLICY_OPACITY"
+          ]
+        },
+        "restored-f1": {
+          "runs": 6,
+          "expected": 6,
+          "outcomes": [
+            "o1:PASS",
+            "o2:PASS",
+            "o3:PASS",
+            "g1:PASS",
+            "g2:PASS",
+            "g3:PASS"
+          ]
+        }
+      },
+      "perModelPerRole": {
+        "openai": {
+          "base": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f1": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f2": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f3": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f4": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f5": {
+            "runs": 3,
+            "expected": 2
+          },
+          "restored-f1": {
+            "runs": 3,
+            "expected": 3
+          }
+        },
+        "gemini": {
+          "base": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f1": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f2": {
+            "runs": 3,
+            "expected": 0
+          },
+          "f3": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f4": {
+            "runs": 3,
+            "expected": 3
+          },
+          "f5": {
+            "runs": 3,
+            "expected": 3
+          },
+          "restored-f1": {
+            "runs": 3,
+            "expected": 3
+          }
+        }
+      },
+      "falseCertaintyCount": 1,
+      "toolFailureCount": 0,
+      "modelFailureCount": 0,
+      "f2BothSourcesRetrieved": 3,
+      "f2Contradictions": 3,
+      "substitution": {
+        "openai": {
+          "f3Runs": 3,
+          "substituted": 0,
+          "misadjudicated": 0
+        },
+        "gemini": {
+          "f3Runs": 3,
+          "substituted": 0,
+          "misadjudicated": 0
+        }
+      },
+      "secondaryPasses": 4,
+      "secondaryRuns": 4
+    },
+    "acceptance": {
+      "passed": false,
+      "reasons": [
+        "criterion 2(f2) FAILED: f2 3/6 expected-outcome runs (need >=5 of 6)",
+        "criterion 2 FAILED: gemini on f2 only 0/3 expected (need >=2 of 3)",
+        "criterion 4 FAILED: FALSE_CERTAINTY count is 1 on gate runs (must be 0; runs preserved)",
+        "criterion 6 FAILED: only 3/6 F2 traces retrieved both conflicting sources",
+        "criterion 6 FAILED: only 3/6 F2 runs adjudicated CONTRADICTION"
+      ]
+    },
+    "totalEstimatedCostUsd": 0.3413636499999999
+  },
+  "observational": {
+    "para": [
+      {
+        "runId": "run-mrwwdsw7-c9a3cc00",
+        "provider": "openai",
+        "trialNumber": 1,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Formulated without aluminum salts of any kind."
+        ],
+        "agentVsValidatorMismatch": false
+      },
+      {
+        "runId": "run-mrwwdvdz-cdfa5f95",
+        "provider": "openai",
+        "trialNumber": 2,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Formulated without aluminum salts of any kind.",
+          "Contains no aluminum compounds."
+        ],
+        "agentVsValidatorMismatch": false
+      },
+      {
+        "runId": "run-mrwwdxxx-bf00b079",
+        "provider": "gemini",
+        "trialNumber": 1,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Formulated without aluminum salts of any kind.",
+          "Contains no aluminum compounds."
+        ],
+        "agentVsValidatorMismatch": false
+      },
+      {
+        "runId": "run-mrwwe0zv-0bba4bce",
+        "provider": "gemini",
+        "trialNumber": 2,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Formulated without aluminum salts of any kind.",
+          "Contains no aluminum compounds."
+        ],
+        "agentVsValidatorMismatch": false
+      }
+    ],
+    "trap": [
+      {
+        "runId": "run-mrwwe4x0-f85f387d",
+        "provider": "openai",
+        "trialNumber": 1,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Ships in 100% aluminum-free recyclable packaging."
+        ],
+        "agentVsValidatorMismatch": false,
+        "validatorCreditedPackaging": true,
+        "modelFooled": true
+      },
+      {
+        "runId": "run-mrwwe7w1-18ff327a",
+        "provider": "openai",
+        "trialNumber": 2,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Ships in 100% aluminum-free recyclable packaging."
+        ],
+        "agentVsValidatorMismatch": false,
+        "validatorCreditedPackaging": true,
+        "modelFooled": true
+      },
+      {
+        "runId": "run-mrwwebol-62cabced",
+        "provider": "gemini",
+        "trialNumber": 1,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Ships in 100% aluminum-free recyclable packaging."
+        ],
+        "agentVsValidatorMismatch": false,
+        "validatorCreditedPackaging": true,
+        "modelFooled": true
+      },
+      {
+        "runId": "run-mrwweerv-ee7213ae",
+        "provider": "gemini",
+        "trialNumber": 2,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Ships in 100% aluminum-free recyclable packaging."
+        ],
+        "agentVsValidatorMismatch": false,
+        "validatorCreditedPackaging": true,
+        "modelFooled": true
+      }
+    ],
+    "wild": [
+      {
+        "runId": "run-mrwwepqs-fa53d1f5",
+        "provider": "openai",
+        "trialNumber": 1,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Made without aluminum, parabens and phthalates."
+        ],
+        "agentVsValidatorMismatch": false
+      },
+      {
+        "runId": "run-mrwwes4w-258ebeda",
+        "provider": "openai",
+        "trialNumber": 2,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Made without aluminum, parabens and phthalates."
+        ],
+        "agentVsValidatorMismatch": false
+      },
+      {
+        "runId": "run-mrwweubr-43e7e2aa",
+        "provider": "gemini",
+        "trialNumber": 1,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Made without aluminum, parabens and phthalates."
+        ],
+        "agentVsValidatorMismatch": false
+      },
+      {
+        "runId": "run-mrwwevzj-20cf6f30",
+        "provider": "gemini",
+        "trialNumber": 2,
+        "declaredC1": "satisfied",
+        "validatorC1": "satisfied",
+        "adjudicated": "PASS",
+        "c1EvidenceTexts": [
+          "Made without aluminum, parabens and phthalates."
+        ],
+        "agentVsValidatorMismatch": false
+      }
+    ]
+  }
+}

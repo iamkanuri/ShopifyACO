@@ -1,0 +1,439 @@
+{
+  "runId": "run-mrwwem9n-105d2aa8",
+  "contractId": "stage2-shave-soap-sanity",
+  "snapshotId": "snap-fa17c5ad66576d29",
+  "snapshotContentHash": "9de560be4c5b56a4799672af712d73d16b69d94328584edff99e60f3c5c91464",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "promptVersion": "stage2-v1",
+  "trialNumber": 1,
+  "constraintEvaluations": [
+    {
+      "constraintId": "b1-vegan",
+      "status": "satisfied",
+      "observedValue": true,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-40920a63e977e5d7",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219483238",
+          "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather.",
+          "snapshotId": "snap-fa17c5ad66576d29"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-40920a63e977e5d7"
+      ],
+      "explanation": "The product description explicitly states, 'A 100% vegan shave soap'."
+    },
+    {
+      "constraintId": "b2-price",
+      "status": "satisfied",
+      "observedValue": 24,
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-bf5b457dd3593385",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061880422",
+          "exactText": "Default Title",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061880422",
+            "title": "Default Title",
+            "sku": null,
+            "price": 24,
+            "available": true,
+            "options": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ]
+          },
+          "snapshotId": "snap-fa17c5ad66576d29"
+        }
+      ],
+      "claimedEvidenceIds": [
+        "ev-bf5b457dd3593385"
+      ],
+      "explanation": "The product variant price is $24, which is less than $30."
+    }
+  ],
+  "claimedEvidenceReferences": [
+    {
+      "evidenceId": "ev-40920a63e977e5d7",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219483238",
+      "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather.",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    },
+    {
+      "evidenceId": "ev-bf5b457dd3593385",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061880422",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061880422",
+        "title": "Default Title",
+        "sku": null,
+        "price": 24,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      },
+      "snapshotId": "snap-fa17c5ad66576d29"
+    }
+  ],
+  "traceEvents": [
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:40.571Z",
+      "sequence": 0,
+      "type": "RUN_STARTED",
+      "payload": {
+        "contractId": "stage2-shave-soap-sanity",
+        "snapshotId": "snap-fa17c5ad66576d29",
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "trialNumber": 1
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:41.278Z",
+      "sequence": 1,
+      "type": "TOOL_CALLED",
+      "payload": {
+        "name": "get_product",
+        "args": {
+          "productId": "gid://shopify/Product/8114219483238"
+        }
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:41.280Z",
+      "sequence": 2,
+      "type": "TOOL_RESULT",
+      "payload": {
+        "name": "get_product",
+        "output": {
+          "found": true,
+          "product": {
+            "productId": "gid://shopify/Product/8114219483238",
+            "title": "Harbor Lane Shave Soap",
+            "description": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather. Tallow-free and palm-free, $24 a puck, made to order weekly.",
+            "vendor": "ai-visibility-dev",
+            "productType": null,
+            "tags": [
+              "agentic-stage2-seed"
+            ],
+            "status": "ACTIVE",
+            "options": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "variants": [
+              {
+                "variantId": "gid://shopify/ProductVariant/45972061880422",
+                "title": "Default Title",
+                "sku": null,
+                "price": 24,
+                "available": true,
+                "options": [
+                  {
+                    "name": "Title",
+                    "value": "Default Title"
+                  }
+                ]
+              }
+            ]
+          },
+          "fieldEvidence": {
+            "title": [
+              {
+                "evidenceId": "ev-ea42dba2c7357874",
+                "surface": "product_title",
+                "sourceObjectId": "gid://shopify/Product/8114219483238",
+                "exactText": "Harbor Lane Shave Soap",
+                "snapshotId": "snap-fa17c5ad66576d29"
+              }
+            ],
+            "description": [
+              {
+                "evidenceId": "ev-40920a63e977e5d7",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219483238",
+                "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather.",
+                "snapshotId": "snap-fa17c5ad66576d29"
+              },
+              {
+                "evidenceId": "ev-05a67eb5deffbffb",
+                "surface": "product_description",
+                "sourceObjectId": "gid://shopify/Product/8114219483238",
+                "exactText": "Tallow-free and palm-free, $24 a puck, made to order weekly.",
+                "snapshotId": "snap-fa17c5ad66576d29"
+              }
+            ],
+            "variants": [
+              {
+                "evidenceId": "ev-bf5b457dd3593385",
+                "surface": "product_variants",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061880422",
+                "exactText": "Default Title",
+                "structuredValue": {
+                  "variantId": "gid://shopify/ProductVariant/45972061880422",
+                  "title": "Default Title",
+                  "sku": null,
+                  "price": 24,
+                  "available": true,
+                  "options": [
+                    {
+                      "name": "Title",
+                      "value": "Default Title"
+                    }
+                  ]
+                },
+                "snapshotId": "snap-fa17c5ad66576d29"
+              }
+            ],
+            "options": [
+              {
+                "evidenceId": "ev-fe56076d3be5a969",
+                "surface": "product_options",
+                "sourceObjectId": "gid://shopify/ProductVariant/45972061880422#Title",
+                "exactText": "Title: Default Title",
+                "structuredValue": {
+                  "name": "Title",
+                  "value": "Default Title"
+                },
+                "snapshotId": "snap-fa17c5ad66576d29"
+              }
+            ]
+          },
+          "evidenceReferences": [
+            {
+              "evidenceId": "ev-ea42dba2c7357874",
+              "surface": "product_title",
+              "sourceObjectId": "gid://shopify/Product/8114219483238",
+              "exactText": "Harbor Lane Shave Soap",
+              "snapshotId": "snap-fa17c5ad66576d29"
+            },
+            {
+              "evidenceId": "ev-40920a63e977e5d7",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219483238",
+              "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather.",
+              "snapshotId": "snap-fa17c5ad66576d29"
+            },
+            {
+              "evidenceId": "ev-05a67eb5deffbffb",
+              "surface": "product_description",
+              "sourceObjectId": "gid://shopify/Product/8114219483238",
+              "exactText": "Tallow-free and palm-free, $24 a puck, made to order weekly.",
+              "snapshotId": "snap-fa17c5ad66576d29"
+            }
+          ]
+        }
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-ea42dba2c7357874",
+          "surface": "product_title",
+          "sourceObjectId": "gid://shopify/Product/8114219483238",
+          "exactText": "Harbor Lane Shave Soap",
+          "snapshotId": "snap-fa17c5ad66576d29"
+        },
+        {
+          "evidenceId": "ev-40920a63e977e5d7",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219483238",
+          "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather.",
+          "snapshotId": "snap-fa17c5ad66576d29"
+        },
+        {
+          "evidenceId": "ev-05a67eb5deffbffb",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219483238",
+          "exactText": "Tallow-free and palm-free, $24 a puck, made to order weekly.",
+          "snapshotId": "snap-fa17c5ad66576d29"
+        },
+        {
+          "evidenceId": "ev-bf5b457dd3593385",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061880422",
+          "exactText": "Default Title",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061880422",
+            "title": "Default Title",
+            "sku": null,
+            "price": 24,
+            "available": true,
+            "options": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ]
+          },
+          "snapshotId": "snap-fa17c5ad66576d29"
+        },
+        {
+          "evidenceId": "ev-fe56076d3be5a969",
+          "surface": "product_options",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061880422#Title",
+          "exactText": "Title: Default Title",
+          "structuredValue": {
+            "name": "Title",
+            "value": "Default Title"
+          },
+          "snapshotId": "snap-fa17c5ad66576d29"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:41.280Z",
+      "sequence": 3,
+      "type": "PRODUCT_CONSIDERED",
+      "payload": {
+        "productId": "gid://shopify/Product/8114219483238"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:42.814Z",
+      "sequence": 4,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "b1-vegan",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-40920a63e977e5d7"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-40920a63e977e5d7",
+          "surface": "product_description",
+          "sourceObjectId": "gid://shopify/Product/8114219483238",
+          "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather.",
+          "snapshotId": "snap-fa17c5ad66576d29"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:42.815Z",
+      "sequence": 5,
+      "type": "CONSTRAINT_CHECKED",
+      "payload": {
+        "constraintId": "b2-price",
+        "status": "satisfied",
+        "claimedEvidenceIds": [
+          "ev-bf5b457dd3593385"
+        ]
+      },
+      "evidenceReferences": [
+        {
+          "evidenceId": "ev-bf5b457dd3593385",
+          "surface": "product_variants",
+          "sourceObjectId": "gid://shopify/ProductVariant/45972061880422",
+          "exactText": "Default Title",
+          "structuredValue": {
+            "variantId": "gid://shopify/ProductVariant/45972061880422",
+            "title": "Default Title",
+            "sku": null,
+            "price": 24,
+            "available": true,
+            "options": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ]
+          },
+          "snapshotId": "snap-fa17c5ad66576d29"
+        }
+      ],
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:42.815Z",
+      "sequence": 6,
+      "type": "DECISION_MADE",
+      "payload": {
+        "adjudicatedOutcome": "PASS",
+        "modelDeclaredOutcome": "PASS",
+        "selectedProductId": "gid://shopify/Product/8114219483238",
+        "selectedVariantId": "gid://shopify/ProductVariant/45972061880422"
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    },
+    {
+      "runId": "run-mrwwem9n-105d2aa8",
+      "timestamp": "2026-07-23T02:34:42.815Z",
+      "sequence": 7,
+      "type": "RUN_COMPLETED",
+      "payload": {
+        "outcome": "PASS",
+        "totalToolCalls": 1,
+        "totalSteps": 2
+      },
+      "model": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "promptVersion": "stage2-v1"
+      }
+    }
+  ],
+  "totalToolCalls": 1,
+  "totalSteps": 2,
+  "estimatedCostUsd": 0.001717,
+  "outcome": "PASS",
+  "modelDeclaredOutcome": "PASS",
+  "selectedProductId": "gid://shopify/Product/8114219483238",
+  "selectedVariantId": "gid://shopify/ProductVariant/45972061880422",
+  "rawFinalResponse": "{\n  \"selectedProductId\": \"gid://shopify/Product/8114219483238\",\n  \"selectedVariantId\": \"gid://shopify/ProductVariant/45972061880422\",\n  \"constraints\": [\n    {\n      \"constraintId\": \"b1-vegan\",\n      \"status\": \"satisfied\",\n      \"observedValue\": true,\n      \"evidenceIds\": [\n        \"ev-40920a63e977e5d7\"\n      ],\n      \"explanation\": \"The product description explicitly states, 'A 100% vegan shave soap'.\"\n    },\n    {\n      \"constraintId\": \"b2-price\",\n      \"status\": \"satisfied\",\n      \"observedValue\": 24,\n      \"evidenceIds\": [\n        \"ev-bf5b457dd3593385\"\n      ],\n      \"explanation\": \"The product variant price is $24, which is less than $30.\"\n    }\n  ],\n  \"outcome\": \"PASS\",\n  \"explanation\": \"All hard constraints are satisfied with direct evidence from the product description and variant information.\"\n}",
+  "validationNotes": [],
+  "unsupportedPositiveClaim": false
+}
