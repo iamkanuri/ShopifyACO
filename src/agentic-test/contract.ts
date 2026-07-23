@@ -9,8 +9,12 @@ export const TEST_PRODUCT_ID = "gid://shopify/Product/1001";
 
 /** Stage 2 (Rule 4 + Amendment 1): the app owner's own DEV store — the ONLY real
  *  Shopify store the experiment may read, and (under Amendment 1's conditions,
- *  via SHOPIFY_DEV_STORE_TOKEN only) seed. Never any production install. */
-export const DEV_SHOP_ID = "ai-visibility-dev.myshopify.com";
+ *  via SHOPIFY_DEV_STORE_TOKEN only) seed. Never any production install.
+ *  NOTE: the store's DISPLAY name is "ai-visibility-dev"; its canonical
+ *  myshopify domain carries a suffix (confirmed from the owner's admin URL,
+ *  2026-07-22). The seed script asserts `shop.myshopifyDomain` equals this
+ *  constant before any write. */
+export const DEV_SHOP_ID = "ai-visibility-dev-m2su2ozk.myshopify.com";
 
 /** The ONLY shops the experiment runner will ever touch (Rule 10). Hard-coded. */
 export const TEST_SHOP_ALLOWLIST: readonly string[] = [TEST_SHOP_ID, DEV_SHOP_ID];

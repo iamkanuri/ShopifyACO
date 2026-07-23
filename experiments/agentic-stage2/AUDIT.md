@@ -185,3 +185,18 @@ existing pipeline → verify the seeded content arrived → proceed with CP1.
 > Gates, matrix, acceptance criteria, label blindness, cost breaker, honest-fail clause, and the stop-at-report boundary all stand. After the human replies "token added": verify the token read-only, run the dry-run seed plan, execute the seed, sync the catalog through the existing pipeline, verify seeded content arrived in the local stack, then proceed to CP1.
 
 **Amendment noted.** Seeding is now automated under A's conditions; the STOP decision above is superseded to the extent of B being the only human step. One seeding fidelity note: the approved scope list omits `write_inventory`/`read_locations`, so unless those are also granted, seeded variants are created **untracked** (⇒ `availableForSale=true`) instead of "tracked, qty ≥ 5" — observationally identical for this pipeline (ingestion captures only the availability boolean; quantities are never queried) and disclosed here and in the report.
+
+---
+
+# CORRECTION (2026-07-22): canonical dev-store domain
+
+The Stage 1 audit (and the Stage 2 contract's Rule 4) referred to the dev store as
+`ai-visibility-dev.myshopify.com` — that is the store's DISPLAY name, taken from the
+mock fixture's `onlineStoreUrl`. The owner's admin URL confirms the canonical
+domain is **`ai-visibility-dev-m2su2ozk.myshopify.com`** (newer partner dev stores
+carry a random suffix). `DEV_SHOP_ID`, the allowlist, and the seed script's
+pre-write identity assertion (`shop.myshopifyDomain` must equal the constant) now
+use the canonical domain; the bare display-name domain is explicitly rejected by
+the allowlist (test 24). The earlier 401 probe hit the display-name domain — its
+conclusion ("no usable credential in env") was correct regardless, since the atkn_
+token is not an Admin API token for any store.

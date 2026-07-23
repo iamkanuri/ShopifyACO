@@ -174,10 +174,11 @@ test("13. experiment refuses non-allowlisted shops", () => {
 test("24. allowlist accepts the dev shop and still refuses every other shop", async () => {
   const { DEV_SHOP_ID } = await import("../src/agentic-test/contract.js");
   const env = { [FLAG_NAME]: "true" };
-  assert.equal(DEV_SHOP_ID, "ai-visibility-dev.myshopify.com");
+  assert.equal(DEV_SHOP_ID, "ai-visibility-dev-m2su2ozk.myshopify.com");
   assert.doesNotThrow(() => assertRunnable(env, DEV_SHOP_ID));
   assert.throws(() => assertRunnable(env, "another-store.myshopify.com"), /allowlist/);
-  assert.throws(() => assertRunnable(env, "ai-visibility-dev.myshopify.com.evil.com"), /allowlist/);
+  assert.throws(() => assertRunnable(env, "ai-visibility-dev.myshopify.com"), /allowlist/, "display-name-derived domain is NOT the canonical shop");
+  assert.throws(() => assertRunnable(env, "ai-visibility-dev-m2su2ozk.myshopify.com.evil.com"), /allowlist/);
   // The flag still gates the dev shop too.
   assert.throws(() => assertRunnable({}, DEV_SHOP_ID), /feature flag/);
 });
