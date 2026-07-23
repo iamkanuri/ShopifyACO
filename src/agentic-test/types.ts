@@ -222,9 +222,17 @@ export interface TraceEvent {
 
 // ---- results --------------------------------------------------------------
 
+/** Stage 3 trust ladder (spec 4.2): how a satisfied constraint earned it. */
+export type ConfidenceTier = "EXPLICIT" | "SEMANTIC_VERIFIED";
+
 export interface ConstraintEvaluation {
   constraintId: string;
   status: ConstraintStatus;
+  /** Stage 3: set on satisfied constraints (EXPLICIT > SEMANTIC_VERIFIED). */
+  confidenceTier?: ConfidenceTier;
+  /** Stage 3: an explicit lexical match was vetoed as being about another
+   *  subject (the TRAP fix); the constraint is NOT satisfied by it. */
+  rejectedAboutness?: boolean;
   observedValue?: unknown;
   /** Resolved references for claimed ids that WERE returned by tools this run. */
   evidenceReferences: EvidenceReference[];
@@ -267,6 +275,12 @@ export interface JourneyResult {
   /** Stage 2: validator-observed disagreement between price-bearing surfaces
    *  in THIS run's trace (the F4 / STALE_STRUCTURED_DATA signal). */
   priceSourcesDisagree?: boolean;
+  /** Stage 3 (spec 4.4): retrieval coverage vs the Store Diagnostic Scan. */
+  coverageRatio?: number;
+  missedRelevantSurfaces?: EvidenceSurface[];
+  /** Stage 3: count of semantic-tier candidates discarded as fabrications
+   *  (non-substring quotes) during this run. */
+  semanticFabricationsDiscarded?: number;
 }
 
 // ---- report ---------------------------------------------------------------

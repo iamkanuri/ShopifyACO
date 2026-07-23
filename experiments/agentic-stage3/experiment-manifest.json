@@ -1,0 +1,11 @@
+{
+  "experimentId": "agentic-stage3-2026-07-23",
+  "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+  "snapshots": {
+    "base": "snap-fa17c5ad66576d29",
+    "f1": "snap-35d413c3025bf86e",
+    "trap": "snap-7397ec4a5b14430b",
+    "paraV2": "snap-f68fce1fc466e64e"
+  },
+  "createdAt": "2026-07-23T02:54:24.697Z"
+}
