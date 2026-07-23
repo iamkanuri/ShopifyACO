@@ -21,7 +21,11 @@ import { useStage3ResultsDir } from "./run-experiment3.js";
 // The pre-registration guard runs BEFORE anything else (Rule 5).
 // ===========================================================================
 
-export const PROBE_FILE = join(process.cwd(), "experiments", "agentic-stage3", "probes", "probe-battery.jsonl");
+/** Env-overridable so Stage 4's post-fix battery persists to its own file
+ *  (identical prompts/channels/repeats; separate baseline vs post-fix ledgers). */
+export const PROBE_FILE =
+  process.env.AGENTIC_PROBE_FILE ??
+  join(process.cwd(), "experiments", "agentic-stage3", "probes", "probe-battery.jsonl");
 
 /** 6 category prompts: real buyer questions with hard constraints (price caps,
  *  no-subscription, delivery timing) over the two seeded categories. */

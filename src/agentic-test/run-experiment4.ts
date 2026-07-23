@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { closePg } from "../db/pg.js";
 import { DEV_SHOP_ID } from "./contract.js";
@@ -416,6 +416,157 @@ export async function rerunDiffCmd(): Promise<void> {
   console.log(JSON.stringify(diff, null, 2));
 }
 
+// ---- CP4: VERIFY-LIVE — criterion (iv) mechanism test ----------------------
+
+/** Classification rules (spec 4.4, verbatim into the case):
+ *  - store-side failure: FIXED AND PROVEN (simulation layer, deterministic).
+ *  - external visibility: the honest cell that applies. Expected: merchant
+ *    absent pre AND post → "no observed change, as structurally expected for a
+ *    password-protected store; external verification requires an indexed
+ *    store." Any unexpected movement is reported with raw responses attached
+ *    and NO causal language. */
+export async function liveCompareCmd(): Promise<void> {
+  const { assertPreregistered } = await import("./preregistration.js");
+  assertPreregistered();
+  const pre = readFileSync(join(process.cwd(), "experiments", "agentic-stage3", "probes", "probe-battery.jsonl"), "utf8")
+    .trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as { channel: string; responseText: string; citations: string[] });
+  const post = readFileSync(join(EXPERIMENT_DIR, "probes", "probe-battery-postfix.jsonl"), "utf8")
+    .trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as { channel: string; responseText: string; citations: string[] });
+
+  const merchantRe = /cedar hollow|harbor lane|aislelens|ai-visibility-dev/i;
+  const perChannel = (records: typeof pre) => {
+    const out: Record<string, { n: number; merchantMentions: number; hosts: Record<string, number> }> = {};
+    for (const r of records) {
+      const c = (out[r.channel] ??= { n: 0, merchantMentions: 0, hosts: {} });
+      c.n++;
+      if (merchantRe.test(r.responseText)) c.merchantMentions++;
+      for (const u of r.citations) {
+        try {
+          const h = new URL(u).hostname.replace(/^www\./, "");
+          c.hosts[h] = (c.hosts[h] ?? 0) + 1;
+        } catch { /* opaque redirect URL */ }
+      }
+    }
+    return out;
+  };
+  // Competitor-mention distribution against the STAGE-3 alias mapping (real
+  // names stay in the gitignored meta; committed comparison uses aliases).
+  const meta = JSON.parse(readFileSync(join(process.cwd(), "experiments", "agentic-stage3", "probes", "competitors-meta.json"), "utf8")) as {
+    mapping: Array<{ alias: string; name: string }>;
+  };
+  const countBrand = (records: typeof pre, name: string) =>
+    records.filter((r) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(r.responseText)).length;
+  const competitorShift = meta.mapping.slice(0, 5).map((m) => ({
+    alias: m.alias,
+    preMentions: countBrand(pre, m.name),
+    postMentions: countBrand(post, m.name),
+  }));
+
+  const preStats = perChannel(pre);
+  const postStats = perChannel(post);
+  const merchantPre = pre.filter((r) => merchantRe.test(r.responseText)).length;
+  const merchantPost = post.filter((r) => merchantRe.test(r.responseText)).length;
+
+  const classification =
+    merchantPre === 0 && merchantPost === 0
+      ? "Store-side failure: FIXED AND PROVEN (simulation layer, deterministic — before/after journeys 0/4 → 4/4 PASS). External visibility: no observed change, as structurally expected for a password-protected store; external verification requires an indexed store, which requires a design partner or a public store — a business step beyond this experiment."
+      : "UNEXPECTED movement observed between batteries. Raw responses are attached in the battery files; no causal interpretation is offered — assistant indexes, model updates, and sampling variance are all uncontrolled here.";
+
+  const comparison = {
+    prompts: 6, repeats: 3, channels: Object.keys(postStats).sort(),
+    merchantMentionRate: {
+      pre: `${merchantPre}/${pre.length}`,
+      post: `${merchantPost}/${post.length}`,
+      perChannel: Object.fromEntries(
+        Object.keys(postStats).map((ch) => [ch, { pre: `${preStats[ch]?.merchantMentions ?? 0}/${preStats[ch]?.n ?? 0}`, post: `${postStats[ch]!.merchantMentions}/${postStats[ch]!.n}` }]),
+      ),
+    },
+    competitorMentionShift: competitorShift,
+    citationHostDrift: Object.fromEntries(
+      Object.keys(postStats).map((ch) => {
+        const top = (h: Record<string, number>) => Object.entries(h).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k}(${v})`);
+        return [ch, { pre: top(preStats[ch]?.hosts ?? {}), post: top(postStats[ch]!.hosts) }];
+      }),
+    ),
+    classification,
+  };
+  writeFileSync(join(EXPERIMENT_DIR, "live-comparison.json"), JSON.stringify(comparison, null, 2), "utf8");
+  console.log(`merchant mentions: pre ${comparison.merchantMentionRate.pre} → post ${comparison.merchantMentionRate.post}`);
+  console.log(`competitor shift:`, competitorShift.map((c) => `${c.alias}: ${c.preMentions}→${c.postMentions}`).join("  "));
+  console.log(`CLASSIFICATION: ${classification.slice(0, 160)}…`);
+}
+
+// ---- CP5: MONITOR — the saved regression bundle ----------------------------
+
+const CASE_DIR = join(EXPERIMENT_DIR, "case");
+export const CASE_ID = "case-0001-aluminum-free-evidence";
+
+export async function saveRegressionBundle(): Promise<void> {
+  const m = readStage4Manifest();
+  const { SEM_PROMPT_VERSION } = await import("./semantic-tier.js");
+  const bundle = {
+    caseId: CASE_ID,
+    contractId: stage4CaseContract.id,
+    snapshotId: m.snapshots.fixed!,
+    expectedOutcome: "PASS",
+    models: ["openai", "gemini"],
+    trials: 1,
+    versions: { promptVersion: PROMPT_VERSION_STAGE4, semanticPromptVersion: SEM_PROMPT_VERSION },
+    productionTriggers: [
+      "product edit touching the evidencing surfaces (description/metafields)",
+      "theme or page changes affecting FAQ/policy content",
+      "assistant model updates (scheduled re-verification)",
+    ],
+  };
+  mkdirSync(CASE_DIR, { recursive: true });
+  writeFileSync(join(CASE_DIR, "regression-bundle.json"), JSON.stringify(bundle, null, 2), "utf8");
+  console.log(`[regression] bundle saved for ${CASE_ID} (snapshot ${bundle.snapshotId}, expected ${bundle.expectedOutcome})`);
+}
+
+export async function rerunCaseCmd(caseId: string): Promise<void> {
+  useStage4ResultsDir();
+  const bundle = JSON.parse(readFileSync(join(CASE_DIR, "regression-bundle.json"), "utf8")) as {
+    caseId: string; contractId: string; snapshotId: string; expectedOutcome: string; models: string[]; trials: number;
+    versions: { promptVersion: string; semanticPromptVersion: string };
+  };
+  if (bundle.caseId !== caseId) throw new Error(`unknown case ${caseId}`);
+  const { SEM_PROMPT_VERSION } = await import("./semantic-tier.js");
+  const { assertIdenticalRunConfig } = await import("./fix-adapter.js");
+  assertIdenticalRunConfig(
+    { contractId: bundle.contractId, promptVersion: bundle.versions.promptVersion, providers: bundle.models },
+    { contractId: stage4CaseContract.id, promptVersion: PROMPT_VERSION_STAGE4, providers: ["openai", "gemini"] },
+  );
+  if (bundle.versions.semanticPromptVersion !== SEM_PROMPT_VERSION) {
+    throw new Error(`semantic prompt drifted (${bundle.versions.semanticPromptVersion} vs ${SEM_PROMPT_VERSION}) — rerun invalid`);
+  }
+
+  const snapshot = loadAnySnapshot(bundle.snapshotId);
+  const { createToolClient } = await import("./model-client.js");
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { persistJourneyResult } = await import("./trace-recorder.js");
+  const { createGeminiSemanticClient } = await import("./semantic-tier.js");
+  const outcomes: Array<{ provider: string; outcome: string; runId: string }> = [];
+  for (const provider of bundle.models) {
+    for (let t = 1; t <= bundle.trials; t++) {
+      const result = await runShoppingAgent({
+        contract: stage4CaseContract,
+        snapshot,
+        client: createToolClient(provider),
+        trialNumber: 100 + t, // distinct trial namespace for regression reruns
+        promptVersion: PROMPT_VERSION_STAGE4,
+        semanticClient: createGeminiSemanticClient(),
+      });
+      persistJourneyResult(result);
+      outcomes.push({ provider, outcome: result.outcome, runId: result.runId });
+    }
+  }
+  const pass = outcomes.every((o) => o.outcome === bundle.expectedOutcome);
+  const entry = { executedAt: new Date().toISOString(), caseId, outcomes, expected: bundle.expectedOutcome, pass };
+  appendFileSync(join(CASE_DIR, "history.jsonl"), `${JSON.stringify(entry)}\n`, "utf8");
+  console.log(`[rerun-case] ${caseId}: ${outcomes.map((o) => `${o.provider}:${o.outcome}`).join("  ")} → ${pass ? "PASS" : "REGRESSION DETECTED"}`);
+  if (!pass) process.exitCode = 1;
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment4.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -438,6 +589,15 @@ if (isMain) {
         break;
       case "rerun-diff":
         await rerunDiffCmd();
+        break;
+      case "live-compare":
+        await liveCompareCmd();
+        break;
+      case "save-regression":
+        await saveRegressionBundle();
+        break;
+      case "rerun-case":
+        await rerunCaseCmd(process.argv[3] ?? CASE_ID);
         break;
       case "revert-fault":
         await revertFaultCmd();

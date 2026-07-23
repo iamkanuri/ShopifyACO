@@ -1,0 +1,97 @@
+{
+  "prompts": 6,
+  "repeats": 3,
+  "channels": [
+    "gemini",
+    "openai",
+    "perplexity"
+  ],
+  "merchantMentionRate": {
+    "pre": "0/54",
+    "post": "0/52",
+    "perChannel": {
+      "openai": {
+        "pre": "0/18",
+        "post": "0/18"
+      },
+      "gemini": {
+        "pre": "0/18",
+        "post": "0/17"
+      },
+      "perplexity": {
+        "pre": "0/18",
+        "post": "0/17"
+      }
+    }
+  },
+  "competitorMentionShift": [
+    {
+      "alias": "observed competitor A",
+      "preMentions": 21,
+      "postMentions": 23
+    },
+    {
+      "alias": "observed competitor B",
+      "preMentions": 8,
+      "postMentions": 4
+    },
+    {
+      "alias": "observed competitor C",
+      "preMentions": 1,
+      "postMentions": 1
+    },
+    {
+      "alias": "observed competitor D",
+      "preMentions": 5,
+      "postMentions": 4
+    },
+    {
+      "alias": "observed competitor E",
+      "preMentions": 4,
+      "postMentions": 5
+    }
+  ],
+  "citationHostDrift": {
+    "openai": {
+      "pre": [
+        "target.com(22)",
+        "ulta.com(5)",
+        "etsy.com(4)",
+        "goodhousekeeping.com(3)",
+        "walmart.com(3)"
+      ],
+      "post": [
+        "target.com(16)",
+        "us.amazon.com(4)",
+        "goodhousekeeping.com(4)",
+        "ulta.com(4)",
+        "etsy.com(4)"
+      ]
+    },
+    "gemini": {
+      "pre": [
+        "vertexaisearch.cloud.google.com(44)"
+      ],
+      "post": [
+        "vertexaisearch.cloud.google.com(48)"
+      ]
+    },
+    "perplexity": {
+      "pre": [
+        "amazon.com(18)",
+        "reddit.com(17)",
+        "youtube.com(16)",
+        "etsy.com(15)",
+        "whollykaw.com(10)"
+      ],
+      "post": [
+        "amazon.com(22)",
+        "reddit.com(16)",
+        "whollykaw.com(12)",
+        "etsy.com(12)",
+        "youtube.com(11)"
+      ]
+    }
+  },
+  "classification": "Store-side failure: FIXED AND PROVEN (simulation layer, deterministic — before/after journeys 0/4 → 4/4 PASS). External visibility: no observed change, as structurally expected for a password-protected store; external verification requires an indexed store, which requires a design partner or a public store — a business step beyond this experiment."
+}
