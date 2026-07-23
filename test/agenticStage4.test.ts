@@ -88,6 +88,56 @@ test("37. revert-fault restores the exact marker content (dry-run)", async () =>
   assert.deepEqual(writes.metafield, LIVE_MF, "metafield restored verbatim");
 });
 
+// ---- 38. diagnosis→proposal adapter maps EVIDENCE_GAP → exact restoration --
+
+test("38. adapter maps an EVIDENCE_GAP diagnosis to the exact restoration proposal", async () => {
+  const { buildRestorationProposal } = await import("../src/agentic-test/fix-adapter.js");
+  const { injectFault } = await import("../src/agentic-test/store-fault.js");
+  const { io } = recordingIO();
+  const marker = await injectFault(io, { descriptionHtml: LIVE_HTML, metafield: LIVE_MF }, "2026-07-23T00:00:00Z");
+  const scan = {
+    snapshotId: "s", contractId: "c",
+    perConstraint: [{ constraintId: "x1aluminumfree", attribute: "aluminum_free", verdict: "absent" as const, explicitHits: [], outOfScopeHits: [], contraryHits: [], conflictHits: [], relevantSurfaces: [] }],
+  };
+  const proposal = buildRestorationProposal(
+    { constraintId: "x1aluminumfree", attribute: "aluminum_free", rootCause: "EVIDENCE_GAP", scan, searchedSurfaces: ["product description", "metafields"] },
+    marker,
+  );
+  assert.equal(proposal.kind, "write_products");
+  assert.equal(proposal.target, "descriptionHtml");
+  assert.equal(proposal.proposedValue, LIVE_HTML, "restores the EXACT pre-fault content");
+  assert.ok(proposal.proposedValue.includes(CEDAR_ALUMINUM_SENTENCE));
+  assert.ok(!proposal.basedOn!.includes("aluminum"), "conflict baseline is the FAULTED normalized text");
+  assert.ok(proposal.rationale.includes("product description"));
+  // Non-gap diagnoses are refused.
+  assert.throws(
+    () => buildRestorationProposal({ constraintId: "x1aluminumfree", attribute: "aluminum_free", rootCause: "CONTRADICTION" as never, scan, searchedSurfaces: [] }, marker),
+    /EVIDENCE_GAP/,
+  );
+});
+
+// ---- 39. rollback verification detects success and failure -----------------
+
+test("39. rollback verification logic detects successful and unsuccessful restores", async () => {
+  const { verifyRollback } = await import("../src/agentic-test/fix-adapter.js");
+  assert.equal(verifyRollback(null, null), true);
+  assert.equal(verifyRollback(null, ""), true, "unset and empty are the same state");
+  assert.equal(verifyRollback("original seo", "original seo"), true);
+  assert.equal(verifyRollback("original seo", "stage4 rollback probe"), false, "simulated unsuccessful restore detected");
+  assert.equal(verifyRollback(null, "leftover probe text"), false);
+});
+
+// ---- 40. identical-rerun guard refuses version drift -----------------------
+
+test("40. identical-rerun guard refuses when versions differ", async () => {
+  const { assertIdenticalRunConfig } = await import("../src/agentic-test/fix-adapter.js");
+  const base = { contractId: "stage4-case-p1", promptVersion: "stage4-v1", providers: ["openai", "gemini"] };
+  assert.doesNotThrow(() => assertIdenticalRunConfig(base, { ...base, providers: ["gemini", "openai"] }));
+  assert.throws(() => assertIdenticalRunConfig(base, { ...base, promptVersion: "stage4-v2" }), /promptVersion differs/);
+  assert.throws(() => assertIdenticalRunConfig(base, { ...base, contractId: "other" }), /contract differs/);
+  assert.throws(() => assertIdenticalRunConfig(base, { ...base, providers: ["openai"] }), /providers differ/);
+});
+
 // ---- 42. contract id generator emits round-trip-safe ids -------------------
 
 test("42. constraint id generator emits round-trip-safe ids (property test)", () => {

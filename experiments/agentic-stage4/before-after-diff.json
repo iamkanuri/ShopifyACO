@@ -1,0 +1,29 @@
+{
+  "contract": "stage4-case-p1",
+  "promptVersion": "stage4-v1",
+  "semanticPromptVersion": "sem-v2",
+  "snapshots": {
+    "faulted": "snap-7f9f72bd963dd3ac",
+    "fixed": "snap-cace8f07404d8a2c"
+  },
+  "before": {
+    "openai": {
+      "MISSING_EVIDENCE": "2/2",
+      "PASS": "0/2"
+    },
+    "gemini": {
+      "MISSING_EVIDENCE": "2/2",
+      "PASS": "0/2"
+    }
+  },
+  "after": {
+    "openai": {
+      "MISSING_EVIDENCE": "0/2",
+      "PASS": "2/2"
+    },
+    "gemini": {
+      "MISSING_EVIDENCE": "0/2",
+      "PASS": "2/2"
+    }
+  }
+}

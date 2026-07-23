@@ -250,6 +250,172 @@ export async function journeys4(snapshotId: string, trials: number): Promise<voi
   }
 }
 
+// ---- CP3: the fix, through Fix Studio's production machinery ---------------
+
+export async function fixStudioCmd(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  const marker = readMarker();
+  if (!marker) throw new Error("no pending-revert marker — nothing to fix");
+  await assertDevStoreIdentity(); // Amendment 1: before every write step
+
+  const { buildRestorationProposal } = await import("./fix-adapter.js");
+  const { createProposal, getProposal } = await import("../db/fixes.js");
+  const { approveProposal, applyProposal } = await import("../fixes/apply.js");
+  const { pgQuery } = await import("../db/pg.js");
+
+  // Data steps (disclosed): (1) the physical token has write scopes; the local
+  // shops row recorded read_products only — update the ROW so the scope GATE is
+  // exercised against the truth; (2) re-encrypt the token under THIS process's
+  // APP_ENCRYPTION_KEY so Fix Studio's own getAccessToken() decryption path is
+  // exercised (earlier syncs used ephemeral keys; production has a stable one).
+  if (!process.env.APP_ENCRYPTION_KEY) throw new Error("APP_ENCRYPTION_KEY must be set for this command");
+  await pgQuery("update shops set scopes='read_products,write_products' where shop_domain=$1", [DEV_SHOP_ID]);
+  const { storeCredentials } = await import("../db/shops.js");
+  await storeCredentials(DEV_SHOP_ID, process.env.SHOPIFY_DEV_STORE_TOKEN!.trim(), "read_products,write_products");
+
+  // Diagnosis from the faulted snapshot's scan + journey traces.
+  const m = readStage4Manifest();
+  const faulted = loadAnySnapshot(m.snapshots.faulted!);
+  const scan = scanStore(faulted, stage4CaseContract);
+  const proposal = buildRestorationProposal(
+    {
+      constraintId: safeConstraintId("aluminum_free", 0),
+      attribute: "aluminum_free",
+      rootCause: "EVIDENCE_GAP",
+      scan,
+      searchedSurfaces: ["product description", "product details (metafields)", "store FAQ", "store search"],
+    },
+    marker,
+  );
+  const id = await createProposal(DEV_SHOP_ID, null, null, proposal);
+  console.log(`[fix-studio] proposal #${id} created (target ${proposal.target})`);
+
+  const approved = await approveProposal(DEV_SHOP_ID, id, "experiment-auto-approved");
+  if (!approved.ok) throw new Error(`approval failed: ${approved.detail}`);
+  console.log(`[fix-studio] approved by 'experiment-auto-approved' (disclosure: production renders this as the merchant checkpoint)`);
+
+  const applied = await applyProposal(DEV_SHOP_ID, id, "experiment-auto-approved");
+  console.log(`[fix-studio] apply → ${applied.status}${applied.detail ? ` (${applied.detail})` : ""}${applied.conflict ? " CONFLICT" : ""}`);
+  if (!applied.ok) throw new Error(`Fix Studio apply failed: ${applied.detail}`);
+  const row = await getProposal(id);
+  console.log(`[fix-studio] proposal status=${row?.status}; conflict check compared based_on (normalized) and passed; snapshot recorded for rollback`);
+
+  // The fix IS the description revert, executed by the PRODUCTION actuator.
+  // Complete the restoration for surfaces outside Fix Studio's writable set
+  // (metafield + FAQ page + fixture), via the tagged experiment mechanism.
+  await assertDevStoreIdentity();
+  await setMetafield(marker.productGid, marker.restore.metafield);
+  if (marker.faq) {
+    const { gqlDevStore } = await import("./dev-store-client.js");
+    const upd = await gqlDevStore<{ pageUpdate?: { userErrors?: Array<{ message?: string }> } }>(
+      `mutation($id: ID!, $page: PageUpdateInput!) { pageUpdate(id: $id, page: $page) { page { id } userErrors { message } } }`,
+      { id: marker.faq.pageId, page: { body: marker.faq.restoreBody } },
+    );
+    const errs = upd.pageUpdate?.userErrors ?? [];
+    if (errs.length) throw new Error(`FAQ restore userErrors: ${JSON.stringify(errs).slice(0, 300)}`);
+    writeFileSync(marker.faq.fixtureFile, marker.faq.restoreFixtureJson, "utf8");
+  }
+
+  // Verify the full truthful baseline, then clear the marker.
+  const after = await readProductState(PRIMARY_PRODUCT_ID);
+  const check = assertStateMatchesGroundTruth({ descriptionHtml: after.descriptionHtml, metafield: after.metafield });
+  if (!check.ok) throw new Error(`post-fix verification FAILED: ${check.problems.join("; ")}`);
+  clearMarker("fix-studio-apply(description) + experiment-completion(metafield,faq)");
+  console.log("[fix-studio] store verified at truthful baseline; pending-revert marker cleared (the fix IS the revert)");
+}
+
+/** Rollback capability demo on a SEPARATE innocuous change (spec 4.3.4).
+ *  Uses seo.description — a fully-mapped Fix Studio field with REAL conflict
+ *  semantics (the spec's metafield example is outside Fix Studio's writable
+ *  set; substitution disclosed). The store keeps its truthful fixed state. */
+export async function rollbackDemoCmd(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  await assertDevStoreIdentity();
+  const { createProposal } = await import("../db/fixes.js");
+  const { approveProposal, applyProposal, rollbackProposal } = await import("../fixes/apply.js");
+  const { gqlDevStore } = await import("./dev-store-client.js");
+  if (!process.env.APP_ENCRYPTION_KEY) throw new Error("APP_ENCRYPTION_KEY must be set for this command");
+  const { storeCredentials } = await import("../db/shops.js");
+  const { pgQuery } = await import("../db/pg.js");
+  // The intervening catalog sync resets shops.scopes to read_products — restore
+  // the truthful scope row so the gate is exercised against reality.
+  await pgQuery("update shops set scopes='read_products,write_products' where shop_domain=$1", [DEV_SHOP_ID]);
+  await storeCredentials(DEV_SHOP_ID, process.env.SHOPIFY_DEV_STORE_TOKEN!.trim(), "read_products,write_products");
+
+  const readSeo = async () => {
+    const d = await gqlDevStore<{ product?: { seo?: { description?: string | null } } }>(
+      `query($id: ID!) { product(id: $id) { seo { description } } }`,
+      { id: PRIMARY_PRODUCT_ID },
+    );
+    return d.product?.seo?.description ?? null;
+  };
+  const before = await readSeo();
+  const id = await createProposal(DEV_SHOP_ID, null, null, {
+    productGid: PRIMARY_PRODUCT_ID,
+    kind: "write_products",
+    target: "seo.description",
+    label: "Stage 4 rollback-capability probe (innocuous, reverted immediately)",
+    currentValue: before,
+    proposedValue: "Aluminum-free natural deodorant — small-batch, one-time purchase. (stage4 rollback probe)",
+    basedOn: before,
+    rationale: "capability demonstration only",
+    evidence: { findingKind: "rollback_probe" },
+  });
+  const ok1 = await approveProposal(DEV_SHOP_ID, id, "experiment-auto-approved");
+  if (!ok1.ok) throw new Error(ok1.detail);
+  const ok2 = await applyProposal(DEV_SHOP_ID, id, "experiment-auto-approved");
+  if (!ok2.ok) throw new Error(`probe apply failed: ${ok2.detail}`);
+  const mid = await readSeo();
+  console.log(`[rollback-demo] probe applied: seo.description now ${JSON.stringify(mid?.slice(0, 60))}`);
+  const ok3 = await rollbackProposal(DEV_SHOP_ID, id, "experiment-auto-approved");
+  if (!ok3.ok) throw new Error(`probe rollback failed: ${ok3.detail}`);
+  const after = await readSeo();
+  const restored = (after ?? "") === (before ?? "");
+  console.log(`[rollback-demo] rolled back via Fix Studio; API re-read matches pre-change state: ${restored}`);
+  if (!restored) throw new Error(`rollback verification failed: before=${JSON.stringify(before)} after=${JSON.stringify(after)}`);
+}
+
+/** Before/after diff with version pins asserted (spec 4.3.5 / test 40). */
+export async function rerunDiffCmd(): Promise<void> {
+  useStage4ResultsDir();
+  const { resultsDir } = await import("./trace-recorder.js");
+  const { assertIdenticalRunConfig } = await import("./fix-adapter.js");
+  const m = readStage4Manifest();
+  const idx = readFileSync(join(resultsDir(), "index.jsonl"), "utf8")
+    .trim().split("\n").filter(Boolean)
+    .map((l) => JSON.parse(l) as { runId: string; contractId: string; snapshotId: string; provider: string; trialNumber: number; promptVersion: string; outcome: string });
+  const faulted = idx.filter((e) => e.snapshotId === m.snapshots.faulted && e.contractId === stage4CaseContract.id);
+  const fixed = idx.filter((e) => e.snapshotId === m.snapshots.fixed && e.contractId === stage4CaseContract.id);
+  if (!faulted.length || !fixed.length) throw new Error("missing faulted/fixed journey sets");
+  const pin = (runs: typeof idx) => ({
+    contractId: runs[0]!.contractId,
+    promptVersion: runs[0]!.promptVersion,
+    providers: [...new Set(runs.map((r) => r.provider))],
+  });
+  assertIdenticalRunConfig(pin(faulted), pin(fixed));
+
+  const rate = (runs: typeof idx, provider: string, outcome: string) => {
+    const mine = runs.filter((r) => r.provider === provider);
+    return `${mine.filter((r) => r.outcome === outcome).length}/${mine.length}`;
+  };
+  const diff = {
+    contract: stage4CaseContract.id,
+    promptVersion: PROMPT_VERSION_STAGE4,
+    semanticPromptVersion: (await import("./semantic-tier.js")).SEM_PROMPT_VERSION,
+    snapshots: { faulted: m.snapshots.faulted, fixed: m.snapshots.fixed },
+    before: {
+      openai: { MISSING_EVIDENCE: rate(faulted, "openai", "MISSING_EVIDENCE"), PASS: rate(faulted, "openai", "PASS") },
+      gemini: { MISSING_EVIDENCE: rate(faulted, "gemini", "MISSING_EVIDENCE"), PASS: rate(faulted, "gemini", "PASS") },
+    },
+    after: {
+      openai: { MISSING_EVIDENCE: rate(fixed, "openai", "MISSING_EVIDENCE"), PASS: rate(fixed, "openai", "PASS") },
+      gemini: { MISSING_EVIDENCE: rate(fixed, "gemini", "MISSING_EVIDENCE"), PASS: rate(fixed, "gemini", "PASS") },
+    },
+  };
+  writeFileSync(join(EXPERIMENT_DIR, "before-after-diff.json"), JSON.stringify(diff, null, 2), "utf8");
+  console.log(JSON.stringify(diff, null, 2));
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment4.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -263,6 +429,15 @@ if (isMain) {
         break;
       case "fault-faq":
         await faultFaqCmd();
+        break;
+      case "fix-studio":
+        await fixStudioCmd();
+        break;
+      case "rollback-demo":
+        await rollbackDemoCmd();
+        break;
+      case "rerun-diff":
+        await rerunDiffCmd();
         break;
       case "revert-fault":
         await revertFaultCmd();

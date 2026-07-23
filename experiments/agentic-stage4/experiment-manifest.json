@@ -1,7 +1,8 @@
 {
   "experimentId": "agentic-stage4-2026-07-23",
   "snapshots": {
-    "faulted": "snap-7f9f72bd963dd3ac"
+    "faulted": "snap-7f9f72bd963dd3ac",
+    "fixed": "snap-cace8f07404d8a2c"
   },
   "createdAt": "2026-07-23T08:14:58.652Z"
 }
