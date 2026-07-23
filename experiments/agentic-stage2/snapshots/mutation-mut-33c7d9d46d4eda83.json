@@ -1,0 +1,16 @@
+{
+  "role": "trap",
+  "mutationId": "mut-33c7d9d46d4eda83",
+  "type": "INSERT_SENTENCES",
+  "attribute": "probe_insert",
+  "injectedSentences": [
+    {
+      "productId": "gid://shopify/Product/8114219450470",
+      "sentence": "Ships in 100% aluminum-free recyclable packaging."
+    }
+  ],
+  "removedEvidence": [],
+  "restoreHints": [],
+  "originalSnapshotId": "snap-35d413c3025bf86e",
+  "mutatedSnapshotId": "snap-7397ec4a5b14430b"
+}

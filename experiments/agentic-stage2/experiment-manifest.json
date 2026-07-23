@@ -1,0 +1,28 @@
+{
+  "experimentId": "agentic-stage2-2026-07-23",
+  "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+  "primaryProductId": "gid://shopify/Product/8114219450470",
+  "requiredVariantId": "gid://shopify/ProductVariant/45972061814886",
+  "secondaryProductId": "gid://shopify/Product/8114219483238",
+  "snapshots": {
+    "base": "snap-fa17c5ad66576d29",
+    "f1": "snap-35d413c3025bf86e",
+    "f2": "snap-0cc405b152c04bcd",
+    "f3": "snap-0c3379c6833afd50",
+    "f4": "snap-c3949fc9e90dc2a1",
+    "f5": "snap-7f92f9206ea320c9",
+    "restored-f1": "snap-fb67ef94be4653c9",
+    "para": "snap-c29c842fb5b7c6b6",
+    "trap": "snap-7397ec4a5b14430b"
+  },
+  "mutationIds": {
+    "f1": "mut-3ebef39d6bd575af",
+    "f2": "mut-1df6afef9a7a8763",
+    "f3": "mut-80656f695219a121",
+    "f4": "mut-19f1d990dce9959e",
+    "f5": "mut-1db4d70108c9d2e0",
+    "para": "mut-157cf3cd4149fbfd",
+    "trap": "mut-33c7d9d46d4eda83"
+  },
+  "createdAt": "2026-07-23T02:16:37.681Z"
+}

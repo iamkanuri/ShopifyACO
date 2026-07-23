@@ -158,7 +158,9 @@ export function deriveSnapshotId(contentHash: string, parentSnapshotId: string):
 }
 
 /** Pure snapshot builder — the DB-backed `createStoreSnapshot` and all tests go
- *  through this. `parentSnapshotId` is "" for a base snapshot. */
+ *  through this. `parentSnapshotId` is "" for a base snapshot. `surfacesAbsent`
+ *  defaults to the Stage 1 set; Stage 2 snapshots pass their own (fixture pages
+ *  make faq + shipping_policy present). */
 export function buildSnapshot(
   shopId: string,
   sourceVersion: string,
@@ -167,9 +169,10 @@ export function buildSnapshot(
   policies: SnapshotPolicy[] = [],
   parentSnapshotId = "",
   createdAt: string = new Date().toISOString(),
+  surfacesAbsent: EvidenceSurface[] = SURFACES_ABSENT,
 ): StoreSnapshot {
   const evidence = deriveEvidence(products, pages, policies);
-  const contentHash = computeContentHash(shopId, sourceVersion, products, pages, policies, SURFACES_ABSENT, evidence);
+  const contentHash = computeContentHash(shopId, sourceVersion, products, pages, policies, surfacesAbsent, evidence);
   return {
     id: deriveSnapshotId(contentHash, parentSnapshotId),
     shopId,
@@ -178,7 +181,7 @@ export function buildSnapshot(
     products,
     pages,
     policies,
-    surfacesAbsent: [...SURFACES_ABSENT],
+    surfacesAbsent: [...surfacesAbsent],
     evidence,
     contentHash,
   };
@@ -199,19 +202,69 @@ export async function createStoreSnapshot(shopId: string, productId: string): Pr
   return buildSnapshot(shopId, `local-mock-catalog(products=${sync})+merchant-edit-v1`, products);
 }
 
+// ---- Stage 2: fixture-carried pages + real-ingestion snapshot ---------------
+
+/** Surfaces absent from a STAGE 2 snapshot: fixture pages provide faq +
+ *  shipping_policy; returns content lives inside the FAQ text (returns_policy
+ *  as a distinct surface stays absent); no structured data is ingested. */
+export const STAGE2_SURFACES_ABSENT: EvidenceSurface[] = ["structured_data", "returns_policy"];
+
+export interface StorePagesFixture {
+  provenance: string;
+  faq: { title: string; text: string };
+  shippingPolicy: { text: string };
+}
+
+const PAGES_FIXTURE_FILE = join(
+  process.cwd(), "experiments", "agentic-stage2", "fixtures", "store-pages.json",
+);
+
+/** Load the seeded FAQ/shipping text (Amendment 1 §C.1: fixture-carried because
+ *  catalog ingestion has no pages/policies path; provenance disclosed). */
+export function loadStorePagesFixture(): { pages: SnapshotPage[]; policies: SnapshotPolicy[]; provenance: string } {
+  const fixture = JSON.parse(readFileSync(PAGES_FIXTURE_FILE, "utf8")) as StorePagesFixture;
+  return {
+    pages: [{ pageId: "page:faq", surface: "faq", title: fixture.faq.title, text: fixture.faq.text }],
+    policies: [{ policyId: "policy:shipping", surface: "shipping_policy", text: fixture.shippingPolicy.text }],
+    provenance: fixture.provenance,
+  };
+}
+
+/** Stage 2 BASE: the WHOLE real catalog through the existing ingestion read
+ *  path, plus the fixture-carried faq/shipping surfaces. */
+export async function createStage2Snapshot(shopId: string, primaryProductId: string): Promise<StoreSnapshot> {
+  const normalized = await loadNormalizedProducts(shopId);
+  if (!normalized.length) throw new Error(`no synced catalog for ${shopId} — run sync-dev-catalog first`);
+  const products = normalized.map(toSnapshotProduct);
+  if (!products.some((p) => p.productId === primaryProductId)) {
+    throw new Error(`primary product ${primaryProductId} not found in the synced catalog for ${shopId}`);
+  }
+  const { pages, policies } = loadStorePagesFixture();
+  return buildSnapshot(
+    shopId,
+    `real-ingestion(products=${products.length})+pages-fixture-v1`,
+    products,
+    pages,
+    policies,
+    "",
+    new Date().toISOString(),
+    STAGE2_SURFACES_ABSENT,
+  );
+}
+
 // ---- persistence (filesystem JSON — spec 4.3.6) ---------------------------
 
 export const SNAPSHOT_DIR = join(process.cwd(), "experiments", "agentic-stage1", "snapshots");
 
-export function saveSnapshot(snapshot: StoreSnapshot): string {
-  mkdirSync(SNAPSHOT_DIR, { recursive: true });
-  const file = join(SNAPSHOT_DIR, `${snapshot.id}.json`);
+export function saveSnapshot(snapshot: StoreSnapshot, dir: string = SNAPSHOT_DIR): string {
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, `${snapshot.id}.json`);
   writeFileSync(file, JSON.stringify(snapshot, null, 2), "utf8");
   return file;
 }
 
-export function loadSnapshot(snapshotId: string): StoreSnapshot {
-  const file = join(SNAPSHOT_DIR, `${snapshotId}.json`);
+export function loadSnapshot(snapshotId: string, dir: string = SNAPSHOT_DIR): StoreSnapshot {
+  const file = join(dir, `${snapshotId}.json`);
   const parsed = JSON.parse(readFileSync(file, "utf8")) as StoreSnapshot;
   // Integrity: recompute the hash so a hand-edited snapshot can't silently drift.
   const recomputed = computeContentHash(

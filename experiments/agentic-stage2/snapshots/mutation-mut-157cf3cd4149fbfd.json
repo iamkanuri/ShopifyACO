@@ -1,0 +1,24 @@
+{
+  "role": "para",
+  "mutationId": "mut-157cf3cd4149fbfd",
+  "type": "INSERT_SENTENCES",
+  "attribute": "probe_insert",
+  "injectedSentences": [
+    {
+      "productId": "gid://shopify/Product/8114219450470",
+      "sentence": "Formulated without aluminum salts of any kind."
+    },
+    {
+      "productId": "gid://shopify/Product/8114219450470",
+      "sentence": "Contains no aluminum compounds."
+    },
+    {
+      "productId": "gid://shopify/Product/8114219450470",
+      "sentence": "Zero aluminum in the formula."
+    }
+  ],
+  "removedEvidence": [],
+  "restoreHints": [],
+  "originalSnapshotId": "snap-35d413c3025bf86e",
+  "mutatedSnapshotId": "snap-c29c842fb5b7c6b6"
+}

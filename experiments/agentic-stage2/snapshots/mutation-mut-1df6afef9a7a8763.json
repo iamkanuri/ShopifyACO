@@ -1,0 +1,16 @@
+{
+  "role": "f2",
+  "mutationId": "mut-1df6afef9a7a8763",
+  "type": "INJECT_CONTRADICTION",
+  "attribute": "returns_policy_consistent",
+  "injectedSentences": [
+    {
+      "productId": "gid://shopify/Product/8114219450470",
+      "sentence": "Please note: all natural products are final sale."
+    }
+  ],
+  "removedEvidence": [],
+  "restoreHints": [],
+  "originalSnapshotId": "snap-fa17c5ad66576d29",
+  "mutatedSnapshotId": "snap-0cc405b152c04bcd"
+}

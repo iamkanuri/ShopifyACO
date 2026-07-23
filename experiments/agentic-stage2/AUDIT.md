@@ -200,3 +200,35 @@ use the canonical domain; the bare display-name domain is explicitly rejected by
 the allowlist (test 24). The earlier 401 probe hit the display-name domain — its
 conclusion ("no usable credential in env") was correct regardless, since the atkn_
 token is not an Admin API token for any store.
+
+---
+
+# CP1 EXECUTION RECORD + FIXTURE DISCLOSURES (2026-07-22)
+
+- **Seed executed under Amendment 1**: identity asserted (`myshopifyDomain` =
+  `ai-visibility-dev-m2su2ozk.myshopify.com`), plan printed, both products
+  created tagged `agentic-stage2-seed` with TRACKED inventory qty 10 (the
+  granted token included write_inventory + read_locations, so the untracked
+  fallback was NOT needed), FAQ + Shipping pages created (`pagesSeeded=true`).
+- **Real sync executed** through the existing pipeline: 19 products (2 seeded +
+  17 pre-existing dev-store samples — realistic catalog noise), verified in the
+  local stack (4 Cedar Hollow variants, both metafields, all available).
+- **Surface split (Amendment 1 §C.1 disclosure, repeated in the report):**
+  products/variants/options/metafields exercised REAL ingestion; faq +
+  shipping_policy are fixture-carried (`store-pages.json`, mirrors the pages
+  actually created in the store); structured_data + returns_policy remain
+  absent surfaces.
+- **PARA fixture reality (disclosed, unresolvable as written):** the spec
+  mandates inserting exactly three paraphrases AND asserts "no term-list match
+  present" — but "Formulated **without aluminum** salts…" and "Contains **no
+  aluminum** compounds." contain literal term-list bigrams. The verbatim
+  sentences win; the assertion is implemented as the measurable version
+  (sentence 3, "Zero aluminum in the formula.", has NO lexical match; per-
+  sentence status recorded). Finding in its own right: the Stage 1 term list
+  already covers 2 of the 3 intended "paraphrases".
+- **c5 matcher bug fixed pre-run (disclosed):** the spec's own seeded policy
+  says "ship the same day", which the spec's c5 term "ships same day" fails to
+  match — F5 would have left a genuine timing sentence and the validator would
+  false-reject honest same-day citations (a FALSE_CERTAINTY factory). Added
+  "same day" to `DELIVERY_TIMING_TERMS` BEFORE any paid run. This is an
+  outright-bug fix, not a probe-response loosening.

@@ -1,0 +1,2175 @@
+{
+  "id": "snap-c29c842fb5b7c6b6",
+  "shopId": "ai-visibility-dev-m2su2ozk.myshopify.com",
+  "createdAt": "2026-07-23T02:16:37.655Z",
+  "sourceVersion": "real-ingestion(products=19)+pages-fixture-v1",
+  "products": [
+    {
+      "productId": "gid://shopify/Product/8045682229350",
+      "handle": "gift-card",
+      "title": "Gift Card",
+      "description": "This is a gift card for the store",
+      "vendor": "Snowboard Vendor",
+      "productType": "giftcard",
+      "tags": [],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074458214",
+          "title": "$10",
+          "sku": null,
+          "price": 10,
+          "available": false,
+          "options": [
+            {
+              "name": "Denominations",
+              "value": "$10"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074490982",
+          "title": "$25",
+          "sku": null,
+          "price": 25,
+          "available": false,
+          "options": [
+            {
+              "name": "Denominations",
+              "value": "$25"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074523750",
+          "title": "$50",
+          "sku": null,
+          "price": 50,
+          "available": false,
+          "options": [
+            {
+              "name": "Denominations",
+              "value": "$50"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074556518",
+          "title": "$100",
+          "sku": null,
+          "price": 100,
+          "available": false,
+          "options": [
+            {
+              "name": "Denominations",
+              "value": "$100"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682262118",
+      "handle": "the-draft-snowboard",
+      "title": "The Draft Snowboard",
+      "description": null,
+      "vendor": "Snowboard Vendor",
+      "productType": "snowboard",
+      "tags": [],
+      "status": "DRAFT",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074392678",
+          "title": "Default Title",
+          "sku": null,
+          "price": 2629.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682294886",
+      "handle": "the-collection-snowboard-hydrogen",
+      "title": "The Collection Snowboard: Hydrogen",
+      "description": null,
+      "vendor": "Hydrogen Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "test_data",
+          "key": "binding_mount",
+          "value": "Optimistic",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074982502",
+          "title": "Default Title",
+          "sku": null,
+          "price": 600,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682327654",
+      "handle": "selling-plans-ski-wax",
+      "title": "Selling Plans Ski Wax",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "accessories",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074589286",
+          "title": "Selling Plans Ski Wax",
+          "sku": null,
+          "price": 24.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Selling Plans Ski Wax"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074622054",
+          "title": "Special Selling Plans Ski Wax",
+          "sku": null,
+          "price": 49.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Special Selling Plans Ski Wax"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074654822",
+          "title": "Sample Selling Plans Ski Wax",
+          "sku": null,
+          "price": 9.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Sample Selling Plans Ski Wax"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682360422",
+      "handle": "the-compare-at-price-snowboard",
+      "title": "The Compare at Price Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074916966",
+          "title": "Default Title",
+          "sku": null,
+          "price": 785.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682393190",
+      "handle": "the-archived-snowboard",
+      "title": "The Archived Snowboard",
+      "description": null,
+      "vendor": "Snowboard Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Archived",
+        "Premium",
+        "Snow",
+        "Snowboard",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ARCHIVED",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074359910",
+          "title": "Default Title",
+          "sku": null,
+          "price": 629.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682425958",
+      "handle": "the-hidden-snowboard",
+      "title": "The Hidden Snowboard",
+      "description": null,
+      "vendor": "Snowboard Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Premium",
+        "Snow",
+        "Snowboard",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "test_data",
+          "key": "snowboard_weight",
+          "value": "{\"value\":8.0,\"unit\":\"POUNDS\"}",
+          "type": "weight"
+        },
+        {
+          "namespace": "global",
+          "key": "title_tag",
+          "value": "Hidden Snowboard",
+          "type": "string"
+        },
+        {
+          "namespace": "global",
+          "key": "description_tag",
+          "value": "hidden snowboard winter sport snowboarding",
+          "type": "string"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074949734",
+          "title": "Default Title",
+          "sku": null,
+          "price": 749.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682458726",
+      "handle": "the-minimal-snowboard",
+      "title": "The Minimal Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": null,
+      "tags": [],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074327142",
+          "title": "Default Title",
+          "sku": null,
+          "price": 885.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682491494",
+      "handle": "the-videographer-snowboard",
+      "title": "The Videographer Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "snowboard",
+      "tags": [],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074687590",
+          "title": "Default Title",
+          "sku": null,
+          "price": 885.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682524262",
+      "handle": "the-out-of-stock-snowboard",
+      "title": "The Out of Stock Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074425446",
+          "title": "Default Title",
+          "sku": null,
+          "price": 885.95,
+          "available": false,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682557030",
+      "handle": "the-complete-snowboard",
+      "title": "The Complete Snowboard",
+      "description": "This PREMIUM snowboard is so SUPER DUPER awesome!",
+      "vendor": "Snowboard Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Premium",
+        "Snow",
+        "Snowboard",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "global",
+          "key": "title_tag",
+          "value": "Complete Snowboard",
+          "type": "string"
+        },
+        {
+          "namespace": "global",
+          "key": "description_tag",
+          "value": "snowboard winter sport snowboarding",
+          "type": "string"
+        },
+        {
+          "namespace": "test_data",
+          "key": "snowboard_length",
+          "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+          "type": "dimension"
+        },
+        {
+          "namespace": "test_data",
+          "key": "snowboard_weight",
+          "value": "{\"value\":7.0,\"unit\":\"POUNDS\"}",
+          "type": "weight"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074753126",
+          "title": "Ice",
+          "sku": null,
+          "price": 699.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Color",
+              "value": "Ice"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074785894",
+          "title": "Dawn",
+          "sku": null,
+          "price": 699.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Color",
+              "value": "Dawn"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074818662",
+          "title": "Powder",
+          "sku": null,
+          "price": 699.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Color",
+              "value": "Powder"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074851430",
+          "title": "Electric",
+          "sku": null,
+          "price": 699.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Color",
+              "value": "Electric"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074884198",
+          "title": "Sunset",
+          "sku": null,
+          "price": 699.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Color",
+              "value": "Sunset"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682589798",
+      "handle": "the-inventory-not-tracked-snowboard",
+      "title": "The Inventory Not Tracked Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718074720358",
+          "title": "Default Title",
+          "sku": "sku-untracked-1",
+          "price": 949.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682655334",
+      "handle": "the-multi-location-snowboard",
+      "title": "The Multi-location Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "snowboard",
+      "tags": [
+        "Premium",
+        "Snow",
+        "Snowboard",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718075146342",
+          "title": "Default Title",
+          "sku": null,
+          "price": 729.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682688102",
+      "handle": "the-multi-managed-snowboard",
+      "title": "The Multi-managed Snowboard",
+      "description": null,
+      "vendor": "Multi-managed Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Premium",
+        "Snow",
+        "Snowboard",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "test_data",
+          "key": "snowboard_length",
+          "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+          "type": "dimension"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718075179110",
+          "title": "Default Title",
+          "sku": "sku-managed-1",
+          "price": 629.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682720870",
+      "handle": "the-3p-fulfilled-snowboard",
+      "title": "The 3p Fulfilled Snowboard",
+      "description": null,
+      "vendor": "ai-visibility-dev",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718075211878",
+          "title": "Default Title",
+          "sku": "sku-hosted-1",
+          "price": 2629.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682753638",
+      "handle": "the-collection-snowboard-oxygen",
+      "title": "The Collection Snowboard: Oxygen",
+      "description": null,
+      "vendor": "Hydrogen Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "test_data",
+          "key": "binding_mount",
+          "value": "Optimistic",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718075277414",
+          "title": "Default Title",
+          "sku": null,
+          "price": 1025,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8045682819174",
+      "handle": "the-collection-snowboard-liquid",
+      "title": "The Collection Snowboard: Liquid",
+      "description": null,
+      "vendor": "Hydrogen Vendor",
+      "productType": "snowboard",
+      "tags": [
+        "Accessory",
+        "Sport",
+        "Winter"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "test_data",
+          "key": "binding_mount",
+          "value": "Optimistic",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45718075605094",
+          "title": "Default Title",
+          "sku": null,
+          "price": 749.95,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8114219450470",
+      "handle": "cedar-hollow-natural-deodorant",
+      "title": "Cedar Hollow Natural Deodorant",
+      "description": "Small-batch deodorant made in Florida for people who read ingredient labels. Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything. Glides on clear, no white marks on dark shirts. If cedar isn't your thing, the Unscented version has zero added fragrance. Formulated without aluminum salts of any kind. Contains no aluminum compounds. Zero aluminum in the formula.",
+      "vendor": "ai-visibility-dev",
+      "productType": null,
+      "tags": [
+        "agentic-stage2-seed"
+      ],
+      "status": "ACTIVE",
+      "metafields": [
+        {
+          "namespace": "custom",
+          "key": "price",
+          "value": "$14.00",
+          "type": "single_line_text_field"
+        }
+      ],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45972061749350",
+          "title": "Cedar & Sage / 2.5 oz",
+          "sku": null,
+          "price": 14,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Cedar & Sage"
+            },
+            {
+              "name": "Size",
+              "value": "2.5 oz"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45972061782118",
+          "title": "Cedar & Sage / 1 oz Travel",
+          "sku": null,
+          "price": 14,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Cedar & Sage"
+            },
+            {
+              "name": "Size",
+              "value": "1 oz Travel"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45972061814886",
+          "title": "Unscented / 2.5 oz",
+          "sku": null,
+          "price": 14,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Unscented"
+            },
+            {
+              "name": "Size",
+              "value": "2.5 oz"
+            }
+          ]
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/45972061847654",
+          "title": "Unscented / 1 oz Travel",
+          "sku": null,
+          "price": 14,
+          "available": true,
+          "options": [
+            {
+              "name": "Scent",
+              "value": "Unscented"
+            },
+            {
+              "name": "Size",
+              "value": "1 oz Travel"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productId": "gid://shopify/Product/8114219483238",
+      "handle": "harbor-lane-shave-soap",
+      "title": "Harbor Lane Shave Soap",
+      "description": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather. Tallow-free and palm-free, $24 a puck, made to order weekly.",
+      "vendor": "ai-visibility-dev",
+      "productType": null,
+      "tags": [
+        "agentic-stage2-seed"
+      ],
+      "status": "ACTIVE",
+      "metafields": [],
+      "variants": [
+        {
+          "variantId": "gid://shopify/ProductVariant/45972061880422",
+          "title": "Default Title",
+          "sku": null,
+          "price": 24,
+          "available": true,
+          "options": [
+            {
+              "name": "Title",
+              "value": "Default Title"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "pageId": "page:faq",
+      "surface": "faq",
+      "title": "FAQ",
+      "text": "Do you offer returns? Yes. Free returns within 30 days of delivery, no questions asked. Is this a subscription? No. Everything in the store is a one-time purchase."
+    }
+  ],
+  "policies": [
+    {
+      "policyId": "policy:shipping",
+      "surface": "shipping_policy",
+      "text": "Orders placed before 2 PM ET ship the same day. Standard shipping arrives in 2 to 4 business days anywhere in the continental US. Tracking is emailed at fulfillment."
+    }
+  ],
+  "surfacesAbsent": [
+    "structured_data",
+    "returns_policy"
+  ],
+  "evidence": [
+    {
+      "evidenceId": "ev-f13bd275931c6072",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682229350",
+      "exactText": "Gift Card"
+    },
+    {
+      "evidenceId": "ev-5fa3f7eb531bf407",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8045682229350",
+      "exactText": "This is a gift card for the store"
+    },
+    {
+      "evidenceId": "ev-fb2ba6da423c081c",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074458214",
+      "exactText": "$10",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074458214",
+        "title": "$10",
+        "sku": null,
+        "price": 10,
+        "available": false,
+        "options": [
+          {
+            "name": "Denominations",
+            "value": "$10"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-4fd46fb5c39e005d",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074458214#Denominations",
+      "exactText": "Denominations: $10",
+      "structuredValue": {
+        "name": "Denominations",
+        "value": "$10"
+      }
+    },
+    {
+      "evidenceId": "ev-f9dc2af59c573ac4",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074490982",
+      "exactText": "$25",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074490982",
+        "title": "$25",
+        "sku": null,
+        "price": 25,
+        "available": false,
+        "options": [
+          {
+            "name": "Denominations",
+            "value": "$25"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-8a6ae0a3ce6e8d3f",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074490982#Denominations",
+      "exactText": "Denominations: $25",
+      "structuredValue": {
+        "name": "Denominations",
+        "value": "$25"
+      }
+    },
+    {
+      "evidenceId": "ev-6ce7062ec99adecf",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074523750",
+      "exactText": "$50",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074523750",
+        "title": "$50",
+        "sku": null,
+        "price": 50,
+        "available": false,
+        "options": [
+          {
+            "name": "Denominations",
+            "value": "$50"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-8bb8bc11c1822aea",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074523750#Denominations",
+      "exactText": "Denominations: $50",
+      "structuredValue": {
+        "name": "Denominations",
+        "value": "$50"
+      }
+    },
+    {
+      "evidenceId": "ev-57a3188678cbbe87",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074556518",
+      "exactText": "$100",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074556518",
+        "title": "$100",
+        "sku": null,
+        "price": 100,
+        "available": false,
+        "options": [
+          {
+            "name": "Denominations",
+            "value": "$100"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-429f2b5859fcd273",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074556518#Denominations",
+      "exactText": "Denominations: $100",
+      "structuredValue": {
+        "name": "Denominations",
+        "value": "$100"
+      }
+    },
+    {
+      "evidenceId": "ev-363e3c4b94d3209a",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682262118",
+      "exactText": "The Draft Snowboard"
+    },
+    {
+      "evidenceId": "ev-f63cabb5398e3b32",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074392678",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074392678",
+        "title": "Default Title",
+        "sku": null,
+        "price": 2629.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-e8039ceeb73763ee",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074392678#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-f5b8643b9ee25ae5",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682294886",
+      "exactText": "The Collection Snowboard: Hydrogen"
+    },
+    {
+      "evidenceId": "ev-f2582f3e2909dea5",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682294886#test_data.binding_mount",
+      "exactText": "Optimistic",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "binding_mount",
+        "value": "Optimistic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-7f75b3b81ba70f41",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074982502",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074982502",
+        "title": "Default Title",
+        "sku": null,
+        "price": 600,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-709fd0c7bc5254f1",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074982502#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-23294de0a118791c",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682327654",
+      "exactText": "Selling Plans Ski Wax"
+    },
+    {
+      "evidenceId": "ev-eeec160387350b08",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074589286",
+      "exactText": "Selling Plans Ski Wax",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074589286",
+        "title": "Selling Plans Ski Wax",
+        "sku": null,
+        "price": 24.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Selling Plans Ski Wax"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-0191cc314d3a2e31",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074589286#Title",
+      "exactText": "Title: Selling Plans Ski Wax",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Selling Plans Ski Wax"
+      }
+    },
+    {
+      "evidenceId": "ev-54020e8a8eb88166",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074622054",
+      "exactText": "Special Selling Plans Ski Wax",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074622054",
+        "title": "Special Selling Plans Ski Wax",
+        "sku": null,
+        "price": 49.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Special Selling Plans Ski Wax"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-d88a6e68fcc6aee3",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074622054#Title",
+      "exactText": "Title: Special Selling Plans Ski Wax",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Special Selling Plans Ski Wax"
+      }
+    },
+    {
+      "evidenceId": "ev-c1e1718d3203794c",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074654822",
+      "exactText": "Sample Selling Plans Ski Wax",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074654822",
+        "title": "Sample Selling Plans Ski Wax",
+        "sku": null,
+        "price": 9.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Sample Selling Plans Ski Wax"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-f8ed50b9020b96c0",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074654822#Title",
+      "exactText": "Title: Sample Selling Plans Ski Wax",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Sample Selling Plans Ski Wax"
+      }
+    },
+    {
+      "evidenceId": "ev-faa9fb22f051fd4c",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682360422",
+      "exactText": "The Compare at Price Snowboard"
+    },
+    {
+      "evidenceId": "ev-6dd7ccc8eadb7679",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074916966",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074916966",
+        "title": "Default Title",
+        "sku": null,
+        "price": 785.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-c042972ace017978",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074916966#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-b4fc6f4a740922c4",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682393190",
+      "exactText": "The Archived Snowboard"
+    },
+    {
+      "evidenceId": "ev-97ecbd74421f1a76",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074359910",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074359910",
+        "title": "Default Title",
+        "sku": null,
+        "price": 629.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-56caac0c66f5c842",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074359910#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-9b010d7fb04af2c5",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682425958",
+      "exactText": "The Hidden Snowboard"
+    },
+    {
+      "evidenceId": "ev-0da08f01383c4bb1",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682425958#test_data.snowboard_weight",
+      "exactText": "{\"value\":8.0,\"unit\":\"POUNDS\"}",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "snowboard_weight",
+        "value": "{\"value\":8.0,\"unit\":\"POUNDS\"}",
+        "type": "weight"
+      }
+    },
+    {
+      "evidenceId": "ev-2a409abe8b896780",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682425958#global.title_tag",
+      "exactText": "Hidden Snowboard",
+      "structuredValue": {
+        "namespace": "global",
+        "key": "title_tag",
+        "value": "Hidden Snowboard",
+        "type": "string"
+      }
+    },
+    {
+      "evidenceId": "ev-0cd5d8aa84491b8d",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682425958#global.description_tag",
+      "exactText": "hidden snowboard winter sport snowboarding",
+      "structuredValue": {
+        "namespace": "global",
+        "key": "description_tag",
+        "value": "hidden snowboard winter sport snowboarding",
+        "type": "string"
+      }
+    },
+    {
+      "evidenceId": "ev-eaf2acce57d99f31",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074949734",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074949734",
+        "title": "Default Title",
+        "sku": null,
+        "price": 749.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-8a07e6633ef9f9dc",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074949734#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-c0727ee8735a2bb0",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682458726",
+      "exactText": "The Minimal Snowboard"
+    },
+    {
+      "evidenceId": "ev-343cbe65dcd62956",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074327142",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074327142",
+        "title": "Default Title",
+        "sku": null,
+        "price": 885.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-646935178fe45e29",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074327142#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-164c11297a20d184",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682491494",
+      "exactText": "The Videographer Snowboard"
+    },
+    {
+      "evidenceId": "ev-ac57a09514b782bc",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074687590",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074687590",
+        "title": "Default Title",
+        "sku": null,
+        "price": 885.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-e51dad520921d044",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074687590#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-482dac29de9cc8dc",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682524262",
+      "exactText": "The Out of Stock Snowboard"
+    },
+    {
+      "evidenceId": "ev-a651ca3618ecb241",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074425446",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074425446",
+        "title": "Default Title",
+        "sku": null,
+        "price": 885.95,
+        "available": false,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-a526a7d42098f23c",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074425446#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-8e5d581a96ebfb15",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682557030",
+      "exactText": "The Complete Snowboard"
+    },
+    {
+      "evidenceId": "ev-6f7a26ddb31b960f",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8045682557030",
+      "exactText": "This PREMIUM snowboard is so SUPER DUPER awesome!"
+    },
+    {
+      "evidenceId": "ev-d0685eef2eb849b3",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682557030#global.title_tag",
+      "exactText": "Complete Snowboard",
+      "structuredValue": {
+        "namespace": "global",
+        "key": "title_tag",
+        "value": "Complete Snowboard",
+        "type": "string"
+      }
+    },
+    {
+      "evidenceId": "ev-ad674a5966cf608a",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682557030#global.description_tag",
+      "exactText": "snowboard winter sport snowboarding",
+      "structuredValue": {
+        "namespace": "global",
+        "key": "description_tag",
+        "value": "snowboard winter sport snowboarding",
+        "type": "string"
+      }
+    },
+    {
+      "evidenceId": "ev-80a1ceb29ac8b192",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682557030#test_data.snowboard_length",
+      "exactText": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "snowboard_length",
+        "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+        "type": "dimension"
+      }
+    },
+    {
+      "evidenceId": "ev-dfa8fa052dde81fb",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682557030#test_data.snowboard_weight",
+      "exactText": "{\"value\":7.0,\"unit\":\"POUNDS\"}",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "snowboard_weight",
+        "value": "{\"value\":7.0,\"unit\":\"POUNDS\"}",
+        "type": "weight"
+      }
+    },
+    {
+      "evidenceId": "ev-103cbdfaf0fdbfa3",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074753126",
+      "exactText": "Ice",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074753126",
+        "title": "Ice",
+        "sku": null,
+        "price": 699.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Color",
+            "value": "Ice"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-b13224922b4c953a",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074753126#Color",
+      "exactText": "Color: Ice",
+      "structuredValue": {
+        "name": "Color",
+        "value": "Ice"
+      }
+    },
+    {
+      "evidenceId": "ev-012cb10c4f9793d1",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074785894",
+      "exactText": "Dawn",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074785894",
+        "title": "Dawn",
+        "sku": null,
+        "price": 699.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Color",
+            "value": "Dawn"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-dcb7b03b13ac49b0",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074785894#Color",
+      "exactText": "Color: Dawn",
+      "structuredValue": {
+        "name": "Color",
+        "value": "Dawn"
+      }
+    },
+    {
+      "evidenceId": "ev-744c1c8c0632fca0",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074818662",
+      "exactText": "Powder",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074818662",
+        "title": "Powder",
+        "sku": null,
+        "price": 699.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Color",
+            "value": "Powder"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-f704cfa50602a6be",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074818662#Color",
+      "exactText": "Color: Powder",
+      "structuredValue": {
+        "name": "Color",
+        "value": "Powder"
+      }
+    },
+    {
+      "evidenceId": "ev-d1099105eabecf3a",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074851430",
+      "exactText": "Electric",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074851430",
+        "title": "Electric",
+        "sku": null,
+        "price": 699.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Color",
+            "value": "Electric"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-1272038a76c71050",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074851430#Color",
+      "exactText": "Color: Electric",
+      "structuredValue": {
+        "name": "Color",
+        "value": "Electric"
+      }
+    },
+    {
+      "evidenceId": "ev-0bcfe4b2d886b199",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074884198",
+      "exactText": "Sunset",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074884198",
+        "title": "Sunset",
+        "sku": null,
+        "price": 699.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Color",
+            "value": "Sunset"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-71c81409fc5179f1",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074884198#Color",
+      "exactText": "Color: Sunset",
+      "structuredValue": {
+        "name": "Color",
+        "value": "Sunset"
+      }
+    },
+    {
+      "evidenceId": "ev-b2b034567bfacd2f",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682589798",
+      "exactText": "The Inventory Not Tracked Snowboard"
+    },
+    {
+      "evidenceId": "ev-a7a7a1a7beec09f2",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074720358",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718074720358",
+        "title": "Default Title",
+        "sku": "sku-untracked-1",
+        "price": 949.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-deb3c0bb64c664c8",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718074720358#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-576ed4256aa1ad91",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682655334",
+      "exactText": "The Multi-location Snowboard"
+    },
+    {
+      "evidenceId": "ev-ad86e5a3af7a8551",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075146342",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718075146342",
+        "title": "Default Title",
+        "sku": null,
+        "price": 729.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-8bb2ba3b47f841e9",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075146342#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-505a5073343ac9cf",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682688102",
+      "exactText": "The Multi-managed Snowboard"
+    },
+    {
+      "evidenceId": "ev-b5045a01ffcba49a",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682688102#test_data.snowboard_length",
+      "exactText": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "snowboard_length",
+        "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}",
+        "type": "dimension"
+      }
+    },
+    {
+      "evidenceId": "ev-2cc2d8d8ed206a08",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075179110",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718075179110",
+        "title": "Default Title",
+        "sku": "sku-managed-1",
+        "price": 629.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-8fe26d2b350978a4",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075179110#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-32ee4631642acfb8",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682720870",
+      "exactText": "The 3p Fulfilled Snowboard"
+    },
+    {
+      "evidenceId": "ev-2a572fb06e7adcc1",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075211878",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718075211878",
+        "title": "Default Title",
+        "sku": "sku-hosted-1",
+        "price": 2629.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-9ba3e3b8431d3971",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075211878#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-7db1cb9be84675a6",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682753638",
+      "exactText": "The Collection Snowboard: Oxygen"
+    },
+    {
+      "evidenceId": "ev-ba3ac8a782578139",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682753638#test_data.binding_mount",
+      "exactText": "Optimistic",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "binding_mount",
+        "value": "Optimistic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-98622a1f4069e2cf",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075277414",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718075277414",
+        "title": "Default Title",
+        "sku": null,
+        "price": 1025,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-24f34f610e9d446d",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075277414#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-0b9f0e5272c5e90f",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8045682819174",
+      "exactText": "The Collection Snowboard: Liquid"
+    },
+    {
+      "evidenceId": "ev-5b68b9c4a6b44c7b",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8045682819174#test_data.binding_mount",
+      "exactText": "Optimistic",
+      "structuredValue": {
+        "namespace": "test_data",
+        "key": "binding_mount",
+        "value": "Optimistic",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-d55e8030128a213c",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075605094",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45718075605094",
+        "title": "Default Title",
+        "sku": null,
+        "price": 749.95,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-bd69e4fa3ae7e750",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45718075605094#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-c0db777bd2fed966",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Cedar Hollow Natural Deodorant"
+    },
+    {
+      "evidenceId": "ev-f0cb6afec7896d4a",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Small-batch deodorant made in Florida for people who read ingredient labels."
+    },
+    {
+      "evidenceId": "ev-176aa5bfd7a82d97",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Every stick is a one-time purchase, no subscription required, and we never auto-enroll you in anything."
+    },
+    {
+      "evidenceId": "ev-ac8b8540a028be2f",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Glides on clear, no white marks on dark shirts."
+    },
+    {
+      "evidenceId": "ev-19afbc0ed08c37a0",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "If cedar isn't your thing, the Unscented version has zero added fragrance."
+    },
+    {
+      "evidenceId": "ev-5a8d9b4029e042c9",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Formulated without aluminum salts of any kind."
+    },
+    {
+      "evidenceId": "ev-0286216835d42ffc",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Contains no aluminum compounds."
+    },
+    {
+      "evidenceId": "ev-3f86624cf50c2989",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Zero aluminum in the formula."
+    },
+    {
+      "evidenceId": "ev-c6419c19b1a17c13",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+      "exactText": "$14.00",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "price",
+        "value": "$14.00",
+        "type": "single_line_text_field"
+      }
+    },
+    {
+      "evidenceId": "ev-e45513b23d4e6a8f",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061749350",
+      "exactText": "Cedar & Sage / 2.5 oz",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061749350",
+        "title": "Cedar & Sage / 2.5 oz",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          {
+            "name": "Size",
+            "value": "2.5 oz"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-3499195fd526f73b",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Scent",
+      "exactText": "Scent: Cedar & Sage",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Cedar & Sage"
+      }
+    },
+    {
+      "evidenceId": "ev-8f52b2b26886e743",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061749350#Size",
+      "exactText": "Size: 2.5 oz",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.5 oz"
+      }
+    },
+    {
+      "evidenceId": "ev-5ecf689de4316466",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061782118",
+      "exactText": "Cedar & Sage / 1 oz Travel",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061782118",
+        "title": "Cedar & Sage / 1 oz Travel",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Cedar & Sage"
+          },
+          {
+            "name": "Size",
+            "value": "1 oz Travel"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-0bec7d76d1f3b7ef",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Scent",
+      "exactText": "Scent: Cedar & Sage",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Cedar & Sage"
+      }
+    },
+    {
+      "evidenceId": "ev-96a94b4398a6cbd4",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061782118#Size",
+      "exactText": "Size: 1 oz Travel",
+      "structuredValue": {
+        "name": "Size",
+        "value": "1 oz Travel"
+      }
+    },
+    {
+      "evidenceId": "ev-20b18c7561a7fe83",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061814886",
+      "exactText": "Unscented / 2.5 oz",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061814886",
+        "title": "Unscented / 2.5 oz",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          {
+            "name": "Size",
+            "value": "2.5 oz"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-e3c0108c6a1dd57c",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Scent",
+      "exactText": "Scent: Unscented",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Unscented"
+      }
+    },
+    {
+      "evidenceId": "ev-4f5d7a9d2a8870a7",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061814886#Size",
+      "exactText": "Size: 2.5 oz",
+      "structuredValue": {
+        "name": "Size",
+        "value": "2.5 oz"
+      }
+    },
+    {
+      "evidenceId": "ev-73e3cec2320608c7",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061847654",
+      "exactText": "Unscented / 1 oz Travel",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061847654",
+        "title": "Unscented / 1 oz Travel",
+        "sku": null,
+        "price": 14,
+        "available": true,
+        "options": [
+          {
+            "name": "Scent",
+            "value": "Unscented"
+          },
+          {
+            "name": "Size",
+            "value": "1 oz Travel"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-f7ba3dc8d87d602a",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Scent",
+      "exactText": "Scent: Unscented",
+      "structuredValue": {
+        "name": "Scent",
+        "value": "Unscented"
+      }
+    },
+    {
+      "evidenceId": "ev-ab73124a20231222",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061847654#Size",
+      "exactText": "Size: 1 oz Travel",
+      "structuredValue": {
+        "name": "Size",
+        "value": "1 oz Travel"
+      }
+    },
+    {
+      "evidenceId": "ev-ea42dba2c7357874",
+      "surface": "product_title",
+      "sourceObjectId": "gid://shopify/Product/8114219483238",
+      "exactText": "Harbor Lane Shave Soap"
+    },
+    {
+      "evidenceId": "ev-40920a63e977e5d7",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219483238",
+      "exactText": "A 100% vegan shave soap with a sandalwood finish, whipped for a dense lather."
+    },
+    {
+      "evidenceId": "ev-05a67eb5deffbffb",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219483238",
+      "exactText": "Tallow-free and palm-free, $24 a puck, made to order weekly."
+    },
+    {
+      "evidenceId": "ev-bf5b457dd3593385",
+      "surface": "product_variants",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061880422",
+      "exactText": "Default Title",
+      "structuredValue": {
+        "variantId": "gid://shopify/ProductVariant/45972061880422",
+        "title": "Default Title",
+        "sku": null,
+        "price": 24,
+        "available": true,
+        "options": [
+          {
+            "name": "Title",
+            "value": "Default Title"
+          }
+        ]
+      }
+    },
+    {
+      "evidenceId": "ev-fe56076d3be5a969",
+      "surface": "product_options",
+      "sourceObjectId": "gid://shopify/ProductVariant/45972061880422#Title",
+      "exactText": "Title: Default Title",
+      "structuredValue": {
+        "name": "Title",
+        "value": "Default Title"
+      }
+    },
+    {
+      "evidenceId": "ev-3d8ceb9477917c76",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Do you offer returns?"
+    },
+    {
+      "evidenceId": "ev-9e257fa22e07c031",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Yes."
+    },
+    {
+      "evidenceId": "ev-4d8ea1b511ec56ef",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Free returns within 30 days of delivery, no questions asked."
+    },
+    {
+      "evidenceId": "ev-bc33c606a954a589",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Is this a subscription?"
+    },
+    {
+      "evidenceId": "ev-a74abbc52712ced6",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "No."
+    },
+    {
+      "evidenceId": "ev-fe779067b8178cfb",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Everything in the store is a one-time purchase."
+    },
+    {
+      "evidenceId": "ev-8e584b9a3b071159",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Orders placed before 2 PM ET ship the same day."
+    },
+    {
+      "evidenceId": "ev-6fa9029923ae0ab2",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US."
+    },
+    {
+      "evidenceId": "ev-1dbf6897b60ab4c4",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Tracking is emailed at fulfillment."
+    }
+  ],
+  "contentHash": "7a55c29f0af56da509da4e341c40f8d0b9e588b2a1e6059583e83a7e37c7b7c7"
+}

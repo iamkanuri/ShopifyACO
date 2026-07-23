@@ -1,0 +1,76 @@
+{
+  "role": "f1",
+  "mutationId": "mut-3ebef39d6bd575af",
+  "type": "REMOVE_ATTRIBUTE_EVIDENCE",
+  "attribute": "aluminum_free",
+  "removedEvidence": [
+    {
+      "evidenceId": "ev-0fc9a3fd0d3254f3",
+      "surface": "product_description",
+      "sourceObjectId": "gid://shopify/Product/8114219450470",
+      "exactText": "Our aluminum-free formula uses arrowroot and magnesium hydroxide to keep you fresh through a Tampa summer, with no baking soda to irritate sensitive skin.",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    },
+    {
+      "evidenceId": "ev-c28494fb90fa7803",
+      "surface": "product_metafields",
+      "sourceObjectId": "gid://shopify/Product/8114219450470#custom.aluminum_free",
+      "exactText": "true",
+      "structuredValue": {
+        "namespace": "custom",
+        "key": "aluminum_free",
+        "value": "true",
+        "type": "boolean"
+      },
+      "snapshotId": "snap-fa17c5ad66576d29"
+    },
+    {
+      "evidenceId": "ev-2f3a29d4624b5b65",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Are your deodorants aluminum-free?",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    },
+    {
+      "evidenceId": "ev-1d4cfdc37bcfc55b",
+      "surface": "faq",
+      "sourceObjectId": "page:faq",
+      "exactText": "Yes, every formula we sell is aluminum-free and always will be.",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    }
+  ],
+  "restoreHints": [
+    {
+      "kind": "sentence",
+      "productId": "gid://shopify/Product/8114219450470",
+      "field": "description",
+      "sentenceIndex": 1,
+      "sentence": "Our aluminum-free formula uses arrowroot and magnesium hydroxide to keep you fresh through a Tampa summer, with no baking soda to irritate sensitive skin."
+    },
+    {
+      "kind": "metafield",
+      "productId": "gid://shopify/Product/8114219450470",
+      "metafieldIndex": 0,
+      "metafield": {
+        "namespace": "custom",
+        "key": "aluminum_free",
+        "value": "true",
+        "type": "boolean"
+      }
+    },
+    {
+      "kind": "page_sentence",
+      "pageId": "page:faq",
+      "sentenceIndex": 6,
+      "sentence": "Are your deodorants aluminum-free?"
+    },
+    {
+      "kind": "page_sentence",
+      "pageId": "page:faq",
+      "sentenceIndex": 7,
+      "sentence": "Yes, every formula we sell is aluminum-free and always will be."
+    }
+  ],
+  "originalSnapshotId": "snap-fa17c5ad66576d29",
+  "mutatedSnapshotId": "snap-35d413c3025bf86e"
+}

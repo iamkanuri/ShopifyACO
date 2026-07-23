@@ -25,6 +25,16 @@ export type ConstraintOperator =
 
 export type ConstraintStatus = "satisfied" | "violated" | "unresolvable" | "conflicting";
 
+/** Stage 2 deterministic root causes (spec 4.1 mapping; Appendix B table). */
+export type RootCauseCode =
+  | "EVIDENCE_GAP"
+  | "CONTRADICTION"
+  | "INVENTORY_MISMATCH"
+  | "STALE_STRUCTURED_DATA"
+  | "PRICE_VIOLATION"
+  | "POLICY_OPACITY"
+  | "WRONG_PRODUCT";
+
 export type JourneyOutcome =
   | "PASS"
   | "MISSING_EVIDENCE"
@@ -36,6 +46,14 @@ export type JourneyOutcome =
   | "MODEL_FAILURE"
   | "BUDGET_EXHAUSTED";
 
+/** Stage 2: a deterministic contradiction fixture — if retrieved evidence for a
+ *  constraint matches BOTH sides, the validator forces status `conflicting`
+ *  regardless of the model's declared status (spec 4.1). */
+export interface ConflictTermPair {
+  affirmative: string[];
+  negative: string[];
+}
+
 export interface ShoppingConstraint {
   id: string;
   attribute: string;
@@ -45,6 +63,8 @@ export interface ShoppingConstraint {
   acceptableSurfaces: EvidenceSurface[];
   /** Direct evidence required — inference is never acceptable. */
   evidenceRequired: boolean;
+  /** Stage 2: contradiction pairs checked deterministically by the validator. */
+  conflictTermPairs?: ConflictTermPair[];
 }
 
 export interface ShoppingTaskContract {
@@ -53,6 +73,9 @@ export interface ShoppingTaskContract {
   objective: "select_purchase_ready_product";
   productScope: { shopId: string; productId: string; variantId?: string };
   hardConstraints: ShoppingConstraint[];
+  /** Stage 2: observational constraints (e.g. returns_policy_consistent) —
+   *  never serialized to the agent; only their conflict pairs are evaluated. */
+  softConstraints?: ShoppingConstraint[];
   successConditions: {
     correctProductRequired: boolean;
     allHardConstraintsSatisfied: boolean;
@@ -148,8 +171,18 @@ export interface EvidenceReference {
 
 export interface SnapshotMutation {
   mutationId: string;
-  type: "REMOVE_ATTRIBUTE_EVIDENCE";
+  type:
+    | "REMOVE_ATTRIBUTE_EVIDENCE"
+    | "INJECT_CONTRADICTION"
+    | "SET_VARIANT_UNAVAILABLE"
+    | "SKEW_STRUCTURED_PRICE"
+    | "REMOVE_POLICY_EVIDENCE"
+    | "INSERT_SENTENCES";
   attribute: string;
+  /** Stage 2 extras, present per mutation type. */
+  injectedSentences?: Array<{ productId: string; sentence: string }>;
+  targetVariantId?: string;
+  priceSkew?: { sourceObjectId: string; from: string; to: string; substitutionNote?: string };
   removedEvidence: EvidenceReference[];
   /** Where each removed item lived, so RESTORED can re-insert it exactly.
    *  (Stage 1 shortcut — spec 4.4: restore into a copy of FAULTY, not via Fix Studio.) */
@@ -229,6 +262,11 @@ export interface JourneyResult {
   validationNotes?: string[];
   /** Set by the validator when a satisfied-claim had no trace-backed valid support. */
   unsupportedPositiveClaim?: boolean;
+  /** Stage 2: deterministic root cause assigned by the adjudicator (spec 4.1). */
+  rootCauseCode?: RootCauseCode;
+  /** Stage 2: validator-observed disagreement between price-bearing surfaces
+   *  in THIS run's trace (the F4 / STALE_STRUCTURED_DATA signal). */
+  priceSourcesDisagree?: boolean;
 }
 
 // ---- report ---------------------------------------------------------------

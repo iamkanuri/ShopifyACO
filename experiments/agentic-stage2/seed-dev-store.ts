@@ -17,9 +17,10 @@ import { assertRunnable } from "../../src/agentic-test/preflight.js";
 //   npx tsx experiments/agentic-stage2/seed-dev-store.ts cleanup   # delete tagged
 //
 // Requires AGENTIC_INSTRUMENT_TEST_ENABLED=true.
-// Inventory note (disclosed in AUDIT.md): approved scopes exclude
-// write_inventory, so variants are seeded UNTRACKED (availableForSale=true) —
-// observationally identical for this pipeline, which ingests only the boolean.
+// Inventory: the granted token includes write_inventory + read_locations, so
+// variants are seeded TRACKED with quantity 10 at the store's first location
+// (per the original Appendix A kit). If the location lookup fails, we fall
+// back to untracked (availableForSale=true) and disclose it.
 // ===========================================================================
 
 const SEED_TAG = "agentic-stage2-seed";
@@ -55,7 +56,6 @@ const PRODUCTS = [
           { optionName: "Size", name: size },
         ],
         price: "14.00",
-        inventoryItem: { tracked: false },
       })),
     ),
     metafields: [
@@ -72,7 +72,6 @@ const PRODUCTS = [
       {
         optionValues: [{ optionName: "Title", name: "Default Title" }],
         price: "24.00",
-        inventoryItem: { tracked: false },
       },
     ],
     metafields: [],
@@ -123,8 +122,8 @@ function printPlan(): void {
   for (const p of PRODUCTS) {
     console.log(
       `productSet (upsert by handle '${p.handle}'): "${p.title}", ${p.variants.length} variant(s) ` +
-        `@ $${p.variants[0]!.price}, untracked stock (availableForSale=true), tags=[${SEED_TAG}], ` +
-        `metafields=[${p.metafields.map((m) => `${m.namespace}.${m.key}=${m.value}`).join(", ") || "none"}]`,
+        `@ $${p.variants[0]!.price}, tracked inventory qty 10 @ primary location (fallback: untracked), ` +
+        `tags=[${SEED_TAG}], metafields=[${p.metafields.map((m) => `${m.namespace}.${m.key}=${m.value}`).join(", ") || "none"}]`,
     );
   }
   for (const pg of PAGES) {
@@ -135,6 +134,20 @@ function printPlan(): void {
 
 // ---- apply -----------------------------------------------------------------
 
+async function getPrimaryLocationId(): Promise<string | null> {
+  try {
+    const data = await gql<{ locations?: { nodes?: Array<{ id: string; name?: string }> } }>(
+      `{ locations(first: 1) { nodes { id name } } }`,
+    );
+    const loc = data.locations?.nodes?.[0];
+    if (loc) console.log(`[seed] inventory location: ${loc.name} (${loc.id})`);
+    return loc?.id ?? null;
+  } catch (err) {
+    console.warn(`[seed] ⚠️ location lookup failed (${(err as Error).message.slice(0, 120)}) — seeding untracked variants`);
+    return null;
+  }
+}
+
 async function findProductIdByHandle(handle: string): Promise<string | null> {
   const data = await gql<{ products?: { nodes?: Array<{ id: string }> } }>(
     `query($q: String!) { products(first: 1, query: $q) { nodes { id } } }`,
@@ -143,9 +156,16 @@ async function findProductIdByHandle(handle: string): Promise<string | null> {
   return data.products?.nodes?.[0]?.id ?? null;
 }
 
-async function upsertProducts(): Promise<void> {
+async function upsertProducts(locationId: string | null): Promise<void> {
   for (const p of PRODUCTS) {
     const existingId = await findProductIdByHandle(p.handle);
+    const variants = p.variants.map((v) => ({
+      ...v,
+      inventoryItem: { tracked: Boolean(locationId) },
+      ...(locationId
+        ? { inventoryQuantities: [{ locationId, name: "available", quantity: 10 }] }
+        : {}),
+    }));
     const input: Record<string, unknown> = {
       ...(existingId ? { id: existingId } : {}),
       title: p.title,
@@ -154,7 +174,7 @@ async function upsertProducts(): Promise<void> {
       status: "ACTIVE",
       tags: [SEED_TAG],
       productOptions: p.productOptions,
-      variants: p.variants,
+      variants,
       metafields: p.metafields.length ? p.metafields : undefined,
     };
     const data = await gql<{
@@ -263,7 +283,8 @@ async function main(): Promise<void> {
     case "apply": {
       printPlan();
       await assertDevStoreIdentity();
-      await upsertProducts();
+      const locationId = await getPrimaryLocationId();
+      await upsertProducts(locationId);
       const pages = await upsertPages();
       console.log(`[seed] complete. pagesSeeded=${pages.pagesSeeded}${pages.note ? ` note=${pages.note}` : ""}`);
       break;

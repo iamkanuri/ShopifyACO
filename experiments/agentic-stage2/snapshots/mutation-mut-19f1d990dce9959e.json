@@ -1,0 +1,16 @@
+{
+  "role": "f4",
+  "mutationId": "mut-19f1d990dce9959e",
+  "type": "SKEW_STRUCTURED_PRICE",
+  "attribute": "variant_price",
+  "priceSkew": {
+    "sourceObjectId": "gid://shopify/Product/8114219450470#custom.price",
+    "from": "$14.00",
+    "to": "$24.00",
+    "substitutionNote": "structured_data surface absent from real ingestion — skewed the price-bearing metafield instead (Appendix B fallback, recorded per spec)"
+  },
+  "removedEvidence": [],
+  "restoreHints": [],
+  "originalSnapshotId": "snap-fa17c5ad66576d29",
+  "mutatedSnapshotId": "snap-c3949fc9e90dc2a1"
+}

@@ -11,7 +11,7 @@ import { executeStoreTool } from "./store-tools.js";
 import { TraceRecorder, addSpend, newRunId, CostBreakerTripped } from "./trace-recorder.js";
 import { assertRunnable } from "./preflight.js";
 import { validateEvidenceClaims } from "./evidence-validator.js";
-import { adjudicateStage1 } from "./adjudicator.js";
+import { adjudicate } from "./adjudicator.js";
 
 // ===========================================================================
 // Agent runner (spec 4.6/4.7). Drives one journey: system prompt + serialized
@@ -46,7 +46,8 @@ A purchase-ready "PASS" requires every hard constraint satisfied with evidence. 
 
 /** Serialize the contract for the agent: the contract object itself carries no
  *  ground truth, expected outcomes, or snapshot labels — this is the ONLY task
- *  context the agent receives. */
+ *  context the agent receives. Validator-only fixtures (conflictTermPairs) and
+ *  observational softConstraints are STRIPPED — they belong to the evaluator. */
 export function serializeContractForAgent(contract: ShoppingTaskContract): string {
   return (
     "Shopping task contract (verify every hard constraint against store evidence " +
@@ -56,7 +57,7 @@ export function serializeContractForAgent(contract: ShoppingTaskContract): strin
         id: contract.id,
         objective: contract.objective,
         productScope: contract.productScope,
-        hardConstraints: contract.hardConstraints,
+        hardConstraints: contract.hardConstraints.map(({ conflictTermPairs: _omit, ...rest }) => rest),
         successConditions: contract.successConditions,
         limits: contract.limits,
       },
@@ -409,12 +410,16 @@ export async function runShoppingAgent(options: RunAgentOptions): Promise<Journe
       };
 
       result = validateEvidenceClaims(result, recorder.events, contract);
-      result.outcome = adjudicateStage1(contract, result, recorder.events);
+      const verdict = adjudicate(contract, result, recorder.events);
+      result.outcome = verdict.outcome;
+      result.rootCauseCode = verdict.rootCause;
 
       recorder.record("DECISION_MADE", {
         adjudicatedOutcome: result.outcome,
+        rootCauseCode: result.rootCauseCode,
         modelDeclaredOutcome: parsed.outcome,
         selectedProductId: parsed.selectedProductId,
+        selectedVariantId: parsed.selectedVariantId,
       });
       recorder.record("RUN_COMPLETED", { outcome: result.outcome, totalToolCalls: toolCalls, totalSteps: steps });
       return result;

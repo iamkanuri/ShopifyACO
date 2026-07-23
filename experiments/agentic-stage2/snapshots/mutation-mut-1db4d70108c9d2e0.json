@@ -1,0 +1,38 @@
+{
+  "role": "f5",
+  "mutationId": "mut-1db4d70108c9d2e0",
+  "type": "REMOVE_POLICY_EVIDENCE",
+  "attribute": "delivery_timing",
+  "removedEvidence": [
+    {
+      "evidenceId": "ev-8e584b9a3b071159",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Orders placed before 2 PM ET ship the same day.",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    },
+    {
+      "evidenceId": "ev-6fa9029923ae0ab2",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    }
+  ],
+  "restoreHints": [
+    {
+      "kind": "policy_sentence",
+      "policyId": "policy:shipping",
+      "sentenceIndex": 0,
+      "sentence": "Orders placed before 2 PM ET ship the same day."
+    },
+    {
+      "kind": "policy_sentence",
+      "policyId": "policy:shipping",
+      "sentenceIndex": 1,
+      "sentence": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US."
+    }
+  ],
+  "originalSnapshotId": "snap-fa17c5ad66576d29",
+  "mutatedSnapshotId": "snap-7f92f9206ea320c9"
+}

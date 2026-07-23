@@ -1,0 +1,11 @@
+{
+  "role": "f3",
+  "mutationId": "mut-80656f695219a121",
+  "type": "SET_VARIANT_UNAVAILABLE",
+  "attribute": "required_variant_in_stock",
+  "targetVariantId": "gid://shopify/ProductVariant/45972061814886",
+  "removedEvidence": [],
+  "restoreHints": [],
+  "originalSnapshotId": "snap-fa17c5ad66576d29",
+  "mutatedSnapshotId": "snap-0c3379c6833afd50"
+}

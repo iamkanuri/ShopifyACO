@@ -110,6 +110,8 @@ export function removeAttributeEvidence(
     pages,
     policies,
     snapshot.id, // parent — yields a fresh id + recomputed content hash
+    new Date().toISOString(),
+    [...snapshot.surfacesAbsent],
   );
 
   const mutation: SnapshotMutation = {
@@ -183,7 +185,203 @@ export function restoreEvidence(faulty: StoreSnapshot, mutation: SnapshotMutatio
     pol.text = sentences.join(" ");
   }
 
-  return buildSnapshot(faulty.shopId, faulty.sourceVersion, products, pages, policies, faulty.id);
+  return buildSnapshot(
+    faulty.shopId, faulty.sourceVersion, products, pages, policies, faulty.id,
+    new Date().toISOString(), [...faulty.surfacesAbsent],
+  );
+}
+
+// ===========================================================================
+// Stage 2 fault mutators (spec 4.2). Same discipline as F1: immutable
+// transform, new snapshot id + recomputed content hash, mutation manifest.
+// ===========================================================================
+
+/** F2: append a contradicting sentence to the target product's description. */
+export function injectContradiction(
+  snapshot: StoreSnapshot,
+  targetProductId: string,
+  sentence: string,
+): MutationResult {
+  const products = deepClone(snapshot.products);
+  const p = products.find((x) => x.productId === targetProductId);
+  if (!p) throw new Error(`injectContradiction: product ${targetProductId} not in snapshot`);
+  p.description = p.description ? `${p.description} ${sentence}` : sentence;
+
+  const mutated = buildSnapshot(
+    snapshot.shopId, snapshot.sourceVersion, products,
+    deepClone(snapshot.pages), deepClone(snapshot.policies), snapshot.id,
+    new Date().toISOString(), [...snapshot.surfacesAbsent],
+  );
+  return {
+    snapshot: mutated,
+    mutation: {
+      mutationId: `mut-${sha256Hex(`${snapshot.id}|inject|${sentence}`).slice(0, 16)}`,
+      type: "INJECT_CONTRADICTION",
+      attribute: "returns_policy_consistent",
+      injectedSentences: [{ productId: targetProductId, sentence }],
+      removedEvidence: [],
+      restoreHints: [],
+      originalSnapshotId: snapshot.id,
+      mutatedSnapshotId: mutated.id,
+    },
+  };
+}
+
+/** F3: required variant out of stock while ≥1 sibling stays in stock. */
+export function setVariantUnavailable(snapshot: StoreSnapshot, variantId: string): MutationResult {
+  const products = deepClone(snapshot.products);
+  const owner = products.find((p) => p.variants.some((v) => v.variantId === variantId));
+  if (!owner) throw new Error(`setVariantUnavailable: variant ${variantId} not in snapshot`);
+  for (const v of owner.variants) if (v.variantId === variantId) v.available = false;
+  if (!owner.variants.some((v) => v.variantId !== variantId && v.available === true)) {
+    throw new Error("setVariantUnavailable: no sibling variant remains in stock — F3 requires one");
+  }
+
+  const mutated = buildSnapshot(
+    snapshot.shopId, snapshot.sourceVersion, products,
+    deepClone(snapshot.pages), deepClone(snapshot.policies), snapshot.id,
+    new Date().toISOString(), [...snapshot.surfacesAbsent],
+  );
+  return {
+    snapshot: mutated,
+    mutation: {
+      mutationId: `mut-${sha256Hex(`${snapshot.id}|unavail|${variantId}`).slice(0, 16)}`,
+      type: "SET_VARIANT_UNAVAILABLE",
+      attribute: "required_variant_in_stock",
+      targetVariantId: variantId,
+      removedEvidence: [],
+      restoreHints: [],
+      originalSnapshotId: snapshot.id,
+      mutatedSnapshotId: mutated.id,
+    },
+  };
+}
+
+/** F4 (Appendix B fallback — structured_data absent from ingestion): skew the
+ *  product's price-bearing METAFIELD while the variant price stays truthful. */
+export function skewStructuredPrice(
+  snapshot: StoreSnapshot,
+  productId: string,
+  fakePrice: string,
+): MutationResult {
+  const products = deepClone(snapshot.products);
+  const p = products.find((x) => x.productId === productId);
+  if (!p) throw new Error(`skewStructuredPrice: product ${productId} not in snapshot`);
+  const mf = p.metafields.find((m) => /price/i.test(m.key));
+  if (!mf) throw new Error("skewStructuredPrice: no price-bearing metafield on the product (fallback target missing)");
+  const from = mf.value;
+  mf.value = fakePrice;
+
+  const mutated = buildSnapshot(
+    snapshot.shopId, snapshot.sourceVersion, products,
+    deepClone(snapshot.pages), deepClone(snapshot.policies), snapshot.id,
+    new Date().toISOString(), [...snapshot.surfacesAbsent],
+  );
+  return {
+    snapshot: mutated,
+    mutation: {
+      mutationId: `mut-${sha256Hex(`${snapshot.id}|price|${fakePrice}`).slice(0, 16)}`,
+      type: "SKEW_STRUCTURED_PRICE",
+      attribute: "variant_price",
+      priceSkew: {
+        sourceObjectId: `${productId}#${mf.namespace}.${mf.key}`,
+        from,
+        to: fakePrice,
+        substitutionNote:
+          "structured_data surface absent from real ingestion — skewed the price-bearing metafield instead (Appendix B fallback, recorded per spec)",
+      },
+      removedEvidence: [],
+      restoreHints: [],
+      originalSnapshotId: snapshot.id,
+      mutatedSnapshotId: mutated.id,
+    },
+  };
+}
+
+/** F5: remove every shipping-timing sentence from shipping policy and FAQ. */
+export function removePolicyEvidence(snapshot: StoreSnapshot, terms: string[]): MutationResult {
+  const removedEvidence: EvidenceReference[] = [];
+  const restoreHints: SnapshotMutation["restoreHints"] = [];
+  const pages = deepClone(snapshot.pages);
+  const policies = deepClone(snapshot.policies);
+  const evidenceIndex = new Map(snapshot.evidence.map((e) => [`${e.surface}|${e.sourceObjectId}|${e.exactText ?? ""}`, e]));
+
+  for (const page of pages) {
+    const kept: string[] = [];
+    splitSentences(page.text).forEach((sentence, sentenceIndex) => {
+      if (matchingTermsIn(sentence, terms).length > 0) {
+        const found = evidenceIndex.get(`${page.surface}|${page.pageId}|${sentence}`);
+        removedEvidence.push({
+          evidenceId: found?.evidenceId ?? "ev-unknown",
+          surface: page.surface, sourceObjectId: page.pageId, exactText: sentence, snapshotId: snapshot.id,
+        });
+        restoreHints.push({ kind: "page_sentence", pageId: page.pageId, sentenceIndex, sentence });
+      } else kept.push(sentence);
+    });
+    page.text = kept.join(" ");
+  }
+  for (const pol of policies) {
+    const kept: string[] = [];
+    splitSentences(pol.text).forEach((sentence, sentenceIndex) => {
+      if (matchingTermsIn(sentence, terms).length > 0) {
+        const found = evidenceIndex.get(`${pol.surface}|${pol.policyId}|${sentence}`);
+        removedEvidence.push({
+          evidenceId: found?.evidenceId ?? "ev-unknown",
+          surface: pol.surface, sourceObjectId: pol.policyId, exactText: sentence, snapshotId: snapshot.id,
+        });
+        restoreHints.push({ kind: "policy_sentence", policyId: pol.policyId, sentenceIndex, sentence });
+      } else kept.push(sentence);
+    });
+    pol.text = kept.join(" ");
+  }
+
+  const mutated = buildSnapshot(
+    snapshot.shopId, snapshot.sourceVersion, deepClone(snapshot.products),
+    pages, policies, snapshot.id, new Date().toISOString(), [...snapshot.surfacesAbsent],
+  );
+  return {
+    snapshot: mutated,
+    mutation: {
+      mutationId: `mut-${sha256Hex(`${snapshot.id}|policy|${canonicalJson(removedEvidence)}`).slice(0, 16)}`,
+      type: "REMOVE_POLICY_EVIDENCE",
+      attribute: "delivery_timing",
+      removedEvidence,
+      restoreHints,
+      originalSnapshotId: snapshot.id,
+      mutatedSnapshotId: mutated.id,
+    },
+  };
+}
+
+/** Probe helper (PARA/TRAP): append exact sentences to a product description. */
+export function insertSentences(
+  snapshot: StoreSnapshot,
+  productId: string,
+  sentences: string[],
+): MutationResult {
+  const products = deepClone(snapshot.products);
+  const p = products.find((x) => x.productId === productId);
+  if (!p) throw new Error(`insertSentences: product ${productId} not in snapshot`);
+  p.description = [p.description ?? "", ...sentences].join(" ").trim();
+
+  const mutated = buildSnapshot(
+    snapshot.shopId, snapshot.sourceVersion, products,
+    deepClone(snapshot.pages), deepClone(snapshot.policies), snapshot.id,
+    new Date().toISOString(), [...snapshot.surfacesAbsent],
+  );
+  return {
+    snapshot: mutated,
+    mutation: {
+      mutationId: `mut-${sha256Hex(`${snapshot.id}|insert|${canonicalJson(sentences)}`).slice(0, 16)}`,
+      type: "INSERT_SENTENCES",
+      attribute: "probe_insert",
+      injectedSentences: sentences.map((sentence) => ({ productId, sentence })),
+      removedEvidence: [],
+      restoreHints: [],
+      originalSnapshotId: snapshot.id,
+      mutatedSnapshotId: mutated.id,
+    },
+  };
 }
 
 // ---- pre-run assertions (spec 4.4 — invalid experiment ⇒ abort) ------------

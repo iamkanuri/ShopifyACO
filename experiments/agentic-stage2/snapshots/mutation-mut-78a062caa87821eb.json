@@ -1,0 +1,25 @@
+{
+  "role": "f5",
+  "mutationId": "mut-78a062caa87821eb",
+  "type": "REMOVE_POLICY_EVIDENCE",
+  "attribute": "delivery_timing",
+  "removedEvidence": [
+    {
+      "evidenceId": "ev-6fa9029923ae0ab2",
+      "surface": "shipping_policy",
+      "sourceObjectId": "policy:shipping",
+      "exactText": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US.",
+      "snapshotId": "snap-fa17c5ad66576d29"
+    }
+  ],
+  "restoreHints": [
+    {
+      "kind": "policy_sentence",
+      "policyId": "policy:shipping",
+      "sentenceIndex": 1,
+      "sentence": "Standard shipping arrives in 2 to 4 business days anywhere in the continental US."
+    }
+  ],
+  "originalSnapshotId": "snap-fa17c5ad66576d29",
+  "mutatedSnapshotId": "snap-c83145773f8b773b"
+}
