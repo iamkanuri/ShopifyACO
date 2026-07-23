@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+
+// Trace/result writes from e2e mock runs go to a scratch dir, not the repo.
+process.env.AGENTIC_STAGE1_RESULTS_DIR = join(mkdtempSync(join(tmpdir(), "agentic-stage2-test-")), "results");
 
 // ===========================================================================
 // AGENTIC INSTRUMENT TEST — STAGE 2 automated tests (spec S2 §5, tests 17–25;
@@ -218,6 +222,129 @@ test("25. real-ingestion BASE snapshot has variants+availability and audited sur
   assert.deepEqual(base.surfacesAbsent, ["structured_data", "returns_policy"]);
   assert.ok(base.products.length > 2, "whole real catalog captured (seeded + pre-existing)");
   assert.ok(base.sourceVersion.startsWith("real-ingestion("));
+});
+
+// ---- 18. conflict-pair detection forces `conflicting` ----------------------
+
+test("18. conflict-pair rule forces conflicting when both sides are retrieved", async () => {
+  const { validateEvidenceClaims } = await import("../src/agentic-test/evidence-validator.js");
+  const { adjudicateStage2 } = await import("../src/agentic-test/adjudicator.js");
+  const snapId = "snap-test-18";
+  const trace = [
+    {
+      runId: "r", timestamp: "t", sequence: 1, type: "TOOL_RESULT" as const, payload: {},
+      evidenceReferences: [
+        { evidenceId: "ev-aff", surface: "faq" as const, sourceObjectId: "page:faq", exactText: "Free returns within 30 days of delivery.", snapshotId: snapId },
+        { evidenceId: "ev-neg", surface: "product_description" as const, sourceObjectId: "p1", exactText: "Please note: all natural products are final sale.", snapshotId: snapId },
+      ],
+    },
+  ];
+  const result = {
+    runId: "r", contractId: stage2PrimaryContract.id, snapshotId: snapId, snapshotContentHash: "h",
+    provider: "mock", model: "mock", promptVersion: "stage2-v1", trialNumber: 1,
+    outcome: "PASS" as const, modelDeclaredOutcome: "PASS",
+    selectedProductId: stage2PrimaryContract.productScope.productId,
+    selectedVariantId: stage2PrimaryContract.productScope.variantId,
+    constraintEvaluations: [], claimedEvidenceReferences: [], traceEvents: [],
+    totalToolCalls: 1, totalSteps: 1, estimatedCostUsd: 0,
+  };
+  const validated = validateEvidenceClaims(result, trace, stage2PrimaryContract);
+  const soft = validated.constraintEvaluations.find((e) => e.constraintId === "soft-returns-consistent");
+  assert.equal(soft?.status, "conflicting", "soft constraint forced conflicting regardless of the model");
+  const verdict = adjudicateStage2(stage2PrimaryContract, validated, trace);
+  assert.equal(verdict.outcome, "CONTRADICTION");
+  assert.equal(verdict.rootCause, "CONTRADICTION");
+});
+
+// ---- 20/21. Substitute/Conflict mocks end-to-end on committed artifacts ----
+
+const FLAG_ENV = { AGENTIC_INSTRUMENT_TEST_ENABLED: "true" };
+
+test("20. SubstituteMock end-to-end → WRONG_PRODUCT", { skip: !hasArtifacts }, async () => {
+  const { runShoppingAgent } = await import("../src/agentic-test/agent-runner.js");
+  const { createSubstituteMock } = await import("../src/agentic-test/mock-model.js");
+  const f3 = loadRole("f3");
+  const result = await runShoppingAgent({
+    contract: stage2PrimaryContract, snapshot: f3, client: createSubstituteMock(), trialNumber: 1, env: FLAG_ENV,
+  });
+  assert.equal(result.outcome, "WRONG_PRODUCT_SELECTED");
+  assert.equal(result.rootCauseCode, "WRONG_PRODUCT");
+  assert.notEqual(result.selectedVariantId, stage2PrimaryContract.productScope.variantId);
+  assert.equal(result.modelDeclaredOutcome, "PASS", "the substitution was silent (claimed success)");
+});
+
+test("21. ConflictMock end-to-end → CONTRADICTION", { skip: !hasArtifacts }, async () => {
+  const { runShoppingAgent } = await import("../src/agentic-test/agent-runner.js");
+  const { createConflictMock } = await import("../src/agentic-test/mock-model.js");
+  const f2 = loadRole("f2");
+  const result = await runShoppingAgent({
+    contract: stage2PrimaryContract, snapshot: f2, client: createConflictMock(), trialNumber: 1, env: FLAG_ENV,
+  });
+  assert.equal(result.outcome, "CONTRADICTION");
+  assert.equal(result.modelDeclaredOutcome, "PASS", "the model ignored the contradiction it retrieved");
+});
+
+// ---- 23. observational runs are excluded from gate aggregation -------------
+
+test("23. observational runs (PARA/TRAP/secondary) never affect the gate", async () => {
+  const { buildStage2Report } = await import("../src/agentic-test/comparator2.js");
+  const manifest = {
+    experimentId: "t", shopId: "s", primaryProductId: stage2PrimaryContract.productScope.productId,
+    requiredVariantId: stage2PrimaryContract.productScope.variantId!,
+    secondaryProductId: stage2SecondaryContract.productScope.productId,
+    snapshots: {
+      base: "sn-base", f1: "sn-f1", f2: "sn-f2", f3: "sn-f3", f4: "sn-f4", f5: "sn-f5",
+      "restored-f1": "sn-rest", para: "sn-para", trap: "sn-trap",
+    },
+    mutationIds: {}, createdAt: "t",
+  } as never;
+  const j = (snapshotId: string, provider: string, trial: number, outcome: string, rootCauseCode?: string, contractId = stage2PrimaryContract.id) => ({
+    runId: `${snapshotId}-${provider}-${trial}-${contractId}`, contractId, snapshotId, snapshotContentHash: "h",
+    provider, model: "m", promptVersion: "stage2-v1", trialNumber: trial,
+    outcome: outcome as never, rootCauseCode: rootCauseCode as never,
+    modelDeclaredOutcome: outcome === "PASS" ? "PASS" : "MISSING_EVIDENCE",
+    selectedProductId: stage2PrimaryContract.productScope.productId,
+    selectedVariantId: stage2PrimaryContract.productScope.variantId,
+    constraintEvaluations: [], claimedEvidenceReferences: [],
+    traceEvents: [
+      { runId: "r", timestamp: "t", sequence: 1, type: "TOOL_RESULT" as const, payload: {},
+        evidenceReferences: [
+          { evidenceId: "e1", surface: "faq" as const, sourceObjectId: "page:faq", exactText: "Free returns within 30 days.", snapshotId },
+          { evidenceId: "e2", surface: "product_description" as const, sourceObjectId: "p", exactText: "all natural products are final sale.", snapshotId },
+        ] },
+    ],
+    totalToolCalls: 3, totalSteps: 4, estimatedCostUsd: 0.01,
+  });
+  const perfect = [
+    ...["openai", "gemini"].flatMap((p) => [1, 2, 3].flatMap((t) => [
+      j("sn-base", p, t, "PASS"),
+      j("sn-f1", p, t, "MISSING_EVIDENCE", "EVIDENCE_GAP"),
+      j("sn-f2", p, t, "CONTRADICTION", "CONTRADICTION"),
+      j("sn-f3", p, t, "CONSTRAINT_VIOLATION", "INVENTORY_MISMATCH"),
+      j("sn-f4", p, t, "CONTRADICTION", "STALE_STRUCTURED_DATA"),
+      j("sn-f5", p, t, "MISSING_EVIDENCE", "POLICY_OPACITY"),
+      j("sn-rest", p, t, "PASS"),
+    ])),
+    ...["openai", "gemini"].flatMap((p) => [1, 2].map((t) => j("sn-base", p, t, "PASS", undefined, stage2SecondaryContract.id))),
+  ];
+  const clean = buildStage2Report("exp", manifest, perfect);
+  assert.equal(clean.acceptance.passed, true, clean.acceptance.reasons.join("; "));
+
+  // FALSE_CERTAINTY on PARA/TRAP (observational) must NOT trip the gate…
+  const withProbes = [
+    ...perfect,
+    ...["openai", "gemini"].flatMap((p) => [1, 2].map((t) => j("sn-para", p, t, "FALSE_CERTAINTY"))),
+    ...["openai", "gemini"].flatMap((p) => [1, 2].map((t) => j("sn-trap", p, t, "FALSE_CERTAINTY"))),
+  ];
+  const probed = buildStage2Report("exp", manifest, withProbes);
+  assert.equal(probed.gate.falseCertaintyCount, 0, "probe runs excluded from gate FC count");
+  assert.equal(probed.acceptance.passed, true);
+
+  // …while the SAME outcome on a gate run fails criterion 4.
+  const poisoned = perfect.map((x, i) => (i === 0 ? { ...x, outcome: "FALSE_CERTAINTY" as never } : x));
+  const bad = buildStage2Report("exp", manifest, poisoned);
+  assert.equal(bad.acceptance.passed, false);
+  assert.ok(bad.acceptance.reasons.some((r) => r.includes("criterion 4") || r.includes("criterion 1")));
 });
 
 // ---- conflict-pair fixtures sanity -----------------------------------------

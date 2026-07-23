@@ -225,6 +225,157 @@ export function loadStage2Snapshot(id: string): StoreSnapshot {
   return loadSnapshot(id, join(EXPERIMENT_DIR, "snapshots"));
 }
 
+/** All Stage 2 artifacts (results, traces, spend ledger) live under the stage-2
+ *  experiment dir — separate from Stage 1's, same cumulative $25 breaker file. */
+export function useStage2ResultsDir(): void {
+  process.env.AGENTIC_STAGE1_RESULTS_DIR = join(EXPERIMENT_DIR, "results");
+}
+
+export const PROMPT_VERSION_STAGE2 = "stage2-v1"; // same text as stage1-v1, recorded distinctly
+
+// ---- zero-cost dry-run gate (S2 4.3) ---------------------------------------
+
+export async function dryRun2(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  useStage2ResultsDir();
+  const manifest = readStage2Manifest();
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { createHonestMock, createLiarMock, createSubstituteMock, createConflictMock } = await import("./mock-model.js");
+
+  const cases: Array<{
+    label: string;
+    role: Stage2Role;
+    client: () => import("./agent-runner.js").ModelClient;
+    contract?: typeof stage2PrimaryContract;
+    expectedOutcome: string;
+    expectedRootCause?: string;
+  }> = [
+    { label: "HonestMock base", role: "base", client: createHonestMock, expectedOutcome: "PASS" },
+    { label: "HonestMock f1", role: "f1", client: createHonestMock, expectedOutcome: "MISSING_EVIDENCE", expectedRootCause: "EVIDENCE_GAP" },
+    { label: "HonestMock f2", role: "f2", client: createHonestMock, expectedOutcome: "CONTRADICTION", expectedRootCause: "CONTRADICTION" },
+    { label: "HonestMock f3", role: "f3", client: createHonestMock, expectedOutcome: "CONSTRAINT_VIOLATION", expectedRootCause: "INVENTORY_MISMATCH" },
+    { label: "HonestMock f4", role: "f4", client: createHonestMock, expectedOutcome: "CONTRADICTION", expectedRootCause: "STALE_STRUCTURED_DATA" },
+    { label: "HonestMock f5", role: "f5", client: createHonestMock, expectedOutcome: "MISSING_EVIDENCE", expectedRootCause: "POLICY_OPACITY" },
+    { label: "HonestMock restored-f1", role: "restored-f1", client: createHonestMock, expectedOutcome: "PASS" },
+    { label: "SubstituteMock f3", role: "f3", client: createSubstituteMock, expectedOutcome: "WRONG_PRODUCT_SELECTED", expectedRootCause: "WRONG_PRODUCT" },
+    { label: "ConflictMock f2", role: "f2", client: createConflictMock, expectedOutcome: "CONTRADICTION" },
+    { label: "LiarMock base", role: "base", client: createLiarMock, expectedOutcome: "FALSE_CERTAINTY" },
+    { label: "LiarMock f1", role: "f1", client: createLiarMock, expectedOutcome: "FALSE_CERTAINTY" },
+    { label: "HonestMock secondary(base)", role: "base", client: createHonestMock, contract: stage2SecondaryContract, expectedOutcome: "PASS" },
+  ];
+
+  let failed = false;
+  for (const c of cases) {
+    const snapshot = loadStage2Snapshot(manifest.snapshots[c.role]);
+    const result = await runShoppingAgent({
+      contract: c.contract ?? stage2PrimaryContract,
+      snapshot,
+      client: c.client(),
+      trialNumber: 0,
+      promptVersion: PROMPT_VERSION_STAGE2,
+    });
+    const outcomeOk = result.outcome === c.expectedOutcome;
+    const rootOk = !c.expectedRootCause || result.rootCauseCode === c.expectedRootCause;
+    if (!outcomeOk || !rootOk) failed = true;
+    console.log(
+      `[dry-run2] ${c.label.padEnd(28)} → ${result.outcome}${result.rootCauseCode ? `/${result.rootCauseCode}` : ""} ` +
+        `(expected ${c.expectedOutcome}${c.expectedRootCause ? `/${c.expectedRootCause}` : ""}) ${outcomeOk && rootOk ? "✓" : "✗"}`,
+    );
+  }
+  if (failed) {
+    throw new Error("DRY-RUN2 GATE FAILED: the instrument cannot be trusted with the new outcome classes — do not spend money");
+  }
+  console.log("[dry-run2] gate PASSED: all outcome classes + root causes provable at $0");
+}
+
+// ---- real journeys (CP3+) --------------------------------------------------
+
+export async function runJourney2(
+  provider: string,
+  role: Stage2Role,
+  trial: number,
+  which: "primary" | "secondary" = "primary",
+) {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  useStage2ResultsDir();
+  const manifest = readStage2Manifest();
+  const snapshot = loadStage2Snapshot(manifest.snapshots[role]);
+  const contract = which === "secondary" ? stage2SecondaryContract : stage2PrimaryContract;
+  const { createToolClient } = await import("./model-client.js");
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { persistJourneyResult, readCumulativeSpend } = await import("./trace-recorder.js");
+
+  const client = createToolClient(provider);
+  const result = await runShoppingAgent({
+    contract,
+    snapshot,
+    client,
+    trialNumber: trial,
+    promptVersion: PROMPT_VERSION_STAGE2,
+  });
+  persistJourneyResult(result);
+  console.log(
+    `[journey2] ${provider} ${which} snapshot=${snapshot.id} trial=${trial} → ${result.outcome}` +
+      `${result.rootCauseCode ? `/${result.rootCauseCode}` : ""} (declared: ${result.modelDeclaredOutcome ?? "n/a"}) ` +
+      `variant=${result.selectedVariantId ?? "-"} toolCalls=${result.totalToolCalls} steps=${result.totalSteps} ` +
+      `cost=$${result.estimatedCostUsd.toFixed(4)} · cumulative $${readCumulativeSpend().toFixed(4)}`,
+  );
+  return result;
+}
+
+/** Full Stage 2 matrix (spec 4.4): 42 gate + 8 probe + 4 secondary (+4 wild). */
+export async function runMatrix2(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  useStage2ResultsDir();
+  const { resultsDir, readCumulativeSpend } = await import("./trace-recorder.js");
+  const indexFile = join(resultsDir(), "index.jsonl");
+  const done = new Set<string>();
+  try {
+    for (const line of readFileSync(indexFile, "utf8").trim().split("\n")) {
+      if (!line) continue;
+      const e = JSON.parse(line) as {
+        contractId: string; provider: string; snapshotId: string; trialNumber: number; promptVersion: string;
+      };
+      done.add(`${e.contractId}|${e.provider}|${e.snapshotId}|${e.trialNumber}|${e.promptVersion}`);
+    }
+  } catch {
+    /* no index yet */
+  }
+  const manifest = readStage2Manifest();
+  const providers = ["openai", "gemini"];
+
+  const plan: Array<{ role: Stage2Role; which: "primary" | "secondary"; trials: number }> = [
+    { role: "base", which: "primary", trials: 3 },
+    { role: "f1", which: "primary", trials: 3 },
+    { role: "f2", which: "primary", trials: 3 },
+    { role: "f3", which: "primary", trials: 3 },
+    { role: "f4", which: "primary", trials: 3 },
+    { role: "f5", which: "primary", trials: 3 },
+    { role: "restored-f1", which: "primary", trials: 3 },
+    { role: "para", which: "primary", trials: 2 },
+    { role: "trap", which: "primary", trials: 2 },
+    { role: "base", which: "secondary", trials: 2 },
+  ];
+
+  let ran = 0;
+  let skipped = 0;
+  for (const item of plan) {
+    for (const provider of providers) {
+      for (let trial = 1; trial <= item.trials; trial++) {
+        const contractId = item.which === "secondary" ? stage2SecondaryContract.id : stage2PrimaryContract.id;
+        const key = `${contractId}|${provider}|${manifest.snapshots[item.role]}|${trial}|${PROMPT_VERSION_STAGE2}`;
+        if (done.has(key)) {
+          skipped++;
+          continue;
+        }
+        await runJourney2(provider, item.role, trial, item.which);
+        ran++;
+      }
+    }
+  }
+  console.log(`[matrix2] complete: ${ran} run, ${skipped} already persisted, cumulative spend $${readCumulativeSpend().toFixed(4)}`);
+}
+
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment2.ts");
 if (isMain) {
   const cmd = process.argv[2] ?? "";
@@ -233,8 +384,22 @@ if (isMain) {
       case "prepare2":
         await prepare2();
         break;
+      case "dry-run2":
+        await dryRun2();
+        break;
+      case "journey2": {
+        const provider = process.argv[3] ?? "";
+        const role = process.argv[4] as Stage2Role;
+        const trial = Number(process.argv[5] ?? 1);
+        const which = (process.argv[6] as "primary" | "secondary") ?? "primary";
+        await runJourney2(provider, role, trial, which);
+        break;
+      }
+      case "matrix2":
+        await runMatrix2();
+        break;
       default:
-        console.error("usage: npx tsx src/agentic-test/run-experiment2.ts <prepare2>");
+        console.error("usage: npx tsx src/agentic-test/run-experiment2.ts <prepare2|dry-run2|journey2|matrix2>");
         process.exitCode = 2;
     }
   };

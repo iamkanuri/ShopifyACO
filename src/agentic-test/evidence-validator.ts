@@ -8,7 +8,7 @@ import type {
 } from "./types.js";
 import { MATCHING_TERMS_BY_ATTRIBUTE } from "./contract.js";
 import { STAGE2_TERM_FIXTURES } from "./contract2.js";
-import { isNegatedMatch, matchingTermsIn, normalizeForMatch } from "./util.js";
+import { isNegatedMatch, matchingTermsIn, normalizeForMatch, occursOutsideSpans } from "./util.js";
 
 // ===========================================================================
 // Evidence validator (spec 4.8 + Stage 2 4.1) — the heart of the instrument.
@@ -106,8 +106,12 @@ export function referenceSupportsConstraint(
   if (!text) return { supports: false, reason: "no text content" };
 
   if (fx.violatingTerms?.length) {
-    const bad = matchingTermsIn(text, [...fx.violatingTerms]);
-    if (bad.length && bad.some((t) => !isNegatedMatch(text, t))) {
+    // Span-aware: "subscription required" inside "no subscription required" is
+    // covered by the support phrase and must not count as a violation.
+    const bad = fx.violatingTerms.filter(
+      (t) => occursOutsideSpans(text, t, fx.supportTerms ?? []) && !isNegatedMatch(text, t),
+    );
+    if (bad.length) {
       return { supports: false, reason: `text matches violating term "${bad[0]}"`, contradicts: true };
     }
   }
@@ -136,7 +140,9 @@ function conflictDetected(
       .map((r) => r.exactText ?? "")
       .filter(Boolean);
     const aff = texts.find((t) => matchingTermsIn(t, pair.affirmative).some((x) => !isNegatedMatch(t, x)));
-    const neg = texts.find((t) => matchingTermsIn(t, pair.negative).some((x) => !isNegatedMatch(t, x)));
+    const neg = texts.find((t) =>
+      pair.negative.some((x) => occursOutsideSpans(t, x, pair.affirmative) && !isNegatedMatch(t, x)),
+    );
     if (aff && neg) return { hit: true, detail: `"${aff.slice(0, 80)}" vs "${neg.slice(0, 80)}"` };
   }
   return { hit: false };

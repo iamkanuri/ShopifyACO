@@ -42,6 +42,29 @@ export function isNegatedMatch(text: string, term: string): boolean {
   return true;
 }
 
+/** All [start,end) spans where normalized `term` occurs in normalized `text`. */
+export function termSpans(text: string, term: string): Array<[number, number]> {
+  const norm = normalizeForMatch(text);
+  const t = normalizeForMatch(term);
+  const spans: Array<[number, number]> = [];
+  if (!t) return spans;
+  let idx = norm.indexOf(t);
+  while (idx !== -1) {
+    spans.push([idx, idx + t.length]);
+    idx = norm.indexOf(t, idx + 1);
+  }
+  return spans;
+}
+
+/** True when some occurrence of `term` does not even OVERLAP a `coveringTerm`
+ *  span — e.g. the "subscription required" inside "no subscription required"
+ *  overlaps the support phrase "no subscription" and must NOT count as a
+ *  violating match; a standalone "subscription required" elsewhere would. */
+export function occursOutsideSpans(text: string, term: string, coveringTerms: readonly string[]): boolean {
+  const cover = coveringTerms.flatMap((c) => termSpans(text, c));
+  return termSpans(text, term).some(([s, e]) => cover.every(([cs, ce]) => s >= ce || e <= cs));
+}
+
 /** Split plain text into sentences. Deterministic: split after . ! ? followed by
  *  whitespace. A text without terminal punctuation is one sentence. */
 export function splitSentences(text: string): string[] {
