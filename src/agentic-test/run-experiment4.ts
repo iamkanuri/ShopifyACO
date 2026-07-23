@@ -1,0 +1,227 @@
+import "dotenv/config";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { closePg } from "../db/pg.js";
+import { DEV_SHOP_ID } from "./contract.js";
+import { PRIMARY_PRODUCT_ID } from "./contract2.js";
+import { safeConstraintId } from "./compiler.js";
+import { assertRunnable } from "./preflight.js";
+import { createStage2Snapshot } from "./snapshot-service.js";
+import { loadSnapshot, saveSnapshot } from "./snapshot-service.js";
+import { scanStore } from "./store-diagnostic.js";
+import {
+  assertDevStoreIdentity,
+  deleteMetafield,
+  readProductState,
+  setMetafield,
+  writeDescriptionHtml,
+} from "./dev-store-client.js";
+import {
+  clearMarker,
+  injectFault,
+  readMarker,
+  revertFault,
+  defaultMarkerWriter,
+  assertStateMatchesGroundTruth,
+  type FaultIO,
+} from "./store-fault.js";
+import type { ShoppingTaskContract, StoreSnapshot } from "./types.js";
+
+// ===========================================================================
+// STAGE 4 CLI — loop closure on the REAL dev store. Rule 4 discipline: the
+// pending-revert marker precedes any fault write; `revert-fault` is always
+// available; the stage may not end with the store faulted.
+// ===========================================================================
+
+const EXPERIMENT_DIR = join(process.cwd(), "experiments", "agentic-stage4");
+const SNAP_DIR = join(EXPERIMENT_DIR, "snapshots");
+const MANIFEST_FILE = join(EXPERIMENT_DIR, "experiment-manifest.json");
+export const PROMPT_VERSION_STAGE4 = "stage4-v1"; // same text lineage as stage1-v1
+
+/** The Case contract: compiled p1 (telemetry-born) with round-trip-safe ids. */
+export const stage4CaseContract: ShoppingTaskContract = {
+  id: "stage4-case-p1",
+  version: "2",
+  objective: "select_purchase_ready_product",
+  productScope: { shopId: DEV_SHOP_ID, productId: PRIMARY_PRODUCT_ID },
+  hardConstraints: [
+    {
+      id: safeConstraintId("aluminum_free", 0),
+      attribute: "aluminum_free",
+      operator: "must_be_true",
+      expectedValue: true,
+      evidenceRequired: true,
+      acceptableSurfaces: ["product_description", "product_metafields", "structured_data", "faq"],
+    },
+    {
+      id: safeConstraintId("variant_price", 1),
+      attribute: "variant_price",
+      operator: "less_than",
+      expectedValue: 20.0,
+      evidenceRequired: true,
+      acceptableSurfaces: ["product_variants", "structured_data"],
+    },
+    {
+      id: safeConstraintId("subscription_required", 2),
+      attribute: "subscription_required",
+      operator: "must_be_false",
+      expectedValue: false,
+      evidenceRequired: true,
+      acceptableSurfaces: ["product_description", "faq"],
+    },
+  ],
+  successConditions: { correctProductRequired: true, allHardConstraintsSatisfied: true, evidenceRequiredForEveryFact: true },
+  limits: { maxSteps: 14, maxToolCalls: 12, maxOutputTokens: 3500 },
+};
+
+export interface Stage4Manifest {
+  experimentId: string;
+  snapshots: { base?: string; faulted?: string; fixed?: string };
+  createdAt: string;
+}
+
+export function readStage4Manifest(): Stage4Manifest {
+  if (!existsSync(MANIFEST_FILE)) {
+    return { experimentId: `agentic-stage4-${new Date().toISOString().slice(0, 10)}`, snapshots: {}, createdAt: new Date().toISOString() };
+  }
+  return JSON.parse(readFileSync(MANIFEST_FILE, "utf8")) as Stage4Manifest;
+}
+function writeManifest(m: Stage4Manifest): void {
+  mkdirSync(EXPERIMENT_DIR, { recursive: true });
+  writeFileSync(MANIFEST_FILE, JSON.stringify(m, null, 2), "utf8");
+}
+
+export function useStage4ResultsDir(): void {
+  process.env.AGENTIC_STAGE1_RESULTS_DIR = join(EXPERIMENT_DIR, "results");
+}
+
+export function loadAnySnapshot(id: string): StoreSnapshot {
+  for (const dir of [SNAP_DIR, join(process.cwd(), "experiments", "agentic-stage3", "snapshots"), join(process.cwd(), "experiments", "agentic-stage2", "snapshots")]) {
+    try {
+      return loadSnapshot(id, dir);
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error(`snapshot ${id} not found in stage 2/3/4 dirs`);
+}
+
+const realFaultIO: FaultIO = {
+  writeMarker: defaultMarkerWriter,
+  writeDescription: writeDescriptionHtml,
+  setMetafield,
+  deleteMetafield,
+};
+
+// ---- commands ---------------------------------------------------------------
+
+/** Snapshot the CURRENT live catalog under a stage-4 role. */
+export async function snapshot4(role: "base" | "faulted" | "fixed"): Promise<StoreSnapshot> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  const snap = await createStage2Snapshot(DEV_SHOP_ID, PRIMARY_PRODUCT_ID);
+  mkdirSync(SNAP_DIR, { recursive: true });
+  saveSnapshot(snap, SNAP_DIR);
+  const m = readStage4Manifest();
+  m.snapshots[role] = snap.id;
+  writeManifest(m);
+  const scan = scanStore(snap, stage4CaseContract);
+  const c1 = scan.perConstraint.find((c) => c.attribute === "aluminum_free")!;
+  console.log(`[snapshot4] ${role} = ${snap.id} (hash ${snap.contentHash.slice(0, 12)}…) · scan c1=${c1.verdict} (${c1.explicitHits.length} hits, surfaces: ${c1.relevantSurfaces.join(",") || "none"})`);
+  return snap;
+}
+
+export async function injectFaultCmd(): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  if (readMarker()) throw new Error("a pending-revert marker already exists — resolve it first");
+  await assertDevStoreIdentity();
+  const live = await readProductState(PRIMARY_PRODUCT_ID);
+  const pre = assertStateMatchesGroundTruth({ descriptionHtml: live.descriptionHtml, metafield: live.metafield });
+  if (!pre.ok) throw new Error(`refusing to fault: store is not at truthful baseline: ${pre.problems.join("; ")}`);
+  const marker = await injectFault(realFaultIO, live);
+  // Verify the fault took effect.
+  const after = await readProductState(PRIMARY_PRODUCT_ID);
+  if (after.descriptionHtml.includes("aluminum") || after.metafield) {
+    throw new Error("fault verification failed — store may be partially faulted; run revert-fault");
+  }
+  console.log(`[inject-fault] fault applied (marker first, ${marker.createdAt}). Store now fails to evidence aluminum_free; ground truth untouched.`);
+}
+
+export async function revertFaultCmd(how = "standalone-revert"): Promise<void> {
+  assertRunnable(process.env, DEV_SHOP_ID);
+  const marker = readMarker();
+  if (!marker) {
+    console.log("[revert-fault] no pending-revert marker — nothing to do");
+    return;
+  }
+  await assertDevStoreIdentity();
+  await revertFault(realFaultIO, marker);
+  const after = await readProductState(PRIMARY_PRODUCT_ID);
+  const check = assertStateMatchesGroundTruth({ descriptionHtml: after.descriptionHtml, metafield: after.metafield });
+  if (!check.ok) throw new Error(`revert verification FAILED: ${check.problems.join("; ")} — store needs manual attention`);
+  clearMarker(how);
+  console.log("[revert-fault] store restored to truthful baseline and verified; marker cleared");
+}
+
+/** Journeys for the case contract on a given snapshot (semantic tier active). */
+export async function journeys4(snapshotId: string, trials: number): Promise<void> {
+  useStage4ResultsDir();
+  const snapshot = loadAnySnapshot(snapshotId);
+  const { createToolClient } = await import("./model-client.js");
+  const { runShoppingAgent } = await import("./agent-runner.js");
+  const { persistJourneyResult, readCumulativeSpend } = await import("./trace-recorder.js");
+  const { createGeminiSemanticClient } = await import("./semantic-tier.js");
+  const { computeCoverage } = await import("./store-diagnostic.js");
+  const diagnostic = scanStore(snapshot, stage4CaseContract);
+
+  for (const provider of ["openai", "gemini"]) {
+    for (let t = 1; t <= trials; t++) {
+      const client = createToolClient(provider);
+      let result = await runShoppingAgent({
+        contract: stage4CaseContract,
+        snapshot,
+        client,
+        trialNumber: t,
+        promptVersion: PROMPT_VERSION_STAGE4,
+        semanticClient: createGeminiSemanticClient(),
+      });
+      const cov = computeCoverage(diagnostic, result);
+      result = { ...result, coverageRatio: cov.coverageRatio, missedRelevantSurfaces: cov.missedRelevantSurfaces };
+      persistJourneyResult(result);
+      console.log(
+        `[journeys4] ${provider} snap=${snapshot.id.slice(0, 16)} t${t} → ${result.outcome}${result.rootCauseCode ? `/${result.rootCauseCode}` : ""} ` +
+          `(declared: ${result.modelDeclaredOutcome ?? "n/a"}) cost=$${result.estimatedCostUsd.toFixed(4)} · cumulative $${readCumulativeSpend().toFixed(4)}`,
+      );
+    }
+  }
+}
+
+const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-experiment4.ts");
+if (isMain) {
+  const cmd = process.argv[2] ?? "";
+  const main = async () => {
+    switch (cmd) {
+      case "snapshot4":
+        await snapshot4((process.argv[3] as "base" | "faulted" | "fixed") ?? "base");
+        break;
+      case "inject-fault":
+        await injectFaultCmd();
+        break;
+      case "revert-fault":
+        await revertFaultCmd();
+        break;
+      case "journeys4":
+        await journeys4(process.argv[3]!, Number(process.argv[4] ?? 2));
+        break;
+      default:
+        console.error("usage: npx tsx src/agentic-test/run-experiment4.ts <snapshot4|inject-fault|revert-fault|journeys4>");
+        process.exitCode = 2;
+    }
+  };
+  main()
+    .then(() => closePg())
+    .catch(async (err) => {
+      console.error(`[run-experiment4] FAILED: ${(err as Error).message}`);
+      await closePg();
+      process.exit(1);
+    });
+}

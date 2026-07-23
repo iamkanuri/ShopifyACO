@@ -1,0 +1,4 @@
+# transient safety marker (never committed; revert-log.jsonl is the audit)
+pending-revert.json
+# root .gitignore excludes results/ — stage-4 journeys are the audit trail
+!results/

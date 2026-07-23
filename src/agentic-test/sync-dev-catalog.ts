@@ -44,6 +44,13 @@ async function main(): Promise<void> {
 
   const cedar = rows.find((x) => x.title === "Cedar Hollow Natural Deodorant");
   const harbor = rows.find((x) => x.title === "Harbor Lane Shave Soap");
+  // Stage 4 syncs a deliberately-FAULTED store (metafield removed); the seeded-
+  // content verification is only meaningful for the baseline state.
+  const skipVerify = process.argv.includes("--skip-verify");
+  if (skipVerify) {
+    console.log("[sync] --skip-verify: seeded-content verification skipped (stage-4 faulted-state sync)");
+    return;
+  }
   if (!cedar || cedar.variants !== 4 || cedar.metafields < 2) {
     throw new Error("verification failed: Cedar Hollow missing or incomplete after sync");
   }
