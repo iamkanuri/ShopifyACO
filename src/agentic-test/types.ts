@@ -152,6 +152,13 @@ export interface StoreSnapshot {
   policies: SnapshotPolicy[];
   /** Surfaces the ingestion layer does not capture at all (AUDIT.md §2). */
   surfacesAbsent: EvidenceSurface[];
+  /** Stage 5: surfaces that EXIST but cannot be seen from public data (e.g.
+   *  product_metafields). DISTINCT from `surfacesAbsent`: reported as "not
+   *  inspectable from public data", NEVER as "missing"/"absent" (Rule 4). */
+  surfacesNotInspectable?: EvidenceSurface[];
+  /** Stage 5: how this snapshot was sourced — "public" (third-party, read-only)
+   *  vs the default authenticated ingestion. */
+  provenance?: "public" | "authenticated";
   /** Flat evidence index derived deterministically from the content above. */
   evidence: SnapshotEvidenceItem[];
   /** sha256 of canonical JSON of the content (see snapshot-service). */
@@ -165,6 +172,10 @@ export interface EvidenceReference {
   exactText?: string;
   structuredValue?: unknown;
   snapshotId: string;
+  /** Stage 5: the public URL + fetch timestamp this evidence was read from
+   *  (provenance for third-party cases). */
+  fetchUrl?: string;
+  fetchedAt?: string;
 }
 
 // ---- mutation -------------------------------------------------------------

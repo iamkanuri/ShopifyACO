@@ -1,0 +1,3 @@
+# Real third-party store names/data stay OUT of committed history (Rule 3/Rule 7).
+out/
+cache/
