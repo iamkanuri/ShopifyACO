@@ -492,12 +492,21 @@ app.post(
 app.post(
   "/api/product-test",
   wrap(async (req, res) => {
-    const url = typeof (req.body as { url?: unknown })?.url === "string" ? (req.body as { url: string }).url.trim() : "";
+    const body = (req.body ?? {}) as { url?: unknown; force?: unknown };
+    const url = typeof body.url === "string" ? body.url.trim() : "";
     if (!url || url.length > 400) return res.status(400).json({ error: "Paste a Shopify product URL." });
-    if (!rateLimit(`producttest:${clientIp(req)}`, 15, 60_000)) {
-      return res.status(429).json({ error: "Too many tests — give it a minute." });
+    // Per-IP budget: 5 tests / 10 minutes. Cached repeats still count (cheap), so a
+    // burst can't be used to walk many stores from one client.
+    if (!rateLimit(`producttest:${clientIp(req)}`, 5, 10 * 60_000)) {
+      return res.status(429).json({ error: "You've run several tests just now — give it a few minutes and try again." });
     }
-    const result = await runProductTest(url);
+    const startedAt = Date.now();
+    const result = await runProductTest(url, { force: body.force === true });
+    const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
+    console.log(JSON.stringify({
+      at: "product_test", host, ok: result.ok, errorKind: result.errorKind ?? null,
+      cached: Boolean(result.cached), ms: Date.now() - startedAt,
+    }));
     // Outcome logging for diagnosis (no PII — host + state counts only).
     await insertEvent("product_test", undefined, {
       ok: result.ok, errorKind: result.errorKind ?? null, cached: Boolean(result.cached),

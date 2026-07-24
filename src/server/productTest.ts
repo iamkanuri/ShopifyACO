@@ -8,6 +8,9 @@ import {
   SURFACE_LABEL, type EvidenceSentence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
+import {
+  getCachedResult, storeResult, reserveHostSlot, getCachedRobots, storeRobots,
+} from "./productTestCache.js";
 
 // ===========================================================================
 // PHASE B — the BUYER TEST (the funnel mechanic behind the reposition).
@@ -141,6 +144,8 @@ export function jsonLdProductDescription(html: string): string | null {
 export interface FetchDeps {
   fetchUrl?: (url: string) => Promise<{ status: number; contentType: string | null; body: string }>;
   loadRobots?: (origin: string) => Promise<RobotsPolicy>;
+  /** Injectable clock — cache/throttle windows are testable without real time. */
+  now?: () => number;
 }
 
 const defaultFetchUrl: NonNullable<FetchDeps["fetchUrl"]> = async (url) => {
@@ -158,11 +163,32 @@ export async function fetchPublicProduct(
   const parsed = parseProductUrl(raw);
   if (!parsed) return { error: { kind: "bad_url", message: FETCH_ERROR_MESSAGE.bad_url } };
   const { origin, handle } = parsed;
-  const fetchUrl = deps.fetchUrl ?? defaultFetchUrl;
+  const host = new URL(origin).host.toLowerCase();
+  const rawFetch = deps.fetchUrl ?? defaultFetchUrl;
+
+  // Every outbound request passes the shared per-host throttle: ≥2s spacing and a
+  // hard hourly budget. Exceeding the budget is reported honestly rather than
+  // hammering a store we're already heavy on.
+  let hostBudgetSpent = false;
+  const fetchUrl: NonNullable<FetchDeps["fetchUrl"]> = async (url) => {
+    const slot = reserveHostSlot(host, deps);
+    if (!slot.ok) {
+      hostBudgetSpent = true;
+      throw new Error("host hourly budget exhausted");
+    }
+    if (slot.waitMs > 0) await new Promise((r) => setTimeout(r, slot.waitMs));
+    return rawFetch(url);
+  };
+
+  // robots.txt: once per host per hour, shared across all users.
   const getRobots = deps.loadRobots ?? (async (o: string) => {
+    const cached = getCachedRobots<RobotsPolicy>(o, deps);
+    if (cached) return cached;
     try {
       const r = await fetchUrl(`${o}/robots.txt`);
-      return r.status === 200 ? parseRobots(r.body) : { rules: [], fetched: false };
+      const policy: RobotsPolicy = r.status === 200 ? parseRobots(r.body) : { rules: [], fetched: false };
+      storeRobots(o, policy, deps);
+      return policy;
     } catch { return { rules: [], fetched: false }; }
   });
 
@@ -206,7 +232,7 @@ export async function fetchPublicProduct(
   }
 
   if (!js && !extracted) {
-    if (sawRateLimit) return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited } };
+    if (sawRateLimit || hostBudgetSpent) return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited } };
     if (saw404) return { error: { kind: "not_found", message: FETCH_ERROR_MESSAGE.not_found } };
     if (sawNonJson) return { error: { kind: "not_shopify", message: FETCH_ERROR_MESSAGE.not_shopify } };
     return { error: { kind: "unreachable", message: FETCH_ERROR_MESSAGE.unreachable } };
@@ -427,12 +453,25 @@ export interface ProductTestResult {
   cached?: boolean;
 }
 
-export async function runProductTest(url: string, deps: FetchDeps = {}): Promise<ProductTestResult> {
+export interface RunOptions extends FetchDeps {
+  /** Explicit "Run again": bypasses the cache at most once per hour per URL. */
+  force?: boolean;
+}
+
+export async function runProductTest(url: string, deps: RunOptions = {}): Promise<ProductTestResult> {
   const base: ProductTestResult = {
     ok: false, productUrl: url, storeName: null, productName: null, task: "",
     assertions: [], evidencedCount: 0, noBlockingCount: 0, notProvenCount: 0, requiresAccessCount: 0,
     total: 0, surfacesChecked: [], notInspectable: [], suggestedCorrection: null,
   };
+
+  // Serve from cache first — the cheapest request is the one we never make.
+  const cacheKey = normalizeProductUrl(url);
+  if (cacheKey) {
+    const cached = getCachedResult(cacheKey, deps);
+    if (cached) return cached;
+  }
+
   const { product, error } = await fetchPublicProduct(url, deps);
   if (!product) return { ...base, error: error?.message, errorKind: error?.kind };
 
@@ -465,7 +504,7 @@ export async function runProductTest(url: string, deps: FetchDeps = {}): Promise
     };
   }
 
-  return {
+  const result: ProductTestResult = {
     ok: true, productUrl: url,
     storeName: product.vendor ?? new URL(product.origin).host.replace(/^www\./, ""),
     productName: product.title, task: summary, assertions,
@@ -478,4 +517,6 @@ export async function runProductTest(url: string, deps: FetchDeps = {}): Promise
     notInspectable,
     suggestedCorrection,
   };
+  if (cacheKey) storeResult(cacheKey, result, deps);
+  return result;
 }

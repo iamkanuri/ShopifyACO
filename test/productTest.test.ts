@@ -246,6 +246,128 @@ test("10b. a non-compliant result is NOT rendered (the linter is a blocking gate
   assert.equal(res.assertions.length, 0, "nothing is rendered");
 });
 
+// ---- 8. cache: TTL hit, re-run bypass, throttle ----------------------------
+
+test("8. a repeat test is served from cache within TTL; an explicit re-run bypasses it", async () => {
+  const { __resetCaches, RESULT_TTL_MS, RERUN_MIN_INTERVAL_MS } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  const html = JSON.stringify({
+    product: { title: "Cedar Bar", vendor: "Acme", product_type: "Bar Soap", tags: "", body_html: "<p>Paraben-free bar.</p>", options: [], variants: [{ title: "Default", price: "9.00" }] },
+  });
+  let fetches = 0;
+  let clock = 1_000_000;
+  const deps = {
+    now: () => clock,
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    fetchUrl: async (u: string) => {
+      fetches++;
+      return u.endsWith(".json")
+        ? { status: 200, contentType: "application/json", body: html }
+        : { status: 404, contentType: "text/html", body: "" };
+    },
+  };
+  const url = "https://cache.example/products/cedar-bar";
+
+  const first = await runProductTest(url, deps);
+  assert.equal(first.ok, true);
+  assert.ok(!first.cached, "the first run is live");
+  const liveFetches = fetches;
+  assert.ok(liveFetches > 0, "the first run fetched");
+
+  // Second call within TTL → cache hit, zero new fetches, labeled with its age.
+  const second = await runProductTest(url, deps);
+  assert.equal(fetches, liveFetches, "a cached repeat makes NO new requests");
+  assert.equal(second.cached, true, "flagged as cached");
+  assert.ok(second.testedAt, "carries the original timestamp for the UI label");
+  assert.deepEqual(second.assertions.map((a) => a.status), first.assertions.map((a) => a.status));
+
+  // A URL that differs only by case/query hits the same cache entry.
+  assert.equal((await runProductTest(`${url.toUpperCase()}?variant=123`, deps)).cached, true);
+  assert.equal(fetches, liveFetches, "still no new requests");
+
+  // force=true within the hour is NOT honored (protects the store).
+  assert.equal((await runProductTest(url, { ...deps, force: true })).cached, true, "re-run is rate-limited to 1/hour");
+
+  // After an hour, force=true does a live run.
+  clock += RERUN_MIN_INTERVAL_MS + 1;
+  const rerun = await runProductTest(url, { ...deps, force: true });
+  assert.ok(fetches > liveFetches, "the honored re-run fetched again");
+  assert.ok(!rerun.cached, "a forced re-run returns live data");
+
+  // Past the TTL the entry expires on its own.
+  clock += RESULT_TTL_MS + 1;
+  const beforeExpiry = fetches;
+  await runProductTest(url, deps);
+  assert.ok(fetches > beforeExpiry, "an expired entry triggers a live run");
+});
+
+test("8b. per-host throttle spaces requests and refuses past the hourly cap", async () => {
+  const { __resetCaches, reserveHostSlot, HOST_HOURLY_CAP, HOST_MIN_INTERVAL_MS } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  let clock = 5_000_000;
+  const deps = { now: () => clock };
+
+  const first = reserveHostSlot("throttle.example", deps);
+  assert.deepEqual(first, { ok: true, waitMs: 0 }, "the first request goes immediately");
+  const second = reserveHostSlot("throttle.example", deps);
+  assert.ok(second.ok && second.waitMs === HOST_MIN_INTERVAL_MS, "an immediate second request must wait 2s");
+
+  // Spend the hourly budget.
+  for (let i = 2; i < HOST_HOURLY_CAP; i++) reserveHostSlot("throttle.example", deps);
+  const over = reserveHostSlot("throttle.example", deps);
+  assert.deepEqual(over, { ok: false, reason: "hourly_cap" }, "refused past the cap instead of hammering");
+
+  // A different host has its own budget.
+  assert.equal(reserveHostSlot("other.example", deps).ok, true);
+  // The window rolls over after an hour.
+  clock += 60 * 60 * 1000 + 1;
+  assert.equal(reserveHostSlot("throttle.example", deps).ok, true);
+});
+
+// ---- 9. each error condition renders its own honest message ----------------
+
+test("9. every failure mode returns its specific, honest message", async () => {
+  const { __resetCaches } = await import("../src/server/productTestCache.js");
+  const { FETCH_ERROR_MESSAGE } = await import("../src/server/productTest.js");
+  const allow = async () => ({ rules: [], fetched: false });
+
+  const run = async (host: string, fetchUrl: (u: string) => Promise<{ status: number; contentType: string | null; body: string }>, loadRobots = allow) => {
+    __resetCaches();
+    return runProductTest(`https://${host}/products/x`, { fetchUrl, loadRobots });
+  };
+
+  // Not a product URL at all.
+  const bad = await runProductTest("https://store.example/collections/all", {});
+  assert.equal(bad.errorKind, "bad_url");
+  assert.equal(bad.error, FETCH_ERROR_MESSAGE.bad_url);
+
+  // Host rate-limits us.
+  const limited = await run("a.example", async () => ({ status: 429, contentType: "text/plain", body: "slow down" }));
+  assert.equal(limited.errorKind, "rate_limited");
+  assert.match(limited.error ?? "", /limiting automated requests/i);
+
+  // robots.txt disallows the product paths.
+  const blocked = await run("b.example", async () => ({ status: 200, contentType: "application/json", body: "{}" }),
+    async () => ({ rules: [{ path: "/products", allow: false }], fetched: true }) as never);
+  assert.equal(blocked.errorKind, "robots_disallowed");
+  assert.match(blocked.error ?? "", /asks automated tools not to read/i);
+
+  // No such product.
+  const missing = await run("c.example", async () => ({ status: 404, contentType: "text/html", body: "" }));
+  assert.equal(missing.errorKind, "not_found");
+  assert.match(missing.error ?? "", /couldn't find a product/i);
+
+  // 200 but not Shopify JSON (and no product page).
+  const notShopify = await run("d.example", async (u) =>
+    u.endsWith(".json") ? { status: 200, contentType: "text/html", body: "<html>nope</html>" } : { status: 500, contentType: null, body: "" });
+  assert.equal(notShopify.errorKind, "not_shopify");
+  assert.match(notShopify.error ?? "", /isn't a Shopify store/i);
+
+  // Every message is distinct — no generic catch-all.
+  const msgs = new Set(Object.values(FETCH_ERROR_MESSAGE));
+  assert.equal(msgs.size, Object.keys(FETCH_ERROR_MESSAGE).length, "each error kind has its own message");
+});
+
 test("findSupport only reads product surfaces (chrome is not in the index at all)", () => {
   const ev = buildEvidence([
     { surface: "product_description", text: "A gentle bar." },
