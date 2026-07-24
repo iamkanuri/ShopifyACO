@@ -93,8 +93,8 @@ const MINI_PROMPTS = 5;
 const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
 const SUGGEST_COST_CAP_USD = 0.02;
 const TAGLINE =
-  "Test whether ChatGPT, Gemini, and Perplexity recommend your store, see which competitors appear instead, and find the shopper prompts where your brand is missing.";
-const DEMO_NOTE = "Demo data shown for illustration; not affiliated with or endorsed by Olipop.";
+  "AisleLens runs executable shopping tests against your Shopify store — showing the exact buyer requirement that failed, the evidence your store exposed, and proof the identical test passes after the fix.";
+const DEMO_NOTE = "Example test shown on sample data, for illustration only.";
 const ALLOWED_EVENTS = new Set([
   "report_viewed",
   "cta_full_report",
@@ -176,7 +176,9 @@ app.get("/robots.txt", (req, res) => {
 });
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
-  const urls = ["/", "/demo", "/scan", "/privacy", "/terms", "/support", "/index"].map(
+  // Repositioning: Index is retired from the public identity (nav/footer) but its
+  // routes stay crawlable for now (existing shared links + prior distribution work).
+  const urls = ["/", "/demo", "/methodology", "/scan", "/privacy", "/terms", "/support", "/index"].map(
     (p) => `  <url><loc>${base}${p}</loc></url>`,
   );
   try {

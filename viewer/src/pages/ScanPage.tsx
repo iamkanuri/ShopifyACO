@@ -312,8 +312,8 @@ export function ScanPage() {
     return (
       <div className="card scan-running">
         <div className="spinner" />
-        <h2>Scanning AI assistants…</h2>
-        <p className="muted">Asking {enabledEngines.length} AI assistants your {selected.length} shopper prompts. This usually takes under a minute.</p>
+        <h2>Running your test…</h2>
+        <p className="muted">Executing {selected.length} buyer {selected.length === 1 ? "requirement" : "requirements"} across {enabledEngines.length} AI models. This usually takes under a minute.</p>
         <pre className="progress-log">{progress.join("\n") || "Starting…"}</pre>
       </div>
     );
@@ -323,22 +323,22 @@ export function ScanPage() {
   if (phase === "entry") {
     return (
       <div className="scan-entry">
-        <h1>See if AI recommends your store</h1>
-        <p className="muted">Enter your store name or URL — we'll detect the rest.</p>
+        <h1>Run a free AI buyer test</h1>
+        <p className="muted">Paste a Shopify product URL or store — we'll build the test.</p>
         <form className="hero-form" onSubmit={startDetails}>
           <input
             type="text"
             value={storeInput}
             onChange={(e) => setStoreInput(e.target.value)}
-            placeholder="yourstore.com"
-            aria-label="Your store name or URL"
+            placeholder="Paste a Shopify product URL"
+            aria-label="Shopify product URL or store"
             autoFocus
           />
           <button type="submit" className="btn btn-primary lg">
-            Run free scan
+            Run a free test
           </button>
         </form>
-        <div className="hero-trust">Free scan · instant on-screen report</div>
+        <div className="hero-trust">Free · one buyer task · instant on-screen result</div>
       </div>
     );
   }
@@ -350,8 +350,8 @@ export function ScanPage() {
       <h1 className="report-headline">Confirm your store</h1>
       <p className="muted" style={{ marginTop: -6 }}>
         {busy === "inferring"
-          ? "Detecting your brand, category, and competitors…"
-          : "We'll ask ChatGPT, Gemini, and Perplexity what real shoppers ask — and show who they recommend."}
+          ? "Detecting your brand, category, and buyer context…"
+          : "We turn real buyer requirements into a test and run it against your store's evidence across live AI models."}
       </p>
 
       {inferNote && busy !== "inferring" && <div className="infer-note">{inferNote}</div>}
@@ -492,14 +492,14 @@ export function ScanPage() {
 
       {overCap && (
         <div className="banner-error">
-          Over the ${scanCostCapUsd.toFixed(2)} mini-scan cap. Deselect prompts or engines in “Customize prompts”.
+          Over the ${scanCostCapUsd.toFixed(2)} free-test cap. Deselect requirements or models in “Customize prompts”.
         </div>
       )}
       {enabledEngines.length === 0 && (
-        <div className="banner-error">Select at least one AI assistant (in “Customize prompts”) to run a scan.</div>
+        <div className="banner-error">Select at least one AI model (in “Customize prompts”) to run the test.</div>
       )}
       {prompts.length > 0 && selected.length === 0 && (
-        <div className="banner-error">Select at least one prompt to run a scan.</div>
+        <div className="banner-error">Select at least one requirement to run the test.</div>
       )}
       {error && <div className="banner-error" role="alert">{error}</div>}
 
@@ -525,21 +525,21 @@ export function ScanPage() {
           disabled={busy === "inferring" || busy === "generating" || busy === "starting" || overCap || enabledEngines.length === 0 || (prompts.length > 0 && selected.length === 0)}
           onClick={openConfirm}
         >
-          {busy === "inferring" ? "Detecting…" : busy === "generating" ? "Preparing…" : "Run free scan →"}
+          {busy === "inferring" ? "Detecting…" : busy === "generating" ? "Preparing…" : "Run the test →"}
         </button>
         <span className="muted" style={{ alignSelf: "center", fontSize: 12.5 }}>
-          {prompts.length ? `${selected.length} shopper prompts × ${enabledEngines.length} AI assistants` : `${MINI_PROMPTS} shopper prompts × 3 AI assistants`}
+          {prompts.length ? `${selected.length} buyer requirements × ${enabledEngines.length} AI models` : `${MINI_PROMPTS} buyer requirements × 3 AI models`}
         </span>
       </div>
 
       {showConfirm && (
         <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
           <div ref={confirmRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(e) => e.stopPropagation()}>
-            <h3 id="confirm-title">Run a live scan?</h3>
+            <h3 id="confirm-title">Run a live test?</h3>
             <p className="muted">
-              AisleLens will ask{" "}
-              <b>{selected.length} realistic shopper {selected.length === 1 ? "question" : "questions"}</b> across{" "}
-              {enabledEngines.map((e) => ENGINE_LABEL[e]).join(", ")} and compare who they recommend. That's{" "}
+              AisleLens will run{" "}
+              <b>{selected.length} buyer {selected.length === 1 ? "requirement" : "requirements"}</b> as assertions across{" "}
+              {enabledEngines.map((e) => ENGINE_LABEL[e]).join(", ")}. That's{" "}
               <b>{selected.length * enabledEngines.length} live API calls</b>, costing up to{" "}
               <b>${estMaxCost.toFixed(3)}</b> (real money). Proceed?
             </p>

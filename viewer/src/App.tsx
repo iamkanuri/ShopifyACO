@@ -4,6 +4,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { DemoPage } from "./pages/DemoPage";
 import { ReportPage } from "./pages/ReportPage";
 import { ScanPage } from "./pages/ScanPage";
+import { MethodologyPage } from "./pages/MethodologyPage";
 import { AdminPage } from "./pages/AdminPage";
 import { ThanksPage } from "./pages/ThanksPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
@@ -15,6 +16,7 @@ import { IndexLeaderboardPage } from "./pages/IndexLeaderboardPage";
 import { Footer } from "./components/Footer";
 import { Mark } from "./components/Mark";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { ConnectShopify } from "./components/ConnectShopify";
 import { AppShell } from "./app/AppShell";
 
 export function App() {
@@ -35,6 +37,7 @@ export function App() {
   else if (path.startsWith("/index/")) page = <IndexLeaderboardPage slug={decodeURIComponent(path.split("/")[2] ?? "")} />;
   else if (path === "/index") page = <IndexListPage />;
   else if (path === "/scan") page = <ScanPage />;
+  else if (path === "/methodology") page = <MethodologyPage />;
   else if (path === "/demo") page = <DemoPage />;
   else if (path === "/admin") page = <AdminPage />;
   else if (path === "/thanks") page = <ThanksPage />;
@@ -57,22 +60,23 @@ export function App() {
               {/* Brand wordmark is site chrome, not the page title — a span so each page
                   provides the single <h1> (avoids two h1s per page, Codex #23). */}
               <span className="brandname">{brandName}</span>
-              <div className="sub">Are AI assistants recommending your store?</div>
+              <div className="sub">AI Commerce QA for Shopify</div>
             </div>
           </Link>
           <div className="topbar-actions">
             {!minimalHeader && (
               <nav className="nav">
-                <Link to="/index" className={`navlink ${active("/index")}`}>
-                  Index
-                </Link>
                 <Link to="/demo" className={`navlink ${active("/demo")}`}>
-                  Demo
+                  Example test
                 </Link>
-                {/* The /scan page is itself the scan, so the nav CTA there is redundant. */}
+                <Link to="/methodology" className={`navlink ${active("/methodology")}`}>
+                  Methodology
+                </Link>
+                <ConnectShopify className="navlink as-link" label="Shopify app" />
+                {/* The /scan page is itself the test runner, so the nav CTA there is redundant. */}
                 {path !== "/scan" && (
                   <Link to="/scan" className="navlink btn btn-primary">
-                    Run free scan
+                    Run a test
                   </Link>
                 )}
               </nav>

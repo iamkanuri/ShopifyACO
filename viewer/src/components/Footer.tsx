@@ -10,8 +10,8 @@ export function Footer() {
           © {new Date().getFullYear()} {brandName}
         </span>
         <nav className="foot-links">
-          <Link to="/index">Index</Link>
-          <Link to="/demo">Demo</Link>
+          <Link to="/demo">Example test</Link>
+          <Link to="/methodology">Methodology</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <Link to="/support">Support</Link>
@@ -19,8 +19,9 @@ export function Footer() {
         </nav>
       </div>
       <p className="foot-fine">
-        AI answers vary by model, time, prompt, and location. Results are directional market
-        intelligence, not a guarantee of ranking. Not affiliated with any AI provider.
+        AI systems vary by model, prompt, time, and location. AisleLens reports what it tested and
+        what it could verify from your store's own data — it does not predict or guarantee the
+        behavior of any external AI system. Not affiliated with any AI provider.
       </p>
     </footer>
   );

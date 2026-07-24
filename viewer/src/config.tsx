@@ -27,11 +27,11 @@ export interface AppConfig {
 }
 
 const DEFAULTS: AppConfig = {
-  brandName: "AI Visibility",
+  brandName: "AisleLens",
   baseUrl: "",
   contactEmail: "",
-  tagline: "See if AI shoppers recommend your store — or your competitors.",
-  demoNote: "Demo data shown for illustration.",
+  tagline: "Executable shopping tests for your Shopify store — the exact buyer requirement that failed, with evidence.",
+  demoNote: "Example test shown on sample data, for illustration only.",
   plans: [],
   miniPrompts: 5,
   fullReportPrompts: 30,
