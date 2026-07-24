@@ -113,6 +113,14 @@ export async function runStage5(maxProspects = 8): Promise<void> {
     });
     if (rendered >= 5) continue;
 
+    // Only render a case with ≥1 GENUINE evidence gap (Rule 4): a store whose
+    // constraints are all evidenced or merely readable-but-unmet has no
+    // "not stated" finding to make, so we do not render one for it.
+    const genuineGaps = d.findings.filter((f) => f.genuineEvidenceGap);
+    if (genuineGaps.length === 0) {
+      console.log(`[stage5] no genuine evidence gap for ${d.brand} — not rendered (nothing honestly missing)`);
+      continue;
+    }
     const claims = buildStage5Claims(d, d.brand, topCompetitor.brand, topCompetitorMentions);
     const body = renderStage5CaseBody(claims);
     const lint = lintCaseText(body.replace(/<[^>]+>/g, " "), claims);

@@ -32,6 +32,10 @@ const FORBIDDEN_PATTERNS: Array<{ re: RegExp; label: string }> = [
   { re: /\bguarantee(s|d)?\b/i, label: "guarantee claim" },
   { re: /\byou'?ll (get|see|rank|win|earn|recover)\b/i, label: "predictive claim" },
   { re: /\bthis (edit|fix|change) will\b/i, label: "predictive fix claim" },
+  // Rule 4 defensive: never say a store "does not state"/"is missing" a PRICE —
+  // price is always public on a Shopify store, so any price-not-stated claim is
+  // a mis-scoped evidence claim (readable-but-unmet must be excluded upstream).
+  { re: /(does not state|doesn't state|missing|absent|can't verify|cannot verify)[^.]{0,40}\b(price|variant[- ]?price|cost)\b/i, label: "price-is-always-public (mis-scoped evidence claim)" },
 ];
 
 /** Lint rendered case TEXT. `numbers` are every numeric token that MUST be
@@ -60,9 +64,12 @@ export function lintCaseText(text: string, claimsMap: Record<string, Claim>): Li
 export function buildStage5Claims(d: ProspectDiagnostic, storeName: string, competitorName: string, competitorMentions: number): Record<string, Claim> {
   const src = (u: string) => `${u} (fetched ${d.fetchedAt})`;
   const catalogUrl = d.fetchUrls.catalog ?? d.origin;
-  const absentFindings = d.findings.filter((f) => f.scanVerdict === "absent");
+  // Rule 4: ONLY genuine evidence gaps (nothing readable) may be reported as
+  // "not stated". A readable-but-unmet value (e.g. price over the cap) is NOT
+  // an evidence gap — the store states it fine — and is excluded here.
+  const gapFindings = d.findings.filter((f) => f.genuineEvidenceGap);
   const evidencedFindings = d.findings.filter((f) => f.scanVerdict === "evidenced");
-  const missingList = absentFindings.map((f) => f.attribute.replace(/_/g, "-")).join(", ") || "none";
+  const missingList = gapFindings.map((f) => f.attribute.replace(/_/g, "-")).join(", ") || "none";
   const failingJourneys = d.journeyOutcomes.filter((j) => j.outcome === "MISSING_EVIDENCE").length;
 
   return {
