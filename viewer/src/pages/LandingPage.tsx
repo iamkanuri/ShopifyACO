@@ -7,11 +7,14 @@ import { ConnectShopify } from "../components/ConnectShopify";
 // "we ask ChatGPT" above the fold. The interface (assertions, pass/fail, evidence,
 // trace) IS the positioning. See the repositioning deck (AI Commerce QA for Shopify).
 
-/** One assertion row in the test-runner visual. */
-function Assertion({ ok, label, i }: { ok: boolean; label: string; i: number }) {
+/** One assertion row in the test-runner visual. States mirror the real result
+ *  vocabulary: proven (✓) · no blocking evidence (–) · not proven (✕). */
+type HeroState = "proven" | "neutral" | "unproven";
+const HERO_MARK: Record<HeroState, string> = { proven: "✓", neutral: "–", unproven: "✕" };
+function Assertion({ state, label, i }: { state: HeroState; label: string; i: number }) {
   return (
-    <div className={`asrt ${ok ? "asrt-pass" : "asrt-fail"}`} style={{ animationDelay: `${0.15 + i * 0.16}s` }}>
-      <span className="asrt-mark" aria-hidden>{ok ? "✓" : "✕"}</span>
+    <div className={`asrt asrt-${state}`} style={{ animationDelay: `${0.15 + i * 0.16}s` }}>
+      <span className="asrt-mark" aria-hidden>{HERO_MARK[state]}</span>
       <span className="asrt-label">{label}</span>
     </div>
   );
@@ -22,21 +25,21 @@ function Assertion({ ok, label, i }: { ok: boolean; label: string; i: number }) 
  *  a QA tool shows assertions. */
 function TestRunnerCard() {
   return (
-    <div className="testcard" role="img" aria-label="Example AI buyer test result: failed, 1 of 5 requirements unresolved">
+    <div className="testcard" role="img" aria-label="Example Buyer Test result: 1 of 5 requirements could not be proven">
       <div className="testcard-head">
-        <span className="tc-dot" aria-hidden /> AI BUYER TEST · Sensitive-skin travel deodorant
+        <span className="tc-dot" aria-hidden /> BUYER TEST · Sensitive-skin travel deodorant
       </div>
       <div className="testcard-task">
         Task: Find an unscented travel deodorant under $20, baking-soda-free, with no subscription.
       </div>
       <div className="testcard-asrts">
-        <Assertion ok label="Product found" i={0} />
-        <Assertion ok label="Travel variant available" i={1} />
-        <Assertion ok label="Price under $20" i={2} />
-        <Assertion ok={false} label="Baking-soda-free claim — not verifiable" i={3} />
-        <Assertion ok label="One-time purchase available" i={4} />
+        <Assertion state="proven" label="Product found" i={0} />
+        <Assertion state="proven" label="Travel variant available" i={1} />
+        <Assertion state="proven" label="Price under $20" i={2} />
+        <Assertion state="unproven" label="Baking-soda-free — no evidence found" i={3} />
+        <Assertion state="neutral" label="One-time purchase — no blocking evidence" i={4} />
       </div>
-      <div className="testcard-result">RESULT: FAILED — 1 of 5 requirements unresolved</div>
+      <div className="testcard-result">RESULT: 1 of 5 requirements could not be proven</div>
       <div className="testcard-evidence">
         Evidence checked: product copy · product details · variants · structured data
       </div>

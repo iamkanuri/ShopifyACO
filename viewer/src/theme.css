@@ -566,14 +566,14 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .testcard-asrts { display: grid; gap: 7px; }
 .asrt { display: flex; gap: 10px; align-items: baseline; opacity: 0; animation: asrtIn .32s ease forwards; }
 .asrt-mark { font-weight: 800; flex: none; width: 14px; }
-.asrt-pass .asrt-mark { color: var(--good); }
-.asrt-fail .asrt-mark { color: var(--bad); }
-.asrt-fail .asrt-label { color: var(--bad); }
+.asrt-proven .asrt-mark { color: var(--good); }
+.asrt-unproven .asrt-mark, .asrt-unproven .asrt-label { color: var(--bad); }
+.asrt-neutral .asrt-mark, .asrt-neutral .asrt-label { color: var(--ink-2); }
 .asrt-label { color: var(--ink); }
 @keyframes asrtIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 .testcard-result {
   margin: 16px 0 0; padding-top: 14px; border-top: 1px dashed var(--border);
-  font-weight: 700; color: var(--bad); letter-spacing: 0.01em;
+  font-weight: 700; color: var(--ink); letter-spacing: 0.01em;
 }
 .testcard-evidence { margin-top: 10px; font-size: 12px; color: var(--ink-3); }
 .testcard-trace {

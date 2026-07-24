@@ -124,9 +124,9 @@ export function ProductTestPage() {
 
   return (
     <div className="scanpage pt-page">
-      <h1 className="report-headline">AI buyer test</h1>
+      <h1 className="report-headline">Can an AI buyer verify this product?</h1>
       <p className="muted" style={{ marginTop: -6 }}>
-        One product. One buyer task. Pass or fail — with evidence, from your public store data only.
+        One product. One buyer task. Every requirement proven from your public store data — or honestly marked unproven.
       </p>
 
       <form className="hero-form" style={{ margin: "18px 0 8px" }} onSubmit={submit}>

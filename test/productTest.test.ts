@@ -185,6 +185,67 @@ test("buildBuyerTask: 4–6 requirements across surface types; category-aware cl
   assert.ok(soap.requirements.some((r) => r.claim === "fragrance_free"), "soap → skincare claims");
 });
 
+// ---- 10. the claim linter blocks overclaims in any rendered string ----------
+
+test("10. claim linter blocks product-truth, ranking, revenue, causal and predictive phrasing", async () => {
+  const { lintText, lintStrings } = await import("../src/server/claimLinter.js");
+
+  // Compliant, evidence-availability-scoped copy passes.
+  for (const good of [
+    "Checked product copy, structured data and variant options — no statement an AI buyer could verify.",
+    "Stated in your product copy.",
+    "Nothing in your public product data requires a subscription. This is the absence of a blocker, not a stated one-time-purchase option.",
+    "Lowest readable price is $23.00, at or above the $20 requirement.",
+    "Your shipping policy isn't publicly inspectable per-product — confirming this needs store access.",
+  ]) {
+    assert.equal(lintText(good).ok, true, `should pass: ${good} → ${lintText(good).violations.map((v) => v.rule).join(",")}`);
+  }
+
+  // Each forbidden family is caught.
+  const bad: Array<[string, string]> = [
+    ["Your product is not aluminum-free.", "product-truth"],
+    ["Your formula lacks a verifiable claim.", "product-truth"],
+    ["You are losing $4,200 per month to competitors.", "revenue-loss"],
+    ["Fixing this will increase your sales.", "revenue-promise"],
+    ["Add this and you'll rank higher in AI answers.", "ranking-prediction"],
+    ["This fix will improve your visibility.", "predictive"],
+    ["We guarantee more recommendations.", "guarantee"],
+    ["Your store does not state the price.", "price-is-always-public"],
+    ["Missing metafields on this product.", "not-inspectable-mislabeled"],
+  ];
+  for (const [text, rule] of bad) {
+    const r = lintText(text);
+    assert.equal(r.ok, false, `should block: ${text}`);
+    assert.ok(r.violations.some((v) => v.rule === rule), `${text} → expected ${rule}, got ${r.violations.map((v) => v.rule).join(",")}`);
+  }
+
+  // lintStrings aggregates and ignores empty slots.
+  assert.equal(lintStrings([null, undefined, "Stated in your product copy."]).ok, true);
+  assert.equal(lintStrings(["fine", "This fix will boost conversions."]).ok, false);
+});
+
+test("10b. a non-compliant result is NOT rendered (the linter is a blocking gate)", async () => {
+  // A product whose own copy would produce a forbidden rendered string: the claim
+  // label is injected via the product title path used by the task summary.
+  const html = JSON.stringify({
+    product: {
+      title: "Rank Higher Serum", vendor: "Acme", product_type: "you'll rank higher serum", tags: "",
+      body_html: "<p>A serum.</p>", options: [], variants: [{ title: "Default", price: "10.00" }],
+    },
+  });
+  const res = await runProductTest("https://s.example/products/x", {
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    fetchUrl: async (url) =>
+      url.endsWith(".json")
+        ? { status: 200, contentType: "application/json", body: html }
+        : { status: 404, contentType: "text/html", body: "" },
+  });
+  // The task summary embeds product_type → "…rank higher…" trips the linter.
+  assert.equal(res.ok, false, "a result containing a forbidden phrase is refused");
+  assert.match(res.error ?? "", /reporting standard/i, "the refusal is honest, not a crash");
+  assert.equal(res.assertions.length, 0, "nothing is rendered");
+});
+
 test("findSupport only reads product surfaces (chrome is not in the index at all)", () => {
   const ev = buildEvidence([
     { surface: "product_description", text: "A gentle bar." },

@@ -7,6 +7,7 @@ import {
   buildEvidence, findSupport, findTimingSupport, normalize,
   SURFACE_LABEL, type EvidenceSentence, type QuotableSurface,
 } from "./testEvidence.js";
+import { lintStrings } from "./claimLinter.js";
 
 // ===========================================================================
 // PHASE B — the BUYER TEST (the funnel mechanic behind the reposition).
@@ -444,6 +445,25 @@ export async function runProductTest(url: string, deps: FetchDeps = {}): Promise
     notInspectable.push("full shipping & returns policy");
   }
   const firstGap = assertions.find((a) => a.status === "not_proven" && requirements.find((r) => r.label === a.label)?.kind === "claim");
+  const suggestedCorrection = firstGap
+    ? `Confirm whether this product is ${firstGap.label.toLowerCase()}. If it is, state it in a product field and in customer-readable copy so an AI buyer can verify it.`
+    : null;
+
+  // BLOCKING honesty gate: every merchant-visible string must clear the claim
+  // linter. A result that can't meet the standard is not rendered (§7.10) — a
+  // copy regression fails loudly here rather than shipping an overclaim.
+  const lint = lintStrings([
+    summary, suggestedCorrection,
+    ...assertions.flatMap((a) => [a.label, a.detail, a.evidenceQuote]),
+  ]);
+  if (!lint.ok) {
+    console.error(`[product-test] result BLOCKED by claim linter: ${lint.violations.map((v) => `${v.rule}: "${v.excerpt}"`).join(" | ")}`);
+    return {
+      ...base,
+      error: "We couldn't produce a result that meets our reporting standard for this product.",
+      errorKind: "unreachable",
+    };
+  }
 
   return {
     ok: true, productUrl: url,
@@ -456,8 +476,6 @@ export async function runProductTest(url: string, deps: FetchDeps = {}): Promise
     total: assertions.length,
     surfacesChecked: textSurfaces(product),
     notInspectable,
-    suggestedCorrection: firstGap
-      ? `Confirm whether this product is ${firstGap.label.toLowerCase()}. If it is, state it in a product field and in customer-readable copy so an AI buyer can verify it.`
-      : null,
+    suggestedCorrection,
   };
 }
