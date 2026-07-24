@@ -149,7 +149,7 @@ export function jsonLdProductDescription(html: string): string | null {
 
 export interface FetchDeps {
   /** `extraContentTypes` is an opt-in, per-call widening (the `.js` endpoint only). */
-  fetchUrl?: (url: string, extraContentTypes?: RegExp[]) => Promise<{ status: number; contentType: string | null; body: string }>;
+  fetchUrl?: (url: string, extraContentTypes?: RegExp[]) => Promise<{ status: number; contentType: string | null; body: string; finalUrl?: string }>;
   loadRobots?: (origin: string) => Promise<RobotsPolicy>;
   /** Injectable clock — cache/throttle windows are testable without real time. */
   now?: () => number;
@@ -157,7 +157,7 @@ export interface FetchDeps {
 
 const defaultFetchUrl: NonNullable<FetchDeps["fetchUrl"]> = async (url, extraContentTypes) => {
   const r = await safeFetch(url, extraContentTypes ? { ...LIMITS, extraContentTypes } : LIMITS);
-  return { status: r.status, contentType: r.contentType, body: r.body };
+  return { status: r.status, contentType: r.contentType, body: r.body, finalUrl: r.finalUrl };
 };
 
 /** Fetch a product's PUBLIC data: /products/{handle}.json (structured) + the HTML
@@ -189,12 +189,23 @@ export async function fetchPublicProduct(
     return rawFetch(url, extraContentTypes);
   };
 
-  // robots.txt: once per host per hour, shared across all users.
+  // robots.txt: once per host per hour, shared across all users. Its redirect also
+  // reveals the store's CANONICAL host — merchants paste apex URLs
+  // (`store.com/products/x`) while the storefront serves `www.store.com`, and some
+  // apex hosts throttle or refuse what the canonical host answers fine. Following it
+  // turns an avoidable "rate limited" into a real result.
+  let canonicalOrigin = origin;
   const getRobots = deps.loadRobots ?? (async (o: string) => {
     const cached = getCachedRobots<RobotsPolicy>(o, deps);
     if (cached) return cached;
     try {
       const r = await fetchUrl(`${o}/robots.txt`);
+      if (r.finalUrl) {
+        try {
+          const f = new URL(r.finalUrl);
+          if (f.host.toLowerCase() !== new URL(o).host.toLowerCase()) canonicalOrigin = `${f.protocol}//${f.host}`;
+        } catch { /* keep the requested origin */ }
+      }
       const policy: RobotsPolicy = r.status === 200 ? parseRobots(r.body) : { rules: [], fetched: false };
       storeRobots(o, policy, deps);
       return policy;
@@ -214,7 +225,7 @@ export async function fetchPublicProduct(
   let sawNonJson = false;
   if (isAllowedByRobots(robots, jsonPath)) {
     try {
-      const r = await fetchUrl(`${origin}${jsonPath}`);
+      const r = await fetchUrl(`${canonicalOrigin}${jsonPath}`);
       if (r.status === 429 || r.status === 403) sawRateLimit = true;
       else if (r.status === 404) saw404 = true;
       else if (r.status === 200 && /json/i.test(r.contentType ?? "")) {
@@ -230,7 +241,7 @@ export async function fetchPublicProduct(
   const needPage = !js || !js.body_html;
   if (needPage && isAllowedByRobots(robots, pagePath)) {
     try {
-      const r = await fetchUrl(`${origin}${pagePath}`);
+      const r = await fetchUrl(`${canonicalOrigin}${pagePath}`);
       if (r.status === 429 || r.status === 403) sawRateLimit = true;
       else if (r.status === 404) saw404 = true;
       else if (r.status === 200 && /html/i.test(r.contentType ?? "")) {
@@ -259,7 +270,7 @@ export async function fetchPublicProduct(
       try {
         // Shopify serves this JSON as `text/javascript`; the allowance is scoped to
         // THIS call only (safeFetch's default allowlist is unchanged).
-        const r = await fetchUrl(`${origin}${dotJsPath}`, [/^text\/javascript/i, /^application\/javascript/i]);
+        const r = await fetchUrl(`${canonicalOrigin}${dotJsPath}`, [/^text\/javascript/i, /^application\/javascript/i]);
         if (r.status === 200 && /javascript|json/i.test(r.contentType ?? "")) {
           const dotJs = JSON.parse(r.body) as ShopifyProductJson;
           if (dotJs && Array.isArray(dotJs.variants)) {
@@ -296,7 +307,7 @@ export async function fetchPublicProduct(
 
   return {
     product: {
-      origin, handle, title: js?.title ?? ld?.name ?? extracted?.title ?? null,
+      origin: canonicalOrigin, handle, title: js?.title ?? ld?.name ?? extracted?.title ?? null,
       vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? null, tags,
       descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,

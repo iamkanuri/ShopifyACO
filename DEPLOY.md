@@ -1,5 +1,76 @@
 # DEPLOY.md — ShopifyACO (Railway, single service)
 
+---
+
+# ▶ RELEASE: "AI Commerce QA" repositioning + the Buyer Test
+
+**Branch:** `feat/phase-b-v1-1` · **Base:** `main` (fast-forward, no merge commit)
+**Carries:** the public repositioning · Phase B (the Buyer Test) · the hardening ·
+v1.1 (headline math, recovered surfaces, task ranking, semantic tier).
+
+Nothing in this release is deployed until you run the push below.
+
+## 1. Merge + push (run these yourself)
+
+```bash
+git checkout main
+git merge --ff-only feat/phase-b-v1-1     # must fast-forward; if it refuses, STOP and re-check
+git push origin main                       # Railway auto-builds (npm run build) + deploys
+```
+
+## 2. Set / confirm these Railway variables
+
+| Variable | Value | Why |
+|---|---|---|
+| `PUBLIC_BRAND_NAME` | `AisleLens` | public name (never "Shopify…") |
+| `PUBLIC_BASE_URL` | `https://lens.thirdocular.com` | OG/share URLs |
+| `OPENAI_API_KEY` | (already set) | powers the semantic tier (~$0.001/test) |
+| `PRODUCT_TEST_SEMANTIC` | *unset* (or `0` to kill) | `0` disables the semantic tier without a redeploy |
+| `AGENTIC_INSTRUMENT_TEST_ENABLED` | **leave unset** | keeps the experiment routes off in production |
+| `HOSTED_CASES_DIR` | **leave unset** | keeps `/c/:token` inert |
+
+## 3. Post-deploy verification (in order)
+
+1. **`/healthz`** → `ok:true` and `commit` matches the SHA you just pushed.
+2. **Hard-refresh** `https://lens.thirdocular.com/` (Cmd/Ctrl-Shift-R) — the hero must read
+   *"AI buyers treat your store like an API. We test it like one."* with the terminal-style
+   pass/fail card. Tab title: *"AisleLens — AI Commerce QA for Shopify"*.
+3. **Run one Buyer Test on production**: paste a real Shopify product URL at `/test`.
+   Confirm the assertion table renders, the headline counts only unproven rows, and every
+   green **Proven** row shows a quote that plainly supports it. *If any Pass isn't plainly
+   supported by its quote, roll back (§4) — that is the one unrecoverable failure mode.*
+4. **OG image + title**: view-source on `/` → `og:image` = `/og-image.svg`,
+   `og:title` = the hero line. Open the SVG directly; it must say *AI Commerce QA for Shopify*.
+5. **Re-scrape the social card once** (platforms cache aggressively):
+   LinkedIn Post Inspector <https://www.linkedin.com/post-inspector/> and
+   X Card Validator — paste `https://lens.thirdocular.com/` and force a refresh.
+6. **Spot-check the legacy surfaces**: an old `/report/<id>` link still loads, and its share
+   title says *"AI buyer readiness"* (not "AI Visibility Score"). `/methodology` renders.
+
+## 4. Rollback
+
+```bash
+# Fastest: Railway → Deployments → previous green deploy → Redeploy.
+# Or by commit:
+git revert --no-edit <the-merge-or-head-sha>
+git push origin main
+```
+Migrations are unchanged by this release, so a code rollback is complete and safe.
+The kill switches (no redeploy needed): `PRODUCT_TEST_SEMANTIC=0` disables the semantic
+tier; `DAILY_SPEND_CAP_USD=0` halts all live scan spend.
+
+## 5. Known production risk (watch this)
+
+Shopify applies a **per-IP** rate limit (`local_rate_limited`) to storefront
+`/products/*` endpoints, across all stores. Every Buyer Test originates from one Railway
+IP, so heavy usage can trigger it store-agnostically. Mitigations already shipped: a 24h
+per-URL result cache, ≤1 request/2s and ≤10/hour per host, robots cached hourly, and an
+honest user-facing message when it happens ("This store is limiting automated requests
+right now"). If tests start failing broadly, check the `product_test` log lines for
+`errorKind:"rate_limited"` before suspecting the engine.
+
+---
+
 One Railway service runs **everything**: the Express API **and** the built React
 viewer (static files) from the same process. No Vercel, no CORS, no second service.
 
