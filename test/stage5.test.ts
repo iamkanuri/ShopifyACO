@@ -155,6 +155,90 @@ test("50. rendered Stage 5 case has no orphan claim placeholders", async () => {
   assert.throws(() => renderStage5Case(broken, { modelsUsed: "x", provenanceUrls: [], fetchedAt: "t" }), /orphan claim/);
 });
 
+// ---- 51. winner-contrast: verbatim quotes, both directions, linter-clean ---
+
+test("51. winner-contrast scans the leader with the same contract, quotes verbatim", async () => {
+  const { buildSnapshot } = await import("../src/agentic-test/snapshot-service.js");
+  const { deodorantAluminumFreeContract } = await import("../src/agentic-test/categories/deodorant/contracts.js");
+  const { diagnoseProspect, scanWinnerEvidenceMap, buildWinnerContrast, focusedEvidenceQuote } =
+    await import("../src/agentic-test/stage5-diagnose.js");
+
+  const mk = (desc: string, price: number) => {
+    const product = {
+      productId: "gid://public/1", handle: "p", title: "Natural Deodorant", description: desc,
+      vendor: "X", productType: "Deodorant", tags: [], status: "ACTIVE", metafields: [],
+      variants: [{ variantId: "v1", title: "Default", sku: null, price, available: true, options: [] }],
+    };
+    const snap = buildSnapshot("host", "public-v1", [product], [], [], "", "2026-07-24T00:00:00Z", []);
+    return { ...snap, provenance: "public" as const, surfacesNotInspectable: ["product_metafields", "structured_data", "faq", "shipping_policy", "returns_policy"] as never };
+  };
+
+  // WINNER states aluminum-free + one-time purchase; PROSPECT states neither and prices over the cap.
+  const winnerSnap = { ...mk("Aluminum-free. One-time purchase, no subscription.", 12), shopId: "https://winner.example" };
+  const prospectSnap = { ...mk("A gentle natural deodorant for daily use.", 25), shopId: "https://prospect.example" };
+
+  const winnerMap = scanWinnerEvidenceMap(winnerSnap, deodorantAluminumFreeContract);
+  assert.equal(winnerMap.aluminum_free!.evidences, true, "winner evidences aluminum_free");
+  assert.equal(winnerMap.subscription_required!.evidences, true, "winner evidences one-time purchase");
+  // The quote is a VERBATIM substring of the winner's description (never paraphrased).
+  assert.ok(winnerSnap.products[0]!.description!.includes(winnerMap.subscription_required!.quote!.replace(/…$/, "")), "quote is verbatim");
+  assert.ok(/[a-z]/i.test(winnerMap.subscription_required!.quote!), "quote is text, not a JSON blob");
+
+  const prospect = await diagnoseProspect({
+    snapshot: prospectSnap,
+    contract: deodorantAluminumFreeContract,
+    battery: { brandMentions: 2, channels: ["openai"], batteryTotal: 90 },
+    topCompetitorMentions: 43,
+    runJourneys: async () => [],
+  });
+  const gapAttrs = prospect.findings.filter((f) => f.genuineEvidenceGap).map((f) => f.attribute);
+  assert.ok(gapAttrs.includes("aluminum_free") && gapAttrs.includes("subscription_required"), `gaps: ${gapAttrs.join(",")}`);
+  assert.ok(!gapAttrs.includes("variant_price"), "price over cap is readable-but-unmet, NOT a gap (Rule 4)");
+
+  const contrast = buildWinnerContrast(prospect, winnerMap, { brand: "Leader", mentions: 43, origin: "https://winner.example" });
+  assert.equal(contrast.distinct, true);
+  assert.ok(contrast.facts.every((f) => f.winnerEvidences), "leader evidences every prospect gap");
+
+  // focusedEvidenceQuote always returns a verbatim substring.
+  const src = "First. Aluminum-free and gentle, made without baking soda. Third sentence here.";
+  assert.ok(src.includes(focusedEvidenceQuote(src, "aluminum_free")), "focused quote is a substring");
+});
+
+test("52. winner-contrast render is linter-clean in both directions and self-suppresses", async () => {
+  const { buildStage5Claims, renderWinnerContrast, renderStage5CaseBody, lintCaseText } =
+    await import("../src/agentic-test/stage5-case.js");
+  const diag = {
+    origin: "https://store.example", productHandle: "p", contractId: "cat-deodorant-aluminum-free", provenance: "public" as const,
+    surfacesNotInspectable: ["product_metafields", "faq"], demotedConstraints: [],
+    findings: [
+      { id: "x1aluminumfree", attribute: "aluminum_free", scanVerdict: "absent" as const, evidence: [], journeyStatuses: ["unresolvable"], readableButUnmet: false, genuineEvidenceGap: true },
+      { id: "x3subscriptionrequired", attribute: "subscription_required", scanVerdict: "absent" as const, evidence: [], journeyStatuses: ["unresolvable"], readableButUnmet: false, genuineEvidenceGap: true },
+    ],
+    journeyOutcomes: [{ provider: "openai", trial: 1, outcome: "MISSING_EVIDENCE", coverageRatio: 1 }],
+    battery: { brandMentions: 4, channels: ["openai"], batteryTotal: 90 }, fetchUrls: { catalog: "https://store.example/products.json" },
+    fetchedAt: "2026-07-24T00:00:00Z", severity: 15,
+  };
+  // Mixed: leader STATES aluminum-free (quote), and does NOT state one-time (open advantage).
+  const contrast = {
+    brand: "Rival", mentions: 43, distinct: true,
+    facts: [
+      { attribute: "aluminum_free", winnerEvidences: true, winnerQuote: "Aluminum-free and gentle on skin", winnerSurface: "product_description" },
+      { attribute: "subscription_required", winnerEvidences: false },
+    ],
+  };
+  const claims = buildStage5Claims(diag, "Example Store", "Rival", 43, contrast);
+  const contrastHtml = renderWinnerContrast(contrast, claims);
+  assert.ok(/open advantage/.test(contrastHtml), "not-evidenced path renders the open-advantage sentence");
+  assert.ok(/Aluminum-free and gentle/.test(contrastHtml), "evidenced path renders the verbatim quote");
+  const body = renderStage5CaseBody(claims, { contrastHtml });
+  const lint = lintCaseText(body.replace(/<[^>]+>/g, " "), claims);
+  assert.equal(lint.ok, true, "contrast body passes the linter: " + lint.violations.map((v) => `${v.pattern}:${v.excerpt}`).join(" | "));
+
+  // A store can't be contrasted with itself: distinct=false → empty block.
+  assert.equal(renderWinnerContrast({ ...contrast, distinct: false }, claims), "", "self-contrast suppressed");
+  assert.equal(renderWinnerContrast(undefined, claims), "", "no contrast → empty");
+});
+
 // ---- 46. not_inspectable surfaces never render as failures or as absent ----
 
 test("46. not_inspectable surfaces are demoted to observational, never failures", async () => {

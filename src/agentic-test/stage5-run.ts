@@ -7,8 +7,8 @@ import { buildPublicSnapshot } from "./public-catalog.js";
 import { classifyProspects, extractBrandDomains } from "./prospect-finder.js";
 import { loadStage5Battery, STAGE5_CATEGORY_KEYWORDS } from "./stage5-battery.js";
 import { deodorantAluminumFreeContract } from "./categories/deodorant/contracts.js";
-import { diagnoseProspect, type ProspectDiagnostic } from "./stage5-diagnose.js";
-import { buildStage5Claims, lintCaseText, renderStage5Case, renderStage5CaseBody, renderStage5Plain } from "./stage5-case.js";
+import { diagnoseProspect, scanWinnerEvidenceMap, buildWinnerContrast, type ProspectDiagnostic, type WinnerAttributeEvidence } from "./stage5-diagnose.js";
+import { buildStage5Claims, lintCaseText, renderWinnerContrast, renderStage5Case, renderStage5CaseBody, renderStage5Plain } from "./stage5-case.js";
 import type { JourneyResult, ShoppingTaskContract, StoreSnapshot } from "./types.js";
 
 // ===========================================================================
@@ -73,6 +73,12 @@ export async function runStage5(maxProspects = 8): Promise<void> {
     const r = await buildPublicSnapshot({ fetcher, origin: w.origin, categoryKeywords: STAGE5_CATEGORY_KEYWORDS, wantStructuredData: true });
     if (r.snapshot) winnerSnaps.set(w.brand, r.snapshot);
   }
+  // Stage 6.1: the reference winner's per-attribute evidence availability, scanned
+  // ONCE with the same bound contract, for the winner-contrast block.
+  const refWinner = classification.winners[0];
+  const refWinnerSnap = refWinner ? winnerSnaps.get(refWinner.brand) : undefined;
+  const winnerMap: Record<string, WinnerAttributeEvidence> = refWinnerSnap ? scanWinnerEvidenceMap(refWinnerSnap, contractBase) : {};
+  if (refWinner) console.log(`[stage5] winner-contrast reference: ${refWinner.brand} — evidences ${Object.entries(winnerMap).filter(([, v]) => v.evidences).map(([k]) => k).join(",") || "none"}`);
 
   // Diagnose candidates (+ any winners beyond the reference, for volume).
   const toDiagnose = [...classification.candidates, ...classification.winners.slice(1)].slice(0, maxProspects);
@@ -121,21 +127,23 @@ export async function runStage5(maxProspects = 8): Promise<void> {
       console.log(`[stage5] no genuine evidence gap for ${d.brand} — not rendered (nothing honestly missing)`);
       continue;
     }
-    const claims = buildStage5Claims(d, d.brand, topCompetitor.brand, topCompetitorMentions);
-    const body = renderStage5CaseBody(claims);
+    const contrast = refWinner ? buildWinnerContrast(d, winnerMap, { brand: refWinner.brand, mentions: topCompetitorMentions, origin: refWinner.origin }) : undefined;
+    const claims = buildStage5Claims(d, d.brand, topCompetitor.brand, topCompetitorMentions, contrast);
+    const contrastHtml = renderWinnerContrast(contrast, claims);
+    const body = renderStage5CaseBody(claims, { contrastHtml });
     const lint = lintCaseText(body.replace(/<[^>]+>/g, " "), claims);
     if (!lint.ok) {
       console.log(`[stage5] case for ${d.brand} BLOCKED by linter: ${lint.violations.map((v) => v.pattern).join(", ")}`);
       continue;
     }
     const provenanceUrls = Object.values(d.fetchUrls);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>AI visibility — ${d.brand}</title><style>body{font-family:system-ui;max-width:680px;margin:2rem auto;padding:0 1rem;line-height:1.6}h2{color:#0f766e;border-top:1px solid #e5e9ee;padding-top:1em;font-size:1rem}.disclosure{background:#fffbe8;border:1px solid #f2e2a0;padding:.7rem;border-radius:8px;font-size:.9rem}.prov{color:#5b6673;font-size:.8rem}blockquote{border-left:3px solid #0f766e;padding-left:.8rem;color:#333}</style></head><body>${renderStage5Case(claims, { modelsUsed: "gpt-5.4-mini, gemini-2.5-flash", provenanceUrls, fetchedAt: d.fetchedAt })}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>AI visibility — ${d.brand}</title><style>body{font-family:system-ui;max-width:680px;margin:2rem auto;padding:0 1rem;line-height:1.6}h2{color:#0f766e;border-top:1px solid #e5e9ee;padding-top:1em;font-size:1rem}.disclosure{background:#fffbe8;border:1px solid #f2e2a0;padding:.7rem;border-radius:8px;font-size:.9rem}.prov{color:#5b6673;font-size:.8rem}blockquote{border-left:3px solid #0f766e;padding-left:.8rem;color:#333}ul{padding-left:1.1rem}li{margin:.35rem 0}</style></head><body>${renderStage5Case(claims, { modelsUsed: "gpt-5.4-mini, gemini-2.5-flash", provenanceUrls, fetchedAt: d.fetchedAt, contrastHtml })}</body></html>`;
     const dir = join(CASES, slug(d.origin));
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), html, "utf8");
     writeFileSync(join(dir, "claims-map.json"), JSON.stringify(claims, null, 2), "utf8");
-    writeFileSync(join(dir, "provenance.json"), JSON.stringify({ origin: d.origin, fetchUrls: d.fetchUrls, fetchedAt: d.fetchedAt, models: ["gpt-5.4-mini", "gemini-2.5-flash"], notInspectable: d.surfacesNotInspectable }, null, 2), "utf8");
-    writeFileSync(join(dir, "message.txt"), renderStage5Plain(claims, { provenanceUrls, fetchedAt: d.fetchedAt }), "utf8");
+    writeFileSync(join(dir, "provenance.json"), JSON.stringify({ origin: d.origin, fetchUrls: d.fetchUrls, fetchedAt: d.fetchedAt, models: ["gpt-5.4-mini", "gemini-2.5-flash"], notInspectable: d.surfacesNotInspectable, winnerContrast: contrast ?? null }, null, 2), "utf8");
+    writeFileSync(join(dir, "message.txt"), renderStage5Plain(claims, { provenanceUrls, fetchedAt: d.fetchedAt, contrast }), "utf8");
     rendered++;
     const absent = d.findings.filter((f) => f.scanVerdict === "absent").map((f) => f.attribute.replace(/_/g, "-"));
     summaryLines.push(`- **${d.brand}** (severity ${d.severity}): public store can't evidence ${absent.join(", ") || "the tested claims"}; ${topCompetitor.brand} recommended ${topCompetitorMentions}× in the battery.`);

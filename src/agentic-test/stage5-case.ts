@@ -1,5 +1,5 @@
 import type { Claim } from "./case-render.js";
-import type { ProspectDiagnostic } from "./stage5-diagnose.js";
+import type { ProspectDiagnostic, WinnerContrast } from "./stage5-diagnose.js";
 
 // ===========================================================================
 // STAGE 5 — real-store case renderer + CLAIM LINTER (spec 4.6). The linter is
@@ -59,9 +59,44 @@ export function lintCaseText(text: string, claimsMap: Record<string, Claim>): Li
   return { ok: violations.length === 0, violations };
 }
 
+// ---- human-readable labels (evidence-availability phrasing only) -----------
+
+/** Neutral, evidence-availability phrasing for an attribute. Never a product-
+ *  truth claim — always "state that …" framing the linter accepts. */
+const ATTR_LABEL: Record<string, string> = {
+  subscription_required: "that it's a one-time purchase (not a subscription)",
+  aluminum_free: "that it's aluminum-free",
+  baking_soda_free: "that it's baking-soda-free",
+  vegan: "that it's vegan",
+  fragrance_free: "that it's fragrance-free / unscented",
+  tallow_free: "that it's tallow-free",
+  single_origin: "that it's single-origin",
+  organic: "that it's organic",
+  roast_date_disclosed: "when it was roasted (roast date / roasted-to-order)",
+  decaf_method_disclosed: "how it's decaffeinated (the decaf process)",
+  variant_price: "its price",
+};
+export function attrLabel(a: string): string {
+  return ATTR_LABEL[a] ?? a.replace(/_/g, " ");
+}
+const SURFACE_LABEL: Record<string, string> = {
+  product_description: "product description",
+  structured_data: "structured data",
+  product_title: "product title",
+  faq: "FAQ",
+};
+const surfaceLabel = (s?: string) => (s ? SURFACE_LABEL[s] ?? s.replace(/_/g, " ") : "public product data");
+const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 // ---- claims map (all numbers/quotes trace to the diagnostic) ---------------
 
-export function buildStage5Claims(d: ProspectDiagnostic, storeName: string, competitorName: string, competitorMentions: number): Record<string, Claim> {
+export function buildStage5Claims(
+  d: ProspectDiagnostic,
+  storeName: string,
+  competitorName: string,
+  competitorMentions: number,
+  winnerContrast?: WinnerContrast,
+): Record<string, Claim> {
   const src = (u: string) => `${u} (fetched ${d.fetchedAt})`;
   const catalogUrl = d.fetchUrls.catalog ?? d.origin;
   // Rule 4: ONLY genuine evidence gaps (nothing readable) may be reported as
@@ -72,7 +107,21 @@ export function buildStage5Claims(d: ProspectDiagnostic, storeName: string, comp
   const missingList = gapFindings.map((f) => f.attribute.replace(/_/g, "-")).join(", ") || "none";
   const failingJourneys = d.journeyOutcomes.filter((j) => j.outcome === "MISSING_EVIDENCE").length;
 
+  // Stage 6.1: register the winner's verbatim quotes as claims so any numbers
+  // they contain are SOURCED (the linter blocks unsourced figures). Provenance
+  // cites the winner's own public page.
+  const winnerClaims: Record<string, Claim> = {};
+  for (const [i, f] of (winnerContrast?.facts ?? []).entries()) {
+    if (f.winnerEvidences && f.winnerQuote) {
+      winnerClaims[`winnerQuote${i}`] = {
+        value: f.winnerQuote,
+        source: `Store Diagnostic Scan over ${competitorName}'s public ${f.winnerSurface ?? "product data"} (verbatim quote)`,
+      };
+    }
+  }
+
   return {
+    ...winnerClaims,
     storeName: { value: storeName, source: src(catalogUrl) },
     competitorName: { value: competitorName, source: "battery.jsonl (deterministic brand extraction over probe responses)" },
     competitorMentions: { value: String(competitorMentions), source: "battery.jsonl (brand mention count across channels)" },
@@ -89,11 +138,40 @@ export function buildStage5Claims(d: ProspectDiagnostic, storeName: string, comp
 
 // ---- renderer (public-data variant of the Stage 4 case) --------------------
 
+/** Render the Stage 6.1 winner-contrast block (evidence-availability, both
+ *  directions). Returns "" when there is no distinct winner or no gap to
+ *  contrast. Every sentence is claim-lintable; quotes are verbatim + escaped. */
+export function renderWinnerContrast(contrast: WinnerContrast | undefined, claims: Record<string, Claim>): string {
+  if (!contrast || !contrast.distinct || contrast.facts.length === 0) return "";
+  const name = escHtml(claims.competitorName?.value ?? contrast.brand);
+  const mentions = claims.competitorMentions?.value ?? String(contrast.mentions);
+  const items: string[] = [];
+  for (const f of contrast.facts) {
+    const label = attrLabel(f.attribute);
+    if (f.winnerEvidences && f.winnerQuote) {
+      items.push(
+        `<li><b>${name}</b> — recommended ${mentions} times in our test — states ${label} in its public ${surfaceLabel(f.winnerSurface)}: <i>“${escHtml(f.winnerQuote)}”</i>. Your public store doesn't state it anywhere an AI assistant can read.</li>`,
+      );
+    } else if (f.winnerEvidences) {
+      items.push(
+        `<li><b>${name}</b> — recommended ${mentions} times in our test — states ${label} in its public ${surfaceLabel(f.winnerSurface)}. Your public store doesn't state it anywhere an AI assistant can read.</li>`,
+      );
+    } else {
+      items.push(
+        `<li>Even <b>${name}</b>, the most-recommended store in our test, doesn't state ${label} in a form an AI assistant can verify — so stating it is an open advantage.</li>`,
+      );
+    }
+  }
+  return `\n<h2>3 · How the category leader compares</h2>\n<p>Same test, run on the public data of the store AI assistants recommend most:</p>\n<ul>\n${items.join("\n")}\n</ul>\n`;
+}
+
 /** The merchant-facing case BODY (states) — this is what the claim linter
  *  gates. Provenance metadata (URLs, timestamp, model versions) is appended
  *  separately by renderStage5Case and is NOT claim-linted (it is factual
- *  provenance, not a claim, and legitimately contains version/date numbers). */
-export function renderStage5CaseBody(claims: Record<string, Claim>): string {
+ *  provenance, not a claim, and legitimately contains version/date numbers).
+ *  `opts.contrastHtml` (Stage 6.1) is spliced in as section 3 and IS linted
+ *  with the body (its quotes are registered as claims by buildStage5Claims). */
+export function renderStage5CaseBody(claims: Record<string, Claim>, opts: { contrastHtml?: string } = {}): string {
   const resolve = (t: string) =>
     t.replace(/\{\{(\w+)\}\}/g, (_, k: string) => {
       const c = claims[k];
@@ -108,7 +186,7 @@ export function renderStage5CaseBody(claims: Record<string, Claim>): string {
 
 <h2>2 · The test we ran</h2>
 <p>We built a shopping test from those questions and ran it against your public store data: can an AI assistant confirm the things shoppers asked for — {{evidencedList}}, and {{missingEvidence}}?</p>
-
+${opts.contrastHtml ?? ""}
 <h2>4 · We shopped your store the way an AI does</h2>
 <p>{{journeyCount}} automated shopping attempts across 2 AI models, using only {{inspectedSurfaces}}.</p>
 
@@ -139,19 +217,40 @@ export function renderProvenanceFooter(opts: { modelsUsed: string; provenanceUrl
   return `<footer class="prov"><hr><p>Data source: ${opts.provenanceUrls.map((u) => `<code>${u}</code>`).join(", ")} · fetched ${opts.fetchedAt} · models: ${opts.modelsUsed}. This diagnostic uses only your publicly available store data.</p></footer>`;
 }
 
-export function renderStage5Case(claims: Record<string, Claim>, opts: { modelsUsed: string; provenanceUrls: string[]; fetchedAt: string }): string {
-  return renderStage5CaseBody(claims) + renderProvenanceFooter(opts);
+export function renderStage5Case(
+  claims: Record<string, Claim>,
+  opts: { modelsUsed: string; provenanceUrls: string[]; fetchedAt: string; contrastHtml?: string },
+): string {
+  return renderStage5CaseBody(claims, { contrastHtml: opts.contrastHtml }) + renderProvenanceFooter(opts);
+}
+
+/** One-line plain-text contrast sentences (for message.txt), same asymmetry as
+ *  the HTML block: evidenced → quote; not-evidenced → open-advantage. */
+export function renderWinnerContrastPlain(contrast: WinnerContrast | undefined, claims: Record<string, Claim>): string[] {
+  if (!contrast || !contrast.distinct || contrast.facts.length === 0) return [];
+  const name = claims.competitorName?.value ?? contrast.brand;
+  const mentions = claims.competitorMentions?.value ?? String(contrast.mentions);
+  return contrast.facts.map((f) =>
+    f.winnerEvidences
+      ? `${name} (recommended ${mentions}× in our test) states ${attrLabel(f.attribute)}${f.winnerQuote ? `: "${f.winnerQuote}"` : ""} — your public store doesn't.`
+      : `Even ${name}, the most-recommended store in our test, doesn't state ${attrLabel(f.attribute)} — stating it is an open advantage.`,
+  );
 }
 
 /** Plain-text (message-pasteable) version. */
-export function renderStage5Plain(claims: Record<string, Claim>, opts: { provenanceUrls: string[]; fetchedAt: string }): string {
+export function renderStage5Plain(
+  claims: Record<string, Claim>,
+  opts: { provenanceUrls: string[]; fetchedAt: string; contrast?: WinnerContrast },
+): string {
   const c = (k: string) => claims[k]?.value ?? "";
+  const contrastLines = renderWinnerContrastPlain(opts.contrast, claims);
   return [
     `AI shopping visibility — ${c("storeName")}`,
     ``,
     `We asked AI assistants ${c("batteryTotal")} shopping questions in your category. Your store appeared in ${c("storeAppearances")}. ${c("competitorName")} was recommended ${c("competitorMentions")} times.`,
     ``,
     `Running an AI shopping test against your PUBLIC store data (${c("journeyCount")} attempts, 2 models): ${c("failingJourneys")} could not confirm one or more requirements. Your public store does not state the following in an AI-verifiable form: ${c("missingEvidence")}. (It already evidences: ${c("evidencedList")}.)`,
+    ...(contrastLines.length ? [``, `How the category leader compares:`, ...contrastLines.map((l) => `- ${l}`)] : []),
     ``,
     `Not inspectable from public data, so NOT reported as missing: ${c("notInspectableList")}.`,
     ``,

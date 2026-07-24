@@ -2,6 +2,8 @@ import type { ConstraintDiagnostic, StoreDiagnostic } from "./store-diagnostic.j
 import { scanStore, computeCoverage } from "./store-diagnostic.js";
 import type { JourneyResult, ShoppingTaskContract, StoreSnapshot } from "./types.js";
 import { bindContractToPublicSnapshot } from "./categories/deodorant/contracts.js";
+import { fixturesFor } from "./evidence-validator.js";
+import { matchingTermsIn, normalizeForMatch, splitSentences } from "./util.js";
 
 // ===========================================================================
 // STAGE 5 — per-prospect diagnostic (spec 4.5). snapshot → Store Diagnostic
@@ -111,4 +113,104 @@ export async function diagnoseProspect(opts: RunProspectOpts): Promise<ProspectD
     fetchedAt: snapshot.createdAt,
     severity,
   };
+}
+
+// ===========================================================================
+// STAGE 6.1 — WINNER-CONTRAST (evidence-availability, both directions). For the
+// category's most-recommended store we run the SAME bound scan and, per the
+// PROSPECT's genuine gap, record whether the winner's PUBLIC data evidences the
+// same attribute (with a verbatim quote) or also lacks it. All quotes are
+// verbatim substrings of the winner's public evidence (deterministic floor /
+// semantic asymmetry: a grant needs a real quote; a veto is conservative). NO
+// product-truth is ever asserted about either store.
+// ===========================================================================
+
+/** Per-attribute evidence availability on ONE store's public snapshot. */
+export interface WinnerAttributeEvidence {
+  evidences: boolean;
+  /** Verbatim (sentence-scoped, length-capped) quote when evidenced on a TEXT
+   *  surface. Absent for numeric/structured evidence (e.g. a price) so a raw
+   *  JSON blob never renders as a "quote". */
+  quote?: string;
+  surface?: string;
+}
+
+/** Pick the shortest verbatim sentence in `text` that contains a support term
+ *  for `attribute` (falls back to a capped prefix). The result is ALWAYS a
+ *  substring of `text` — never paraphrased or re-assembled. */
+export function focusedEvidenceQuote(text: string, attribute: string, maxLen = 160): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  const terms = [...(fixturesFor(attribute).supportTerms ?? [])];
+  const sentences = splitSentences(clean);
+  const withTerm = terms.length
+    ? sentences.filter((s) => matchingTermsIn(s, terms).length > 0)
+    : [];
+  const pick = (withTerm.length ? withTerm : sentences).sort((a, b) => a.length - b.length)[0] ?? clean;
+  if (pick.length <= maxLen) return pick;
+  // Cap at a word boundary, still a verbatim prefix of the chosen sentence.
+  const cut = pick.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+}
+
+/** Scan the winner's public snapshot with the SAME base contract → per-attribute
+ *  evidence availability. Only text-surface grants carry a quote. */
+export function scanWinnerEvidenceMap(
+  winnerSnapshot: StoreSnapshot,
+  baseContract: ShoppingTaskContract,
+): Record<string, WinnerAttributeEvidence> {
+  const bound = bindContractToPublicSnapshot(baseContract, winnerSnapshot);
+  const diagnostic = scanStore(winnerSnapshot, bound.contract);
+  const out: Record<string, WinnerAttributeEvidence> = {};
+  for (const hc of bound.contract.hardConstraints) {
+    const d = diagnostic.perConstraint.find((c) => c.constraintId === hc.id);
+    if (!d || d.verdict !== "evidenced" || d.explicitHits.length === 0) {
+      out[hc.attribute] = { evidences: false };
+      continue;
+    }
+    const textHit = d.explicitHits.find((h) => typeof h.quote === "string" && /[a-z]/i.test(h.quote) && h.surface !== "product_variants");
+    out[hc.attribute] = textHit
+      ? { evidences: true, quote: focusedEvidenceQuote(textHit.quote, hc.attribute), surface: textHit.surface }
+      : { evidences: true, surface: d.explicitHits[0]!.surface };
+  }
+  return out;
+}
+
+/** One rendered-ready contrast fact for a single prospect gap attribute. */
+export interface WinnerContrastFact {
+  attribute: string;
+  winnerEvidences: boolean;
+  winnerQuote?: string;
+  winnerSurface?: string;
+}
+
+export interface WinnerContrast {
+  brand: string;
+  mentions: number;
+  /** Whether the winner is a DIFFERENT store than the prospect (self-contrast is
+   *  suppressed — a store can't be contrasted with itself). */
+  distinct: boolean;
+  facts: WinnerContrastFact[];
+}
+
+/** Project the winner's evidence map onto a prospect's GENUINE gaps → the
+ *  contrast facts the case renders. Pure. */
+export function buildWinnerContrast(
+  prospect: ProspectDiagnostic,
+  winnerMap: Record<string, WinnerAttributeEvidence>,
+  winner: { brand: string; mentions: number; origin: string },
+): WinnerContrast {
+  const distinct = normalizeForMatch(winner.origin) !== normalizeForMatch(prospect.origin);
+  const facts: WinnerContrastFact[] = prospect.findings
+    .filter((f) => f.genuineEvidenceGap)
+    .map((f) => {
+      const w = winnerMap[f.attribute];
+      return {
+        attribute: f.attribute,
+        winnerEvidences: Boolean(w?.evidences),
+        winnerQuote: w?.evidences ? w.quote : undefined,
+        winnerSurface: w?.evidences ? w.surface : undefined,
+      };
+    });
+  return { brand: winner.brand, mentions: winner.mentions, distinct, facts };
 }

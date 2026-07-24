@@ -26,7 +26,7 @@ interface TermFixture {
   requiresDigitInSentence?: boolean;
 }
 
-function fixturesFor(attribute: string): TermFixture {
+export function fixturesFor(attribute: string): TermFixture {
   const stage2 = STAGE2_TERM_FIXTURES[attribute];
   if (stage2) return stage2;
   const stage1 = MATCHING_TERMS_BY_ATTRIBUTE[attribute];
