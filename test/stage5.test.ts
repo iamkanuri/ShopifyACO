@@ -240,8 +240,11 @@ test("48. no third-party write or auth call anywhere in the Stage 5 module", () 
     "src/agentic-test/public-fetch.ts",
     "src/agentic-test/public-catalog.ts",
     "src/agentic-test/prospect-finder.ts",
+    "src/agentic-test/stage5-battery.ts",
     "src/agentic-test/stage5-diagnose.ts",
     "src/agentic-test/stage5-case.ts",
+    "src/agentic-test/stage5-run.ts",
+    "src/agentic-test/categories/deodorant/contracts.ts",
   ];
   for (const rel of files) {
     const p = join(process.cwd(), rel);

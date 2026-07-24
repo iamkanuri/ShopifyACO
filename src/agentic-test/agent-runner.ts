@@ -220,6 +220,11 @@ export interface RunAgentOptions {
   /** Stage 3: when present, the bounded semantic tier runs after deterministic
    *  validation and before adjudication (veto + quote-bounded grant, Rule 6). */
   semanticClient?: import("./semantic-tier.js").SemanticClient;
+  /** Stage 5: score a READ-ONLY third-party PUBLIC snapshot. When set, the
+   *  shop-allowlist gate accepts exactly these shop ids INSTEAD of the
+   *  dev-store allowlist. This ONLY affects which snapshot may be READ/scored;
+   *  there is no write path anywhere in the runner, so it cannot mutate a store. */
+  shopAllowlistOverride?: string[];
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -250,8 +255,20 @@ export async function runShoppingAgent(options: RunAgentOptions): Promise<Journe
   const systemPrompt = options.systemPrompt ?? SYSTEM_PROMPT_STAGE1_V1;
   const env = options.env ?? process.env;
 
-  // Hard rails BEFORE anything else (spec Rule 10 / 4.12).
-  assertRunnable(env, contract.productScope.shopId);
+  // Hard rails BEFORE anything else (spec Rule 10 / 4.12). Stage 5 scores
+  // read-only public snapshots of third-party stores: when an explicit
+  // read-only override is supplied, the flag still gates but the shop-allowlist
+  // is the override set (there is NO write path in the runner, so this only
+  // governs which snapshot may be READ/scored).
+  if (options.shopAllowlistOverride) {
+    const { flagEnabled } = await import("./preflight.js");
+    if (!flagEnabled(env)) throw new Error("refusing to run: feature flag not enabled");
+    if (!options.shopAllowlistOverride.includes(contract.productScope.shopId)) {
+      throw new Error(`refusing to run: shop '${contract.productScope.shopId}' not in the read-only override allowlist`);
+    }
+  } else {
+    assertRunnable(env, contract.productScope.shopId);
+  }
   if (snapshot.shopId !== contract.productScope.shopId) {
     throw new Error("refusing to run: snapshot shop does not match the contract's allowlisted shop");
   }
