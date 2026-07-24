@@ -128,7 +128,7 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
                   </td>
                   <td>
                     <Link
-                      to={`/scan?brand=${encodeURIComponent(r.brand)}&category=${encodeURIComponent(idx.label)}`}
+                      to="/test"
                       className="linkbtn"
                       onClick={() => trackEvent("index_claim_click", idx.run_id ?? undefined, { slug, brand: r.brand })}
                     >
@@ -146,11 +146,11 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
       <div className="index-cta card">
         <h2>Is your brand on this list — or missing from it?</h2>
         <p className="muted">
-          Run a free scan for your own brand and get the full report: where you're recommended, who
-          beats you, and the exact content gaps that make AI choose someone else.
+          Run a free Buyer Test on one of your products: every buyer requirement checked against
+          your public store data, with the evidence for each one — or an honest "not proven".
         </p>
-        <Link to="/scan" className="btn btn-primary lg">
-          Run free scan
+        <Link to="/test" className="btn btn-primary lg">
+          Run a free test
         </Link>
       </div>
 

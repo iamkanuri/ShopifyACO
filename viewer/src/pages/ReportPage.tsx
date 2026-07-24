@@ -67,7 +67,7 @@ export function ReportPage({ runId }: { runId: string }) {
       <div className="card center-card">
         <h2>Report not available</h2>
         <p className="muted">{error}</p>
-        <Link to="/scan" className="btn btn-primary">Run a free scan</Link>
+        <Link to="/test" className="btn btn-primary">Run a free test</Link>
       </div>
     );
   if (!data)
@@ -95,10 +95,11 @@ export function ReportPage({ runId }: { runId: string }) {
 
   // Claimed → the free diagnosis (or, once paid, the full report) + share + Shopify-aware CTA.
   const a = data.analysis;
-  const shareText = a ? `${a.brand} scores ${a.visibilityScore.score}/100 on AI shopping visibility.` : "My AI shopping visibility scorecard";
-  // Retry after a genuine failure = a fresh scan (clean fresh start, no customer memory needed),
-  // prefilled with this run's brand/category so there's no re-entry friction.
-  const retryHref = a ? `/scan?brand=${encodeURIComponent(a.brand)}&category=${encodeURIComponent(a.category)}` : "/scan";
+  // Legacy report (pre-repositioning). The route stays functional for anyone holding
+  // a link, but its SHARED text and its retry path speak the current product: a
+  // shared legacy link is a first impression.
+  const shareText = a ? `What AI buyers can verify about ${a.brand}.` : "AI buyer readiness report";
+  const retryHref = "/test";
   return (
     <>
       <ShareBar runId={runId} shareText={shareText} />

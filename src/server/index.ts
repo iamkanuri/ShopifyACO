@@ -1110,8 +1110,11 @@ async function serveIndex(req: Request, res: Response) {
       const preview = reportPreview(await getResults(runId));
       if (preview && preview.score != null) {
         const base = baseUrl(req);
-        const t = escapeHtml(`${preview.brand || "This store"}: ${preview.score}/100 AI Visibility Score — ${ENV.publicBrandName}`);
-        const d = escapeHtml(`${preview.gapLine} See the full breakdown.`);
+        // Repositioning: a shared LEGACY report link is a first impression, so its
+        // share card speaks the QA vocabulary (readiness, not a visibility score).
+        // The route itself stays functional for anyone holding a link.
+        const t = escapeHtml(`${preview.brand || "This store"}: AI buyer readiness — ${ENV.publicBrandName}`);
+        const d = escapeHtml(`${preview.gapLine} See what an AI buyer could and couldn't verify.`);
         const img = escapeHtml(`${base}/report/${runId}/og.png`);
         const url = escapeHtml(`${base}/report/${runId}`);
         html = html

@@ -25,7 +25,7 @@ export function IndexListPage() {
       ) : list.length === 0 ? (
         <div className="card empty">
           No category rankings published yet — check back soon, or{" "}
-          <Link to="/scan">scan your own brand</Link>.
+          <Link to="/test">run a Buyer Test on your own product</Link>.
         </div>
       ) : (
         <div className="index-grid">
@@ -55,13 +55,13 @@ export function IndexListPage() {
             );
           })}
 
-          {/* Trailing CTA — balances the grid and routes visitors to their own scan. */}
-          <Link to="/scan" className="index-card index-card-cta card">
+          {/* Trailing CTA — balances the grid and routes visitors into the test runner. */}
+          <Link to="/test" className="index-card index-card-cta card">
             <div className="index-card-label">Your category?</div>
             <div className="index-card-meta">
-              Don't see your space — or want to know where your brand ranks?
+              Don't see your space — or want to know what an AI buyer can verify about your product?
             </div>
-            <div className="index-card-go">Run a free scan →</div>
+            <div className="index-card-go">Run a free test →</div>
           </Link>
         </div>
       )}
