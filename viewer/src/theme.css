@@ -608,6 +608,33 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 @media (max-width: 900px) { .steps-5 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px) { .steps-5 { grid-template-columns: 1fr; } }
 
+/* ---- Phase B: AI-buyer product-test result (assertion table) ---- */
+.pt-page { max-width: 760px; }
+.pt-result .testcard-task { color: var(--ink); }
+.pt-outcome { margin: 14px 0 4px; padding-top: 12px; border-top: 1px dashed var(--border); font-weight: 800; letter-spacing: 0.01em; }
+.pt-outcome.failed { color: var(--bad); }
+.pt-outcome.passed { color: var(--good); }
+.pt-table { width: 100%; border-collapse: collapse; margin: 14px 0 4px; font-family: "Inter", system-ui, sans-serif; }
+.pt-table thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); padding: 6px 8px; border-bottom: 1px solid var(--border-strong); }
+.pt-row td { padding: 11px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.pt-req { font-weight: 600; font-size: 14px; color: var(--ink); width: 42%; }
+.pt-res { font-size: 13.5px; display: flex; gap: 9px; align-items: baseline; }
+.pt-mark { font-weight: 800; flex: none; width: 14px; }
+.pt-pass .pt-mark { color: var(--good); }
+.pt-fail_no_evidence .pt-mark, .pt-fail_value .pt-mark { color: var(--bad); }
+.pt-requires_store_access .pt-mark { color: var(--ink-3); }
+.pt-pass .pt-res b { color: var(--good); }
+.pt-fail_no_evidence .pt-res b, .pt-fail_value .pt-res b { color: var(--bad); }
+.pt-requires_store_access .pt-res b { color: var(--ink-2); }
+.pt-detail { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; line-height: 1.5; }
+.pt-quote { font-size: 12.5px; color: var(--ink-2); font-style: italic; margin-top: 5px; border-left: 2px solid var(--good); padding-left: 8px; }
+.pt-trace, .pt-suggest { margin-top: 14px; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+.pt-trace b, .pt-suggest b { color: var(--ink); }
+.pt-trace i { color: var(--ink-3); }
+.pt-cta { margin-top: 20px; padding-top: 16px; border-top: 2px solid #0f766e; }
+.pt-cta .btn-primary { display: inline-block; }
+.pt-enrich { font-size: 13px; color: var(--ink-2); margin-top: 12px; }
+
 /* ---- hero proof / example module ---- */
 .hero-proof {
   max-width: 560px; margin: 34px auto 0; padding: 20px 22px; text-align: left;

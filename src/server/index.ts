@@ -81,6 +81,7 @@ import {
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
+import { runProductTest } from "./productTest.js";
 import { indexSsrFor } from "./indexSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
@@ -480,6 +481,24 @@ app.post(
     if (result.costUsd > SUGGEST_COST_CAP_USD) {
       return res.json({ costUsd: result.costUsd, competitors: [], prompts: [], error: "lookup exceeded cost cap" });
     }
+    res.json(result);
+  }),
+);
+
+// --- AI-buyer PRODUCT TEST (Phase B). Paste a Shopify product URL → a buyer task
+//     of 4–6 requirements run as honest, evidence-availability assertions against
+//     PUBLIC data. $0, deterministic, NO model calls (no spend cap needed); SSRF-safe
+//     + robots-respecting fetch inside runProductTest. Per-IP rate-limited.
+app.post(
+  "/api/product-test",
+  wrap(async (req, res) => {
+    const url = typeof (req.body as { url?: unknown })?.url === "string" ? (req.body as { url: string }).url.trim() : "";
+    if (!url || url.length > 400) return res.status(400).json({ error: "Paste a Shopify product URL." });
+    if (!rateLimit(`producttest:${clientIp(req)}`, 15, 60_000)) {
+      return res.status(429).json({ error: "Too many tests — give it a minute." });
+    }
+    const result = await runProductTest(url);
+    await insertEvent("product_test", undefined, { ok: result.ok, outcome: result.outcome }).catch(() => {});
     res.json(result);
   }),
 );

@@ -51,7 +51,7 @@ export function LandingPage() {
   function run(e?: React.FormEvent) {
     e?.preventDefault();
     const q = url.trim();
-    navigate(q ? `/scan?url=${encodeURIComponent(q)}` : "/scan");
+    navigate(q ? `/test?url=${encodeURIComponent(q)}` : "/test");
   }
 
   return (

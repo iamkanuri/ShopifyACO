@@ -4,6 +4,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { DemoPage } from "./pages/DemoPage";
 import { ReportPage } from "./pages/ReportPage";
 import { ScanPage } from "./pages/ScanPage";
+import { ProductTestPage } from "./pages/ProductTestPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
 import { AdminPage } from "./pages/AdminPage";
 import { ThanksPage } from "./pages/ThanksPage";
@@ -37,6 +38,7 @@ export function App() {
   else if (path.startsWith("/index/")) page = <IndexLeaderboardPage slug={decodeURIComponent(path.split("/")[2] ?? "")} />;
   else if (path === "/index") page = <IndexListPage />;
   else if (path === "/scan") page = <ScanPage />;
+  else if (path === "/test") page = <ProductTestPage />;
   else if (path === "/methodology") page = <MethodologyPage />;
   else if (path === "/demo") page = <DemoPage />;
   else if (path === "/admin") page = <AdminPage />;
@@ -73,9 +75,9 @@ export function App() {
                   Methodology
                 </Link>
                 <ConnectShopify className="navlink as-link" label="Shopify app" />
-                {/* The /scan page is itself the test runner, so the nav CTA there is redundant. */}
-                {path !== "/scan" && (
-                  <Link to="/scan" className="navlink btn btn-primary">
+                {/* The /test page is itself the test runner, so the nav CTA there is redundant. */}
+                {path !== "/test" && (
+                  <Link to="/test" className="navlink btn btn-primary">
                     Run a test
                   </Link>
                 )}
