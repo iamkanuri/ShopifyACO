@@ -21,6 +21,10 @@ export interface FetchLimits {
   maxBytes: number;
   timeoutMs: number;
   maxRedirects: number;
+  /** OPT-IN extra content types for ONE call. Used only for Shopify's
+   *  `/products/<handle>.js` endpoint, which serves JSON as `text/javascript`.
+   *  The default allowlist below is never widened — callers must ask explicitly. */
+  extraContentTypes?: RegExp[];
 }
 
 export const DEFAULT_LIMITS: FetchLimits = {
@@ -52,9 +56,9 @@ const ALLOWED_CONTENT_TYPES = [
   /^text\/xml/i,
 ];
 
-export function isAllowedContentType(ct: string | null | undefined): boolean {
+export function isAllowedContentType(ct: string | null | undefined, extra: RegExp[] = []): boolean {
   if (!ct) return true; // missing content-type: allow, but we still byte-cap
-  return ALLOWED_CONTENT_TYPES.some((re) => re.test(ct));
+  return ALLOWED_CONTENT_TYPES.some((re) => re.test(ct)) || extra.some((re) => re.test(ct));
 }
 
 /** DNS lookup that only ever returns a PUBLIC address. Installed on the socket so
@@ -135,7 +139,7 @@ function fetchOnce(target: URL, limits: FetchLimits): Promise<SingleResponse> {
           return;
         }
         // Refuse to buffer content types we don't parse.
-        if (!isAllowedContentType(contentType)) {
+        if (!isAllowedContentType(contentType, limits.extraContentTypes)) {
           res.destroy();
           finish({ status, contentType, location: null, body: "", bytes: 0, truncated: false });
           return;

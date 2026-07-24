@@ -20,7 +20,9 @@ interface TestResult {
   storeName: string | null; productName: string | null; task: string;
   assertions: Assertion[];
   evidencedCount: number; noBlockingCount: number; notProvenCount: number; requiresAccessCount: number;
-  total: number; surfacesChecked: string[]; notInspectable: string[]; suggestedCorrection: string | null;
+  total: number; surfacesChecked: string[]; notInspectable: string[];
+  suggestedCorrections: string[]; suggestedCorrection: string | null;
+  deferred: Assertion[];
   testedAt?: string; cached?: boolean;
 }
 
@@ -63,12 +65,12 @@ function timeAgo(iso: string): string {
   return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
 }
 
-/** "3 of 6 requirements proven · 1 no blocking evidence · 1 unproven · 1 requires store access" */
+/** "3 proven · 1 no blocking evidence · 1 unproven · 1 needs store access (not counted against you)" */
 function breakdown(r: TestResult): string {
-  const parts = [`${r.evidencedCount} of ${r.total} requirements proven`];
+  const parts = [`${r.evidencedCount} proven`];
   if (r.noBlockingCount) parts.push(`${r.noBlockingCount} no blocking evidence`);
   if (r.notProvenCount) parts.push(`${r.notProvenCount} unproven`);
-  if (r.requiresAccessCount) parts.push(`${r.requiresAccessCount} requires store access`);
+  if (r.requiresAccessCount) parts.push(`${r.requiresAccessCount} need store access (not counted against you)`);
   return parts.join(" · ");
 }
 
@@ -120,7 +122,9 @@ export function ProductTestPage() {
     run(q);
   }
 
-  const unresolved = result ? result.notProvenCount + result.requiresAccessCount : 0;
+  // The headline counts ONLY merchant-addressable gaps. Surfaces we can't reach are
+  // never held against the store (that's our access limit, not their omission).
+  const unresolved = result ? result.notProvenCount : 0;
 
   return (
     <div className="scanpage pt-page">
@@ -166,8 +170,8 @@ export function ProductTestPage() {
               accusation. Crimson stays on the individual unproven rows. */}
           <div className={`pt-outcome ${unresolved === 0 ? "clean" : ""}`}>
             {unresolved === 0
-              ? `RESULT: ${result.evidencedCount} of ${result.total} proven`
-              : `RESULT: ${unresolved} of ${result.total} requirement${unresolved === 1 ? "" : "s"} could not be proven`}
+              ? "RESULT: every requirement we could check from public data is proven"
+              : `RESULT: ${unresolved} of ${result.total} requirement${unresolved === 1 ? "" : "s"} could not be proven from your public store data`}
           </div>
           <div className="pt-breakdown">{breakdown(result)}</div>
           {result.cached && result.testedAt && (
@@ -182,21 +186,35 @@ export function ProductTestPage() {
           </table>
 
           <div className="pt-trace">
-            <b>Failure trace:</b> AisleLens checked {result.surfacesChecked.join(", ")}.
+            <b>Evidence trace:</b> AisleLens checked {result.surfacesChecked.join(", ")}.
             {result.notInspectable.length > 0 && (
               <> <i>Not inspectable without store access: {result.notInspectable.join(", ")}. We do not report these as missing.</i></>
             )}
           </div>
 
-          {result.suggestedCorrection && (
-            <div className="pt-suggest"><b>Suggested correction:</b> {result.suggestedCorrection}</div>
+          {result.suggestedCorrections.length > 0 && (
+            <div className="pt-suggest">
+              <b>Suggested {result.suggestedCorrections.length === 1 ? "correction" : "corrections"}:</b>
+              <ul className="pt-fixlist">
+                {result.suggestedCorrections.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
+            </div>
           )}
 
+          {/* Requirements public data can't decide are the INSTALL ARGUMENT, not
+              blind rows in the merchant's result table. */}
           <div className="pt-cta">
+            <div className="pt-auth">
+              <b>What authenticated testing adds</b>
+              <p>
+                Merchant-confirmed product facts · metafield evidence · full policy data · the fix,
+                the rerun, and permanent regression tests.
+                {result.deferred.length > 0 && (
+                  <> <span className="muted">Also checkable with access: {result.deferred.map((d) => d.label.toLowerCase()).join(", ")}.</span></>
+                )}
+              </p>
+            </div>
             <ConnectShopify className="btn btn-primary" label="Connect Shopify to confirm, fix, and rerun" />
-            <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-              Authenticated testing adds complete catalog data, merchant confirmation, reversible changes, and permanent regression tests.
-            </p>
             <p className="pt-enrich"><i>Included in the full diagnostic: how live AI assistants currently answer questions like this in your category — and which stores they send buyers to instead.</i></p>
           </div>
         </div>

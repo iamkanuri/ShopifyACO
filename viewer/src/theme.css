@@ -637,6 +637,11 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .pt-trace, .pt-suggest { margin-top: 14px; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
 .pt-trace b, .pt-suggest b { color: var(--ink); }
 .pt-trace i { color: var(--ink-3); }
+.pt-fixlist { margin: 8px 0 0; padding-left: 1.1rem; }
+.pt-fixlist li { margin: 5px 0; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.pt-auth { margin-bottom: 14px; }
+.pt-auth b { font-size: 13.5px; color: var(--ink); }
+.pt-auth p { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 5px 0 0; }
 .pt-cta { margin-top: 20px; padding-top: 16px; border-top: 2px solid #0f766e; }
 .pt-cta .btn-primary { display: inline-block; }
 .pt-enrich { font-size: 13px; color: var(--ink-2); margin-top: 12px; }

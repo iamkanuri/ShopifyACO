@@ -19,7 +19,9 @@ const mk = (over: Partial<PublicProduct> & { description?: string } = {}): Publi
     minPriceUsd: over.minPriceUsd !== undefined ? over.minPriceUsd : 12,
     optionNames: [], optionValues: over.optionValues ?? [], extracted: null,
     evidence: over.evidence ?? buildEvidence([{ surface: "product_description", text: description }]),
-    fetched: { json: true, page: false },
+    ldAvailability: over.ldAvailability ?? null,
+    policyStatus: over.policyStatus ?? "not_fetched",
+    fetched: { json: true, page: false, js: false, policy: false },
   };
 };
 const claimReq = (claim: string): Requirement => ({ id: "c", kind: "claim", claim, label: claim });
@@ -129,6 +131,7 @@ test("7. result states produce a correct, separated breakdown", async () => {
     '"variants":[{"title":"Travel","price":"9.00","option1":"Travel"}]}}',
   ].join("");
   const res = await runProductTest("https://s.example/products/cedar-bar", {
+    semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
     fetchUrl: async (url) =>
       url.endsWith(".json")
@@ -234,6 +237,7 @@ test("10b. a non-compliant result is NOT rendered (the linter is a blocking gate
     },
   });
   const res = await runProductTest("https://s.example/products/x", {
+    semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
     fetchUrl: async (url) =>
       url.endsWith(".json")
@@ -258,6 +262,7 @@ test("8. a repeat test is served from cache within TTL; an explicit re-run bypas
   let clock = 1_000_000;
   const deps = {
     now: () => clock,
+    semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
     fetchUrl: async (u: string) => {
       fetches++;
@@ -333,7 +338,7 @@ test("9. every failure mode returns its specific, honest message", async () => {
 
   const run = async (host: string, fetchUrl: (u: string) => Promise<{ status: number; contentType: string | null; body: string }>, loadRobots = allow) => {
     __resetCaches();
-    return runProductTest(`https://${host}/products/x`, { fetchUrl, loadRobots });
+    return runProductTest(`https://${host}/products/x`, { fetchUrl, loadRobots, semantic: { disabled: true } });
   };
 
   // Not a product URL at all.
@@ -366,6 +371,212 @@ test("9. every failure mode returns its specific, honest message", async () => {
   // Every message is distinct — no generic catch-all.
   const msgs = new Set(Object.values(FETCH_ERROR_MESSAGE));
   assert.equal(msgs.size, Object.keys(FETCH_ERROR_MESSAGE).length, "each error kind has its own message");
+});
+
+// ===========================================================================
+// v1.1 — restore diagnostic power WITHOUT recovering a single false Pass.
+// ===========================================================================
+
+const shopJson = (over: Record<string, unknown> = {}) =>
+  JSON.stringify({ product: { title: "Cedar Bar", vendor: "Acme", product_type: "Bar Soap", tags: "", body_html: "<p>A cedar bar.</p>", options: [{ name: "Size", values: ["Travel"] }], variants: [{ title: "Travel", price: "9.00", option1: "Travel" }], ...over } });
+
+/** Run against a stubbed store: `routes` maps a URL suffix → response. */
+async function runStub(routes: Array<[RegExp, { status: number; contentType: string | null; body: string }]>, extra: Record<string, unknown> = {}) {
+  const { __resetCaches } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  return runProductTest("https://v11.example/products/cedar-bar", {
+    semantic: { disabled: true },
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    fetchUrl: async (u: string) => routes.find(([re]) => re.test(u))?.[1] ?? { status: 404, contentType: "text/html", body: "" },
+    ...extra,
+  });
+}
+
+// ---- 11. headline math: store-access rows never count against the merchant --
+
+test("11. headline counts only not_proven; a clean store reads as clean", async () => {
+  // A store that states everything AND has a policy with timing → zero not_proven.
+  const clean = await runStub([
+    [/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: "<p>A cedar bar soap. Fragrance-free and paraben-free. Ships within 2 business days.</p>" }) }],
+  ]);
+  assert.equal(clean.ok, true);
+  assert.equal(clean.notProvenCount, 0, `expected a clean store: ${clean.assertions.map((a) => a.status + ":" + a.label).join(" | ")}`);
+  assert.ok(clean.evidencedCount >= 3, "the proven rows are real");
+  assert.equal(clean.suggestedCorrections.length, 0, "nothing to correct");
+
+  // requires_store_access is NEVER folded into the headline number.
+  const thin = await runStub([[/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }]]);
+  const headline = thin.notProvenCount;
+  assert.equal(headline, thin.assertions.filter((a) => a.status === "not_proven").length);
+  assert.ok(!thin.assertions.filter((a) => a.status === "requires_store_access").some(() => headline > thin.notProvenCount),
+    "store-access rows excluded from the headline count");
+});
+
+// ---- 12. JSON-LD availability proves stock with no .js fetch ----------------
+
+test("12. JSON-LD InStock proves availability without any .js fetch", async () => {
+  const ld = `<html><head><script type="application/ld+json">${JSON.stringify({
+    "@type": "Product", name: "Cedar Bar", description: "A cedar bar.",
+    offers: { "@type": "Offer", price: "9.00", priceCurrency: "USD", availability: "https://schema.org/InStock" },
+  })}</script></head><body></body></html>`;
+  const urls: string[] = [];
+  const { __resetCaches } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  const res = await runProductTest("https://ld.example/products/cedar-bar", {
+    semantic: { disabled: true },
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    fetchUrl: async (u: string) => {
+      urls.push(u);
+      if (/\.json$/.test(u)) return { status: 404, contentType: "text/html", body: "" }; // no .json at all
+      if (/\.js$/.test(u)) return { status: 200, contentType: "text/javascript", body: "{}" };
+      return { status: 200, contentType: "text/html", body: ld };
+    },
+  });
+  const stock = res.assertions.find((a) => /in stock/i.test(a.label));
+  assert.ok(stock, "the availability row is present");
+  assert.equal(stock!.status, "pass_evidenced", "JSON-LD InStock proves it");
+  assert.match(stock!.detail, /structured data/i);
+  assert.ok(!urls.some((u) => u.endsWith(".js")), "no .js fetch was needed");
+
+  // OutOfStock is an honest not_proven, never a false pass.
+  __resetCaches();
+  const oos = await runProductTest("https://ld2.example/products/cedar-bar", {
+    semantic: { disabled: true },
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    fetchUrl: async (u: string) => /\.json$/.test(u)
+      ? { status: 404, contentType: "text/html", body: "" }
+      : { status: 200, contentType: "text/html", body: ld.replace("InStock", "OutOfStock") },
+  });
+  assert.equal(oos.assertions.find((a) => /in stock/i.test(a.label))!.status, "not_proven");
+});
+
+// ---- 13. shipping policy: readable-but-silent is a FINDING, not a shrug -----
+
+test("13. the shipping policy resolves delivery — timing proves it, silence is not_proven", async () => {
+  const withTiming = await runStub([
+    [/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }],
+    [/policies\/shipping-policy/, { status: 200, contentType: "text/html", body: "<html><body><p>All orders ship within 2 business days of purchase.</p></body></html>" }],
+  ]);
+  const d1 = withTiming.assertions.find((a) => /ships/i.test(a.label))!;
+  assert.equal(d1.status, "pass_evidenced", "a stated window proves delivery");
+  assert.match(d1.evidenceQuote ?? "", /within 2 business days/i);
+  assert.match(d1.detail, /shipping policy/i);
+
+  // Policy readable but states NO timing → an actionable finding, not store-access.
+  const noTiming = await runStub([
+    [/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }],
+    [/policies\/shipping-policy/, { status: 200, contentType: "text/html", body: "<html><body><p>We offer free shipping on all orders. Returns accepted.</p></body></html>" }],
+  ]);
+  const d2 = noTiming.assertions.find((a) => /ships/i.test(a.label))!;
+  assert.equal(d2.status, "not_proven", "a silent policy is a real finding");
+  assert.match(d2.detail, /shipping policy/i);
+  assert.ok(noTiming.suggestedCorrections.some((c) => /delivery window/i.test(c)), "and it yields a correction");
+
+  // Policy unreachable → honestly requires store access.
+  const unreachable = await runStub([[/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }]]);
+  assert.equal(unreachable.assertions.find((a) => /ships/i.test(a.label))!.status, "requires_store_access");
+});
+
+// ---- 14. generator caps store-access rows and prefers adjudicable ones ------
+
+test("14. at most one requires_store_access row; the rest become the install argument", async () => {
+  // A bare store: no price, no options, no availability, no policy.
+  const bare = await runStub([
+    [/\.json$/, { status: 200, contentType: "application/json", body: JSON.stringify({ product: { title: "Mystery", vendor: "A", product_type: "Bar Soap", tags: "", body_html: "", options: [], variants: [] } }) }],
+  ]);
+  assert.equal(bare.ok, true);
+  const access = bare.assertions.filter((a) => a.status === "requires_store_access");
+  assert.ok(access.length <= 1, `at most one store-access row in the table (got ${access.length})`);
+  assert.ok(bare.assertions.length >= 3, "the table still has substance");
+  // Any extras are preserved below the table, never silently dropped.
+  const total = bare.assertions.length + bare.deferred.length;
+  assert.ok(total >= bare.assertions.length, "deferred rows are retained");
+  for (const d of bare.deferred) assert.equal(d.status, "requires_store_access");
+});
+
+// ---- 15. semantic tier: bounded, verbatim-gated, veto-capable, fail-silent --
+
+test("15. semantic tier grants only on a VERBATIM quote, vetoes lexical matches, fails silent", async () => {
+  const paraphrase = "<p>This bar is made without any synthetic scent, using only botanicals.</p>";
+  const stub = (findings: unknown) => ({
+    complete: async () => ({ text: JSON.stringify({ findings }), inputTokens: 400, outputTokens: 60 }),
+  });
+
+  // (a) A verbatim paraphrase quote GRANTS proven.
+  const granted = await runStub(
+    [[/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: paraphrase }) }]],
+    { semantic: stub([{ attribute: "fragrance_free", exactQuote: "This bar is made without any synthetic scent, using only botanicals.", verdict: "supports", subject: "the bar" }]) },
+  );
+  const fr = granted.assertions.find((a) => /fragrance/i.test(a.label))!;
+  assert.equal(fr.status, "pass_evidenced", "a verbatim paraphrase is credited");
+  assert.match(fr.evidenceQuote ?? "", /without any synthetic scent/i);
+  assert.equal(granted.semantic?.granted, 1);
+
+  // (b) A NON-substring quote is discarded — no credit, ever.
+  const invented = await runStub(
+    [[/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: paraphrase }) }]],
+    { semantic: stub([{ attribute: "fragrance_free", exactQuote: "This product is certified fragrance-free.", verdict: "supports" }]) },
+  );
+  assert.equal(invented.assertions.find((a) => /fragrance/i.test(a.label))!.status, "not_proven", "invented evidence is refused");
+  assert.equal(invented.semantic?.granted, 0);
+  assert.equal(invented.semantic?.discarded, 1, "and the discard is counted");
+
+  // (c) about_other_subject VETOES a lexical match (withdraws credit).
+  const vetoed = await runStub(
+    [[/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: "<p>Packed in a fragrance-free wrapper for shipping safety.</p>" }) }]],
+    { semantic: stub([{ attribute: "fragrance_free", exactQuote: "Packed in a fragrance-free wrapper for shipping safety.", verdict: "about_other_subject", subject: "wrapper" }]) },
+  );
+  assert.equal(vetoed.assertions.find((a) => /fragrance/i.test(a.label))!.status, "not_proven");
+
+  // (d) A model error leaves the lexical result exactly as it was.
+  const errored = await runStub(
+    [[/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: "<p>A cedar bar. Paraben-free and gentle.</p>" }) }]],
+    { semantic: { complete: async () => { throw new Error("timeout"); } } },
+  );
+  assert.equal(errored.assertions.find((a) => /paraben/i.test(a.label))!.status, "pass_evidenced", "lexical result survives");
+  assert.equal(errored.assertions.find((a) => /fragrance/i.test(a.label))!.status, "not_proven");
+});
+
+// ---- 16. one correction line per not_proven requirement ---------------------
+
+test("16. a suggested correction is emitted for EVERY unproven requirement", async () => {
+  const res = await runStub([[/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }]]);
+  const notProven = res.assertions.filter((a) => a.status === "not_proven");
+  assert.equal(res.suggestedCorrections.length, notProven.length, "one line per unproven row");
+  assert.ok(notProven.length >= 2, "this fixture has multiple gaps to cover");
+  assert.equal(new Set(res.suggestedCorrections).size, res.suggestedCorrections.length, "no duplicated advice");
+  // requires_store_access rows never generate corrections (not the merchant's fault).
+  assert.ok(res.suggestedCorrections.every((c) => typeof c === "string" && c.length > 20));
+});
+
+// ---- 17. a cached test makes zero fetches AND zero model calls --------------
+
+test("17. a cached test performs no network fetches and no model calls", async () => {
+  const { __resetCaches } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  let fetches = 0;
+  let modelCalls = 0;
+  const deps = {
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    fetchUrl: async (u: string) => {
+      fetches++;
+      return /\.json$/.test(u)
+        ? { status: 200, contentType: "application/json", body: shopJson() }
+        : { status: 404, contentType: "text/html", body: "" };
+    },
+    semantic: {
+      complete: async () => { modelCalls++; return { text: JSON.stringify({ findings: [] }), inputTokens: 100, outputTokens: 10 }; },
+    },
+  };
+  const url = "https://cached.example/products/cedar-bar";
+  await runProductTest(url, deps);
+  assert.ok(fetches > 0 && modelCalls === 1, `first run fetches and calls the model once (${fetches}/${modelCalls})`);
+  const f = fetches;
+
+  const second = await runProductTest(url, deps);
+  assert.equal(second.cached, true);
+  assert.equal(fetches, f, "cached run makes ZERO network fetches");
+  assert.equal(modelCalls, 1, "cached run makes ZERO model calls");
 });
 
 test("findSupport only reads product surfaces (chrome is not in the index at all)", () => {

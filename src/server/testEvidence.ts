@@ -33,7 +33,8 @@ export type QuotableSurface =
   | "product_faq"
   | "product_title"
   | "product_options"
-  | "meta_description";
+  | "meta_description"
+  | "shipping_policy";
 
 export const SURFACE_LABEL: Record<QuotableSurface, string> = {
   product_description: "product copy",
@@ -42,6 +43,7 @@ export const SURFACE_LABEL: Record<QuotableSurface, string> = {
   product_title: "product title",
   product_options: "variant options",
   meta_description: "page description",
+  shipping_policy: "shipping policy",
 };
 
 export interface EvidenceSentence { surface: QuotableSurface; text: string }
