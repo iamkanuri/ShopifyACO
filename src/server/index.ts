@@ -82,6 +82,12 @@ import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
 import { runProductTest } from "./productTest.js";
+import { newTestToken, storePublicTest } from "../db/buyerTests.js";
+import {
+  claimTestHandler, listTestsHandler, createTestHandler, getTestHandler,
+  runTestHandler, confirmQuestionsHandler, confirmHandler,
+  proposeFromTestHandler, testProposalsHandler,
+} from "./buyerTests.js";
 import { indexSsrFor } from "./indexSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
@@ -329,6 +335,20 @@ app.post("/app/api/fixes/:id/apply", shopMw, wrap(applyHandler));
 app.post("/app/api/fixes/:id/rollback", shopMw, wrap(rollbackHandler));
 app.post("/app/api/fixes/:id/dismiss", shopMw, wrap(dismissHandler));
 
+// --- Buyer Tests API (V2, shop-scoped). The authenticated continuation of the
+//     public Buyer Test: claim a public result through install, re-run the PINNED
+//     contract with full store access, confirm claims the merchant alone can
+//     answer, and keep the whole thing as a re-runnable regression test. --------
+app.post("/app/api/buyer-tests/claim", shopMw, wrap(claimTestHandler));
+app.get("/app/api/buyer-tests", shopMw, wrap(listTestsHandler));
+app.post("/app/api/buyer-tests", shopMw, wrap(createTestHandler));
+app.get("/app/api/buyer-tests/:id", shopMw, wrap(getTestHandler));
+app.post("/app/api/buyer-tests/:id/run", shopMw, wrap(runTestHandler));
+app.get("/app/api/buyer-tests/:id/confirm", shopMw, wrap(confirmQuestionsHandler));
+app.post("/app/api/buyer-tests/:id/confirm", shopMw, wrap(confirmHandler));
+app.post("/app/api/buyer-tests/:id/propose", shopMw, wrap(proposeFromTestHandler));
+app.get("/app/api/buyer-tests/:id/proposals", shopMw, wrap(testProposalsHandler));
+
 // --- Experiments API (Phase 7, shop-scoped). "Prove whether it worked": matched
 //     baseline/verification benchmark runs compared with CIs. Runs default to mock
 //     ($0); a live run (engine spend) requires explicit { live: true }. -----------
@@ -503,6 +523,19 @@ app.post(
     const startedAt = Date.now();
     const result = await runProductTest(url, { force: body.force === true });
     const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
+
+    // V2 CP2 — mint a short token for a successful result so the merchant can carry
+    // THIS test through install and land on it, continued, instead of a cold app.
+    // Best-effort: a DB hiccup must never cost a visitor their result.
+    if (result.ok) {
+      try {
+        const token = newTestToken();
+        await storePublicTest(token, url, host, result);
+        result.testToken = token;
+      } catch (e) {
+        console.warn(`[product-test] could not persist for install continuity: ${(e as Error).message}`);
+      }
+    }
     // `tier` and `throttled` are the V2 §2.5 escalation signal: if the throttle
     // rate over a rolling 24h stays high, the next step is an egress proxy pool,
     // an async queued flow, or Storefront API access for installed merchants.

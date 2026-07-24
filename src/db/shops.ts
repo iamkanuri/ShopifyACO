@@ -163,19 +163,28 @@ export async function audit(
 }
 
 // ---- OAuth state (single-use nonce, replay-proof, multi-instance safe) -----
-export async function saveOAuthState(state: string, shopDomain: string, ttlSec = 600): Promise<void> {
+/** `testToken` (V2 CP2) carries the merchant's PUBLIC Buyer Test across the install
+ *  redirect, so the first authenticated screen can be their own test continued
+ *  rather than a cold dashboard. It rides on the server-side state row, never on the
+ *  authorize URL — Shopify echoes `state` back to us verbatim, and putting a token
+ *  in a URL that transits a third party is a needless exposure. */
+export async function saveOAuthState(state: string, shopDomain: string, ttlSec = 600, testToken?: string | null): Promise<void> {
   await pgQuery(
-    "insert into oauth_states (state, shop_domain, expires_at) values ($1,$2, now() + make_interval(secs => $3))",
-    [state, shopDomain, ttlSec],
+    "insert into oauth_states (state, shop_domain, test_token, expires_at) values ($1,$2,$3, now() + make_interval(secs => $4))",
+    [state, shopDomain, testToken ?? null, ttlSec],
   );
 }
 
-/** Consume a state nonce: returns its shop if valid+unexpired, else null. Single-use
- *  (deleted on read) so a callback can't be replayed. */
-export async function consumeOAuthState(state: string): Promise<string | null> {
-  const { rows } = await pgQuery<{ shop_domain: string }>(
-    "delete from oauth_states where state = $1 and expires_at > now() returning shop_domain",
+export interface ConsumedOAuthState { shop: string; testToken: string | null }
+
+/** Consume a state nonce: returns its shop (+ any carried test token) if
+ *  valid+unexpired, else null. Single-use (deleted on read) so a callback can't be
+ *  replayed. */
+export async function consumeOAuthState(state: string): Promise<ConsumedOAuthState | null> {
+  const { rows } = await pgQuery<{ shop_domain: string; test_token: string | null }>(
+    "delete from oauth_states where state = $1 and expires_at > now() returning shop_domain, test_token",
     [state],
   );
-  return rows[0]?.shop_domain ?? null;
+  const r = rows[0];
+  return r ? { shop: r.shop_domain, testToken: r.test_token } : null;
 }

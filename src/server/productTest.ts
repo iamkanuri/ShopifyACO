@@ -478,6 +478,32 @@ export async function attachShippingPolicy(
 export type ReqKind = "claim" | "price_under" | "variant_option" | "no_subscription" | "delivery" | "in_stock";
 export interface Requirement { id: string; kind: ReqKind; label: string; claim?: string; capUsd?: number; optionValue?: string }
 
+// ---- contract + engine versioning (V2 §4.4) ---------------------------------
+// A before/after comparison is only evidence if BOTH runs asked the same question
+// of the same evaluator. If either changed, the honest answer is to refuse the
+// comparison — not to show a diff that silently redefined itself in between.
+
+/** Bump when the EVALUATOR's semantics change (a status could differ on identical
+ *  input). Pure additions that cannot change an existing verdict don't need a bump. */
+export const ENGINE_VERSION = "v2.0.0";
+
+/** A stable fingerprint of a buyer task: same requirements ⇒ same version, in any
+ *  process, forever. Deliberately covers only the fields that decide a verdict. */
+export function contractVersion(requirements: Requirement[]): string {
+  const canonical = requirements
+    .map((r) => [r.kind, r.claim ?? "", r.capUsd ?? "", r.optionValue ?? ""].join(":"))
+    .sort()
+    .join("|");
+  // FNV-1a — short, deterministic, dependency-free. Not a security hash: this
+  // detects accidental drift, it does not defend against a forged contract.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) {
+    h ^= canonical.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `c1-${h.toString(16).padStart(8, "0")}`;
+}
+
 function inferClaims(p: PublicProduct): string[] {
   // product_type is the authoritative category signal; title is the fallback.
   // Tags are deliberately excluded — scent/ingredient tags ("coffee", "lavender")
@@ -810,6 +836,9 @@ export interface ProductTestResult {
   throttledTiers?: string[];
   /** The error is an upstream limit, not a verdict — the UI offers a retry (§2.3). */
   retryable?: boolean;
+  /** V2 CP2 — the token that carries THIS result through install, so the first
+   *  authenticated screen is the merchant's own test continued. */
+  testToken?: string;
 }
 
 export interface RunOptions extends FetchDeps {

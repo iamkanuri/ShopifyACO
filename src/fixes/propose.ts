@@ -131,6 +131,92 @@ export function proposeSeoBackfill(p: CatalogProduct, finding?: Finding): FixPro
   return out;
 }
 
+// ---- V2 CP3: merchant-confirmed claim statements ----------------------------
+//
+// THE RULE THIS ENFORCES: a Buyer Test finding is EVIDENCE-AVAILABILITY — "no
+// statement an AI buyer could verify". That is never, on its own, grounds to write
+// a claim into a store, because we do not know whether the claim is TRUE. Only the
+// merchant knows. So a proposal here requires their explicit "yes", and the text we
+// propose is a plain restatement of what they confirmed — never an embellishment,
+// never a benefit, never a superlative.
+//
+// A "no" must reach this function as no call at all: the requirement is closed and
+// an AI buyer is right not to verify it.
+
+/** Sentence templates keyed by claim. Deliberately flat, factual and short — this
+ *  is the merchant's assertion being written down, not marketing copy we invented. */
+const CLAIM_SENTENCE: Record<string, string> = {
+  aluminum_free: "This product is aluminum-free.",
+  baking_soda_free: "This product is made without baking soda.",
+  cruelty_free: "This product is cruelty-free and not tested on animals.",
+  vegan: "This product is vegan.",
+  fragrance_free: "This product is fragrance-free.",
+  paraben_free: "This product is paraben-free.",
+  sulfate_free: "This product is sulfate-free.",
+  single_origin: "This product is single-origin.",
+  organic: "This product is organic.",
+  fair_trade: "This product is fair-trade.",
+  gluten_free: "This product is gluten-free.",
+  third_party_tested: "This product is third-party tested.",
+  bpa_free: "This product is BPA-free.",
+};
+
+/** The sentence we would add for a confirmed claim, or null when we have no
+ *  factual phrasing for it. Fail closed: no template ⇒ no proposal, rather than
+ *  assembling a claim sentence out of a UI label. */
+export function claimSentence(claimKey: string, label: string): string | null {
+  const known = CLAIM_SENTENCE[claimKey];
+  if (known) return known;
+  // A label-derived sentence is still the merchant's own words (the label is the
+  // requirement they confirmed), but only when it reads as a plain attribute.
+  const clean = label.split("/")[0]!.trim();
+  return /^[a-z0-9 \-]{3,40}$/i.test(clean) ? `This product is ${clean.toLowerCase()}.` : null;
+}
+
+export interface ConfirmedClaim {
+  claimKey: string;
+  label: string;
+  /** The requirement_confirmations row that authorized this. Required. */
+  confirmationId: number;
+  buyerTestId?: number | null;
+}
+
+/**
+ * Propose adding a merchant-CONFIRMED claim to the product description.
+ *
+ * Returns [] unless the claim already has nowhere to live — if the description
+ * already states it, there is nothing to fix and we must not duplicate it.
+ * The proposal APPENDS; it never rewrites or removes the merchant's copy.
+ */
+export function proposeClaimStatement(p: CatalogProduct, claim: ConfirmedClaim): FixProposal[] {
+  const sentence = claimSentence(claim.claimKey, claim.label);
+  if (!sentence) return [];
+  const current = p.description ?? "";
+  // Already stated ⇒ the gap was in a surface we couldn't read, not in the copy.
+  const core = sentence.replace(/^This product is\s*/i, "").replace(/\.$/, "").toLowerCase();
+  if (core && current.toLowerCase().includes(core)) return [];
+
+  const proposed = current.trim() ? `${current.trim()}\n\n${sentence}` : sentence;
+  return [{
+    productGid: p.productGid,
+    kind: "write_products",
+    target: "descriptionHtml",
+    label: `State "${claim.label}" in the product description`,
+    currentValue: current || null,
+    proposedValue: proposed,
+    basedOn: current || null,
+    rationale:
+      `You confirmed this product is ${claim.label.toLowerCase()}. Your product description doesn't state it, so an AI buyer reading your public data has no way to verify it. This appends one plain sentence and changes nothing else.`,
+    evidence: {
+      findingKind: "buyer_test",
+      signal: "claim_statement",
+      intervention: "State the confirmed attribute in customer-readable product copy.",
+      // Mechanism, hedged — never a promised outcome.
+      mechanism: "An assistant that reads the product description can then find the attribute stated there. Whether any given assistant surfaces it depends on that assistant.",
+    },
+  }];
+}
+
 /** Generate proposals for one product from its findings + catalog data. */
 export function proposeFixes(product: CatalogProduct, findings: Finding[]): FixProposal[] {
   const proposals: FixProposal[] = [];
@@ -167,7 +253,19 @@ export function proposeFixes(product: CatalogProduct, findings: Finding[]): FixP
   return proposals;
 }
 
-export type WritableField = "seoTitle" | "seoDescription";
+export type WritableField = "seoTitle" | "seoDescription" | "descriptionHtml";
+
+/**
+ * The field on a re-read `NormalizedProduct` that holds a writable field's live
+ * value — the conflict baseline. The names differ for the body: we WRITE
+ * `descriptionHtml` but Shopify hands it back as plain-text `description`, so
+ * comparing `live.descriptionHtml` would read `undefined` and treat every product
+ * as unchanged. That would silently disable the one guard that stops us clobbering
+ * a merchant's edit, so the mapping is explicit rather than incidental.
+ */
+export function liveFieldOf(field: WritableField): "seoTitle" | "seoDescription" | "description" {
+  return field === "descriptionHtml" ? "description" : field;
+}
 
 /** Map a write_products proposal target → the NormalizedProduct field the apply
  *  engine re-reads (for the conflict check) and writes. Returns null for copy_ready
@@ -177,6 +275,8 @@ export function writableField(target: string): WritableField | null {
   switch (target) {
     case "seo.title": return "seoTitle";
     case "seo.description": return "seoDescription";
+    // V2 CP3 — the body copy, where a merchant-confirmed claim actually belongs.
+    case "descriptionHtml": return "descriptionHtml";
     default: return null;
   }
 }

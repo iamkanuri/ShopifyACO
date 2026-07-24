@@ -1,7 +1,7 @@
 import { ENV } from "../server/env.js";
 import { getAccessToken, getShop, audit } from "../db/shops.js";
 import { getProposal, updateProposal, type ProposalRow } from "../db/fixes.js";
-import { writableField, type WritableField } from "./propose.js";
+import { writableField, liveFieldOf, type WritableField } from "./propose.js";
 import { buildProductInput, productUpdate, rereadProduct } from "./source.js";
 import { hasScope } from "../shopify/scopes.js";
 
@@ -91,7 +91,7 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     return { ok: false, status: "failed", detail: "product no longer exists" };
   }
 
-  const liveValue = (live[field] as string | null) ?? null;
+  const liveValue = (live[liveFieldOf(field)] as string | null) ?? null;
   // Conflict: the field changed since we based the proposal on it. Never clobber.
   if ((liveValue ?? "") !== (p.based_on ?? "")) {
     await updateProposal(id, { status: "conflict", error: `live value changed since proposal (now: ${truncErr(liveValue)})` });
@@ -115,7 +115,7 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     // not Shopify's own normalization — counts as a conflict.
     try {
       const after = await rereadProduct(shop, token, p.product_gid);
-      snapshot.applied = (after?.[field] as string | null) ?? null;
+      snapshot.applied = (after?.[liveFieldOf(field)] as string | null) ?? null;
     } catch {
       snapshot.applied = p.proposed_value; // best effort if the verify re-read fails
     }
@@ -151,7 +151,7 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
   // held right after apply (snap.applied), NOT the raw proposed value: Shopify normalizes SEO
   // fields, so proposed_value rarely matches the stored form byte-for-byte. Fall back to
   // proposed_value for snapshots written before snap.applied existed.
-  const liveValue = (live?.[snap.field] as string | null) ?? null;
+  const liveValue = (live?.[liveFieldOf(snap.field)] as string | null) ?? null;
   const expected = snap.applied !== undefined ? snap.applied : (p.proposed_value ?? null);
   if ((liveValue ?? "") !== (expected ?? "")) {
     await updateProposal(id, { status: "conflict", error: `value changed after apply (live: ${truncErr(liveValue)}, expected: ${truncErr(expected)})` });

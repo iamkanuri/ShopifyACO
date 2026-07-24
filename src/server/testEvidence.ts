@@ -34,7 +34,12 @@ export type QuotableSurface =
   | "product_title"
   | "product_options"
   | "meta_description"
-  | "shipping_policy";
+  | "shipping_policy"
+  // V2 CP2 — surfaces that exist ONLY with an authenticated store connection.
+  // These are exactly the surfaces the public test honestly reports as
+  // "requires store access": once installed, they become readable evidence.
+  | "product_metafield"
+  | "seo_description";
 
 export const SURFACE_LABEL: Record<QuotableSurface, string> = {
   product_description: "product copy",
@@ -44,6 +49,8 @@ export const SURFACE_LABEL: Record<QuotableSurface, string> = {
   product_options: "variant options",
   meta_description: "page description",
   shipping_policy: "shipping policy",
+  product_metafield: "product metafields",
+  seo_description: "SEO description",
 };
 
 export interface EvidenceSentence { surface: QuotableSurface; text: string }

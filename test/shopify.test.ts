@@ -189,12 +189,20 @@ dbTest("oauth state is single-use (replay-proof)", async () => {
   const { pgQuery } = await import("../src/db/pg.js");
   const shop = `t-${Date.now()}.myshopify.com`;
   const state = `state-${Date.now()}`;
+  const tokenState = `state-tok-${Date.now()}`;
   try {
     await saveOAuthState(state, shop, 600);
-    assert.equal(await consumeOAuthState(state), shop);
+    assert.deepEqual(await consumeOAuthState(state), { shop, testToken: null });
     assert.equal(await consumeOAuthState(state), null); // already consumed
+
+    // V2 CP2 — the state row also carries the public Buyer Test token across the
+    // install redirect, so the first authenticated screen can continue that test.
+    // It rides server-side precisely so it never transits Shopify in a URL.
+    await saveOAuthState(tokenState, shop, 600, "t_0123456789abcdef0123");
+    assert.deepEqual(await consumeOAuthState(tokenState), { shop, testToken: "t_0123456789abcdef0123" });
+    assert.equal(await consumeOAuthState(tokenState), null, "carrying a token does not weaken single-use");
   } finally {
-    await pgQuery("delete from oauth_states where state = $1", [state]);
+    await pgQuery("delete from oauth_states where state = any($1::text[])", [[state, tokenState]]);
   }
 });
 

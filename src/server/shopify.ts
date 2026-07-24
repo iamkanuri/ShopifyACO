@@ -12,6 +12,7 @@ import {
   audit, consumeOAuthState, getAccessToken, getShop, recordInstallation,
   saveOAuthState, storeCredentials, upsertShop, webhookSeen, unmarkWebhookSeen,
 } from "../db/shops.js";
+import { claimPublicTest } from "../db/buyerTests.js";
 import { enqueue } from "../queue/jobs.js";
 import { processWebhookTopic } from "./webhookProcess.js";
 import { activatePixelForShop } from "../pixel/activate.js";
@@ -109,8 +110,12 @@ export async function installHandler(req: Request, res: Response): Promise<void>
     res.status(400).json({ error: "A valid ?shop=<name>.myshopify.com is required." });
     return;
   }
+  // V2 CP2 — a merchant arriving from a public Buyer Test carries its token. It is
+  // stashed server-side against the state nonce and restored after the callback, so
+  // the first authenticated screen is their own test rather than a cold dashboard.
+  const testToken = typeof req.query.t === "string" && /^t_[a-f0-9]{20}$/.test(req.query.t) ? req.query.t : null;
   const state = generateState();
-  await saveOAuthState(state, shop);
+  await saveOAuthState(state, shop, 600, testToken);
 
   if (ENV.shopify.mode === "mock") {
     // Simulate Shopify redirecting back with a signed callback (no real Shopify).
@@ -199,8 +204,8 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
   }
   // 3) single-use state nonce (CSRF + replay protection)
   const state = typeof req.query.state === "string" ? req.query.state : "";
-  const stateShop = await consumeOAuthState(state);
-  if (!stateShop || stateShop !== shop) {
+  const consumed = await consumeOAuthState(state);
+  if (!consumed || consumed.shop !== shop) {
     res.status(403).json({ error: "Invalid or expired OAuth state." });
     return;
   }
@@ -219,6 +224,16 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
   res.cookie(SHOP_COOKIE, signShop(shop), {
     httpOnly: true, secure: ENV.isProd, sameSite: "lax", maxAge: 30 * 24 * 3600 * 1000, path: "/",
   });
+  // V2 CP2 — hand the carried public test to the app so the first authenticated
+  // screen continues it. Bind it here too: the redirect can be lost (a closed tab,
+  // a blocked popup) and the claim must survive that.
+  if (consumed.testToken) {
+    await claimPublicTest(consumed.testToken, shop).catch((e) => {
+      console.warn(`[install] could not claim public test: ${(e as Error).message}`);
+    });
+    res.redirect(`/app?t=${encodeURIComponent(consumed.testToken)}`);
+    return;
+  }
   res.redirect("/app");
 }
 
