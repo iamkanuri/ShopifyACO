@@ -503,14 +503,21 @@ app.post(
     const startedAt = Date.now();
     const result = await runProductTest(url, { force: body.force === true });
     const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
+    // `tier` and `throttled` are the V2 §2.5 escalation signal: if the throttle
+    // rate over a rolling 24h stays high, the next step is an egress proxy pool,
+    // an async queued flow, or Storefront API access for installed merchants.
     console.log(JSON.stringify({
       at: "product_test", host, ok: result.ok, errorKind: result.errorKind ?? null,
-      cached: Boolean(result.cached), ms: Date.now() - startedAt,
+      cached: Boolean(result.cached), tier: result.fetchTier ?? null,
+      throttled: result.throttledTiers ?? [], degraded: Boolean(result.degraded),
+      ms: Date.now() - startedAt,
     }));
     // Outcome logging for diagnosis (no PII — host + state counts only).
     await insertEvent("product_test", undefined, {
       ok: result.ok, errorKind: result.errorKind ?? null, cached: Boolean(result.cached),
       evidenced: result.evidencedCount, notProven: result.notProvenCount, requiresAccess: result.requiresAccessCount,
+      tier: result.fetchTier ?? null, throttled: (result.throttledTiers ?? []).join(",") || null,
+      degraded: Boolean(result.degraded),
     }).catch(() => {});
     res.json(result);
   }),

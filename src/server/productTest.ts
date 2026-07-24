@@ -10,6 +10,7 @@ import {
 import { lintStrings } from "./claimLinter.js";
 import {
   getCachedResult, storeResult, reserveHostSlot, getCachedRobots, storeRobots,
+  reserveEgressSlot, withEgressSlot, markHostThrottled, hostThrottleCooldownMs,
 } from "./productTestCache.js";
 import { judgeClaims, semanticSpendUsd, type SemanticDeps, type SemanticStats } from "./semanticTier.js";
 
@@ -89,8 +90,29 @@ export interface PublicProduct {
    *  the first source in the precedence order (before variants, before `.js`). */
   ldAvailability: string | null;
   /** How the shipping policy fetch went — drives an honest delivery verdict. */
-  policyStatus: "not_fetched" | "readable" | "unreachable" | "robots_disallowed";
+  policyStatus: "not_fetched" | "readable" | "unreachable" | "robots_disallowed" | "rate_limited";
   fetched: { json: boolean; page: boolean; js: boolean; policy: boolean };
+  /** Which fetch tier answered / was refused (V2 §2.1, §2.3). */
+  diagnostics: FetchDiagnostics;
+}
+
+// ---- fetch-tier diagnostics (V2 §2.1) ---------------------------------------
+// The throttle we defend against is per-egress-IP AND endpoint-specific: in the
+// v1.1 smoke run `/products/*` returned 429 `local_rate_limited` on stores we had
+// never touched, while `/robots.txt` and `/policies/*` on those same hosts served
+// 200. Recording WHICH tier answered is therefore the only way to tell an upstream
+// block apart from a store that genuinely publishes nothing.
+export type FetchTier = "page" | "json" | "js" | "policy";
+
+export interface FetchDiagnostics {
+  /** Tiers we actually issued a request for, in order. */
+  attempted: FetchTier[];
+  /** The tier that supplied the primary product node. */
+  answeredBy: "page" | "json" | null;
+  /** Tiers refused upstream (429/403) or held back by our own egress budget. */
+  throttled: FetchTier[];
+  /** A tier was refused but other tiers answered — the test runs, partially (§2.3). */
+  degraded: boolean;
 }
 
 export type FetchErrorKind = "bad_url" | "not_shopify" | "not_found" | "rate_limited" | "robots_disallowed" | "unreachable";
@@ -147,13 +169,58 @@ export function jsonLdProductDescription(html: string): string | null {
   return null;
 }
 
+/** The JSON-LD Product `category`, used as the category signal when the page tier
+ *  answers alone. V2 §2.1 made the page primary, and `product_type` lives only on
+ *  the `.json` endpoint — without this, claim inference would silently fall back to
+ *  title-matching on every page-only test and mis-categorize honest stores. */
+export function jsonLdProductCategory(html: string): string | null {
+  const nodes = extractJsonLd(html);
+  for (const node of nodes) {
+    const t = node["@type"];
+    const types = (Array.isArray(t) ? t : [t]).map((x) => String(x).toLowerCase());
+    if (!types.includes("product") && !types.includes("productgroup")) continue;
+    const c = node.category;
+    // Shopify and GS1 both emit breadcrumb-ish categories ("Home > Bath > Soap");
+    // the most specific segment is the last one.
+    if (typeof c === "string" && c.trim()) return c.split(">").pop()!.trim();
+    if (c && typeof c === "object" && typeof (c as { name?: unknown }).name === "string") {
+      return String((c as { name: string }).name).trim();
+    }
+  }
+  // Fallback: a BreadcrumbList. Its last crumb is the product itself, so the
+  // SECOND-TO-LAST is the collection the store files it under ("Home > Bar Soap >
+  // Pine Tar"). Structured navigation, not prose — description text is deliberately
+  // NOT consulted, for the same reason tags aren't: a coffee-SCENTED soap must
+  // never read as a coffee product.
+  for (const node of nodes) {
+    const t = node["@type"];
+    const types = (Array.isArray(t) ? t : [t]).map((x) => String(x).toLowerCase());
+    if (!types.includes("breadcrumblist")) continue;
+    const items = node.itemListElement;
+    if (!Array.isArray(items) || items.length < 2) continue;
+    const names = items
+      .map((it) => {
+        const el = it as { name?: unknown; item?: { name?: unknown } };
+        return typeof el?.name === "string" ? el.name : typeof el?.item?.name === "string" ? el.item.name : null;
+      })
+      .filter((n): n is string => Boolean(n && n.trim()));
+    if (names.length >= 2) return names[names.length - 2]!.trim();
+  }
+  return null;
+}
+
 export interface FetchDeps {
   /** `extraContentTypes` is an opt-in, per-call widening (the `.js` endpoint only). */
   fetchUrl?: (url: string, extraContentTypes?: RegExp[]) => Promise<{ status: number; contentType: string | null; body: string; finalUrl?: string }>;
   loadRobots?: (origin: string) => Promise<RobotsPolicy>;
   /** Injectable clock — cache/throttle windows are testable without real time. */
   now?: () => number;
+  /** Injectable sleep. Tests advance their own clock here instead of burning real
+   *  seconds, so throttle spacing is exercised precisely rather than approximately. */
+  sleep?: (ms: number) => Promise<void>;
 }
+
+const realSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 const defaultFetchUrl: NonNullable<FetchDeps["fetchUrl"]> = async (url, extraContentTypes) => {
   const r = await safeFetch(url, extraContentTypes ? { ...LIMITS, extraContentTypes } : LIMITS);
@@ -168,25 +235,51 @@ export interface FetchContext { fetchUrl: NonNullable<FetchDeps["fetchUrl"]>; ro
 export async function fetchPublicProduct(
   raw: string,
   deps: FetchDeps = {},
-): Promise<{ product?: PublicProduct; error?: FetchError; ctx?: FetchContext }> {
+): Promise<{ product?: PublicProduct; error?: FetchError; ctx?: FetchContext; diagnostics?: FetchDiagnostics }> {
   const parsed = parseProductUrl(raw);
   if (!parsed) return { error: { kind: "bad_url", message: FETCH_ERROR_MESSAGE.bad_url } };
   const { origin, handle } = parsed;
   const host = new URL(origin).host.toLowerCase();
   const rawFetch = deps.fetchUrl ?? defaultFetchUrl;
+  const diagnostics: FetchDiagnostics = { attempted: [], answeredBy: null, throttled: [], degraded: false };
 
-  // Every outbound request passes the shared per-host throttle: ≥2s spacing and a
-  // hard hourly budget. Exceeding the budget is reported honestly rather than
-  // hammering a store we're already heavy on.
+  // NEGATIVE CACHE (§2.4): a host that just refused us is not re-probed for 10
+  // minutes. Repeat visitors would otherwise each burn global budget rediscovering
+  // the same block — and each wait through it — for nothing.
+  const cooldownMs = hostThrottleCooldownMs(host, deps);
+  if (cooldownMs > 0) {
+    return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited }, diagnostics };
+  }
+
+  // Every outbound request passes TWO independent budgets:
+  //   • the per-host courtesy limit (≥2s spacing, hourly cap) — don't hammer a store;
+  //   • the process-wide Shopify egress budget — don't get our ONE production IP
+  //     blocked across every store at once. Per-host limiting structurally cannot
+  //     prevent that, because the upstream limiter counts our IP, not the host.
+  // Waiting happens OUTSIDE the concurrency gate so a parked request doesn't hold
+  // a slot that a ready request could use.
   let hostBudgetSpent = false;
+  let globalBudgetSpent = false;
   const fetchUrl: NonNullable<FetchDeps["fetchUrl"]> = async (url, extraContentTypes) => {
     const slot = reserveHostSlot(host, deps);
     if (!slot.ok) {
       hostBudgetSpent = true;
       throw new Error("host hourly budget exhausted");
     }
-    if (slot.waitMs > 0) await new Promise((r) => setTimeout(r, slot.waitMs));
-    return rawFetch(url, extraContentTypes);
+    const egress = reserveEgressSlot(deps);
+    if (!egress.ok) {
+      globalBudgetSpent = true;
+      throw new Error("global egress budget exhausted");
+    }
+    const waitMs = Math.max(slot.waitMs, egress.waitMs);
+    if (waitMs > 0) await (deps.sleep ?? realSleep)(waitMs);
+    return withEgressSlot(() => rawFetch(url, extraContentTypes));
+  };
+
+  /** Record a tier that the STORE refused (429/403) and start its cooldown. */
+  const noteThrottled = (tier: FetchTier): void => {
+    if (!diagnostics.throttled.includes(tier)) diagnostics.throttled.push(tier);
+    markHostThrottled(host, deps);
   };
 
   // robots.txt: once per host per hour, shared across all users. Its redirect also
@@ -220,43 +313,68 @@ export async function fetchPublicProduct(
   }
 
   let js: ShopifyProductJson | null = null;
-  let sawRateLimit = false;
-  let saw404 = false;
-  let sawNonJson = false;
-  if (isAllowedByRobots(robots, jsonPath)) {
-    try {
-      const r = await fetchUrl(`${canonicalOrigin}${jsonPath}`);
-      if (r.status === 429 || r.status === 403) sawRateLimit = true;
-      else if (r.status === 404) saw404 = true;
-      else if (r.status === 200 && /json/i.test(r.contentType ?? "")) {
-        js = (JSON.parse(r.body) as { product?: ShopifyProductJson }).product ?? null;
-      } else if (r.status === 200) sawNonJson = true;
-    } catch { /* fall through to the page fetch */ }
-  }
-
-  // The product PAGE is fetched only when we still need structured prose (JSON-LD /
-  // FAQ) — i.e. when the .json gave us nothing, or gave us no description text.
   let extracted: ExtractedPage | null = null;
   let ldDescription: string | null = null;
-  const needPage = !js || !js.body_html;
-  if (needPage && isAllowedByRobots(robots, pagePath)) {
+  let ldCategory: string | null = null;
+  let saw404 = false;
+  let sawNonJson = false;
+
+  // ---- TIER 1: the product PAGE (V2 §2.1 — reordered, was tier 2) ------------
+  // The v1.1 smoke run is the evidence: `/products/*.json` returned 429 while HTML
+  // on the same hosts returned 200. So the tier most likely to answer goes FIRST,
+  // and a throttled `.json` degrades the test instead of erroring it. The page's
+  // JSON-LD Product node carries name, description, price and availability — enough
+  // to adjudicate claim, price and stock requirements on its own.
+  if (isAllowedByRobots(robots, pagePath)) {
+    diagnostics.attempted.push("page");
     try {
       const r = await fetchUrl(`${canonicalOrigin}${pagePath}`);
-      if (r.status === 429 || r.status === 403) sawRateLimit = true;
+      if (r.status === 429 || r.status === 403) noteThrottled("page");
       else if (r.status === 404) saw404 = true;
       else if (r.status === 200 && /html/i.test(r.contentType ?? "")) {
         extracted = extractPage(r.body);
         ldDescription = jsonLdProductDescription(r.body);
+        ldCategory = jsonLdProductCategory(r.body);
+        if (extracted.product?.name || extracted.product?.offer) diagnostics.answeredBy = "page";
       }
-    } catch { /* fall through */ }
+    } catch { /* the JSON tier is the fallback */ }
   }
 
-  if (!js && !extracted) {
-    if (sawRateLimit || hostBudgetSpent) return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited } };
-    if (saw404) return { error: { kind: "not_found", message: FETCH_ERROR_MESSAGE.not_found } };
-    if (sawNonJson) return { error: { kind: "not_shopify", message: FETCH_ERROR_MESSAGE.not_shopify } };
-    return { error: { kind: "unreachable", message: FETCH_ERROR_MESSAGE.unreachable } };
+  // ---- TIER 2: /products/{handle}.json — ONLY to fill a gap the page left ----
+  // A page with a complete JSON-LD Product node (node + prose + price +
+  // availability) already answers the requirements this test can ask, so we spend
+  // neither a second request nor a second chance at being throttled. Otherwise the
+  // .json fills in body copy, product_type, options and variant detail.
+  const ldProduct = extracted?.product ?? null;
+  const pageHasNode = Boolean(ldProduct?.name || ldProduct?.offer);
+  const pageHasText = Boolean(ldDescription || extracted?.faqs?.length || extracted?.metaDescription);
+  const pageSufficient = pageHasNode && pageHasText && ldProduct?.offer?.price != null && Boolean(ldProduct?.offer?.availability);
+
+  if (!pageSufficient && isAllowedByRobots(robots, jsonPath)) {
+    diagnostics.attempted.push("json");
+    try {
+      const r = await fetchUrl(`${canonicalOrigin}${jsonPath}`);
+      if (r.status === 429 || r.status === 403) noteThrottled("json");
+      else if (r.status === 404) saw404 = true;
+      else if (r.status === 200 && /json/i.test(r.contentType ?? "")) {
+        js = (JSON.parse(r.body) as { product?: ShopifyProductJson }).product ?? null;
+        if (js && !diagnostics.answeredBy) diagnostics.answeredBy = "json";
+      } else if (r.status === 200) sawNonJson = true;
+    } catch { /* whatever the page tier returned still stands */ }
   }
+
+  const budgetRefused = hostBudgetSpent || globalBudgetSpent;
+  if (!js && !extracted) {
+    // Nothing at all came back: the existing specific errors still apply (§2.3).
+    if (diagnostics.throttled.length || budgetRefused) return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited }, diagnostics };
+    if (saw404) return { error: { kind: "not_found", message: FETCH_ERROR_MESSAGE.not_found }, diagnostics };
+    if (sawNonJson) return { error: { kind: "not_shopify", message: FETCH_ERROR_MESSAGE.not_shopify }, diagnostics };
+    return { error: { kind: "unreachable", message: FETCH_ERROR_MESSAGE.unreachable }, diagnostics };
+  }
+  // A tier was refused but another answered ⇒ run the test on what we have and say
+  // so, per-row, in the merchant's own words (§2.3). A partial honest test beats an
+  // error page — and unlike an error page, it is still useful.
+  diagnostics.degraded = diagnostics.throttled.length > 0 || budgetRefused;
 
   // Availability precedence (§3.1): JSON-LD Offer.availability → `.json` variants →
   // the `.js` endpoint (which carries the `available` flag `.json` often omits).
@@ -267,11 +385,13 @@ export async function fetchPublicProduct(
   if (!ldAvailability && !jsonHasVariantSignal) {
     const dotJsPath = `/products/${encodeURIComponent(handle)}.js`;
     if (isAllowedByRobots(robots, dotJsPath)) {
+      diagnostics.attempted.push("js");
       try {
         // Shopify serves this JSON as `text/javascript`; the allowance is scoped to
         // THIS call only (safeFetch's default allowlist is unchanged).
         const r = await fetchUrl(`${canonicalOrigin}${dotJsPath}`, [/^text\/javascript/i, /^application\/javascript/i]);
-        if (r.status === 200 && /javascript|json/i.test(r.contentType ?? "")) {
+        if (r.status === 429 || r.status === 403) noteThrottled("js");
+        else if (r.status === 200 && /javascript|json/i.test(r.contentType ?? "")) {
           const dotJs = JSON.parse(r.body) as ShopifyProductJson;
           if (dotJs && Array.isArray(dotJs.variants)) {
             usedJsEndpoint = true;
@@ -279,6 +399,7 @@ export async function fetchPublicProduct(
           }
         }
       } catch { /* the row stays honestly unadjudicated */ }
+      diagnostics.degraded = diagnostics.degraded || diagnostics.throttled.includes("js") || hostBudgetSpent || globalBudgetSpent;
     }
   }
 
@@ -308,13 +429,15 @@ export async function fetchPublicProduct(
   return {
     product: {
       origin: canonicalOrigin, handle, title: js?.title ?? ld?.name ?? extracted?.title ?? null,
-      vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? null, tags,
+      vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? ldCategory, tags,
       descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,
       policyStatus: "not_fetched",
       fetched: { json: Boolean(js), page: Boolean(extracted), js: usedJsEndpoint, policy: false },
+      diagnostics,
     },
     ctx: { fetchUrl, robots },
+    diagnostics,
   };
 }
 
@@ -329,6 +452,13 @@ export async function attachShippingPolicy(
   if (!isAllowedByRobots(ctx.robots, path)) return { ...product, policyStatus: "robots_disallowed" };
   try {
     const r = await ctx.fetchUrl(`${product.origin}${path}`);
+    // A throttled policy page is NOT an absent policy — say which one it was (§2.3).
+    if (r.status === 429 || r.status === 403) {
+      return {
+        ...product, policyStatus: "rate_limited",
+        diagnostics: { ...product.diagnostics, throttled: [...product.diagnostics.throttled, "policy"], degraded: true },
+      };
+    }
     if (r.status !== 200 || !/html/i.test(r.contentType ?? "")) return { ...product, policyStatus: "unreachable" };
     // Policy pages are chrome-heavy; keep only the main text and cap it.
     const text = htmlToText(r.body).slice(0, 20_000);
@@ -460,6 +590,15 @@ function textSurfaces(p: PublicProduct): string[] {
 const listPhrase = (items: string[]): string =>
   items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
+/** V2 §2.3 — the honesty rule for a degraded run. If a fetch tier was refused, we
+ *  never got to look, so we must NOT report the store as publishing nothing. The
+ *  difference between "we couldn't read this" and "you don't publish this" is the
+ *  difference between a finding and an accusation, and only one of them is true. */
+const THROTTLED_DETAIL =
+  "The store's product endpoint is limiting automated requests right now, so we couldn't read this surface. That's an upstream limit rather than something about this store — try again in a few minutes.";
+const accessDetail = (p: PublicProduct, whenReadable: string): string =>
+  p.diagnostics?.degraded ? THROTTLED_DETAIL : whenReadable;
+
 export function evaluate(p: PublicProduct, req: Requirement): Assertion {
   switch (req.kind) {
     case "claim": {
@@ -490,7 +629,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     case "price_under": {
       const checked = ["variant prices", "structured data"];
       if (p.minPriceUsd == null) {
-        return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: "No public price is exposed on this product." };
+        return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "No public price is exposed on this product.") };
       }
       if (p.minPriceUsd < req.capUsd!) {
         return { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: `Lowest readable price is $${p.minPriceUsd.toFixed(2)}.`, evidenceSurface: "variant prices" };
@@ -526,7 +665,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           ? { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: "At least one variant is listed as purchasable.", evidenceSurface: "variant options" }
           : { label: req.label, status: "not_proven", surfacesChecked: checked, detail: "Checked the public variant list — no variant shows as available." };
       }
-      return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: "This product exposes no availability data publicly." };
+      return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "This product exposes no availability data publicly.") };
     }
     case "no_subscription": {
       const checked = textSurfaces(p);
@@ -566,7 +705,9 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
         label: req.label, status: "requires_store_access", surfacesChecked: checked,
         detail: p.policyStatus === "robots_disallowed"
           ? "Your shipping policy asks automated tools not to read it, so we can't check delivery timing from public data."
-          : "No delivery timing in your public product data, and your shipping policy page couldn't be read publicly.",
+          : p.policyStatus === "rate_limited"
+          ? THROTTLED_DETAIL
+          : accessDetail(p, "No delivery timing in your public product data, and your shipping policy page couldn't be read publicly."),
       };
     }
   }
@@ -660,6 +801,15 @@ export interface ProductTestResult {
   /** Set when served from cache (ISO timestamp of the original run). */
   testedAt?: string;
   cached?: boolean;
+  /** True when a fetch tier was refused and the test ran on partial data (§2.3).
+   *  The affected rows carry their own accurate reason; this drives the banner. */
+  degraded?: boolean;
+  /** Which tier supplied the product node, and which tiers were refused (§2.1).
+   *  Reported for production diagnosis of the upstream throttle. */
+  fetchTier?: "page" | "json" | null;
+  throttledTiers?: string[];
+  /** The error is an upstream limit, not a verdict — the UI offers a retry (§2.3). */
+  retryable?: boolean;
 }
 
 export interface RunOptions extends FetchDeps {
@@ -683,8 +833,15 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     if (cached) return cached;
   }
 
-  const { product: fetched, error, ctx } = await fetchPublicProduct(url, deps);
-  if (!fetched) return { ...base, error: error?.message, errorKind: error?.kind };
+  const { product: fetched, error, ctx, diagnostics } = await fetchPublicProduct(url, deps);
+  if (!fetched) {
+    return {
+      ...base, error: error?.message, errorKind: error?.kind,
+      // An upstream limit is not a verdict on the store — the UI offers a retry (§2.3).
+      retryable: error?.kind === "rate_limited" || error?.kind === "unreachable",
+      throttledTiers: diagnostics?.throttled,
+    };
+  }
 
   const { summary, requirements } = buildBuyerTask(fetched);
 
@@ -774,7 +931,13 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     suggestedCorrection,
     deferred,
     semantic: semantic.stats,
+    degraded: product.diagnostics.degraded,
+    fetchTier: product.diagnostics.answeredBy,
+    throttledTiers: product.diagnostics.throttled,
   };
-  if (cacheKey) storeResult(cacheKey, result, deps);
+  // A degraded result is deliberately NOT cached: it is missing surfaces we would
+  // normally read, and pinning it for 7 days would turn a transient upstream block
+  // into a week-long wrong answer.
+  if (cacheKey && !product.diagnostics.degraded) storeResult(cacheKey, result, deps);
   return result;
 }

@@ -133,6 +133,7 @@ test("7. result states produce a correct, separated breakdown", async () => {
   const res = await runProductTest("https://s.example/products/cedar-bar", {
     semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (url) =>
       url.endsWith(".json")
         ? { status: 200, contentType: "application/json", body: html }
@@ -239,6 +240,7 @@ test("10b. a non-compliant result is NOT rendered (the linter is a blocking gate
   const res = await runProductTest("https://s.example/products/x", {
     semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (url) =>
       url.endsWith(".json")
         ? { status: 200, contentType: "application/json", body: html }
@@ -264,6 +266,7 @@ test("8. a repeat test is served from cache within TTL; an explicit re-run bypas
     now: () => clock,
     semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (u: string) => {
       fetches++;
       return u.endsWith(".json")
@@ -387,6 +390,7 @@ async function runStub(routes: Array<[RegExp, { status: number; contentType: str
   return runProductTest("https://v11.example/products/cedar-bar", {
     semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (u: string) => routes.find(([re]) => re.test(u))?.[1] ?? { status: 404, contentType: "text/html", body: "" },
     ...extra,
   });
@@ -425,6 +429,7 @@ test("12. JSON-LD InStock proves availability without any .js fetch", async () =
   const res = await runProductTest("https://ld.example/products/cedar-bar", {
     semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (u: string) => {
       urls.push(u);
       if (/\.json$/.test(u)) return { status: 404, contentType: "text/html", body: "" }; // no .json at all
@@ -443,6 +448,7 @@ test("12. JSON-LD InStock proves availability without any .js fetch", async () =
   const oos = await runProductTest("https://ld2.example/products/cedar-bar", {
     semantic: { disabled: true },
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (u: string) => /\.json$/.test(u)
       ? { status: 404, contentType: "text/html", body: "" }
       : { status: 200, contentType: "text/html", body: ld.replace("InStock", "OutOfStock") },
@@ -558,6 +564,7 @@ test("17. a cached test performs no network fetches and no model calls", async (
   let modelCalls = 0;
   const deps = {
     loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {}, // throttle bookkeeping still runs; we just don't burn real seconds
     fetchUrl: async (u: string) => {
       fetches++;
       return /\.json$/.test(u)
@@ -586,4 +593,170 @@ test("findSupport only reads product surfaces (chrome is not in the index at all
   ]);
   assert.equal(findSupport(ev, ["organic"])?.surface, "structured_data");
   assert.equal(findTimingSupport(ev), null, "no timing statement anywhere");
+});
+
+// ===========================================================================
+// V2 CP1 — EGRESS RESILIENCE. The v1.1 smoke run hit `429 local_rate_limited`
+// on `/products/*` for stores we had never touched, while `/robots.txt` and
+// `/policies/*` on those same hosts served 200: the limiter counts our EGRESS
+// IP and is ENDPOINT-SPECIFIC. Per-host throttling structurally cannot help.
+// ===========================================================================
+
+/** A product page whose JSON-LD carries name, prose, price AND availability. */
+const richPage = (description: string) =>
+  `<html><head><meta name="description" content="Cedar bar soap."><script type="application/ld+json">${JSON.stringify({
+    "@type": "Product", name: "Cedar Bar", description, category: "Home > Bath > Bar Soap",
+    offers: { "@type": "Offer", price: "9.00", priceCurrency: "USD", availability: "https://schema.org/InStock" },
+  })}</script></head><body></body></html>`;
+
+test("18. the page tier alone proves claim, price and availability — no .json fetch", async () => {
+  const urls: string[] = [];
+  const { __resetCaches } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  const res = await runProductTest("https://pagetier.example/products/cedar-bar", {
+    semantic: { disabled: true },
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {},
+    fetchUrl: async (u: string) => {
+      urls.push(u);
+      if (/\/products\/cedar-bar$/.test(u)) {
+        return { status: 200, contentType: "text/html", body: richPage("A cedar bar soap. This bar is fragrance-free and paraben-free. Orders ship within 2 business days.") };
+      }
+      // The observed shape: the product ENDPOINTS 429 while HTML surfaces serve.
+      // The test must never need one of them.
+      if (/\.(json|js)$/.test(u)) return { status: 429, contentType: null, body: "" };
+      return { status: 200, contentType: "text/html", body: "<html><body><p>All orders ship within 2 business days.</p></body></html>" };
+    },
+  });
+
+  assert.equal(res.ok, true, "the page tier alone produces a result");
+  assert.ok(!urls.some((u) => /\.json$/.test(u)), `no .json fetch was made: ${urls.join(", ")}`);
+  assert.ok(!urls.some((u) => /\.js$/.test(u)), "no .js fetch was made either");
+  assert.equal(res.fetchTier, "page", "diagnostics record WHICH tier answered");
+  assert.equal(res.degraded, false, "nothing was refused, so nothing is degraded");
+
+  // The three requirement families the page tier must be able to adjudicate.
+  const claim = res.assertions.find((a) => /fragrance/i.test(a.label));
+  assert.ok(claim, "a claim requirement was generated");
+  assert.equal(claim!.status, "pass_evidenced", "claim proven from JSON-LD prose");
+
+  const price = res.assertions.find((a) => /price under/i.test(a.label));
+  assert.ok(price, "a price requirement was generated from the JSON-LD offer");
+  assert.equal(price!.status, "pass_evidenced");
+
+  const stock = res.assertions.find((a) => /in stock/i.test(a.label));
+  assert.equal(stock!.status, "pass_evidenced", "availability proven from the JSON-LD offer");
+});
+
+test("19. a throttled product endpoint degrades to a PARTIAL honest test, never an error", async () => {
+  const { __resetCaches } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  // The exact observed shape: HTML serves, the .json/.js product endpoints 429.
+  // The page here has prose but NO offer, so availability genuinely needs a tier
+  // that is being refused — the case where a wrong reason would be a lie.
+  const thinPage = `<html><head><script type="application/ld+json">${JSON.stringify({
+    "@type": "Product", name: "Cedar Bar", category: "Bar Soap",
+    description: "A cedar bar soap. This bar is fragrance-free.",
+  })}</script></head><body></body></html>`;
+  const res = await runProductTest("https://degrade.example/products/cedar-bar", {
+    semantic: { disabled: true },
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {},
+    fetchUrl: async (u: string) => {
+      if (/\/products\/cedar-bar$/.test(u)) return { status: 200, contentType: "text/html", body: thinPage };
+      if (/\.(json|js)$/.test(u)) return { status: 429, contentType: null, body: "" };
+      return { status: 200, contentType: "text/html", body: "<html><body><p>All orders ship within 2 business days.</p></body></html>" };
+    },
+  });
+
+  assert.equal(res.ok, true, "a partial honest test beats an error page");
+  assert.equal(res.degraded, true, "the result discloses that it ran on partial data");
+  assert.ok((res.throttledTiers ?? []).length > 0, "the refused tiers are recorded for diagnosis");
+
+  // The claim the page COULD prove is still proven — degradation is scoped.
+  const claim = res.assertions.find((a) => /fragrance/i.test(a.label));
+  assert.equal(claim!.status, "pass_evidenced", "the surviving tier still does its job");
+
+  // The affected row says the accurate thing. THIS is the honesty guarantee:
+  // "we couldn't read it" must never be rendered as "you don't publish it".
+  const blocked = [...res.assertions, ...res.deferred].filter((a) => a.status === "requires_store_access");
+  assert.ok(blocked.length > 0, "the unreadable requirement is surfaced, not silently dropped");
+  const stock = blocked.find((a) => /in stock/i.test(a.label));
+  assert.ok(stock, "availability is the affected row");
+  assert.match(stock!.detail, /limiting automated requests/i, "the reason names the upstream limit");
+  assert.doesNotMatch(stock!.detail, /exposes no availability data publicly/i,
+    "must NOT blame the store for a surface we never got to read");
+
+  // A degraded result is never cached — a transient block must not be pinned for 7 days.
+  const { getCachedResult } = await import("../src/server/productTestCache.js");
+  assert.equal(getCachedResult("https://degrade.example/products/cedar-bar"), null, "degraded results are not cached");
+});
+
+test("20. the global egress budget defers past threshold and a throttled host is negatively cached", async () => {
+  const {
+    __resetCaches, reserveEgressSlot, hostThrottleCooldownMs, markHostThrottled,
+    EGRESS_PER_MIN, EGRESS_MAX_WAIT_MS, THROTTLE_COOLDOWN_MS,
+  } = await import("../src/server/productTestCache.js");
+  __resetCaches();
+  let clock = 9_000_000;
+  const deps = { now: () => clock };
+
+  // The budget is counted PROCESS-WIDE, across every host — because that is how
+  // the upstream limiter counts us. A per-host budget cannot see this at all.
+  // Steady traffic: the window fills gradually over ~55s.
+  const spacing = Math.floor(55_000 / EGRESS_PER_MIN);
+  for (let i = 0; i < EGRESS_PER_MIN; i++) {
+    assert.deepEqual(reserveEgressSlot(deps), { ok: true, waitMs: 0 }, `slot ${i} is free`);
+    clock += spacing;
+  }
+  // Past the threshold the next request DEFERS until the oldest slot ages out —
+  // it waits, it does not stampede and it does not fail.
+  const deferred = reserveEgressSlot(deps);
+  assert.ok(deferred.ok, "beyond budget the request waits rather than failing");
+  assert.ok(deferred.ok && deferred.waitMs > 0, "and it is given a real wait");
+  assert.ok(deferred.ok && deferred.waitMs <= EGRESS_MAX_WAIT_MS, "an accepted reservation never waits past the cap");
+
+  // A BURST is different: the whole window is claimed at one instant, so the next
+  // request would have to wait a full minute. That is refused rather than parking
+  // a visitor on a spinner — the caller then degrades honestly (§2.3).
+  __resetCaches();
+  clock = 9_500_000;
+  for (let i = 0; i < EGRESS_PER_MIN; i++) reserveEgressSlot(deps);
+  const burst = reserveEgressSlot(deps);
+  assert.equal(burst.ok, false, "a burst past budget is refused, not queued without bound");
+  assert.equal(burst.ok === false && burst.reason, "global_budget");
+
+  // The window rolls: a minute later the budget is clear again.
+  clock += 60_000 + 1;
+  assert.deepEqual(reserveEgressSlot(deps), { ok: true, waitMs: 0 }, "the rolling window frees up");
+
+  // ---- negative cache: a host that just refused us is not re-probed ----
+  __resetCaches();
+  clock = 10_000_000;
+  assert.equal(hostThrottleCooldownMs("blocked.example", deps), 0, "unknown hosts are clear");
+  markHostThrottled("blocked.example", deps);
+  assert.ok(hostThrottleCooldownMs("blocked.example", deps) > 0, "a throttled host enters cooldown");
+  assert.equal(hostThrottleCooldownMs("other.example", deps), 0, "cooldown is per-host, not global");
+  clock += THROTTLE_COOLDOWN_MS + 1;
+  assert.equal(hostThrottleCooldownMs("blocked.example", deps), 0, "cooldown expires on its own");
+
+  // End to end: a 429 puts the host in cooldown, and the NEXT test makes no request.
+  __resetCaches();
+  let fetches = 0;
+  const throttledDeps = {
+    semantic: { disabled: true },
+    loadRobots: async () => ({ rules: [], fetched: false }),
+    sleep: async () => {},
+    fetchUrl: async () => { fetches++; return { status: 429, contentType: null, body: "" }; },
+  };
+  const first = await runProductTest("https://cool.example/products/x", throttledDeps);
+  assert.equal(first.ok, false, "a fully throttled store still returns its specific error");
+  assert.equal(first.errorKind, "rate_limited");
+  assert.equal(first.retryable, true, "the UI is told this is retryable, not a verdict");
+  const spent = fetches;
+  assert.ok(spent > 0, "the first attempt did reach out");
+
+  const second = await runProductTest("https://cool.example/products/y", throttledDeps);
+  assert.equal(fetches, spent, "the cooled-down host is NOT re-probed — no budget burned");
+  assert.equal(second.errorKind, "rate_limited", "and the visitor still gets the honest message");
 });

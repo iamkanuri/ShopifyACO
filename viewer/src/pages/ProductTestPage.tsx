@@ -24,6 +24,11 @@ interface TestResult {
   suggestedCorrections: string[]; suggestedCorrection: string | null;
   deferred: Assertion[];
   testedAt?: string; cached?: boolean;
+  /** V2 §2.3 — a fetch tier was refused upstream and the test ran on partial data.
+   *  The affected rows carry their own accurate reason; this drives the banner. */
+  degraded?: boolean;
+  /** The failure is an upstream limit, not a verdict — offer a retry, not a shrug. */
+  retryable?: boolean;
 }
 
 const RESULT_LABEL: Record<AssertionStatus, string> = {
@@ -56,13 +61,16 @@ function Row({ a }: { a: Assertion }) {
   );
 }
 
-/** Coarse relative time for the cache label ("3 hours ago"). */
+/** Coarse relative time for the cache label. Results now live 7 days (V2 §2.4), so
+ *  this has to read naturally all the way out to "6 days ago". */
 function timeAgo(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
   const hrs = Math.round(mins / 60);
-  return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
 /** "3 proven · 1 no blocking evidence · 1 unproven · 1 needs store access (not counted against you)" */
@@ -80,11 +88,13 @@ export function ProductTestPage() {
   const [phase, setPhase] = useState<"idle" | "running" | "done" | "error">(initialUrl ? "running" : "idle");
   const [result, setResult] = useState<TestResult | null>(null);
   const [error, setError] = useState("");
+  const [retryable, setRetryable] = useState(false);
   const ran = useRef(false);
 
   async function run(target: string, force = false) {
     setPhase("running");
     setError("");
+    setRetryable(false);
     setResult(null);
     try {
       const res = await fetch("/api/product-test", {
@@ -95,6 +105,7 @@ export function ProductTestPage() {
       const data = (await res.json()) as TestResult & { error?: string };
       if (!res.ok || !data.ok) {
         setError(data.error || "Couldn't run the test on that URL.");
+        setRetryable(Boolean(data.retryable));
         setPhase("error");
         return;
       }
@@ -154,7 +165,17 @@ export function ProductTestPage() {
       )}
 
       {phase === "error" && (
-        <div className="banner-error" role="alert" style={{ marginTop: 16 }}>{error}</div>
+        <div className="banner-error" role="alert" style={{ marginTop: 16 }}>
+          {error}
+          {/* An upstream rate limit is transient and not a verdict on the store, so
+              the honest affordance is a retry rather than a dead end (V2 §2.3). */}
+          {retryable && (
+            <>
+              {" "}
+              <button className="as-link" onClick={() => run(url.trim() || initialUrl, true)}>Try again</button>
+            </>
+          )}
+        </div>
       )}
 
       {phase === "done" && result && (
@@ -174,6 +195,19 @@ export function ProductTestPage() {
               : `RESULT: ${unresolved} of ${result.total} requirement${unresolved === 1 ? "" : "s"} could not be proven from your public store data`}
           </div>
           <div className="pt-breakdown">{breakdown(result)}</div>
+
+          {/* A partial test says so, up front. The affected rows already carry the
+              accurate per-row reason; this makes the whole result legible without
+              the merchant having to infer it (V2 §2.3). */}
+          {result.degraded && (
+            <div className="pt-degraded" role="status">
+              <b>Partial test.</b> Some of this store's product endpoints were limiting automated
+              requests while we ran, so we couldn't read every surface. The rows below say which.
+              That's an upstream limit rather than something about this store —{" "}
+              <button className="as-link" onClick={() => run(result.productUrl, true)}>run it again</button> in a few minutes for the full picture.
+            </div>
+          )}
+
           {result.cached && result.testedAt && (
             <div className="pt-cached">
               Tested {timeAgo(result.testedAt)} · <button className="as-link" onClick={() => run(result.productUrl, true)}>Run again</button>

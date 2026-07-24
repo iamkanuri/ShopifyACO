@@ -59,15 +59,54 @@ Migrations are unchanged by this release, so a code rollback is complete and saf
 The kill switches (no redeploy needed): `PRODUCT_TEST_SEMANTIC=0` disables the semantic
 tier; `DAILY_SPEND_CAP_USD=0` halts all live scan spend.
 
-## 5. Known production risk (watch this)
+## 5. Known production risk: the egress throttle (watch this)
 
-Shopify applies a **per-IP** rate limit (`local_rate_limited`) to storefront
-`/products/*` endpoints, across all stores. Every Buyer Test originates from one Railway
-IP, so heavy usage can trigger it store-agnostically. Mitigations already shipped: a 24h
-per-URL result cache, ≤1 request/2s and ≤10/hour per host, robots cached hourly, and an
-honest user-facing message when it happens ("This store is limiting automated requests
-right now"). If tests start failing broadly, check the `product_test` log lines for
-`errorKind:"rate_limited"` before suspecting the engine.
+Shopify applies a rate limit (`local_rate_limited`) that is **per-egress-IP and
+endpoint-specific, applied across all stores** — not per store. Observed during v1.1 smoke
+testing: `/products/*` returned 429 on three unrelated brands we had never touched, while
+`/robots.txt` and `/policies/*` **on those same hosts** returned 200, and shell `curl` with
+the identical UA succeeded. It persisted past a six-minute cooldown. Every Buyer Test
+originates from one Railway IP, so this is a capacity ceiling on the whole funnel, not a
+per-store courtesy problem — and per-host throttling structurally cannot help, because the
+limiter does not count per host.
+
+**Shipped mitigations (V2 CP1):**
+
+| Defense | Where | Behavior |
+|---|---|---|
+| Page-first fetch order | `productTest.ts` | HTML product page is tier 1 (it survives when `.json` is throttled); `.json` only fills a gap the page left; `.js` last |
+| Global egress budget | `productTestCache.ts` | process-wide **20 fetches/min across all hosts** + concurrency 2; bursts wait, they don't stampede |
+| Honest degradation | `productTest.ts` | a throttled tier yields a **partial test** with the affected rows marked `requires_store_access` and the accurate reason — never "this store publishes nothing", never an error page |
+| Result cache | `productTestCache.ts` | **7 days** per normalized URL ("Tested 3 days ago · Run again") |
+| Negative cache | `productTestCache.ts` | a host that 429s is not re-probed for **10 minutes** |
+
+Tunable without a code change: `PRODUCT_TEST_EGRESS_PER_MIN` (default 20),
+`PRODUCT_TEST_EGRESS_CONCURRENCY` (default 2), `PRODUCT_TEST_EGRESS_MAX_WAIT_MS` (default 10000).
+
+### Escalation path (NOT built — decide from telemetry)
+
+Every test logs a `product_test` line carrying `tier` (which fetch tier answered),
+`throttled` (which tiers were refused) and `degraded`. The same fields land on the
+`product_test` event row.
+
+**The trigger signal: throttle rate over a rolling 24h** —
+`count(degraded or errorKind="rate_limited") / count(product_test)`.
+
+- **< 5%** — no action. The caches and budget are absorbing it.
+- **5–20% sustained for 48h** — raise the cache TTL and lower `PRODUCT_TEST_EGRESS_PER_MIN`
+  first; these are env-var changes, no redeploy of code paths.
+- **> 20% sustained, or any day where `degraded` exceeds clean results** — pick one:
+  1. **Egress proxy pool** — route product fetches through N rotating egress IPs. Highest
+     leverage, since the limiter keys on IP. Cost: a proxy vendor + a per-IP budget split.
+  2. **Queued async flow** — accept the URL, return "we'll show your result in a minute",
+     run it off the existing Phase-1 job queue at a paced rate. Removes the interactive
+     deadline that makes throttling visible, at the cost of the instant-gratification funnel.
+  3. **Storefront API for installed merchants** — authenticated merchants stop using the
+     public crawl path entirely. Doesn't help the public funnel (the acquisition surface),
+     so it is a complement to 1 or 2, never a replacement.
+
+If tests start failing broadly, check the `product_test` log lines for
+`errorKind:"rate_limited"` and the `tier`/`throttled` fields before suspecting the engine.
 
 ---
 
