@@ -2,3 +2,5 @@
 pending-revert.json
 # root .gitignore excludes results/ — stage-4 journeys are the audit trail
 !results/
+# demo package (real competitor name hydrated) — never committed
+demo/

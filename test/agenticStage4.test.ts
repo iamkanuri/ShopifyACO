@@ -176,6 +176,35 @@ test("41. every case-template placeholder resolves to a claims-map entry", async
   assert.throws(() => renderCase(broken), /orphan claim/);
 });
 
+// ---- 44. demo name guard: real name never leaves the demo directory --------
+
+test("44. demo build refuses real-name writes outside the gitignored demo dir", async () => {
+  const { assertDemoWriteSafe } = await import("../src/agentic-test/build-demo.js");
+  const demoDir = join(process.cwd(), "experiments", "agentic-stage4", "demo");
+  const name = "Fictional Brand Co";
+
+  // Inside the demo dir: allowed.
+  assert.doesNotThrow(() => assertDemoWriteSafe(join(demoDir, "demo-index.html"), `About ${name} deodorant`, name, demoDir));
+  // Outside with the real name (any case): refused.
+  assert.throws(
+    () => assertDemoWriteSafe(join(process.cwd(), "experiments", "agentic-stage4", "case", "leak.html"), `x ${name} x`, name, demoDir),
+    /DEMO NAME GUARD/,
+  );
+  assert.throws(
+    () => assertDemoWriteSafe(join(process.cwd(), "README.md"), name.toUpperCase(), name, demoDir),
+    /DEMO NAME GUARD/,
+  );
+  // Outside WITHOUT the name (anonymized): allowed.
+  assert.doesNotThrow(() =>
+    assertDemoWriteSafe(join(process.cwd(), "experiments", "README.md"), "observed competitor A", name, demoDir),
+  );
+  // A sibling dir that merely shares the prefix ("demo-old") is still outside.
+  assert.throws(
+    () => assertDemoWriteSafe(join(process.cwd(), "experiments", "agentic-stage4", "demo-old", "x.html"), name, name, demoDir),
+    /DEMO NAME GUARD/,
+  );
+});
+
 // ---- 43. final-state assertion helper --------------------------------------
 
 test("43. store-state vs ground-truth assertion on the evidence fields", () => {
