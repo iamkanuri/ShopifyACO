@@ -53,7 +53,11 @@ const BRAND_STOPWORDS = new Set([
  *  Structurally typed (reads only responseText/channel) so Stage 5 records reuse it. */
 export function extractBrandCandidates(
   records: Array<{ responseText: string; channel: string }>,
+  extraStopwords: readonly string[] = [],
 ): Array<{ name: string; count: number; channels: string[] }> {
+  // Stage 6: category-generic stopwords (e.g. coffee: "roast", "single") union
+  // the base set. Default empty ⇒ deodorant/existing behavior is byte-identical.
+  const stop = extraStopwords.length ? new Set([...BRAND_STOPWORDS, ...extraStopwords.map((w) => w.toLowerCase())]) : BRAND_STOPWORDS;
   const counts = new Map<string, { count: number; channels: Set<string> }>();
   for (const r of records) {
     const seenInThisResponse = new Set<string>();
@@ -63,10 +67,10 @@ export function extractBrandCandidates(
       const phrase = m[1]!.trim();
       const words = phrase.split(/\s+/);
       if (words.length > 3) continue;
-      if (words.every((w) => BRAND_STOPWORDS.has(w.toLowerCase()))) continue;
+      if (words.every((w) => stop.has(w.toLowerCase()))) continue;
       // Drop leading/trailing stopwords ("Best Native" → "Native").
-      while (words.length && BRAND_STOPWORDS.has(words[0]!.toLowerCase())) words.shift();
-      while (words.length && BRAND_STOPWORDS.has(words[words.length - 1]!.toLowerCase())) words.pop();
+      while (words.length && stop.has(words[0]!.toLowerCase())) words.shift();
+      while (words.length && stop.has(words[words.length - 1]!.toLowerCase())) words.pop();
       if (!words.length) continue;
       const name = words.join(" ");
       if (name.length < 3 || seenInThisResponse.has(name)) continue;

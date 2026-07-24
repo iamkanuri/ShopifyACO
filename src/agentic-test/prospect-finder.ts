@@ -61,9 +61,9 @@ export function resolveBrandDomain(brand: string, records: Stage5ProbeRecord[]):
   return best ? { domain: best[0], evidenceUrl: best[1].url } : { domain: null, evidenceUrl: null };
 }
 
-export function extractBrandDomains(records: Stage5ProbeRecord[]): BrandDomain[] {
+export function extractBrandDomains(records: Stage5ProbeRecord[], extraStopwords: readonly string[] = []): BrandDomain[] {
   // The Stage 3 extractor expects {responseText, channel, citations}.
-  const brands = extractBrandCandidates(records);
+  const brands = extractBrandCandidates(records, extraStopwords);
   return brands.map((b) => {
     const { domain, evidenceUrl } = resolveBrandDomain(b.name, records);
     return { brand: b.name, mentions: b.count, channels: b.channels, domain, domainEvidenceUrl: evidenceUrl };

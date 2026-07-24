@@ -20,15 +20,28 @@ import { isNegatedMatch, matchingTermsIn, normalizeForMatch, occursOutsideSpans 
 // Label-blind: inputs are the contract, the run's trace, and the result only.
 // ===========================================================================
 
-interface TermFixture {
+export interface TermFixture {
   supportTerms?: readonly string[];
   violatingTerms?: readonly string[];
   requiresDigitInSentence?: boolean;
 }
 
+/** Stage 6: additive per-category fixture registry (e.g. coffee attributes).
+ *  Category contract modules register their attributes here at import so the
+ *  deterministic tier can match them WITHOUT editing the Stage 2 fixtures.
+ *  Attributes already in STAGE2_TERM_FIXTURES win (base vocabulary is stable). */
+const EXTRA_TERM_FIXTURES: Record<string, TermFixture> = {};
+export function registerTermFixtures(map: Record<string, TermFixture>): void {
+  for (const [attr, fx] of Object.entries(map)) {
+    if (!(attr in STAGE2_TERM_FIXTURES)) EXTRA_TERM_FIXTURES[attr] = fx;
+  }
+}
+
 export function fixturesFor(attribute: string): TermFixture {
   const stage2 = STAGE2_TERM_FIXTURES[attribute];
   if (stage2) return stage2;
+  const extra = EXTRA_TERM_FIXTURES[attribute];
+  if (extra) return extra;
   const stage1 = MATCHING_TERMS_BY_ATTRIBUTE[attribute];
   return stage1 ? { supportTerms: stage1 } : {};
 }

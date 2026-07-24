@@ -62,14 +62,25 @@ function channels(): EngineAdapter[] {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function runStage5Battery(): Promise<void> {
+/** Category-parameterized battery runner (Stage 6.2). Resume-safe (dedups by
+ *  channel|prompt|repeat from the existing file), per-prompt retry/backoff, and
+ *  the $25 cost breaker via addSpend. `runStage5Battery` is the deodorant
+ *  wrapper; coffee (and future categories) pass their own descriptor. */
+export interface BatteryDescriptor {
+  key: string;
+  prompts: Array<{ id: string; text: string }>;
+  batteryRepeats: number;
+  batteryFile: string;
+}
+
+export async function runCategoryBattery(desc: BatteryDescriptor): Promise<void> {
   const adapters = channels();
   if (adapters.length < 2) throw new Error(`fewer than two probe channels configured (${adapters.length})`);
-  mkdirSync(join(STAGE5_BATTERY_FILE, ".."), { recursive: true });
+  mkdirSync(join(desc.batteryFile, ".."), { recursive: true });
 
   const done = new Set<string>();
-  if (existsSync(STAGE5_BATTERY_FILE)) {
-    for (const line of readFileSync(STAGE5_BATTERY_FILE, "utf8").trim().split("\n")) {
+  if (existsSync(desc.batteryFile)) {
+    for (const line of readFileSync(desc.batteryFile, "utf8").trim().split("\n")) {
       if (!line) continue;
       const r = JSON.parse(line) as Stage5ProbeRecord;
       done.add(`${r.channel}|${r.promptId}|${r.repeat}`);
@@ -77,9 +88,9 @@ export async function runStage5Battery(): Promise<void> {
   }
 
   let ran = 0;
-  for (const prompt of STAGE5_PROMPTS) {
+  for (const prompt of desc.prompts) {
     for (const adapter of adapters) {
-      for (let repeat = 1; repeat <= STAGE5_BATTERY_REPEATS; repeat++) {
+      for (let repeat = 1; repeat <= desc.batteryRepeats; repeat++) {
         if (done.has(`${adapter.name}|${prompt.id}|${repeat}`)) continue;
         let attempt = 0;
         for (;;) {
@@ -91,7 +102,7 @@ export async function runStage5Battery(): Promise<void> {
               channel: adapter.name,
               model: res.model,
               promptId: prompt.id,
-              category: STAGE5_CATEGORY,
+              category: desc.key,
               repeat,
               promptText: prompt.text,
               responseText: res.text,
@@ -101,15 +112,15 @@ export async function runStage5Battery(): Promise<void> {
               costUsd: res.usage?.costUsd ?? 0,
               timestamp: new Date().toISOString(),
             };
-            appendFileSync(STAGE5_BATTERY_FILE, `${JSON.stringify(record)}\n`, "utf8");
+            appendFileSync(desc.batteryFile, `${JSON.stringify(record)}\n`, "utf8");
             addSpend(record.costUsd);
             ran++;
-            console.log(`[s5-battery] ${adapter.name} ${prompt.id} r${repeat} → ${res.text.length} chars, ${(res.citations ?? []).length} citations, $${record.costUsd.toFixed(4)}`);
+            console.log(`[battery:${desc.key}] ${adapter.name} ${prompt.id} r${repeat} → ${res.text.length} chars, ${(res.citations ?? []).length} citations, $${record.costUsd.toFixed(4)}`);
             break;
           } catch (err) {
             const retryable = err instanceof HttpError ? err.retryable : true;
             if (!retryable || attempt >= 3) {
-              console.warn(`[s5-battery] ${adapter.name} ${prompt.id} r${repeat} FAILED: ${(err as Error).message.slice(0, 100)}`);
+              console.warn(`[battery:${desc.key}] ${adapter.name} ${prompt.id} r${repeat} FAILED: ${(err as Error).message.slice(0, 100)}`);
               break;
             }
             await sleep(2000 * attempt);
@@ -118,12 +129,21 @@ export async function runStage5Battery(): Promise<void> {
       }
     }
   }
-  console.log(`[s5-battery] complete: ${ran} new probes · cumulative spend $${readCumulativeSpend().toFixed(4)}`);
+  console.log(`[battery:${desc.key}] complete: ${ran} new probes · cumulative spend $${readCumulativeSpend().toFixed(4)}`);
+}
+
+export async function runStage5Battery(): Promise<void> {
+  return runCategoryBattery({ key: STAGE5_CATEGORY, prompts: STAGE5_PROMPTS, batteryRepeats: STAGE5_BATTERY_REPEATS, batteryFile: STAGE5_BATTERY_FILE });
+}
+
+/** Load probe records from any category's battery file. */
+export function loadBatteryFile(file: string): Stage5ProbeRecord[] {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as Stage5ProbeRecord);
 }
 
 export function loadStage5Battery(): Stage5ProbeRecord[] {
-  if (!existsSync(STAGE5_BATTERY_FILE)) return [];
-  return readFileSync(STAGE5_BATTERY_FILE, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as Stage5ProbeRecord);
+  return loadBatteryFile(STAGE5_BATTERY_FILE);
 }
 
 const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/stage5-battery.ts");

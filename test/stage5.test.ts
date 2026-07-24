@@ -239,6 +239,53 @@ test("52. winner-contrast render is linter-clean in both directions and self-sup
   assert.equal(renderWinnerContrast(undefined, claims), "", "no contrast → empty");
 });
 
+// ---- 53. coffee category: registered fixtures + flagship contract diagnose --
+
+test("53. coffee contract diagnoses single-origin / roast-date / one-time gaps", async () => {
+  const { buildSnapshot } = await import("../src/agentic-test/snapshot-service.js");
+  const { coffeeFreshSingleOriginContract } = await import("../src/agentic-test/categories/coffee/contracts.js");
+  const { fixturesFor } = await import("../src/agentic-test/evidence-validator.js");
+  const { diagnoseProspect } = await import("../src/agentic-test/stage5-diagnose.js");
+
+  // Importing the coffee module registered its term fixtures.
+  assert.ok((fixturesFor("single_origin").supportTerms ?? []).length > 0, "single_origin fixtures registered");
+  assert.ok((fixturesFor("roast_date_disclosed").supportTerms ?? []).length > 0, "roast_date fixtures registered");
+
+  const mk = (desc: string, price: number, host: string) => {
+    const product = {
+      productId: "gid://public/c", handle: "c", title: "Coffee", description: desc,
+      vendor: "X", productType: "Coffee", tags: [], status: "ACTIVE", metafields: [],
+      variants: [{ variantId: "v1", title: "12oz", sku: null, price, available: true, options: [] }],
+    };
+    const snap = buildSnapshot(host, "public-v1", [product], [], [], "", "2026-07-24T00:00:00Z", []);
+    return { ...snap, provenance: "public" as const, surfacesNotInspectable: ["product_metafields", "structured_data", "faq", "shipping_policy", "returns_policy"] as never };
+  };
+
+  // States everything the flagship coffee contract tests.
+  const good = await diagnoseProspect({
+    snapshot: mk("Single-origin Ethiopian beans, roasted to order. One-time purchase, no subscription.", 18, "https://good.example"),
+    contract: coffeeFreshSingleOriginContract,
+    battery: { brandMentions: 1, channels: ["openai"], batteryTotal: 90 }, topCompetitorMentions: 30,
+    runJourneys: async () => [],
+  });
+  const goodEvidenced = good.findings.filter((f) => f.scanVerdict === "evidenced").map((f) => f.attribute).sort();
+  assert.deepEqual(goodEvidenced, ["roast_date_disclosed", "single_origin", "subscription_required", "variant_price"], `evidenced: ${goodEvidenced.join(",")}`);
+  assert.equal(good.findings.filter((f) => f.genuineEvidenceGap).length, 0, "no gaps when everything is stated");
+
+  // States none of them; priced over the cap → MULTI-gap (the coffee generalization test).
+  const bad = await diagnoseProspect({
+    snapshot: mk("A smooth house blend, perfect for busy mornings.", 30, "https://bad.example"),
+    contract: coffeeFreshSingleOriginContract,
+    battery: { brandMentions: 0, channels: [], batteryTotal: 90 }, topCompetitorMentions: 30,
+    runJourneys: async () => [],
+  });
+  const gaps = bad.findings.filter((f) => f.genuineEvidenceGap).map((f) => f.attribute).sort();
+  assert.deepEqual(gaps, ["roast_date_disclosed", "single_origin", "subscription_required"], `gaps: ${gaps.join(",")}`);
+  // Price over the cap is readable-but-unmet, NOT a gap (Rule 4).
+  assert.ok(!gaps.includes("variant_price"), "price over cap is not an evidence gap");
+  assert.ok(bad.severity > good.severity, "multi-gap store scores higher severity");
+});
+
 // ---- 46. not_inspectable surfaces never render as failures or as absent ----
 
 test("46. not_inspectable surfaces are demoted to observational, never failures", async () => {
