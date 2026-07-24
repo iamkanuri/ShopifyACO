@@ -1105,6 +1105,11 @@ if (process.env.AGENTIC_INSTRUMENT_TEST_ENABLED === "true") {
     // Top-level await: must register BEFORE the SPA catch-all below.
     const { registerAgenticCaseRoute } = await import("../agentic-test/case-route.js");
     registerAgenticCaseRoute(app);
+    // Stage 6.3: unlisted hosted diagnostic cases at /c/:token (noindex/nofollow),
+    // inert unless HOSTED_CASES_DIR is also set. Additive; no prod behavior change
+    // when the flag is unset (the default).
+    const { registerHostedCaseRoutes } = await import("../agentic-test/hosted-case-route.js");
+    registerHostedCaseRoutes(app);
   } catch (err) {
     console.error("[agentic-case] route registration failed:", (err as Error).message);
   }

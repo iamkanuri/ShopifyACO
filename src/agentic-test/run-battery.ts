@@ -13,6 +13,9 @@ const isMain = process.argv[1]?.replace(/\\/g, "/").endsWith("agentic-test/run-b
 if (isMain) {
   const key = process.argv[2] ?? "coffee";
   const desc = categoryByKey(key);
+  // Track battery spend (and the $25 breaker) in THIS category's out dir, same
+  // place the pipeline's journey spend accumulates.
+  process.env.AGENTIC_STAGE1_RESULTS_DIR = desc.outDir;
   runCategoryBattery(desc)
     .then(() => console.log(`[run-battery] ${key} battery complete → ${desc.batteryFile}`))
     .catch((err) => {
