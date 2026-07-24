@@ -59,6 +59,19 @@ export function lintCaseText(text: string, claimsMap: Record<string, Claim>): Li
   return { ok: violations.length === 0, violations };
 }
 
+/** Lint OUTREACH prose (message body, one-line finding): the same forbidden-
+ *  phrasing spine as the case linter, WITHOUT the number-sourcing rule (outreach
+ *  copy legitimately carries the battery numbers K/N/total, not a claims map).
+ *  Guards the "never oversell past the linter's honesty" rule for sent copy. */
+export function lintProse(text: string): LintResult {
+  const violations: LintResult["violations"] = [];
+  for (const { re, label } of FORBIDDEN_PATTERNS) {
+    const m = re.exec(text);
+    if (m) violations.push({ pattern: label, excerpt: text.slice(Math.max(0, m.index - 20), m.index + m[0].length + 20) });
+  }
+  return { ok: violations.length === 0, violations };
+}
+
 // ---- human-readable labels (evidence-availability phrasing only) -----------
 
 /** Neutral, evidence-availability phrasing for an attribute. Never a product-
@@ -72,12 +85,26 @@ const ATTR_LABEL: Record<string, string> = {
   tallow_free: "that it's tallow-free",
   single_origin: "that it's single-origin",
   organic: "that it's organic",
-  roast_date_disclosed: "when it was roasted (roast date / roasted-to-order)",
+  roast_date_disclosed: "when it was roasted (its roast date)",
   decaf_method_disclosed: "how it's decaffeinated (the decaf process)",
   variant_price: "its price",
 };
 export function attrLabel(a: string): string {
   return ATTR_LABEL[a] ?? a.replace(/_/g, " ");
+}
+
+/** A single evidence-availability sentence for outreach (Part B "one-line
+ *  finding"), built from the genuine gap attributes. Never product-truth.
+ *  `max` caps how many gaps are named (keeps the ≤120-word message in budget;
+ *  the hosted case still lists all of them). */
+export function oneLineFinding(gapAttributes: string[], max = gapAttributes.length): string {
+  const labels = gapAttributes.slice(0, Math.max(1, max)).map(attrLabel);
+  if (gapAttributes.length === 0) return "your public store data already evidences what shoppers asked for.";
+  const list =
+    labels.length === 1 ? labels[0]
+    : labels.length === 2 ? `${labels[0]} or ${labels[1]}`
+    : `${labels.slice(0, -1).join(", ")}, or ${labels[labels.length - 1]}`;
+  return `nothing on your public product pages states ${list} in a form AI assistants can verify — and shoppers asked for exactly that in our test.`;
 }
 const SURFACE_LABEL: Record<string, string> = {
   product_description: "product description",

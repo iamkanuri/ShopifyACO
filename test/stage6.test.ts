@@ -17,7 +17,7 @@ import {
 } from "../src/agentic-test/hosted-case.js";
 
 const MSG: LinkMessageInput = {
-  storeName: "Example Store", competitorName: "Native", storeAppearances: "4", competitorMentions: "43",
+  storeName: "Example Store", competitorName: "Rival Brand", storeAppearances: "4", competitorMentions: "43",
   batteryTotal: "90", categoryLabel: "natural deodorant",
   oneLineFinding: "nothing on your product pages states it's a one-time purchase in a form AI assistants can verify, and shoppers ask for exactly that.",
   caseUrl: "https://lens.thirdocular.com/c/ab2c3d4e5f6g",
@@ -30,9 +30,9 @@ test("54. hosted-case tokens are unguessable 12-char base32 and stable per slug"
   assert.equal(seen.size, 200, "no token collisions in a batch of 200");
   // Stable per slug: same slug → same token across calls.
   const map = loadTokenMap(join(mkdtempSync(join(tmpdir(), "tok-")), "tokens.json"));
-  const t1 = tokenForSlug(map, "ethique-com");
-  const t2 = tokenForSlug(map, "ethique-com");
-  const t3 = tokenForSlug(map, "humble-com");
+  const t1 = tokenForSlug(map, "store-alpha-com");
+  const t2 = tokenForSlug(map, "store-alpha-com");
+  const t3 = tokenForSlug(map, "store-beta-com");
   assert.equal(t1, t2, "same slug → same token");
   assert.notEqual(t1, t3, "different slug → different token");
 });
@@ -41,7 +41,7 @@ test("55. link message is ≤120 words, personalized, and invites correction", (
   const body = linkMessageBody(MSG);
   assert.ok(bodyWordCount(MSG) <= 120, `body word count ${bodyWordCount(MSG)} ≤ 120`);
   const full = linkMessage(MSG);
-  assert.ok(full.includes("Example Store") && full.includes("Native"), "names present");
+  assert.ok(full.includes("Example Store") && full.includes("Rival Brand"), "names present");
   assert.ok(full.includes("4") && full.includes("43") && full.includes("90"), "real numbers present");
   assert.ok(full.includes(MSG.caseUrl), "case link present");
   assert.ok(/got something wrong/i.test(body), "correction invitation present");
@@ -74,6 +74,51 @@ test("57. hosted bundle writes token dirs + noindex + robots, skips bad tokens",
   assert.ok(readFileSync(join(dir, "robots.txt"), "utf8").includes("Disallow: /"), "robots disallows all");
   assert.ok(readFileSync(join(dir, "_headers"), "utf8").includes("noindex"), "_headers noindex");
   assert.ok(existsSync(join(dir, "README.md")), "deploy README written");
+});
+
+test("60. brand→domain resolver requires prefix/suffix alignment, not loose substring", async () => {
+  const { resolveBrandDomain } = await import("../src/agentic-test/prospect-finder.js");
+  const rec = (responseText: string, citations: string[]) => ({
+    batchTag: "stage5" as const, channel: "openai", model: "m", promptId: "p", category: "c", repeat: 1,
+    promptText: "", responseText, citations, groundingMode: "web_grounded", usage: {}, costUsd: 0, timestamp: "t",
+  });
+
+  // Coincidental substring must NOT resolve — the bug that named the wrong store.
+  // "One" sits INSIDE these hosts (z·one·s, h·one·y) but at neither end. (Fake
+  // domains: the real ones stay in the gitignored output.)
+  assert.equal(resolveBrandDomain("One", [rec("Try One for great gear.", ["https://azoneshop.example/x"])]).domain, null, "'One' must not match a host that merely contains it");
+  assert.equal(resolveBrandDomain("One", [rec("One is nice.", ["https://sweethoney.example/x"])]).domain, null, "'One' must not match 'h-one-y'");
+  assert.equal(resolveBrandDomain("Cat", [rec("Cat toys here.", ["https://scattergoods.example/x"])]).domain, null, "'Cat' must not match 's-cat-ter'");
+
+  // Real matches survive: prefix (brand starts the host) and suffix (host ends with brand).
+  assert.equal(resolveBrandDomain("Brightleaf", [rec("Brightleaf is great.", ["https://brightleafgoods.example/p"])]).domain, "brightleafgoods.example", "prefix match kept");
+  assert.equal(resolveBrandDomain("Wild", [rec("Wild deodorant.", ["https://wearewild.example/p"])]).domain, "wearewild.example", "suffix match kept");
+  assert.equal(resolveBrandDomain("Freedom", [rec("Freedom deodorant.", ["https://freedomco.example/p"])]).domain, "freedomco.example", "prefix match kept");
+});
+
+test("59. one-line finding: evidence-availability, gap-capped, keeps message ≤120 words", async () => {
+  const { oneLineFinding, lintProse } = await import("../src/agentic-test/stage5-case.js");
+
+  // Single gap (deodorant).
+  const single = oneLineFinding(["subscription_required"]);
+  assert.match(single, /one-time purchase/);
+  assert.equal(lintProse(single).ok, true, "single-gap finding is prose-clean");
+
+  // Multi-gap (coffee) capped to 2 keeps the sentence tight; uncapped names all.
+  const allGaps = ["single_origin", "subscription_required", "roast_date_disclosed"];
+  const capped = oneLineFinding(allGaps, 2);
+  assert.ok(capped.includes("single-origin") && capped.includes("one-time purchase"), "capped names the first two");
+  assert.ok(!capped.includes("roast date"), "capped omits the third");
+  assert.equal(lintProse(capped).ok, true, "multi-gap finding is prose-clean");
+
+  // A capped multi-gap message body stays within the ≤120-word budget.
+  const msg = {
+    storeName: "Bean Box", competitorName: "Blue Bottle", storeAppearances: "3", competitorMentions: "37",
+    batteryTotal: "90", categoryLabel: "coffee", oneLineFinding: capped,
+    caseUrl: "https://lens.thirdocular.com/c/ab2c3d4e5f6g",
+  };
+  assert.ok(bodyWordCount(msg) <= 120, `capped coffee message body ${bodyWordCount(msg)} ≤ 120`);
+  assert.equal(lintProse(linkMessageBody(msg)).ok, true, "coffee message body is prose-clean");
 });
 
 test("58. gated /c/:token route: 404 without flag, serves with noindex header when configured", async () => {

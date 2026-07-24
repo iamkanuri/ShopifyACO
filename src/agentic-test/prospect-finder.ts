@@ -48,7 +48,15 @@ export function resolveBrandDomain(brand: string, records: Stage5ProbeRecord[]):
         const host = new URL(u).hostname.replace(/^www\./, "").toLowerCase();
         if (RETAILER_HOSTS.has(host)) continue;
         const hk = norm(host.split(".").slice(0, -1).join("")); // drop TLD
-        if (!(hk.includes(key) || key.includes(hk))) continue;
+        // Stage 6 outreach-quality fix: require the brand to align at a PREFIX or
+        // SUFFIX of the host label (or vice-versa), not merely be a substring. A
+        // loose substring match named the wrong store — a spurious "One" landed
+        // INSIDE unrelated hosts (…b·one·s…, …h·one·y…) and would have addressed a
+        // real merchant as "One". Prefix/suffix keeps the true matches (brand at
+        // the start of the host, or the host ending in the brand) and drops the
+        // coincidences. A store reachable only by a coincidental name is dropped
+        // rather than mis-addressed (honest: better unsent than wrong).
+        if (!(hk.startsWith(key) || key.startsWith(hk) || hk.endsWith(key))) continue;
         const e = hostCounts.get(host) ?? { n: 0, url: u };
         e.n++;
         hostCounts.set(host, e);
