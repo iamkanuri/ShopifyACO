@@ -49,8 +49,11 @@ const BRAND_STOPWORDS = new Set([
 ]);
 
 /** Capitalized-phrase brand candidates from AI answer text, frequency-ranked.
- *  Deterministic; the "brand list assembled from response text" of spec 4.7.1. */
-export function extractBrandCandidates(records: ProbeRecord[]): Array<{ name: string; count: number; channels: string[] }> {
+ *  Deterministic; the "brand list assembled from response text" of spec 4.7.1.
+ *  Structurally typed (reads only responseText/channel) so Stage 5 records reuse it. */
+export function extractBrandCandidates(
+  records: Array<{ responseText: string; channel: string }>,
+): Array<{ name: string; count: number; channels: string[] }> {
   const counts = new Map<string, { count: number; channels: Set<string> }>();
   for (const r of records) {
     const seenInThisResponse = new Set<string>();
