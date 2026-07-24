@@ -1,23 +1,30 @@
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
-import { extractPage, type ExtractedPage } from "../crawler/extract.js";
+import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extract.js";
 import { htmlToText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
+import {
+  buildEvidence, findSupport, findTimingSupport, normalize,
+  SURFACE_LABEL, type EvidenceSentence, type QuotableSurface,
+} from "./testEvidence.js";
 
 // ===========================================================================
-// PHASE B — the AI-buyer PRODUCT TEST (the funnel mechanic behind the reposition).
+// PHASE B — the BUYER TEST (the funnel mechanic behind the reposition).
 // Paste a Shopify product URL → build a buyer task of 4–6 requirements across
 // different surface types (attribute claim · price · variant · purchase terms ·
 // logistics) → run each requirement as an HONEST, deterministic assertion
 // against the store's PUBLIC data → return an assertion-table result.
 //
-// Honesty discipline (the whole differentiator, ported from the Stage 5/6 engine):
+// Honesty discipline (the whole differentiator):
 //   • EVIDENCE-AVAILABILITY, never product truth. A claim not found is "no
 //     evidence found", never "your product is not X".
-//   • Surfaces we can't see from public data (metafields, full policy pages,
-//     delivery timing) are "requires store access" — never "missing".
-//   • Price is always public: an over-cap price is a READABLE value that doesn't
-//     meet the ask, never a "not stated" gap.
+//   • Every Pass on positive evidence must clear the deterministic support gates
+//     in ./testEvidence.ts (aboutness · product-surface · presentable quote), and
+//     FAILS CLOSED otherwise. A wrong Pass is unrecoverable.
+//   • An absence-based pass (`must_be_false`) is DISCLOSED as its own weaker
+//     state — never presented as proof.
+//   • Surfaces not publicly inspectable (metafields, full policy pages) are
+//     "requires store access" — never "missing".
 //   • $0, deterministic — NO model calls. Public data only, robots respected.
 // ===========================================================================
 
@@ -37,7 +44,7 @@ const CLAIM_TERMS: Record<string, ClaimTerms> = {
   organic: { support: ["organic", "usda organic", "certified organic"], violating: [] },
   fair_trade: { support: ["fair trade", "fair-trade", "fairtrade"], violating: [] },
   gluten_free: { support: ["gluten-free", "gluten free", "no gluten"], violating: ["contains gluten", "contains wheat"] },
-  third_party_tested: { support: ["third-party tested", "third party tested", "independently tested", "lab tested", "certificate of analysis", "coa"], violating: [] },
+  third_party_tested: { support: ["third-party tested", "third party tested", "independently tested", "lab tested", "certificate of analysis"], violating: [] },
   bpa_free: { support: ["bpa-free", "bpa free", "no bpa", "without bpa"], violating: ["contains bpa"] },
 };
 const CLAIM_LABEL: Record<string, string> = {
@@ -59,41 +66,34 @@ const CATEGORY_CLAIMS: Array<{ kw: RegExp; claims: string[] }> = [
   { kw: /bottle|container|storage|tumbler/i, claims: ["bpa_free"] },
 ];
 
-const SUBSCRIPTION_REQUIRED = ["subscription required", "subscription only", "subscribe to purchase", "only available by subscription", "must subscribe"];
-const DELIVERY_TERMS = ["ships within", "ships in", "business days", "delivery in", "arrives in", "delivered within", "free shipping", "same day", "2-day", "next day", "ships same"];
+/** Only "required" phrasings — a store merely OFFERING a subscription is not a blocker. */
+const SUBSCRIPTION_REQUIRED = ["subscription required", "subscription is required", "subscription only", "subscribe to purchase", "only available by subscription", "must subscribe"];
 
-const norm = (s: string) => s.toLowerCase().replace(/[‐-―]/g, "-").replace(/\s+/g, " ");
-const NEG = /(^|[^a-z])(not|never|isn't|isnt|no longer)([^a-z]|$)/;
-/** True when EVERY occurrence of `term` in `text` is negated (so it's not support). */
-function allNegated(text: string, term: string): boolean {
-  const t = norm(term); const n = norm(text);
-  let i = n.indexOf(t);
-  if (i === -1) return true;
-  while (i !== -1) { if (!NEG.test(n.slice(Math.max(0, i - 10), i))) return false; i = n.indexOf(t, i + 1); }
-  return true;
-}
-function foundTerm(text: string, terms: string[]): string | null {
-  const n = norm(text);
-  for (const t of terms) if (n.includes(norm(t)) && !allNegated(text, t)) return t;
-  return null;
-}
-/** A verbatim, length-capped sentence-ish window around the matched term. */
-function quoteAround(text: string, term: string, max = 140): string | null {
-  const n = norm(text); const idx = n.indexOf(norm(term));
-  if (idx === -1) return null;
-  const start = Math.max(0, idx - 40);
-  const raw = text.slice(start, Math.min(text.length, idx + term.length + 60)).replace(/\s+/g, " ").trim();
-  return raw.length > max ? raw.slice(0, max).trimEnd() + "…" : raw;
-}
+const norm = normalize;
 
 // ---- public product snapshot -------------------------------------------------
 interface PublicVariant { title: string; priceUsd: number | null; available: boolean; options: string[] }
 export interface PublicProduct {
   origin: string; handle: string; title: string | null; vendor: string | null; productType: string | null;
   tags: string[]; descriptionText: string; variants: PublicVariant[]; minPriceUsd: number | null;
-  optionNames: string[]; optionValues: string[]; corpus: string; extracted: ExtractedPage | null;
-  fetched: { js: boolean; page: boolean };
+  optionNames: string[]; optionValues: string[]; extracted: ExtractedPage | null;
+  /** Sentence-level, chrome-free product evidence — the ONLY text we may match or
+   *  quote. Raw page text is deliberately excluded (see testEvidence.ts). */
+  evidence: EvidenceSentence[];
+  fetched: { json: boolean; page: boolean };
 }
+
+export type FetchErrorKind = "bad_url" | "not_shopify" | "not_found" | "rate_limited" | "robots_disallowed" | "unreachable";
+export interface FetchError { kind: FetchErrorKind; message: string }
+
+export const FETCH_ERROR_MESSAGE: Record<FetchErrorKind, string> = {
+  bad_url: "Paste a Shopify product URL — it should contain /products/…",
+  not_shopify: "This looks like it isn't a Shopify store — the test needs Shopify's public product data.",
+  not_found: "We couldn't find a product at that URL.",
+  rate_limited: "This store is limiting automated requests right now. We'll retry — try again in a few minutes.",
+  robots_disallowed: "This store asks automated tools not to read this page, and we respect that.",
+  unreachable: "We couldn't reach that store's public product data.",
+};
 
 function parseProductUrl(raw: string): { origin: string; handle: string } | null {
   const check = validateUrl(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
@@ -104,12 +104,10 @@ function parseProductUrl(raw: string): { origin: string; handle: string } | null
   return { origin: `${u.protocol}//${u.host}`, handle: decodeURIComponent(m[1]!.replace(/\.(js|json)$/i, "")) };
 }
 
-/** Fetch robots.txt ONCE per run (a permissive default if it's missing/unreachable). */
-async function loadRobots(origin: string): Promise<RobotsPolicy> {
-  try {
-    const r = await safeFetch(`${origin}/robots.txt`, LIMITS);
-    return r.status === 200 ? parseRobots(r.body) : { rules: [], fetched: false };
-  } catch { return { rules: [], fetched: false }; }
+/** Normalized cache/throttle key for a product URL (origin + handle, no query). */
+export function normalizeProductUrl(raw: string): string | null {
+  const p = parseProductUrl(raw);
+  return p ? `${p.origin.toLowerCase()}/products/${p.handle.toLowerCase()}` : null;
 }
 
 // Shape of Shopify's public /products/{handle}.json → { product: {...} }. Prices are
@@ -121,42 +119,97 @@ interface ShopifyProductJson {
   variants?: Array<{ title?: string; price?: string | number; available?: boolean; option1?: string; option2?: string; option3?: string; options?: string[] }>;
 }
 const priceToUsd = (p: string | number | undefined): number | null => {
-  if (typeof p === "number") return Number.isFinite(p) ? (p > 1000 && Number.isInteger(p) ? p / 100 : p) : null; // cents-guard for the .js shape
+  if (typeof p === "number") return Number.isFinite(p) ? (p > 1000 && Number.isInteger(p) ? p / 100 : p) : null; // cents-guard
   if (typeof p === "string") { const n = Number(p.replace(/[^0-9.]/g, "")); return Number.isFinite(n) ? n : null; }
   return null;
 };
 
-/** Fetch a product's PUBLIC data: /products/{handle}.json (structured) + the HTML
- *  page (JSON-LD/policies/FAQ). Robots-checked; SSRF-safe; byte-capped. */
-export async function fetchPublicProduct(raw: string): Promise<{ product?: PublicProduct; error?: string }> {
-  const parsed = parseProductUrl(raw);
-  if (!parsed) return { error: "Paste a Shopify product URL (it should contain /products/…)." };
-  const { origin, handle } = parsed;
+/** Pull the JSON-LD Product node's own `description` (main's extractPage keeps only
+ *  identifiers/offer, not the prose) — a legitimate structured_data text surface. */
+export function jsonLdProductDescription(html: string): string | null {
+  for (const node of extractJsonLd(html)) {
+    const t = node["@type"];
+    const types = (Array.isArray(t) ? t : [t]).map((x) => String(x).toLowerCase());
+    if (!types.includes("product") && !types.includes("productgroup")) continue;
+    const d = node.description;
+    if (typeof d === "string" && d.trim()) return htmlToText(d);
+  }
+  return null;
+}
 
-  const robots = await loadRobots(origin); // one robots.txt fetch per run
-  const jsPath = `/products/${encodeURIComponent(handle)}.json`;
-  let js: ShopifyProductJson | null = null;
-  if (isAllowedByRobots(robots, jsPath)) {
+export interface FetchDeps {
+  fetchUrl?: (url: string) => Promise<{ status: number; contentType: string | null; body: string }>;
+  loadRobots?: (origin: string) => Promise<RobotsPolicy>;
+}
+
+const defaultFetchUrl: NonNullable<FetchDeps["fetchUrl"]> = async (url) => {
+  const r = await safeFetch(url, LIMITS);
+  return { status: r.status, contentType: r.contentType, body: r.body };
+};
+
+/** Fetch a product's PUBLIC data: /products/{handle}.json (structured) + the HTML
+ *  page (JSON-LD prose / FAQ). Robots-checked; SSRF-safe; byte-capped. Returns a
+ *  TYPED error so the UI can be specific instead of generic. */
+export async function fetchPublicProduct(
+  raw: string,
+  deps: FetchDeps = {},
+): Promise<{ product?: PublicProduct; error?: FetchError }> {
+  const parsed = parseProductUrl(raw);
+  if (!parsed) return { error: { kind: "bad_url", message: FETCH_ERROR_MESSAGE.bad_url } };
+  const { origin, handle } = parsed;
+  const fetchUrl = deps.fetchUrl ?? defaultFetchUrl;
+  const getRobots = deps.loadRobots ?? (async (o: string) => {
     try {
-      const r = await safeFetch(`${origin}${jsPath}`, LIMITS);
-      if (r.status === 200 && /json/i.test(r.contentType ?? "")) js = (JSON.parse(r.body) as { product?: ShopifyProductJson }).product ?? null;
-    } catch { /* fall through */ }
+      const r = await fetchUrl(`${o}/robots.txt`);
+      return r.status === 200 ? parseRobots(r.body) : { rules: [], fetched: false };
+    } catch { return { rules: [], fetched: false }; }
+  });
+
+  const robots = await getRobots(origin);
+  const jsonPath = `/products/${encodeURIComponent(handle)}.json`;
+  const pagePath = `/products/${encodeURIComponent(handle)}`;
+  if (!isAllowedByRobots(robots, jsonPath) && !isAllowedByRobots(robots, pagePath)) {
+    return { error: { kind: "robots_disallowed", message: FETCH_ERROR_MESSAGE.robots_disallowed } };
   }
 
-  let extracted: ExtractedPage | null = null;
-  let pageText = "";
-  const pagePath = `/products/${encodeURIComponent(handle)}`;
-  if (isAllowedByRobots(robots, pagePath)) {
+  let js: ShopifyProductJson | null = null;
+  let sawRateLimit = false;
+  let saw404 = false;
+  let sawNonJson = false;
+  if (isAllowedByRobots(robots, jsonPath)) {
     try {
-      const r = await safeFetch(`${origin}${pagePath}`, LIMITS);
-      if (r.status === 200 && /html/i.test(r.contentType ?? "")) {
+      const r = await fetchUrl(`${origin}${jsonPath}`);
+      if (r.status === 429 || r.status === 403) sawRateLimit = true;
+      else if (r.status === 404) saw404 = true;
+      else if (r.status === 200 && /json/i.test(r.contentType ?? "")) {
+        js = (JSON.parse(r.body) as { product?: ShopifyProductJson }).product ?? null;
+      } else if (r.status === 200) sawNonJson = true;
+    } catch { /* fall through to the page fetch */ }
+  }
+
+  // The product PAGE is fetched only when we still need structured prose (JSON-LD /
+  // FAQ) — i.e. when the .json gave us nothing, or gave us no description text.
+  let extracted: ExtractedPage | null = null;
+  let ldDescription: string | null = null;
+  const needPage = !js || !js.body_html;
+  if (needPage && isAllowedByRobots(robots, pagePath)) {
+    try {
+      const r = await fetchUrl(`${origin}${pagePath}`);
+      if (r.status === 429 || r.status === 403) sawRateLimit = true;
+      else if (r.status === 404) saw404 = true;
+      else if (r.status === 200 && /html/i.test(r.contentType ?? "")) {
         extracted = extractPage(r.body);
-        pageText = htmlToText(r.body).slice(0, 40_000);
+        ldDescription = jsonLdProductDescription(r.body);
       }
     } catch { /* fall through */ }
   }
 
-  if (!js && !extracted) return { error: "Couldn't read this product's public data — check the URL, or the store may block bots." };
+  if (!js && !extracted) {
+    if (sawRateLimit) return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited } };
+    if (saw404) return { error: { kind: "not_found", message: FETCH_ERROR_MESSAGE.not_found } };
+    if (sawNonJson) return { error: { kind: "not_shopify", message: FETCH_ERROR_MESSAGE.not_shopify } };
+    return { error: { kind: "unreachable", message: FETCH_ERROR_MESSAGE.unreachable } };
+  }
 
   const tags = Array.isArray(js?.tags) ? js!.tags! : typeof js?.tags === "string" ? js!.tags!.split(",").map((t) => t.trim()).filter(Boolean) : [];
   const optionNames = (js?.options ?? []).map((o) => o.name ?? "").filter(Boolean);
@@ -166,21 +219,28 @@ export async function fetchPublicProduct(raw: string): Promise<{ product?: Publi
     options: v.options ?? [v.option1, v.option2, v.option3].filter((o): o is string => Boolean(o)),
   }));
   const prices = variants.map((v) => v.priceUsd).filter((p): p is number => p != null);
-  const jsDescText = js?.body_html ? htmlToText(js.body_html) : "";
+  const descriptionText = js?.body_html ? htmlToText(js.body_html) : "";
   const ld = extracted?.product;
-  const corpus = [
-    js?.title, jsDescText, tags.join(" "), optionValues.join(" "), js?.product_type,
-    ld?.name, extracted?.metaDescription, extracted?.headings.h1.join(" "), extracted?.headings.h2.join(" "),
-    (extracted?.faqs ?? []).map((f) => `${f.q} ${f.a}`).join(" "), pageText,
-  ].filter(Boolean).join(" \n ");
+
+  // The evidence index: PRODUCT surfaces only. Raw page text (nav, upsell, review
+  // and subscription-widget chrome) is deliberately NOT an evidence surface — it is
+  // what produced the live false positive this hardening exists to fix.
+  const evidence = buildEvidence([
+    { surface: "product_description", text: descriptionText },
+    { surface: "structured_data", text: ldDescription },
+    { surface: "product_faq", text: (extracted?.faqs ?? []).map((f) => `${f.q} ${f.a}`).join("\n") },
+    { surface: "product_title", text: js?.title ?? ld?.name ?? null },
+    { surface: "product_options", text: optionValues.join(". ") },
+    { surface: "meta_description", text: extracted?.metaDescription ?? null },
+  ]);
 
   return {
     product: {
       origin, handle, title: js?.title ?? ld?.name ?? extracted?.title ?? null,
       vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? null, tags,
-      descriptionText: jsDescText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
-      optionNames, optionValues, corpus, extracted,
-      fetched: { js: Boolean(js), page: Boolean(extracted) },
+      descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
+      optionNames, optionValues, extracted, evidence,
+      fetched: { json: Boolean(js), page: Boolean(extracted) },
     },
   };
 }
@@ -199,7 +259,9 @@ function inferClaims(p: PublicProduct): string[] {
   }
   // Fallback: a claim the product's own tags explicitly STATE (not a category guess).
   const tagHay = p.tags.join(" ");
-  for (const key of Object.keys(CLAIM_TERMS)) if (foundTerm(tagHay, CLAIM_TERMS[key]!.support)) return [key];
+  for (const key of Object.keys(CLAIM_TERMS)) {
+    if (CLAIM_TERMS[key]!.support.some((t) => norm(tagHay).includes(norm(t)))) return [key];
+  }
   return ["cruelty_free"];
 }
 function niceCap(min: number): number { return Math.max(10, Math.ceil((min + 0.01) / 5) * 5); }
@@ -224,86 +286,176 @@ export function buildBuyerTask(p: PublicProduct): { summary: string; requirement
   return { summary, requirements: reqs };
 }
 
-// ---- honest assertion evaluation --------------------------------------------
-export type AssertionStatus = "pass" | "fail_no_evidence" | "fail_value" | "requires_store_access";
-export interface Assertion { label: string; status: AssertionStatus; detail: string; evidenceQuote?: string }
+// ---- the four honest result states ------------------------------------------
+// pass_evidenced       — positive evidence found AND validated (§2)
+// pass_no_blocking     — a must_be_false requirement with nothing contradicting it,
+//                        DISCLOSED as inference, never rendered as proof
+// not_proven           — surface inspectable, no supporting evidence (or the
+//                        readable value doesn't meet the ask)
+// requires_store_access— the surface isn't publicly inspectable at all
+export type AssertionStatus = "pass_evidenced" | "pass_no_blocking" | "not_proven" | "requires_store_access";
+export const PASSING: AssertionStatus[] = ["pass_evidenced", "pass_no_blocking"];
+
+export interface Assertion {
+  label: string;
+  status: AssertionStatus;
+  detail: string;
+  evidenceQuote?: string;
+  /** Human label of the surface the evidence came from (or was sought on). */
+  evidenceSurface?: string;
+  /** The surfaces actually checked for THIS requirement (§4.4 specificity). */
+  surfacesChecked: string[];
+}
+
+/** Distinct human labels of the product surfaces available on this snapshot. */
+function textSurfaces(p: PublicProduct): string[] {
+  const seen = new Set<QuotableSurface>(p.evidence.map((e) => e.surface));
+  const order: QuotableSurface[] = ["product_description", "structured_data", "product_faq", "product_title", "product_options", "meta_description"];
+  const labels = order.filter((s) => seen.has(s)).map((s) => SURFACE_LABEL[s]);
+  return labels.length ? labels : ["product copy"];
+}
+const listPhrase = (items: string[]): string =>
+  items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
 export function evaluate(p: PublicProduct, req: Requirement): Assertion {
   switch (req.kind) {
     case "claim": {
       const fx = CLAIM_TERMS[req.claim!]!;
-      const contra = foundTerm(p.corpus, fx.violating);
-      if (contra) return { label: req.label, status: "fail_value", detail: `Public copy indicates the opposite ("${contra}").` };
-      const hit = foundTerm(p.corpus, fx.support);
-      if (hit) return { label: req.label, status: "pass", detail: "Stated in your public product data.", evidenceQuote: quoteAround(p.corpus, hit) ?? undefined };
-      return { label: req.label, status: "fail_no_evidence", detail: "No evidence of this claim in a form an AI buyer can read (product copy, details, or structured data)." };
+      const checked = textSurfaces(p);
+      // Contrary evidence must clear the same aboutness gates before we report it.
+      const contra = fx.violating.length ? findSupport(p.evidence, fx.violating) : null;
+      if (contra) {
+        return {
+          label: req.label, status: "not_proven", surfacesChecked: checked,
+          detail: `Your public copy states the opposite of this requirement.`,
+          evidenceQuote: contra.quote ?? undefined, evidenceSurface: SURFACE_LABEL[contra.surface],
+        };
+      }
+      const hit = findSupport(p.evidence, fx.support);
+      if (hit) {
+        return {
+          label: req.label, status: "pass_evidenced", surfacesChecked: checked,
+          detail: `Stated in your ${SURFACE_LABEL[hit.surface]}.`,
+          evidenceQuote: hit.quote ?? undefined, evidenceSurface: SURFACE_LABEL[hit.surface],
+        };
+      }
+      return {
+        label: req.label, status: "not_proven", surfacesChecked: checked,
+        detail: `Checked ${listPhrase(checked)} — no statement an AI buyer could verify.`,
+      };
     }
     case "price_under": {
-      if (p.minPriceUsd == null) return { label: req.label, status: "requires_store_access", detail: "No public price on this page." };
-      if (p.minPriceUsd < req.capUsd!) return { label: req.label, status: "pass", detail: `Lowest readable price is $${p.minPriceUsd.toFixed(2)}.` };
-      return { label: req.label, status: "fail_value", detail: `Lowest readable price is $${p.minPriceUsd.toFixed(2)}, at or above the $${req.capUsd} requirement.` };
+      const checked = ["variant prices", "structured data"];
+      if (p.minPriceUsd == null) {
+        return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: "No public price is exposed on this product." };
+      }
+      if (p.minPriceUsd < req.capUsd!) {
+        return { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: `Lowest readable price is $${p.minPriceUsd.toFixed(2)}.`, evidenceSurface: "variant prices" };
+      }
+      return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `Lowest readable price is $${p.minPriceUsd.toFixed(2)}, at or above the $${req.capUsd} requirement.` };
     }
     case "variant_option": {
+      const checked = ["variant options"];
       const v = p.variants.find((x) => x.options.some((o) => norm(o) === norm(req.optionValue!)) || norm(x.title).includes(norm(req.optionValue!)));
-      if (v && v.available) return { label: req.label, status: "pass", detail: `A "${req.optionValue}" variant is available.` };
-      if (v) return { label: req.label, status: "fail_value", detail: `The "${req.optionValue}" variant is listed but shows as unavailable.` };
-      return { label: req.label, status: "fail_no_evidence", detail: `No "${req.optionValue}" variant found in the public variant list.` };
+      if (v && v.available) return { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: `A "${req.optionValue}" variant is listed and purchasable.`, evidenceSurface: "variant options" };
+      if (v) return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `The "${req.optionValue}" variant is listed but shows as unavailable.` };
+      return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `Checked the public variant list — no "${req.optionValue}" variant found.` };
     }
     case "in_stock": {
-      const any = p.variants.some((v) => v.available);
-      return any ? { label: req.label, status: "pass", detail: "At least one variant is available." }
-        : { label: req.label, status: p.variants.length ? "fail_value" : "requires_store_access", detail: p.variants.length ? "No variant shows as available." : "No public variant data on this page." };
+      const checked = ["variant options"];
+      if (!p.variants.length) return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: "No public variant data is exposed on this product." };
+      return p.variants.some((v) => v.available)
+        ? { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: "At least one variant is listed as purchasable.", evidenceSurface: "variant options" }
+        : { label: req.label, status: "not_proven", surfacesChecked: checked, detail: "Checked the public variant list — no variant shows as available." };
     }
     case "no_subscription": {
-      const hard = foundTerm(p.corpus, SUBSCRIPTION_REQUIRED);
-      if (hard) return { label: req.label, status: "fail_value", detail: `Public copy indicates a subscription is required ("${hard}").` };
-      return { label: req.label, status: "pass", detail: "No subscription-required signal; purchasable as a one-time order." };
+      const checked = textSurfaces(p);
+      const hard = findSupport(p.evidence, SUBSCRIPTION_REQUIRED);
+      if (hard) {
+        return {
+          label: req.label, status: "not_proven", surfacesChecked: checked,
+          detail: "Your public copy indicates a subscription is required.",
+          evidenceQuote: hard.quote ?? undefined, evidenceSurface: SURFACE_LABEL[hard.surface],
+        };
+      }
+      // Absence of a blocker is NOT positive proof — it gets its own weaker state.
+      return {
+        label: req.label, status: "pass_no_blocking", surfacesChecked: checked,
+        detail: "Nothing in your public product data requires a subscription. This is the absence of a blocker, not a stated one-time-purchase option.",
+      };
     }
     case "delivery": {
-      const hit = foundTerm(p.corpus, DELIVERY_TERMS);
-      if (hit) return { label: req.label, status: "pass", detail: "Delivery/shipping timing is stated on the public page.", evidenceQuote: quoteAround(p.corpus, hit) ?? undefined };
-      return { label: req.label, status: "requires_store_access", detail: "Delivery timing isn't on the public product page — confirming it needs store access to your shipping policy." };
+      const checked = textSurfaces(p);
+      const hit = findTimingSupport(p.evidence);
+      if (hit) {
+        return {
+          label: req.label, status: "pass_evidenced", surfacesChecked: checked,
+          detail: `Delivery timing is stated in your ${SURFACE_LABEL[hit.surface]}.`,
+          evidenceQuote: hit.quote ?? undefined, evidenceSurface: SURFACE_LABEL[hit.surface],
+        };
+      }
+      return {
+        label: req.label, status: "requires_store_access", surfacesChecked: checked,
+        detail: "No delivery timing on the public product data. Your shipping policy isn't publicly inspectable per-product — confirming this needs store access.",
+      };
     }
   }
 }
 
 // ---- orchestration + result assembly ----------------------------------------
 export interface ProductTestResult {
-  ok: boolean; error?: string; productUrl: string;
-  storeName: string | null; productName: string | null;
-  task: string; outcome: "passed" | "failed"; provenCount: number; total: number;
-  assertions: Assertion[]; surfacesChecked: string[]; notInspectable: string[];
+  ok: boolean;
+  error?: string;
+  errorKind?: FetchErrorKind;
+  productUrl: string;
+  storeName: string | null;
+  productName: string | null;
+  task: string;
+  assertions: Assertion[];
+  /** State breakdown — evidenced passes are reported SEPARATELY from inferred ones. */
+  evidencedCount: number;
+  noBlockingCount: number;
+  notProvenCount: number;
+  requiresAccessCount: number;
+  total: number;
+  surfacesChecked: string[];
+  notInspectable: string[];
   suggestedCorrection: string | null;
+  /** Set when served from cache (ISO timestamp of the original run). */
+  testedAt?: string;
+  cached?: boolean;
 }
 
-const SURFACE_LABEL = "product copy · product details · variants · structured data";
-
-export async function runProductTest(url: string): Promise<ProductTestResult> {
+export async function runProductTest(url: string, deps: FetchDeps = {}): Promise<ProductTestResult> {
   const base: ProductTestResult = {
-    ok: false, productUrl: url, storeName: null, productName: null, task: "", outcome: "failed",
-    provenCount: 0, total: 0, assertions: [], surfacesChecked: [], notInspectable: [], suggestedCorrection: null,
+    ok: false, productUrl: url, storeName: null, productName: null, task: "",
+    assertions: [], evidencedCount: 0, noBlockingCount: 0, notProvenCount: 0, requiresAccessCount: 0,
+    total: 0, surfacesChecked: [], notInspectable: [], suggestedCorrection: null,
   };
-  const { product, error } = await fetchPublicProduct(url);
-  if (!product) return { ...base, error };
+  const { product, error } = await fetchPublicProduct(url, deps);
+  if (!product) return { ...base, error: error?.message, errorKind: error?.kind };
 
   const { summary, requirements } = buildBuyerTask(product);
   const assertions = requirements.map((r) => evaluate(product, r));
-  const proven = assertions.filter((a) => a.status === "pass").length;
-  // A requirement "could not be proven" if it failed on evidence OR needs store access.
-  const unproven = assertions.filter((a) => a.status !== "pass");
-  const firstGap = assertions.find((a) => a.status === "fail_no_evidence");
+  const count = (s: AssertionStatus) => assertions.filter((a) => a.status === s).length;
 
-  const surfaces = [SURFACE_LABEL];
   const notInspectable = ["product metafields"];
-  if (assertions.some((a) => a.status === "requires_store_access" && /delivery|shipping/i.test(a.label)))
-    notInspectable.push("full shipping/returns policy");
+  if (assertions.some((a) => a.status === "requires_store_access" && /ship|deliver/i.test(a.label))) {
+    notInspectable.push("full shipping & returns policy");
+  }
+  const firstGap = assertions.find((a) => a.status === "not_proven" && requirements.find((r) => r.label === a.label)?.kind === "claim");
 
   return {
     ok: true, productUrl: url,
     storeName: product.vendor ?? new URL(product.origin).host.replace(/^www\./, ""),
-    productName: product.title, task: summary,
-    outcome: unproven.length === 0 ? "passed" : "failed",
-    provenCount: proven, total: assertions.length, assertions, surfacesChecked: surfaces, notInspectable,
+    productName: product.title, task: summary, assertions,
+    evidencedCount: count("pass_evidenced"),
+    noBlockingCount: count("pass_no_blocking"),
+    notProvenCount: count("not_proven"),
+    requiresAccessCount: count("requires_store_access"),
+    total: assertions.length,
+    surfacesChecked: textSurfaces(product),
+    notInspectable,
     suggestedCorrection: firstGap
       ? `Confirm whether this product is ${firstGap.label.toLowerCase()}. If it is, state it in a product field and in customer-readable copy so an AI buyer can verify it.`
       : null,

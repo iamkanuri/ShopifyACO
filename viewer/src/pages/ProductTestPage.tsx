@@ -7,37 +7,69 @@ import { ConnectShopify } from "../components/ConnectShopify";
 // against public data → an assertion-table result. This is the funnel mechanic the
 // repositioned hero promises: the interface IS the test runner.
 
-type AssertionStatus = "pass" | "fail_no_evidence" | "fail_value" | "requires_store_access";
-interface Assertion { label: string; status: AssertionStatus; detail: string; evidenceQuote?: string }
+// The four honest result states. `pass_no_blocking` renders deliberately WEAKER
+// than `pass_evidenced` (neutral glyph + muted label): an inference from absence
+// is never presented as proof.
+type AssertionStatus = "pass_evidenced" | "pass_no_blocking" | "not_proven" | "requires_store_access";
+interface Assertion {
+  label: string; status: AssertionStatus; detail: string;
+  evidenceQuote?: string; evidenceSurface?: string; surfacesChecked: string[];
+}
 interface TestResult {
-  ok: boolean; error?: string; productUrl: string;
+  ok: boolean; error?: string; errorKind?: string; productUrl: string;
   storeName: string | null; productName: string | null; task: string;
-  outcome: "passed" | "failed"; provenCount: number; total: number;
-  assertions: Assertion[]; surfacesChecked: string[]; notInspectable: string[]; suggestedCorrection: string | null;
+  assertions: Assertion[];
+  evidencedCount: number; noBlockingCount: number; notProvenCount: number; requiresAccessCount: number;
+  total: number; surfacesChecked: string[]; notInspectable: string[]; suggestedCorrection: string | null;
+  testedAt?: string; cached?: boolean;
 }
 
 const RESULT_LABEL: Record<AssertionStatus, string> = {
-  pass: "Pass",
-  fail_no_evidence: "Fail — no evidence found",
-  fail_value: "Fail",
+  pass_evidenced: "Proven",
+  pass_no_blocking: "No blocking evidence",
+  not_proven: "Not proven",
   requires_store_access: "Requires store access",
+};
+const RESULT_MARK: Record<AssertionStatus, string> = {
+  pass_evidenced: "✓", pass_no_blocking: "–", not_proven: "✕", requires_store_access: "○",
 };
 
 function Row({ a }: { a: Assertion }) {
-  const mark = a.status === "pass" ? "✓" : a.status === "requires_store_access" ? "○" : "✕";
   return (
     <tr className={`pt-row pt-${a.status}`}>
       <td className="pt-req">{a.label}</td>
       <td className="pt-res">
-        <span className="pt-mark" aria-hidden>{mark}</span>
+        <span className="pt-mark" aria-hidden>{RESULT_MARK[a.status]}</span>
         <span>
           <b>{RESULT_LABEL[a.status]}</b>
-          <div className="pt-detail">{a.status === "fail_value" ? a.detail : a.detail}</div>
-          {a.evidenceQuote && <div className="pt-quote">“{a.evidenceQuote}”</div>}
+          <div className="pt-detail">{a.detail}</div>
+          {a.evidenceQuote && (
+            <div className="pt-quote">
+              “{a.evidenceQuote}”{a.evidenceSurface ? <span className="pt-src"> — {a.evidenceSurface}</span> : null}
+            </div>
+          )}
         </span>
       </td>
     </tr>
   );
+}
+
+/** Coarse relative time for the cache label ("3 hours ago"). */
+function timeAgo(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hrs = Math.round(mins / 60);
+  return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+}
+
+/** "3 of 6 requirements proven · 1 no blocking evidence · 1 unproven · 1 requires store access" */
+function breakdown(r: TestResult): string {
+  const parts = [`${r.evidencedCount} of ${r.total} requirements proven`];
+  if (r.noBlockingCount) parts.push(`${r.noBlockingCount} no blocking evidence`);
+  if (r.notProvenCount) parts.push(`${r.notProvenCount} unproven`);
+  if (r.requiresAccessCount) parts.push(`${r.requiresAccessCount} requires store access`);
+  return parts.join(" · ");
 }
 
 export function ProductTestPage() {
@@ -48,7 +80,7 @@ export function ProductTestPage() {
   const [error, setError] = useState("");
   const ran = useRef(false);
 
-  async function run(target: string) {
+  async function run(target: string, force = false) {
     setPhase("running");
     setError("");
     setResult(null);
@@ -56,7 +88,7 @@ export function ProductTestPage() {
       const res = await fetch("/api/product-test", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: target }),
+        body: JSON.stringify({ url: target, force }),
       });
       const data = (await res.json()) as TestResult & { error?: string };
       if (!res.ok || !data.ok) {
@@ -88,7 +120,7 @@ export function ProductTestPage() {
     run(q);
   }
 
-  const unproven = result ? result.total - result.provenCount : 0;
+  const unresolved = result ? result.notProvenCount + result.requiresAccessCount : 0;
 
   return (
     <div className="scanpage pt-page">
@@ -124,15 +156,25 @@ export function ProductTestPage() {
       {phase === "done" && result && (
         <div className="testcard pt-result" style={{ maxWidth: 720, margin: "18px 0 0" }}>
           <div className="testcard-head">
-            <span className="tc-dot" aria-hidden /> AI BUYER TEST{result.storeName ? ` · ${result.storeName}` : ""}
+            <span className="tc-dot" aria-hidden /> BUYER TEST
+            {result.storeName ? ` · ${result.storeName}` : ""}
+            {result.productName ? ` · ${result.productName}` : ""}
           </div>
-          <div className="testcard-task"><b>Test:</b> {result.task}</div>
+          <div className="testcard-task"><b>Task:</b> {result.task}</div>
 
-          <div className={`pt-outcome ${result.outcome}`}>
-            {result.outcome === "passed"
-              ? `PASSED — all ${result.total} requirements proven`
-              : `FAILED — ${unproven} of ${result.total} requirement${unproven === 1 ? "" : "s"} could not be proven`}
+          {/* No "FAILED" verdict: the unresolved count is the same fact without the
+              accusation. Crimson stays on the individual unproven rows. */}
+          <div className={`pt-outcome ${unresolved === 0 ? "clean" : ""}`}>
+            {unresolved === 0
+              ? `RESULT: ${result.evidencedCount} of ${result.total} proven`
+              : `RESULT: ${unresolved} of ${result.total} requirement${unresolved === 1 ? "" : "s"} could not be proven`}
           </div>
+          <div className="pt-breakdown">{breakdown(result)}</div>
+          {result.cached && result.testedAt && (
+            <div className="pt-cached">
+              Tested {timeAgo(result.testedAt)} · <button className="as-link" onClick={() => run(result.productUrl, true)}>Run again</button>
+            </div>
+          )}
 
           <table className="pt-table">
             <thead><tr><th>Buyer requirement</th><th>Result</th></tr></thead>

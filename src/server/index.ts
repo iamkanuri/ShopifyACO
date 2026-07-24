@@ -498,7 +498,11 @@ app.post(
       return res.status(429).json({ error: "Too many tests — give it a minute." });
     }
     const result = await runProductTest(url);
-    await insertEvent("product_test", undefined, { ok: result.ok, outcome: result.outcome }).catch(() => {});
+    // Outcome logging for diagnosis (no PII — host + state counts only).
+    await insertEvent("product_test", undefined, {
+      ok: result.ok, errorKind: result.errorKind ?? null, cached: Boolean(result.cached),
+      evidenced: result.evidencedCount, notProven: result.notProvenCount, requiresAccess: result.requiresAccessCount,
+    }).catch(() => {});
     res.json(result);
   }),
 );
