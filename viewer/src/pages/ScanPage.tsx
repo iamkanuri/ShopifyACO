@@ -40,6 +40,11 @@ export function ScanPage() {
   const qpUrl = qp.get("url") ?? "";
   const qpBrand = qp.get("brand") ?? "";
   const qpCategory = qp.get("category") ?? "";
+  // Index leaderboard rows also prefill the competitors (the other top brands) so a click-through
+  // from a leaderboard can run in one step (the form otherwise requires ≥1 competitor to be typed).
+  const qpCompetitors = (qp.get("competitors") ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6)
+    .map((name) => ({ name, storeUrl: "" }));
 
   const [storeInput, setStoreInput] = useState(qpUrl);
   const [brand, setBrand] = useState<ScanBrand>({ name: qpBrand, storeUrl: looksLikeUrl(qpUrl) ? qpUrl : "" });
@@ -47,7 +52,7 @@ export function ScanPage() {
   const [persona] = useState("");
   const [location] = useState("");
   const [priceRange] = useState("");
-  const [competitors, setCompetitors] = useState<ScanBrand[]>([{ name: "", storeUrl: "" }]);
+  const [competitors, setCompetitors] = useState<ScanBrand[]>(qpCompetitors.length ? qpCompetitors : [{ name: "", storeUrl: "" }]);
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [engines, setEngines] = useState({ openai: true, gemini: true, perplexity: true });
   const [hp, setHp] = useState(""); // honeypot — must stay empty
@@ -216,7 +221,7 @@ export function ScanPage() {
     if (!base) return;
     setBusy("suggesting");
     try {
-      const { prompts: extra, costUsd, error: sErr } = await suggestPrompts(buildForm());
+      const { prompts: extra, error: sErr } = await suggestPrompts(buildForm());
       if (sErr) {
         setSuggestErr(`Couldn't get AI suggestions: ${sErr}`);
         return;
@@ -232,7 +237,7 @@ export function ScanPage() {
         return;
       }
       setPrompts((prev) => [...prev, ...added]);
-      setSuggestMsg(`Added ${added.length} suggestion${added.length === 1 ? "" : "s"} (cost $${costUsd.toFixed(4)}). Select any to include.`);
+      setSuggestMsg(`Added ${added.length} suggestion${added.length === 1 ? "" : "s"}. Select any to include.`);
     } catch (e) {
       setSuggestErr((e as Error).message || "AI suggestion request failed.");
     } finally {
@@ -480,9 +485,7 @@ export function ScanPage() {
                     <b>{selected.length}</b> prompts × <b>{enabledEngines.length}</b> engines ={" "}
                     <b>{selected.length * enabledEngines.length}</b> calls
                   </div>
-                  <div className={overCap ? "over" : ""}>
-                    Est. max cost <b>${estMaxCost.toFixed(3)}</b> (cap ${scanCostCapUsd.toFixed(2)})
-                  </div>
+                  {/* Scan dollar cost is NOT shown to the user — see #3 (don't anchor on the few-cents cost). */}
                 </div>
               </div>
             </>
@@ -492,7 +495,12 @@ export function ScanPage() {
 
       {overCap && (
         <div className="banner-error">
-          Over the ${scanCostCapUsd.toFixed(2)} free-test cap. Deselect requirements or models in “Customize prompts”.
+          {/* MERGE NOTE (v2.1): main's cost-free phrasing + v2's vocabulary. main deliberately
+              stopped surfacing the dollar cap to shoppers (same reason it removed the cost from the
+              scan progress line — anchoring on a few cents undercuts the $29 report), so v2's
+              "$0.50 free-test cap" wording is not restored. "requirements or models" is v2's
+              rename, matching the two banners directly below this one. */}
+          This test is too large for a free run. Deselect requirements or models in “Customize prompts”.
         </div>
       )}
       {enabledEngines.length === 0 && (

@@ -66,7 +66,7 @@ const MECHANISMS: Partial<Record<SignalKey, MechanismEntry>> = {
   reviews: {
     gap: "No review count / rating in structured data (AggregateRating)",
     advantage: (p) => `Exposes ${p.product?.reviewCount ?? "many"} reviews${p.product?.rating ? ` at ${p.product.rating}★` : ""} in AggregateRating schema`,
-    intervention: "Publish Product + AggregateRating JSON-LD reflecting your real, verifiable review counts and average rating.",
+    intervention: "Publish AggregateRating JSON-LD reflecting your real, verifiable review counts and average rating. Check first whether a reviews app already emits it (some inject it client-side, which this crawl can't see) — extend your existing Product block rather than adding a duplicate.",
     mechanism:
       "Shopping assistants frequently cite ratings and review volume as a decision factor and preferentially draw from pages that expose them in machine-readable schema. Making your real review data visible MAY raise the chance an assistant surfaces and cites you. This is a mechanism, not a guarantee, and not a claim that reviews alone caused the competitor to win.",
   },

@@ -101,6 +101,10 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
           <tbody>
             {rows.flatMap((r, i) => {
               const isCrown = gated && i === 0;
+              // Prefill the scan form with the other top leaderboard brands as competitors (form
+              // requires ≥1) so a merchant clicking their row can run in one click. Sync with indexSsr.ts.
+              const comps = rows.filter((x) => x.brand !== r.brand).slice(0, 4).map((x) => x.brand);
+              const compParam = comps.length ? `&competitors=${encodeURIComponent(comps.join(","))}` : "";
               const out = [];
               if (i === leadCount && leadCount < rows.length) {
                 out.push(
@@ -128,11 +132,18 @@ export function IndexLeaderboardPage({ slug }: { slug: string }) {
                   </td>
                   <td>
                     <Link
-                      to="/test"
+                      // MERGE NOTE (v2.1): v2 repointed this row link at /test, but only here —
+                      // indexSsr.ts (the crawler-visible twin, per the comment above) still emits the
+                      // prefilled /scan href, so that change would have made SSR and CSR disagree AND
+                      // dropped the brand/category/competitor prefill. Kept main's prefilled link: the
+                      // row label says "scan", the two surfaces agree, and no shipped behavior is lost.
+                      // The Buyer Test funnel is still offered on this page by the CTA below (v2's).
+                      // Repointing the Index at /test is a funnel decision that needs indexSsr.ts too.
+                      to={`/scan?brand=${encodeURIComponent(r.brand)}&category=${encodeURIComponent(idx.label)}${compParam}`}
                       className="linkbtn"
                       onClick={() => trackEvent("index_claim_click", idx.run_id ?? undefined, { slug, brand: r.brand })}
                     >
-                      This is us →
+                      See your own scan →
                     </Link>
                   </td>
                 </tr>,

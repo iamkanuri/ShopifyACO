@@ -44,6 +44,7 @@ export function buildFixCards(
   proofPoints: ProofPoint[],
   lostPrompts: LostPrompt[],
   citedSources?: CitedSourcesReport,
+  ownLeadsCategory = false,
 ): FixCard[] {
   const cards: FixCard[] = [];
   const brand = cfg.brand.name;
@@ -112,14 +113,21 @@ export function buildFixCards(
     // Cap at the top few by frequency (Fix 4) so this reads as focused advice, not a 7-item dump.
     const top = proofPoints.slice(0, 4);
     const labels = top.map((p) => p.label.toLowerCase());
+    // A category LEADER isn't being "beaten" — reframe to defend-the-lead. And a single-hit signal isn't a
+    // pattern: this is only a HIGH-impact card when the merchant is losing AND a proof point recurs (≥2).
+    const strongPattern = top.some((p) => p.hits >= 2);
     cards.push({
       id: "expose_specs",
       tier: "evidence_backed",
-      impact: "high",
-      title: "State the details AI assistants quote — the ones competitors win on",
-      why:
-        `In answers where competitors beat ${brand}, assistants leaned on concrete, quotable specifics: ` +
-        `${listJoin(labels)}. ${brand} needs these stated in plain text assistants can lift.`,
+      impact: !ownLeadsCategory && strongPattern ? "high" : "medium",
+      title: ownLeadsCategory
+        ? "State the details AI assistants quote — so you keep winning these comparisons"
+        : "State the details AI assistants quote — the ones competitors win on",
+      why: ownLeadsCategory
+        ? `${brand} already leads, but in the few answers where a rival was picked instead, assistants leaned on ` +
+          `concrete, quotable specifics: ${listJoin(labels)}. State these in plain text to protect the lead and close even those gaps.`
+        : `In answers where competitors beat ${brand}, assistants leaned on concrete, quotable specifics: ` +
+          `${listJoin(labels)}. ${brand} needs these stated in plain text assistants can lift.`,
       relatedPrompts: [],
       relatedSnippets: top.map((p) => p.exampleSnippet).filter(Boolean).slice(0, 3) as string[],
       suggestedFix:
@@ -164,15 +172,19 @@ export function buildFixCards(
     id: "schema",
     tier: "general_hygiene",
     impact: "medium",
-    title: "Add/verify structured product schema (Product, Offer, AggregateRating)",
+    title: "Fill the structured-data gaps most platforms leave (AggregateRating, shipping, returns)",
     why:
-      "Structured data helps AI crawlers extract price, availability, ratings, and attributes reliably " +
-      "instead of guessing from prose.",
+      "Structured data helps AI crawlers extract ratings, shipping terms, and return policies reliably " +
+      "instead of guessing from prose — and these specific fields are the ones standard storefront " +
+      "platforms do NOT emit by default.",
     relatedPrompts: [],
     relatedSnippets: [],
     suggestedFix:
-      "Ensure each PDP emits valid schema.org Product JSON-LD with name, brand, key attributes, offers, " +
-      "and aggregateRating where available.",
+      "Add AggregateRating (your real review counts), OfferShippingDetails, and hasMerchantReturnPolicy " +
+      "to your existing product schema. Note: modern platforms (e.g. Shopify OS 2.0 themes) already emit " +
+      "a Product + Offer JSON-LD block — extend that block rather than adding a second Product node, " +
+      "and if a reviews app is installed it may already emit AggregateRating (check your page source " +
+      "first; duplicates conflict).",
     verifyNote: SITE_NOT_AUDITED,
   });
 

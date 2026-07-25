@@ -98,7 +98,10 @@ export function computeVisibilityScore(
     rank: avgRank == null
       ? "Never appeared in a ranked list (neutral 0.5 applied)."
       : `Average list position ${avgRank.toFixed(1)} when ranked (lower is better).`,
-    win: `A competitor out-ranked the brand in ${beaten}/${n} answers.`,
+    win:
+      beaten === 0
+        ? `Out-ranked every competitor in all ${n} answers.`
+        : `Out-ranked every competitor in ${n - beaten}/${n} answers (a rival edged ahead in ${beaten}).`,
   };
   const components: ScoreComponent[] = core.components.map((c) => ({
     ...c, label: labels[c.key], detail: details[c.key],

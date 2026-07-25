@@ -58,6 +58,14 @@ function dedupeValidUrls(urls: string[], cap: number): string[] {
 
 export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRunResult> {
   const mock = opts.mock ?? ENV.crawler.mode === "mock";
+  // A live crawl needs the process to permit network access (CRAWLER_MODE=live). Refuse
+  // loudly rather than "honor" the request with fixtures: a web service in live mode
+  // enqueuing onto a mock-mode worker used to silently 404 the real URLs and emit a FALSE
+  // "page unreachable" finding about the merchant's store. An explicit failure is operator-
+  // visible (job dead-letter / 502) and names the fix.
+  if (!mock && ENV.crawler.mode === "mock") {
+    throw new Error("live crawl requested but CRAWLER_MODE=mock on this process — set CRAWLER_MODE=live on BOTH the web and worker services (refusing to substitute fixture pages)");
+  }
   const observations = await getDiagnosisObservations(opts.runId);
   const losses = findLosses(observations, opts.merchantBrand);
 
@@ -76,8 +84,14 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
   let competitorUrls = opts.competitorUrls ?? [...new Set(losses.flatMap((l) => l.citations))];
 
   // Mock fallback so the pipeline is verifiable at $0 even when the (mock) engine
-  // produced no real citations.
-  if (mock) {
+  // produced no real citations — but ONLY outside a connected shop. For a real shop,
+  // fixture pages must never stand in for the merchant's own store: a mock diagnosis
+  // would persist fixture-derived gaps ("3284 reviews", noindex, a fake GTIN) as
+  // unlabeled findings about their real products. Without the fallback, a connected-
+  // shop mock diagnosis degrades honestly (no merchant page → the explicit
+  // "no product URL could be resolved" finding from diagnose()). Callers that WANT
+  // the fixture flow for a shop (tests/demos) must pass the fixture URLs explicitly.
+  if (mock && !opts.shopDomain) {
     if (!merchantUrl) merchantUrl = MOCK_MERCHANT_URL;
     if (competitorUrls.length === 0) competitorUrls = [MOCK_COMPETITOR_URL];
   }
@@ -93,10 +107,13 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
   // Crawl (bounded). Merchant + competitors crawled as separate seed sets so each
   // page keeps its role. crawlOne never throws (and re-validates each URL itself —
   // no need to pre-validate here). Failures land on the page row.
-  const merchantPages = merchantUrl ? await crawlSeeds([merchantUrl], { maxDepth: 0 }) : [];
+  // The RESOLVED mode is threaded into the crawl so the fetch layer can't disagree
+  // with the negotiated request (env-default split-brains served fixture 404s).
+  const crawlMode = mock ? ("mock" as const) : ("live" as const);
+  const merchantPages = merchantUrl ? await crawlSeeds([merchantUrl], { maxDepth: 0, mode: crawlMode }) : [];
   // A competitor URL can 30x-redirect onto the merchant's own origin; drop any whose
   // FINAL origin is the merchant's so we never feed the merchant's page in as a rival.
-  const competitorPages = (competitorUrls.length > 0 ? await crawlSeeds(competitorUrls, { maxDepth: 0 }) : [])
+  const competitorPages = (competitorUrls.length > 0 ? await crawlSeeds(competitorUrls, { maxDepth: 0, mode: crawlMode }) : [])
     .filter((p) => !merchantOrigin || originOf(p.finalUrl ?? p.url) !== merchantOrigin);
 
   const merchantPage: CrawledPage | null = merchantPages[0] ?? null;
@@ -129,7 +146,9 @@ export async function diagnoseRun(opts: DiagnoseRunOptions): Promise<DiagnoseRun
   });
   try {
     await clearFindings(opts.runId);
-    for (const f of findings) await saveFinding(opts.shopDomain, opts.runId, opts.benchmarkId ?? null, f);
+    // Provenance travels with each finding: the UI badges mock-crawl findings so
+    // fixture-derived output can never read as an observation of the live store.
+    for (const f of findings) await saveFinding(opts.shopDomain, opts.runId, opts.benchmarkId ?? null, f, crawlMode);
   } catch (err) {
     console.error("[diagnose] persist findings failed:", (err as Error).message);
   }

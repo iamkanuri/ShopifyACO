@@ -31,7 +31,11 @@ const DEFAULTS: AppConfig = {
   baseUrl: "",
   contactEmail: "",
   tagline: "Executable shopping tests for your Shopify store — the exact buyer requirement that failed, with evidence.",
-  demoNote: "Example test shown on sample data, for illustration only.",
+  // MERGE NOTE (v2.1): tagline is v2's (reposition); demoNote is main's — it carries the
+  // third-party trademark attribution for the brands the Sennen demo actually renders. Same
+  // reasoning as DEMO_NOTE in src/server/index.ts; the two are the client/server pair.
+  demoNote:
+    "Sample data, shown for illustration. “Sennen” is a fictional brand; The Ordinary, CeraVe, La Roche-Posay and Paula's Choice are trademarks of their respective owners, referenced for illustration only and not affiliated with AisleLens.",
   plans: [],
   miniPrompts: 5,
   fullReportPrompts: 30,

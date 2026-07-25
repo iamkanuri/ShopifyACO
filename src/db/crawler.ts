@@ -35,17 +35,20 @@ export async function savePage(meta: PersistedPageMeta, page: CrawledPage): Prom
   );
 }
 
-export async function saveFinding(shop: string | null, runId: number | null, benchmarkId: number | null, f: Finding): Promise<void> {
+export async function saveFinding(
+  shop: string | null, runId: number | null, benchmarkId: number | null, f: Finding,
+  crawlMode: "mock" | "live" | null = null,
+): Promise<void> {
   await pgQuery(
     `insert into findings
        (shop_domain, run_id, benchmark_id, kind, signal, intent, prompt_text, engine, merchant_brand, winning_competitor,
         ai_answer_snippet, citations, merchant_gap, competitor_advantage, confidence_level, basis_n, limits,
-        recommended_intervention, expected_mechanism)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14::jsonb,$15,$16,$17,$18,$19)`,
+        recommended_intervention, expected_mechanism, crawl_mode)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14::jsonb,$15,$16,$17,$18,$19,$20)`,
     [
       shop, runId, benchmarkId, f.kind, f.signal ?? null, f.intent, f.promptText, f.engine, f.merchantBrand, f.winningCompetitor,
       f.aiAnswerSnippet, JSON.stringify(f.citations), JSON.stringify(f.merchantGap), JSON.stringify(f.competitorAdvantage),
-      f.confidenceLevel, f.basisN, f.limits, f.recommendedIntervention, f.expectedMechanism,
+      f.confidenceLevel, f.basisN, f.limits, f.recommendedIntervention, f.expectedMechanism, crawlMode,
     ],
   );
 }

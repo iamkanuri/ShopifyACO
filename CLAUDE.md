@@ -351,6 +351,15 @@ page + the competitor pages the assistants cited, then diagnosing the structural
   `EngineResult.citations`, `src/engines/citations.ts`) into `observations.citations`, the diagnose
   route honors `CRAWLER_MODE` as the default, and live diagnosis derives competitor URLs from those
   citations PLUS the merchant's own page from the synced catalog (`getStorefrontUrl`).
+  ✅ **MOCK-HONESTY GUARDRAILS (2026-07-11, migration `0025`):** fixture pages can never masquerade
+  as a merchant's store — a CONNECTED shop's mock diagnosis never substitutes `MOCK_*` fixture URLs
+  (degrades to the honest "no product URL" finding; tests/demos must pass fixture URLs explicitly);
+  a live request on a mock-mode process THROWS (no silent fixture 404s → no false "unreachable"
+  finding; the resolved mode is threaded through `crawlSeeds`); every finding is stamped
+  `findings.crawl_mode` and the Evidence UI badges mock-crawl findings; prod boot warns if
+  `SHOPIFY_MODE`/`CRAWLER_MODE` are left mock. Fix Studio apply now also VERIFIES EFFECT: a write
+  whose re-read value is unchanged reports failed "no observable effect" instead of applied, and
+  the audit logs the store's actual post-write value.
 
 **Phase 6 (Fix Studio — gated, reversible write-back) is built on branch `phase6-fixes`** (off
 `phase5-crawler`), mock-verified end-to-end at $0. It turns diagnosis findings + catalog data
@@ -362,9 +371,15 @@ into reviewable proposals and applies approved ones to the store.
   conflict-checked. `src/fixes/apply.ts` + `src/fixes/source.ts` (`productUpdate`/`rereadProduct`;
   mock simulates + records writes so the lifecycle runs at $0).
 - **Proposals never fabricate** (`src/fixes/propose.ts`, pure): direct **write_products** is limited
-  to SEO title/description backfill (exact reformats of existing data); everything else is
+  to SEO title/description backfill composed only from existing catalog data; everything else is
   **copy_ready** validated JSON-LD — a factual Product snippet from the catalog, plus clearly
   placeholdered AggregateRating/shipping/return/FAQ templates the merchant fills with real numbers.
+  **And never propose a placebo** (App Store 2.1.4 kickback, fixed 2026-07-11): when `seo.title` is
+  unset Shopify falls back to the product title, so proposing the title verbatim writes a change no
+  one can observe — `composeSeoTitle` now composes a visibly-different `{title} | {vendor|type}` (or
+  proposes nothing). The proposals list is enriched with the LIVE catalog value per row (`drifted`
+  flag; apply/rollback mirror the re-read product straight into the catalog) so Fix Studio always
+  agrees with the Shopify admin; the UI refetches on tab focus.
 - `migrations/0011_fixes.sql` (`fix_proposals` + `findings.signal`; additive). Shop-scoped API
   `src/server/fixes.ts` (`/app/api/fixes/propose|…/{approve,apply,rollback,dismiss}`, tenant-isolated).
   `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **`write_products` is now in

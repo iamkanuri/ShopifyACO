@@ -77,12 +77,17 @@ function productJsonLd(p: CatalogProduct): string {
 // Copy-ready TEMPLATES for facts we won't invent. Placeholders are obvious.
 const TEMPLATE: Partial<Record<string, (p: CatalogProduct) => { label: string; value: string }>> = {
   reviews: () => ({
-    label: "Add review structured data (fill in your REAL counts — do not invent)",
+    // Duplicate-schema guard: reviews apps (Judge.me, Loox, Shopify Reviews…) often already
+    // inject AggregateRating client-side, which our raw-HTML crawl can't see — so tell the
+    // merchant to check before pasting a second rating block (duplicates conflict).
+    label: "Add review structured data (your REAL counts — check first: a reviews app may already emit AggregateRating; don't add a duplicate)",
     value: `"aggregateRating": {\n  "@type": "AggregateRating",\n  "ratingValue": "<YOUR_AVERAGE_RATING>",\n  "reviewCount": "<YOUR_REVIEW_COUNT>"\n}`,
   }),
   shipping: () => ({
     label: "Declare shipping terms in your Offer",
-    value: `"shippingDetails": {\n  "@type": "OfferShippingDetails",\n  "shippingRate": { "@type": "MonetaryAmount", "value": "<COST_OR_0>", "currency": "USD" },\n  "deliveryTime": { "@type": "ShippingDeliveryTime" }\n}`,
+    // <YOUR_CURRENCY> like every other placeholder — we don't know the store's currency,
+    // and hardcoding USD would assert wrong data for non-US merchants.
+    value: `"shippingDetails": {\n  "@type": "OfferShippingDetails",\n  "shippingRate": { "@type": "MonetaryAmount", "value": "<COST_OR_0>", "currency": "<YOUR_CURRENCY>" },\n  "deliveryTime": { "@type": "ShippingDeliveryTime" }\n}`,
   }),
   returns: () => ({
     label: "Declare your return policy in your Offer",
@@ -106,18 +111,41 @@ const TEMPLATE: Partial<Record<string, (p: CatalogProduct) => { label: string; v
   }),
 };
 
+/** Compose an explicit SEO title that VISIBLY differs from Shopify's fallback (the bare
+ *  product title): "{title} | {vendor}" (or product type). Purely existing catalog facts —
+ *  no fabrication. Returns null when nothing distinct fits: when seo.title is unset Shopify
+ *  already renders the product title, so proposing the title verbatim would be a write the
+ *  merchant can't observe anywhere (the admin looks identical before and after — the exact
+ *  "did nothing" failure an App Store reviewer flagged under 2.1.4). */
+export function composeSeoTitle(p: CatalogProduct): string | null {
+  const title = p.title?.replace(/\s+/g, " ").trim();
+  if (!title) return null;
+  for (const raw of [p.vendor, p.productType]) {
+    const suffix = raw?.replace(/\s+/g, " ").trim();
+    if (!suffix) continue;
+    if (title.toLowerCase().includes(suffix.toLowerCase())) continue; // already conveyed by the title
+    const composed = `${title} | ${suffix}`;
+    if (composed.length <= SEO_TITLE_MAX) return composed;
+  }
+  return null;
+}
+
 /** SEO backfill: the only DIRECT write — reformat existing factual fields when the
- *  merchant left SEO empty. Never overwrites a non-empty SEO value. */
+ *  merchant left SEO empty. Never overwrites a non-empty SEO value, and never proposes
+ *  a value identical to what Shopify already shows via fallback (no placebo fixes). */
 export function proposeSeoBackfill(p: CatalogProduct, finding?: Finding): FixProposal[] {
   const out: FixProposal[] = [];
   if (!p.seoTitle && p.title) {
-    out.push({
-      productGid: p.productGid, kind: "write_products", target: "seo.title",
-      label: "Backfill the SEO title from the product title",
-      currentValue: p.seoTitle, proposedValue: trunc(p.title, SEO_TITLE_MAX), basedOn: p.seoTitle,
-      rationale: "The SEO title is empty; assistants and search use it as the page's machine-readable title. This only reuses your existing product title.",
-      evidence: evidenceOf(finding),
-    });
+    const composed = composeSeoTitle(p);
+    if (composed) {
+      out.push({
+        productGid: p.productGid, kind: "write_products", target: "seo.title",
+        label: "Set an explicit SEO title (adds your brand to the page title)",
+        currentValue: p.seoTitle, proposedValue: composed, basedOn: p.seoTitle,
+        rationale: "No custom SEO title is set, so the page title falls back to the bare product title. This sets an explicit, brand-qualified title assistants and search can attribute — composed only from your existing catalog data.",
+        evidence: evidenceOf(finding),
+      });
+    }
   }
   if (!p.seoDescription && p.description) {
     out.push({

@@ -15,7 +15,9 @@ export function EngineCards({ engines, brand }: { engines: EngineWeakness[]; bra
         <div className="card enginecard" key={e.engine}>
           <h3>
             {PRETTY[e.engine] ?? e.engine}
-            {e.isWeakest && <span className="weak">WEAKEST</span>}
+            {/* "Weakest" is relative — only red chrome (via .weak) when its rec rate is absolutely low.
+                A leader whose weakest engine still recommends >=15% gets a neutral pill, not a red card. */}
+            {e.isWeakest && <span className={e.recommendation.rate >= 0.15 ? "weak-soft" : "weak"}>WEAKEST</span>}
           </h3>
           <div className="row">
             <span className="lab">Recommends {brand}</span>

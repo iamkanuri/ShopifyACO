@@ -65,6 +65,11 @@ export function Monitoring() {
                 <div className="al-alert-top">
                   <SeverityPill severity={al.severity} />
                   <span className="al-alert-title">{al.title}</span>
+                  {al.comparison?.runModes?.current === "mock" && (
+                    <span className="al-demo al-demo-err" title="This alert came from a MOCK (test) run — deterministic fake data, not a live measurement of your visibility.">
+                      Mock run — not a live measurement
+                    </span>
+                  )}
                   <button className="btn al-ghost al-alert-ack" disabled={busy === al.id} onClick={() => ack(al.id)}>Acknowledge</button>
                 </div>
                 <p className="muted">{al.detail}</p>

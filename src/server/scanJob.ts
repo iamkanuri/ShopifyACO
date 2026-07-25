@@ -101,7 +101,10 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       costUsd: totalCostUsd,
       engineErrors,
     });
-    await appendProgress(runId, `Done. AI buyer readiness ${analysis.visibilityScore.score}/100, $${totalCostUsd.toFixed(4)}.`);
+    // Cost is recorded internally (recordSpend + updateRun.cost_usd + the scan_completed event) but NOT
+    // shown to the user — anchoring a shopper on the few-cents scan cost sabotages the $29 value framing.
+    // Wording is v2 CP4's ("AI buyer readiness"); the cost suppression is main's. Both kept.
+    await appendProgress(runId, `Done. AI buyer readiness ${analysis.visibilityScore.score}/100.`);
   } catch (err) {
     const message = (err as Error).message;
     await setStatus(runId, { status: "failed", error: message });

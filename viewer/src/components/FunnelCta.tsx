@@ -52,8 +52,10 @@ export function FunnelCta({ isShopify, runId, purchased, storeUrlHint }: { isSho
   );
   const report = (primary: boolean) =>
     reportUrl ? (
+      // Name what's behind the paywall (the done-for-you fix drafts from the merchant's real store),
+      // not a vague "full report" — the free diagnosis on screen already looks complete.
       <button className={primary ? "btn btn-primary lg" : "btn"} onClick={onReportClick}>
-        {primary ? `Get the full report — ${full?.price ?? "$29"}` : "Prefer a one-time audit?"}
+        {primary ? `Get your done-for-you fixes — ${full?.price ?? "$29"} →` : "Prefer a one-time fix pack?"}
       </button>
     ) : null;
 

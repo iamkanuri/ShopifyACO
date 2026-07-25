@@ -88,11 +88,11 @@ import {
   runTestHandler, confirmQuestionsHandler, confirmHandler,
   proposeFromTestHandler, testProposalsHandler,
 } from "./buyerTests.js";
-import { indexSsrFor } from "./indexSsr.js";
+import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
-import { renderOgPng } from "./ogCard.js";
+import { buildDefaultCardSvg, buildDemoCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, buildReportCardSvg, renderCardPng, renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 
@@ -101,7 +101,12 @@ const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
 const SUGGEST_COST_CAP_USD = 0.02;
 const TAGLINE =
   "AisleLens runs executable shopping tests against your Shopify store — showing the exact buyer requirement that failed, the evidence your store exposed, and proof the identical test passes after the fix.";
-const DEMO_NOTE = "Example test shown on sample data, for illustration only.";
+// MERGE NOTE (v2.1): the DESCRIPTION is v2's (the QA repositioning). The DEMO_NOTE is main's,
+// deliberately: v2's shorter note dropped the third-party trademark attribution that main added
+// for the Sennen demo. The demo still renders those real brands, so the attribution is a legal
+// requirement, not stale copy — it must survive the reposition.
+const DEMO_NOTE =
+  "Sample data, shown for illustration. “Sennen” is a fictional brand; The Ordinary, CeraVe, La Roche-Posay and Paula's Choice are trademarks of their respective owners, referenced for illustration only and not affiliated with AisleLens.";
 const ALLOWED_EVENTS = new Set([
   "report_viewed",
   "cta_full_report",
@@ -796,6 +801,97 @@ app.get("/report/:runId/og.png", wrap(async (req, res) => {
   res.type("png").setHeader("Cache-Control", "public, max-age=86400, immutable").send(png);
 }));
 
+// --- OG share cards for the rest of the shareable pages ----------------------
+// PNG only: LinkedIn/Facebook/Slack refuse SVG og:images (that's how every preview
+// rendered naked). Rendered server-side via resvg — no headless browser. Small
+// in-memory cache keyed by a content discriminator: index cards change only when
+// the category index is rebuilt; demo/default change only per deploy.
+const ogMemCache = new Map<string, { key: string; png: Buffer }>();
+function ogFromCache(name: string, key: string, build: () => string): Buffer {
+  const hit = ogMemCache.get(name);
+  if (hit && hit.key === key) return hit.png;
+  const png = renderCardPng(build());
+  ogMemCache.set(name, { key, png });
+  return png;
+}
+const sendOg = (res: Response, png: Buffer, maxAge: number) =>
+  res.type("png").setHeader("Cache-Control", `public, max-age=${maxAge}`).send(png);
+
+/** The demo sample (fictional brand) — read once per process from the built fixture.
+ *  `card` carries the SAME substitution frame the demo page leads with (headline + named
+ *  rivals + counts), so the share card and the page tell one story — never the retired
+ *  mention-gap line. */
+interface DemoShare { preview: NonNullable<ReturnType<typeof reportPreview>>; card: import("./ogCard.js").DemoCardModel | null; frameHeadline: string | null }
+let demoShareCache: DemoShare | null | undefined;
+function demoShare(): DemoShare | null {
+  if (demoShareCache !== undefined) return demoShareCache;
+  demoShareCache = null;
+  for (const p of ["viewer/dist/sample-results.json", "viewer/public/sample-results.json"]) {
+    const abs = resolve(p);
+    if (!existsSync(abs)) continue;
+    try {
+      const raw = JSON.parse(readFileSync(abs, "utf8")) as {
+        analysis?: {
+          substitutionFrame?: { headline?: string; namedRivals?: Array<{ name?: string; recCount?: number }> };
+          mentionGap?: { recommendation?: { count?: number; total?: number } };
+        };
+      };
+      const preview = reportPreview(raw);
+      if (!preview) break;
+      const frame = raw.analysis?.substitutionFrame;
+      const rec = raw.analysis?.mentionGap?.recommendation;
+      const card: import("./ogCard.js").DemoCardModel | null = frame?.headline
+        ? {
+            brand: preview.brand,
+            category: preview.category,
+            headline: frame.headline,
+            rivals: (frame.namedRivals ?? [])
+              .filter((r): r is { name: string; recCount: number } => typeof r.name === "string" && typeof r.recCount === "number")
+              .map((r) => ({ name: r.name, recCount: r.recCount })),
+            merchantCount: typeof rec?.count === "number" ? rec.count : null,
+            total: typeof rec?.total === "number" ? rec.total : preview.basedOnResponses || null,
+          }
+        : null;
+      demoShareCache = { preview, card, frameHeadline: frame?.headline ?? null };
+    } catch {
+      demoShareCache = null;
+    }
+    break;
+  }
+  return demoShareCache;
+}
+
+app.get("/og/default.png", (_req, res) => {
+  sendOg(res, ogFromCache("default", "v1", () => buildDefaultCardSvg(ENV.publicBrandName, TAGLINE)), 86_400);
+});
+
+app.get("/og/demo.png", (_req, res) => {
+  const share = demoShare();
+  // The rich card needs the substitution frame; without it, fall back to the restrained
+  // report card rather than resurrect retired framing.
+  if (!share) return res.status(404).end();
+  sendOg(res, ogFromCache("demo", "v2", () =>
+    share.card ? buildDemoCardSvg(share.card, ENV.publicBrandName) : buildReportCardSvg(share.preview, ENV.publicBrandName)), 86_400);
+});
+
+app.get("/og/index.png", wrap(async (_req, res) => {
+  const rows = await listCategoryIndexes();
+  if (!rows.length) return res.status(404).end();
+  const cats = rows.map((r) => ({ label: r.label, brands: r.entries?.length ?? 0 }));
+  const key = JSON.stringify(cats);
+  sendOg(res, ogFromCache("index", key, () => buildIndexListCardSvg(cats, ENV.publicBrandName)), 3_600);
+}));
+
+// The per-category card — the distribution artifact itself. Content passes through the
+// SAME dominance gate as the page (indexOgModel → rankView), so the image can never
+// crown a brand the page calls contested.
+app.get("/og/index/:slug([a-z0-9-]+).png", wrap(async (req, res) => {
+  const model = await loadIndexOgModel(String(req.params.slug));
+  if (!model) return res.status(404).end();
+  const key = `${model.updatedAt ?? ""}|${model.brandsRanked}|${model.headline}`;
+  sendOg(res, ogFromCache(`index:${model.slug}`, key, () => buildIndexSlugCardSvg(model, ENV.publicBrandName)), 3_600);
+}));
+
 app.get("/api/runs/:runId/report.md", wrap(async (req, res) => {
   if (!isValidRunId(req.params.runId)) return res.status(404).send("Report not ready.");
   // The downloadable report.md carries the full write-up incl. the executed fixes — it's part
@@ -1124,14 +1220,19 @@ async function serveIndex(req: Request, res: Response) {
         const t = escapeHtml(ssr.title);
         const d = escapeHtml(ssr.description);
         const u = escapeHtml(ssr.canonical);
+        // The dynamic leaderboard card — the preview IS the artifact traveling. Same
+        // dominance gate as the page (see /og/index/:slug.png), so it can't out-claim it.
+        const img = escapeHtml(`${baseUrl(req)}/og/index${m ? `/${m[1]}` : ""}.png`);
         html = html
           .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
           .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
           .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
           .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
           .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`)
           .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
           .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`)
           .replace("</head>", `<link rel="canonical" href="${u}" />\n    ${ssr.jsonLd}\n  </head>`)
           .replace(/<div id="root">\s*<\/div>/, `<div id="root">${ssr.bodyHtml}</div>`);
       }
@@ -1140,21 +1241,62 @@ async function serveIndex(req: Request, res: Response) {
     }
   }
 
-  // Per-report share card: a /report/:id link unfurls into the brand's score + gap with a
-  // dynamic OG image. Wrapped in try/catch so a missing/failed report falls back to the
-  // default meta rather than 500-ing the page itself.
+  // Utility pages: correct the per-page og:url (the template default says "/", which
+  // mis-canonicalizes every share of these paths). Image/title stay the brand defaults.
+  if (["/demo", "/scan", "/privacy", "/terms", "/support", "/data-deletion", "/thanks", "/pricing"].includes(req.path)) {
+    const u = escapeHtml(baseUrl(req) + req.path);
+    html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`);
+  }
+
+  // The demo (fictional sample brand) gets the full rich treatment — it exists to sell —
+  // labeled a sample in both the text and the card. The description carries the SAME
+  // substitution frame the page leads with (never the retired mention-gap line).
+  if (req.path === "/demo" || req.path === "/demo/") {
+    const share = demoShare();
+    const p = share?.preview;
+    if (share && p && p.brand) {
+      const base = baseUrl(req);
+      const t = escapeHtml(`Sample AI Visibility Report: ${p.brand}${p.category ? ` (${p.category})` : ""} — ${ENV.publicBrandName}`);
+      const lead = share.frameHeadline ?? `Which brands AI assistants recommend in ${p.category || "this category"}.`;
+      const d = escapeHtml(`${lead} A complete sample report on a fictional brand — see exactly what a scan finds.`);
+      const img = escapeHtml(`${base}/og/demo.png`);
+      html = html
+        .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+        .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
+        .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
+        .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+        .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
+        .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
+        .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+        .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`);
+    }
+  }
+
+  // Per-report share card: a /report/:id link unfurls into a rich preview. DOCTRINE:
+  // public artifacts are winner- or field-headlined, never loser-headlined — the merchant
+  // chose to share this link, so the poster names the brand + frames the CATEGORY question;
+  // their score/losing rate lives on the page, not in the preview that travels feeds.
+  // Wrapped in try/catch so a missing/failed report falls back to the default meta.
   const rm = req.path.match(/^\/report\/(\d{8}-\d{6}-[0-9a-f]{20})\/?$/);
   if (rm) {
     try {
       const runId = rm[1]!;
       const preview = reportPreview(await getResults(runId));
-      if (preview && preview.score != null) {
+      if (preview && (preview.brand || preview.category)) {
         const base = baseUrl(req);
-        // Repositioning: a shared LEGACY report link is a first impression, so its
-        // share card speaks the QA vocabulary (readiness, not a visibility score).
-        // The route itself stays functional for anyone holding a link.
-        const t = escapeHtml(`${preview.brand || "This store"}: AI buyer readiness — ${ENV.publicBrandName}`);
-        const d = escapeHtml(`${preview.gapLine} See what an AI buyer could and couldn't verify.`);
+        // MERGE NOTE (v2.1): kept main's category-framed meta because it is the matched PAIR for
+        // main's rewritten share card (buildReportCardSvg renders "AI VISIBILITY REPORT · {cat}"
+        // and deliberately shows no score and no gap line). v2's version titled this "AI buyer
+        // readiness" and described it with preview.gapLine — both of which main's card retired, so
+        // applying v2's text here would make the OG title and the OG image tell different stories.
+        // Renaming this surface means redesigning main's 3-card family; that is a follow-up, not a
+        // merge resolution. This is the one place v2's vocabulary is NOT applied.
+        const cat = preview.category || "their category";
+        const t = escapeHtml(`${preview.brand || "This store"} — AI Visibility Report, ${cat} — ${ENV.publicBrandName}`);
+        const d = escapeHtml(
+          `Which brands AI assistants recommend in ${cat}` +
+          `${preview.basedOnResponses > 0 ? ` — ${preview.basedOnResponses} answers` : ""} across ChatGPT, Gemini & Perplexity. See the full breakdown.`,
+        );
         const img = escapeHtml(`${base}/report/${runId}/og.png`);
         const url = escapeHtml(`${base}/report/${runId}`);
         html = html

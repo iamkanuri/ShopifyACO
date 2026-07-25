@@ -184,6 +184,12 @@ scaling traffic or selling to security-conscious merchants.
       brand-specific, verified changes (audit live PDPs/schema). Analysis already drafts them.
 
 ### D. Detection (core IP) upgrades
+- [ ] **Brand name as substring of a product/scent name** (known issue, low priority): the
+      detector counted **Tabac** as *recommended* because "Tabac" matched inside the scent name
+      "Vanille de Tabac (inspired by Tom Ford Tobacco Vanille)" — the scent, not the brand. Distinct
+      from the all-common-word collision already fixed (`isCommonWordPhrase`): here a *distinctive*
+      brand name is a substring of a longer product/scent phrase. Surfaced in a pilot Index scan
+      (artisan shave soap). Low-frequency; don't over-engineer a fix.
 - [ ] **Sentiment pass** → populate `mentioned_positive` / `mentioned_negative` (enum
       values already exist; non-breaking).
 - [ ] **Optional LLM classification pass** for ambiguous/complex answers the clause-scoped

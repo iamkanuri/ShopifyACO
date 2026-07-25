@@ -282,6 +282,10 @@ export function reportConfig(): void {
     if (ENV.adminPassword && ENV.adminPassword.length < 12) warn.push("ADMIN_PASSWORD is short (<12 chars)");
     const stripeUrls = Object.values(ENV.stripe).some(Boolean);
     if (stripeUrls && !process.env.STRIPE_WEBHOOK_SECRET) warn.push("Stripe links set but STRIPE_WEBHOOK_SECRET missing — payments won't be recorded");
+    // Mode flags that FABRICATE data if left at their test setting: in prod these must be
+    // live, or real merchants see fixture/canned output presented as their own store.
+    if (ENV.shopify.mode === "mock") warn.push("SHOPIFY_MODE=mock — ALL Shopify data (catalog, tokens, billing) is fabricated; set SHOPIFY_MODE=live");
+    if (ENV.crawler.mode === "mock") warn.push("CRAWLER_MODE=mock — diagnosis cannot crawl real pages (live requests will fail loudly); set CRAWLER_MODE=live on web AND worker");
     if (warn.length) console.warn(`[config] ⚠️ prod: ${warn.join("; ")}`);
   }
 }

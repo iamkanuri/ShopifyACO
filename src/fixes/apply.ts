@@ -4,6 +4,20 @@ import { getProposal, updateProposal, type ProposalRow } from "../db/fixes.js";
 import { writableField, liveFieldOf, type WritableField } from "./propose.js";
 import { buildProductInput, productUpdate, rereadProduct } from "./source.js";
 import { hasScope } from "../shopify/scopes.js";
+import { upsertProduct } from "../db/catalog.js";
+import type { NormalizedProduct } from "../catalog/normalize.js";
+
+/** Best-effort: mirror a just-written product back into the synced catalog so every
+ *  screen (Fix Studio live values, Catalog) agrees with the Shopify admin IMMEDIATELY
+ *  after our own write — the products/update webhook is the eventual backstop. */
+async function mirrorToCatalog(shop: string, product: NormalizedProduct | null | undefined): Promise<void> {
+  if (!product) return;
+  try {
+    await upsertProduct(shop, product);
+  } catch (err) {
+    console.error(`[fixes] post-write catalog mirror failed for ${shop}:`, (err as Error).message);
+  }
+}
 
 // ===========================================================================
 // Fix Studio write-back engine (Phase 6). The ONLY place this app mutates a
@@ -113,14 +127,32 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     // sent it), so the stored value often isn't byte-identical to proposed_value. Rollback
     // compares against THIS (via the same read path), so only a genuine later merchant edit —
     // not Shopify's own normalization — counts as a conflict.
+    let verified = false; // re-read succeeded, so snapshot.applied is the store's real value
     try {
       const after = await rereadProduct(shop, token, p.product_gid);
+      // liveFieldOf, not `field`: we WRITE descriptionHtml but Shopify reads back plain
+      // `description`. Reading `after[field]` there would be undefined ⇒ snapshot.applied
+      // null ⇒ the no-observable-effect guard below and rollback's conflict check would
+      // both compare against nothing. Same mapping as the pre-write read above.
       snapshot.applied = (after?.[liveFieldOf(field)] as string | null) ?? null;
+      verified = true;
+      await mirrorToCatalog(shop, after);
     } catch {
       snapshot.applied = p.proposed_value; // best effort if the verify re-read fails
     }
+    // The mutation response proves Shopify ACCEPTED the write, not that anything changed.
+    // If the verified post-write value equals the pre-write value (e.g. Shopify normalized
+    // it back to the default), the fix had no observable effect — report that instead of
+    // claiming success. This is the structural guard against placebo fixes (the App Store
+    // 2.1.4 lesson): "applied" must always mean "the store now holds something different."
+    if (verified && (snapshot.applied ?? "") === (liveValue ?? "")) {
+      await updateProposal(id, { status: "failed", error: "write accepted but the store value is unchanged (no observable effect)" });
+      return { ok: false, status: "failed", detail: "Shopify accepted the write but the store's value is unchanged — this change would have no observable effect, so it was not marked applied." };
+    }
     await updateProposal(id, { status: "applied", appliedSnapshot: snapshot, markApplied: true, error: null });
-    await audit(shop, actor, "fix_applied", "product", { target: p.target, before: liveValue }, { after: p.proposed_value });
+    // Audit the value the store ACTUALLY holds (the verified re-read), not the raw intent —
+    // Shopify normalizes SEO fields, so the two can legitimately differ.
+    await audit(shop, actor, "fix_applied", "product", { target: p.target, before: liveValue }, { after: snapshot.applied ?? p.proposed_value });
     return { ok: true, status: "applied", detail: `${p.target} updated` };
   } catch (err) {
     await updateProposal(id, { status: "failed", error: (err as Error).message });
@@ -166,6 +198,9 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
       return { ok: false, status: "failed", detail };
     }
     await updateProposal(id, { status: "rolled_back", error: null });
+    try {
+      await mirrorToCatalog(shop, await rereadProduct(shop, token, p.product_gid));
+    } catch { /* webhook backstop will re-sync */ }
     await audit(shop, actor, "fix_rolled_back", "product", { after: p.proposed_value }, { restored: snap.before });
     return { ok: true, status: "rolled_back", detail: `${p.target} restored` };
   } catch (err) {

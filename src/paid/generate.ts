@@ -7,6 +7,7 @@ import { runScan } from "../runner.js";
 import { aggregate } from "../aggregate.js";
 import { analyzeRun } from "../analysis/index.js";
 import { extractDiscoveredBrands } from "../analysis/discoveredBrands.js";
+import { buildSubstitutionFrame } from "../analysis/buildFrame.js";
 import { generateArtifacts } from "../artifacts/generate.js";
 import { generatePrompts } from "../prompts/library.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
@@ -119,6 +120,9 @@ export async function generatePaidReport(input: GeneratePaidInput): Promise<Paid
     // Discovered brands (the hidden competition) + the done-for-you artifacts. Mock → $0 templates.
     const disc = await extractDiscoveredBrands(results, deep, { apiKey: input.mock ? undefined : input.keys.openai });
     analysis.discoveredBrands = disc.brands;
+    // The substitution frame leads the paid deep report too — same builder as the public path, so the
+    // free scorecard and the $29 report tell the same story (with the deep scan's discovered rivals).
+    analysis.substitutionFrame = buildSubstitutionFrame(analysis, results, deep, disc.brands.map((b) => b.name));
     run.analysis = analysis;
     const merchantFacts = (await factsP) ?? undefined; // tier 2a: real sourced facts (or placeholders)
     const artifacts = await generateArtifacts(analysis, results, deep, { live: !input.mock, apiKey: input.keys.openai, merchantFacts });

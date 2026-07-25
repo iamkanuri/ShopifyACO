@@ -9,6 +9,7 @@ import { stripeCustomerForShop } from "../db/entitlements.js";
 import { hasPg } from "../db/pg.js";
 import { PLANS } from "../pricing.js";
 import { managedPricingUrl } from "../shopify/managedPricing.js";
+import { syncShopifyEntitlement } from "../billing/shopifyEntitlement.js";
 
 // Shop-scoped Billing & entitlements API (Phase 11). requireShop sets req.shopDomain.
 // Read surfaces the merchant's effective plan, usage vs limits, and the upgrade
@@ -28,6 +29,11 @@ function returnUrl(req: Request): string | null {
 /** GET /app/api/billing — effective plan, usage vs limits, and the plan catalogue. */
 export async function billingStatusHandler(req: Request, res: Response): Promise<void> {
   const shop = shopOf(req);
+  // Re-sync the plan mirror from Shopify (one Admin-API read; never throws) so the Billing
+  // screen shows the SUBSCRIPTION STATE SHOPIFY HOLDS NOW — not what it held at the last app
+  // bootstrap. There is no app_subscriptions webhook, so a cancel/freeze made on Shopify's
+  // side would otherwise sit stale here (app data must agree with the admin — 2.1.4).
+  await syncShopifyEntitlement(shop);
   const eff = await entitlementForShop(shop);
   const usage = hasPg() ? await shopUsage(shop) : { benchmarksLast30d: 0, monitoringSchedules: 0, feeds: 0 };
 

@@ -41,6 +41,8 @@ export async function rereadProduct(shop: string, token: string, productGid: str
     if (ov) {
       if (ov.seoTitle !== undefined) norm.seoTitle = ov.seoTitle;
       if (ov.seoDescription !== undefined) norm.seoDescription = ov.seoDescription;
+      // Written as descriptionHtml, read back as `description` — mirrors the real API's
+      // asymmetry (see liveFieldOf in propose.ts) so mock exercises the same code path live does.
       if (ov.descriptionHtml !== undefined) norm.description = ov.descriptionHtml;
     }
   }
@@ -49,8 +51,22 @@ export async function rereadProduct(shop: string, token: string, productGid: str
 
 /** Build a minimal ProductInput for one writable field. An empty value clears the field with
  *  `null` (not ""), which is how Shopify reliably removes an SEO override — important for
- *  rollback, where the original value was empty (a backfill). */
-export function buildProductInput(productGid: string, field: "seoTitle" | "seoDescription" | "descriptionHtml", value: string): Record<string, unknown> {
+ *  rollback, where the original value was empty (a backfill).
+ *
+ *  MERGE NOTE (v2.1): `descriptionHtml` is deliberately here. It existed at the merge base but
+ *  was UNREACHABLE (writableField never returned it), so main correctly deleted it as dead code
+ *  and wrote "nothing may write the raw product body" to describe that state. v2 CP3 then made it
+ *  live on purpose: a merchant-CONFIRMED claim ("yes, this product is aluminum-free") is appended
+ *  to the body by proposeClaimStatement. Restoring it keeps both intents — main removed dead code,
+ *  v2 shipped a real feature — but the body is the customer-facing copy, so it is the most gated
+ *  write in the app: it requires an explicit merchant confirmation row, it only ever APPENDS one
+ *  plain sentence, and it goes through the same approve → conflict-check → snapshot → rollback
+ *  path as the SEO fields. Keep `writableField` as the single gate on what may reach here. */
+export function buildProductInput(
+  productGid: string,
+  field: "seoTitle" | "seoDescription" | "descriptionHtml",
+  value: string,
+): Record<string, unknown> {
   switch (field) {
     case "seoTitle": return { id: productGid, seo: { title: value || null } };
     case "seoDescription": return { id: productGid, seo: { description: value || null } };

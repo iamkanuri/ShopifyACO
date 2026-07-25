@@ -19,7 +19,7 @@ function sourcedFactCount(provenance: string[] | undefined): number {
   return (provenance ?? []).filter((t) => /^\(fact\s+F\d+/i.test(t)).length;
 }
 
-export function PaidArtifacts({ bundle }: { bundle: ArtifactBundle }) {
+export function PaidArtifacts({ bundle, demo = false }: { bundle: ArtifactBundle; demo?: boolean }) {
   // Whether the store crawl produced facts (drives the honest note) — from the bundle, NOT a tag count
   // (llms.txt / schema embed crawled values WITHOUT (fact Fn) tags, so counting tags undercounts).
   const totalSourced = bundle.sourcedFacts ?? bundle.artifacts.reduce((n, a) => n + sourcedFactCount(a.provenance), 0);
@@ -38,7 +38,15 @@ export function PaidArtifacts({ bundle }: { bundle: ArtifactBundle }) {
             </>
           )}
         </p>
-        {totalSourced === 0 && (
+        {totalSourced === 0 && demo && (
+          <p className="muted" style={{ borderLeft: "3px solid var(--accent, #5b8def)", paddingLeft: 10 }}>
+            <b>These are demo scaffolds.</b> They show the exact structure and value you'd get — with{" "}
+            <code>[placeholders]</code> in place of invented facts. In <b>your</b> paid report, every placeholder{" "}
+            <b>auto-fills from your real store data</b> — prices, ratings, and product details read straight from
+            your live site. AisleLens drafts from your real data; it never makes facts up.
+          </p>
+        )}
+        {totalSourced === 0 && !demo && (
           <p className="muted" style={{ borderLeft: "3px solid var(--warn, #c90)", paddingLeft: 10 }}>
             These are <b>fill-in templates</b> — we couldn't pull sourced facts from your live store. If you
             didn't give us your store URL, add it and run a fresh scan to auto-fill your real prices, ratings,
