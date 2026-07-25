@@ -4,26 +4,45 @@
 
 # ▶ RELEASE: V2 — close the funnel
 
-**Branch:** `feat/v2-close-the-funnel` · **Base:** `feat/phase-b-v1-1` → `main`
+**Branch:** `feat/v2-1-production-truth` · **Base:** `main` @ `fb30a2e` (what production runs)
 **Carries:** everything in the release below (repositioning + Buyer Test + v1.1), PLUS
 CP1 egress resilience · CP2 post-install continuity · CP3 the authenticated loop ·
-CP4 the score→test reframe.
+CP4 the score→test reframe · **v2.1 CP0: the merge of the 9 production commits the V2
+branch was missing.**
+
+> ⚠️ **Why the branch name changed.** `feat/v2-close-the-funnel` was cut from a **stale local
+> `main`** (`252d4ee`, 2026-07-06) and was **9 commits behind deployed production** (`fb30a2e`,
+> confirmed via `GET /healthz`). Shipping it would have reverted the dynamic OG share cards,
+> honesty batches 1–2, the Fix Studio "agrees with the Shopify admin" fix, the substitution
+> reframe, the losing-brand demo, and the Index honest CTA. `feat/v2-1-production-truth` is that
+> branch with `main` merged in and 8 textual + 1 semantic conflict resolved. **Verify before you
+> push:** `git merge-base --is-ancestor origin/main feat/v2-1-production-truth` must exit `0`.
 
 Nothing is deployed until you run the push below.
 
 ## V2.1 Merge + push (run these yourself)
 
 ```bash
+git fetch origin                                     # do NOT trust a stale local main
+git merge-base --is-ancestor origin/main feat/v2-1-production-truth && echo "FF OK"
 git checkout main
-git merge --ff-only feat/v2-close-the-funnel   # must fast-forward; if it refuses, STOP
-git push origin main                            # Railway auto-builds + deploys
+git merge --ff-only origin/main                      # bring local main up to production first
+git merge --ff-only feat/v2-1-production-truth        # must fast-forward; if it refuses, STOP
+git push origin main                                  # Railway auto-builds + deploys
 ```
 
-`npm run migrate` runs at startup on Railway and applies **`0025_buyer_tests.sql`**
+`npm run migrate` runs at startup on Railway and applies **`0026_buyer_tests.sql`**
 (additive + idempotent: `public_tests`, `buyer_tests`, `buyer_test_runs`,
 `requirement_confirmations`, plus `oauth_states.test_token` and two nullable
 `fix_proposals` columns). Nothing existing is altered, so a code rollback is safe
 without a down-migration.
+
+> **Renumbered from `0025` → `0026` in v2.1 CP0.** It collided with
+> `0025_finding_crawl_mode.sql`, which is **already applied in production**. Tracking is by
+> filename so the collision would not have errored — it would just have left two `0025`s and a
+> non-deterministic-looking order on a fresh database. Both files are idempotent, so the rename
+> re-applies harmlessly anywhere the old name was already recorded (verified locally: migrate
+> applied `0026` after `0025_finding_crawl_mode`, exit 0).
 
 ## V2.2 Railway variables
 
@@ -38,10 +57,15 @@ All optional — every one has a working default. Set only if you need to tune.
 
 ## V2.3 Post-deploy verification (in order)
 
+0. **Hard refresh the site** (Ctrl/Cmd-Shift-R on `/`, `/test`, `/index`). The viewer bundle is
+   content-hashed but `index.html` is not — a cached shell can serve the OLD bundle and make a
+   good deploy look broken. Do this BEFORE judging anything below.
 1. **`/healthz`** → `ok:true`, `commit` matches the SHA you pushed.
-2. **Migration applied**: deploy logs show `applying: 0025_buyer_tests.sql` (or
-   `already applied` on a re-deploy). If it failed, the app still boots — the Buyer
-   Test keeps working, but install continuity and saved tests will 500. Check first.
+2. **Migration applied**: deploy logs show `applying: 0026_buyer_tests.sql` (or
+   `already applied` on a re-deploy). `0025_finding_crawl_mode.sql` should report
+   `already applied` — it is already in production. If the migration failed, the app still
+   boots — the Buyer Test keeps working, but install continuity and saved tests will 500.
+   Check first.
 3. **Public test still works**: run one at `/test` on a real Shopify product URL.
    Confirm the assertion table renders and every green **Proven** row shows a quote
    that plainly supports it. *If any Pass isn't plainly supported by its quote, roll
@@ -55,16 +79,45 @@ All optional — every one has a working default. Set only if you need to tune.
    didn't fire; check `public_tests.store_host` against the shop's storefront host.
 6. **`/app` is Tests**, `/app/overview` still reaches the old dashboard, and
    `/app/tests/:id` renders the assertion table + Confirm + Proposed changes.
-7. **Legacy surfaces**: an old `/report/<id>` link still loads and says *AI buyer
-   readiness*; its OG card (`/report/<id>/og.png`) says **AI BUYER READINESS**.
-8. **Re-scrape the social card once** (LinkedIn Post Inspector / X Card Validator).
+7. **Page title + OG image on each public surface.** View source and confirm `<title>` and
+   `og:image` are the server-substituted values, not the `__BRAND_NAME__` placeholders:
+   - `/` → title carries **AisleLens**; description is the QA reposition copy
+     ("executable shopping tests…"), not the old "See if AI shoppers recommend your store".
+   - `/report/<id>` → title `<brand> — AI Visibility Report, <category> — AisleLens`; its card
+     `/report/<id>/og.png` renders header **AI VISIBILITY REPORT** with **no score number**.
+     *(v2.1 CP0 note: an earlier V2 draft of this list said the legacy card says "AI BUYER
+     READINESS". That was v2's rename of a card `main` had already replaced — the shipped card
+     shows no score at all. In-page copy does say "AI buyer readiness"; the share card does not
+     name the score, by design.)*
+   - `/demo` → card is `/og/demo.png`; the **SAMPLE · FICTIONAL BRAND** badge is on the image and
+     the trademark-attribution note is in the page copy.
+   - `/index/<slug>` → per-category OG title is the category, not the generic one; card is
+     `/og/index/<slug>.png` and it crowns a leader ONLY when the page's dominance gate passes.
+
+   The card endpoints are `/og/default.png`, `/og/demo.png`, `/og/index.png`,
+   `/og/index/<slug>.png`, and `/report/<id>/og.png`. Each must return `content-type: image/png`
+   and start with the PNG magic bytes — **anything else fell through to the SPA catch-all and will
+   return the HTML shell with a 200**, which looks fine in a browser and breaks every scraper.
+   Verified locally on the merge: all five return real PNGs (46–66 kB).
+8. **Re-scrape the social card once** — LinkedIn Post Inspector *and* the X/Twitter Card
+   Validator, one pass each, for `/` and `/demo`. Both cache aggressively; if you skip this, a
+   stale card can persist for days and it will not be a code problem.
 
 ## V2.4 What is NOT proven yet
 
 - **`write_products` has still never run against a real store.** The full
   confirm → propose → approve → apply → rerun → rollback loop was verified end to end,
   but in `SHOPIFY_MODE=mock`. Do a dev-store live write (apply + rollback one real
-  description edit) before relying on it for a merchant.
+  description edit) before relying on it for a merchant. *(v2.1 CP3 is exactly this walk.)*
+  - **Corrected in v2.1 CP0:** V2 reported that one step — the post-write catalog sync normally
+    delivered by the `products/update` webhook — had to be written directly and labelled. It no
+    longer does. `main`'s Fix Studio fix (`90b137b`) added a real `mirrorToCatalog` on both apply
+    and rollback, so the written value is mirrored into the synced catalog immediately and the
+    webhook is only the backstop. That step is genuine now.
+  - `main` also added a **no-observable-effect guard**: if the verified post-write re-read equals
+    the pre-write value, the proposal is marked `failed`, not `applied`. Expect that status when
+    testing a write that Shopify normalizes back to its default — it is the guard working, not a
+    bug.
 - **Install continuity has only been exercised through our own OAuth redirect.** The
   App Store managed-install path (no token, host-match fallback) is built and unit-safe
   but has not run against a real Shopify install.
@@ -73,8 +126,18 @@ All optional — every one has a working default. Set only if you need to tune.
 
 ## V2.5 Rollback
 
-Same as §4 below. Migration `0025` is additive, so reverting the code is complete and
-safe; the new tables simply stop being written to.
+```bash
+# Fastest: Railway → Deployments → previous green deploy → Redeploy.
+# Or by commit — revert the merge, keeping main's first parent:
+git revert --no-edit -m 1 <the-merge-sha-you-pushed>
+git push origin main
+```
+
+Migration `0026` is additive, so reverting the code is complete and safe; the new tables simply
+stop being written to. No down-migration exists and none is needed.
+
+Kill switches, no redeploy required: `PRODUCT_TEST_SEMANTIC=0` disables the semantic tier;
+`DAILY_SPEND_CAP_USD=0` halts all live scan spend.
 
 ---
 
@@ -148,22 +211,28 @@ V1.1 smoke testing suggested the HTML tier survived while `.json` was throttled,
 §2.1 was designed on that premise. **Direct per-endpoint probing from the dev IP does not
 reproduce it.** Measured twice, ~45s apart, stable both times:
 
+> Hosts are de-identified here on purpose. These are measured facts about *named third
+> parties'* bot-protection posture, gathered by probing their storefronts; this file is
+> tracked in git, and publishing "brand X blocks our IP" is not ours to publish. The
+> host↔label mapping lives in the untracked experiment log
+> (`experiments/`, gitignored), which is where per-store detail belongs.
+
 | Host | `/robots.txt` | `/policies/*` | `/products/<h>` | `/products/<h>.json` |
 |---|---|---|---|---|
-| `www.bombas.com` | **429** | **429** | **429** | **429** |
-| `ritual.com` | 200 | 404 | **429** | **429** |
-| `drsquatch.com` | 200 | 404 | 404 | 404 |
+| Host A (apparel) | **429** | **429** | **429** | **429** |
+| Host B (wellness) | 200 | 404 | **429** | **429** |
+| Host C (personal care) | 200 | 404 | 404 | 404 |
 
 Two distinct regimes, and neither is `.json`-specific:
-- **`ritual.com`** — the throttle covers the whole **`/products/*` path class**. `robots.txt`
+- **Host B** — the throttle covers the whole **`/products/*` path class**. `robots.txt`
   still serves 200, so it IS endpoint-scoped, but the product PAGE is refused exactly like
   the `.json`. Page-first does not rescue this host.
-- **`www.bombas.com`** — blanket 429 on every path, i.e. the IP is fully blocked for that
+- **Host A** — blanket 429 on every path, i.e. the IP is fully blocked for that
   storefront (bot management, not a rate limiter).
 
 **So: the page-first reorder is NOT a throttle mitigation, and should not be relied on as
 one.** It is still worth having for the reasons it demonstrably delivers — on a healthy
-store (`drsquatch.com`) the entire test now runs from ONE page fetch with no `.json` and no
+store (Host C) the entire test now runs from ONE page fetch with no `.json` and no
 `.js` request, which is a ~50% cut in outbound requests per test and therefore in how fast
 we spend the shared budget. But when a host throttles, it throttles the page too, and the
 merchant gets the honest `rate_limited` error with a retry — not a partial test.

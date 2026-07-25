@@ -28,6 +28,25 @@ Thumbs.db
 
 # Local code-review artifacts (keep out of the public repo)
 shopifyaco_deep_review_*.md
+shopifyaco_full_sweep_*.md
+shopifyaco_post_remediation_review_*.md
+
+# Experiment RUNS hold raw fetched HTML/JSON from real third-party merchant stores —
+# never commit those (size, and it is other people's site content). The DECISION MEMOS
+# written alongside them are deliverables and ARE tracked, hence the exceptions.
+# Ordering matters: re-include the directory before re-including files inside it.
+experiments/*
+!experiments/v2-1/
+experiments/v2-1/*
+!experiments/v2-1/*.md
+
+# One-off local probe/render scratch scripts + their output (real store data)
+_extract_probe*
+_audit_prep.ts
+_dump_checks.mjs
+_gen_losing_demo.ts
+_regen_demo.ts
+_render_*.ts
 
 # App Store listing assets (screenshots/icon) — uploaded to the Partner dashboard, not code
 listing-assets/
