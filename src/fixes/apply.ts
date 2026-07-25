@@ -124,9 +124,11 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
       await updateProposal(id, { status: "failed", error: detail });
       return { ok: false, status: "failed", detail };
     }
-    // Record what the store ACTUALLY holds after the write. Shopify normalizes SEO fields (it
-    // can trim, re-encode, or report a value equal to the page default differently than we
-    // sent it), so the stored value often isn't byte-identical to proposed_value. Rollback
+    // Record what the store ACTUALLY holds after the write. Shopify normalizes what we send —
+    // it can trim, re-encode, or report a value equal to the page default differently — for SEO
+    // fields AND for the body: a live dev-store write (v2.1 CP3) came back with newlines
+    // inserted between list items, 267 bytes sent → 271 stored. So the stored value often
+    // isn't byte-identical to proposed_value, and only the re-read knows the truth. Rollback
     // compares against THIS (via the same read path), so only a genuine later merchant edit —
     // not Shopify's own normalization — counts as a conflict.
     let verified = false; // re-read succeeded, so snapshot.applied is the store's real value
@@ -181,8 +183,8 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
   }
   // Only roll back if the field still holds what WE left it as (else the merchant edited it
   // after us — don't overwrite their newer edit). Compare against the value the store actually
-  // held right after apply (snap.applied), NOT the raw proposed value: Shopify normalizes SEO
-  // fields, so proposed_value rarely matches the stored form byte-for-byte. Fall back to
+  // held right after apply (snap.applied), NOT the raw proposed value: Shopify normalizes both
+  // SEO fields and body HTML, so proposed_value rarely matches the stored form. Fall back to
   // proposed_value for snapshots written before snap.applied existed.
   const liveValue = (live?.[snap.field] as string | null) ?? null;
   const expected = snap.applied !== undefined ? snap.applied : (p.proposed_value ?? null);
