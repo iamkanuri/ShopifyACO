@@ -17,6 +17,19 @@ test("SHOP_SCOPED_DELETES deletes children before parents and the shop row last"
   assert.ok(idx("feed_versions") < idx("feeds"), "feed_versions before feeds");
   assert.ok(idx("notifications") < idx("alerts"), "notifications before alerts");
   assert.ok(idx("experiments") < idx("interventions"), "experiments before interventions");
+  assert.ok(idx("buyer_test_runs") < idx("buyer_tests"), "buyer_test_runs before buyer_tests");
+  assert.ok(idx("requirement_confirmations") < idx("buyer_tests"), "confirmations before buyer_tests");
+
+  // Migration 0026 added four shop-scoped tables and none of them were added here, so a
+  // `shop/redact` silently left a merchant's saved tests, run history, product
+  // confirmations and claimed public tests in place. Named explicitly so the next
+  // shop-scoped table cannot be forgotten the same way.
+  for (const t of ["buyer_tests", "buyer_test_runs", "requirement_confirmations", "public_tests"]) {
+    assert.ok(idx(t) >= 0, `${t} is shop-scoped and must be erased on shop/redact`);
+  }
+  // funnel_events is deliberately ABSENT: it holds no shop identifier (migration 0028),
+  // so there is nothing shop-scoped in it to delete.
+  assert.equal(idx("funnel_events"), -1, "funnel_events carries no shop identifier by design");
 
   assert.equal(new Set(order).size, order.length, "no duplicate tables");
   // the queue/usage tables key on `shop`, everything else on `shop_domain`

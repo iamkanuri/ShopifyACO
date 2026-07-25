@@ -24,6 +24,17 @@ export const SHOP_SCOPED_DELETES: ReadonlyArray<{ table: string; col: "shop_doma
   { table: "crawl_pages", col: "shop_domain" },
   // fix studio
   { table: "fix_proposals", col: "shop_domain" },
+  // buyer tests (migration 0026) — child → parent. These were MISSING from this list
+  // when 0026 shipped, so a `shop/redact` left a merchant's saved tests, their run
+  // history, their own product confirmations, and any public test they had claimed
+  // undeleted. All four are shop-scoped business data and must go. (Found in v2.2 CP2
+  // while auditing what the funnel table may hold; `funnel_events` itself is
+  // deliberately absent — it carries no shop identifier, by construction.)
+  { table: "buyer_test_runs", col: "shop_domain" },
+  { table: "requirement_confirmations", col: "shop_domain" },
+  { table: "buyer_tests", col: "shop_domain" },
+  // Unclaimed rows have shop_domain NULL and are untouched; they expire on their own.
+  { table: "public_tests", col: "shop_domain" },
   // experiments (experiments → interventions)
   { table: "experiments", col: "shop_domain" },
   { table: "interventions", col: "shop_domain" },

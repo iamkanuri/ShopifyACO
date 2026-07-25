@@ -189,6 +189,42 @@ test("buildBuyerTask: 4–6 requirements across surface types; category-aware cl
   assert.ok(soap.requirements.some((r) => r.claim === "fragrance_free"), "soap → skincare claims");
 });
 
+// ---------------------------------------------------------------------------
+// v2.2 CP3 — an UNRECOGNISED category gets no claim, not a defaulted one.
+//
+// Measured on 13 real stores: CATEGORY_CLAIMS covers personal care, food and
+// drinkware, so everything else fell through to a hardcoded ["cruelty_free"].
+// "Cruelty-free" was therefore asked of dog harnesses, backpacks, notebooks,
+// bike parts and garden tools — it failed 13/13, and because a claim
+// always scores highest in `adjudicability` it OPENED every report. It was
+// typically one of only two not-proven rows, so half of what we showed as
+// findings came from that one default.
+// ---------------------------------------------------------------------------
+
+test("buildBuyerTask: an unrecognised category gets NO claim requirement", () => {
+  for (const p of [
+    mk({ title: "Lined Notebook, A5", productType: "Notebook", tags: ["stationery"] }),
+    mk({ title: "Everyday Dog Harness", productType: "Harness", tags: ["dogs"] }),
+    mk({ title: "Errant Backpack", productType: "Backpack", tags: ["travel"] }),
+  ]) {
+    const task = buildBuyerTask(p);
+    const claims = task.requirements.filter((r) => r.kind === "claim");
+    assert.equal(claims.length, 0, `must not invent ${claims.map((c) => c.label).join(", ")} for ${p.productType}`);
+    assert.doesNotMatch(task.summary, /cruelty/i);
+    // Still a usable buyer task — the fix must not hollow out the report.
+    assert.ok(task.requirements.length >= 4, `expected >=4 requirements, got ${task.requirements.length}`);
+  }
+});
+
+test("buildBuyerTask: a claim the product's OWN tags state is still inferred", () => {
+  // The tag path is something the merchant published themselves, not a guess
+  // about the category, so it must survive the removal of the default.
+  const tagged = buildBuyerTask(mk({ title: "Enamel Mug", productType: "Camp Mug", tags: ["bpa-free"] }));
+  const claims = tagged.requirements.filter((r) => r.kind === "claim");
+  assert.equal(claims.length, 1);
+  assert.equal(claims[0]!.claim, "bpa_free");
+});
+
 // ---- 10. the claim linter blocks overclaims in any rendered string ----------
 
 test("10. claim linter blocks product-truth, ranking, revenue, causal and predictive phrasing", async () => {
