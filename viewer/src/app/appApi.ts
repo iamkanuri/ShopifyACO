@@ -189,3 +189,94 @@ export const updateSchedule = (id: number, body: { cadence?: string; enabled?: b
 export const runSchedule = (id: number, opts: { live?: boolean } = {}) =>
   post<{ mode: string; runId: number | null; alerts: number; skipped?: string }>(`/app/api/schedules/${id}/run`, { live: opts.live === true });
 export const deleteSchedule = (id: number) => post(`/app/api/schedules/${id}/delete`, {});
+
+// ---- V2: Buyer Tests — the authenticated continuation of the public test -----
+// These are deliberately NOT fixture-backed. Every other screen can fall back to
+// the labeled sample because it illustrates a capability; a Buyer Test is a claim
+// about THIS merchant's own store, and a sample one would be a lie with their
+// storefront's name on it. No data means an empty state, never a demo.
+
+export interface BuyerTestAssertion {
+  label: string;
+  status: "pass_evidenced" | "pass_no_blocking" | "not_proven" | "requires_store_access";
+  detail: string;
+  evidenceQuote?: string;
+  evidenceSurface?: string;
+  surfacesChecked: string[];
+}
+export interface BuyerTestDelta {
+  label: string;
+  before: BuyerTestAssertion["status"] | null;
+  after: BuyerTestAssertion["status"];
+  change: "resolved" | "improved" | "regressed" | "unchanged";
+}
+export interface BuyerTestResultView {
+  ok: boolean;
+  error?: string;
+  task: string;
+  productName: string | null;
+  storeName: string | null;
+  assertions: BuyerTestAssertion[];
+  evidencedCount: number;
+  noBlockingCount: number;
+  notProvenCount: number;
+  requiresAccessCount: number;
+  total: number;
+  surfacesChecked: string[];
+  deltas?: BuyerTestDelta[];
+  resolvedCount?: number;
+  testId?: number;
+}
+export interface BuyerTestRow {
+  id: number;
+  productUrl: string;
+  productTitle: string | null;
+  productGid: string | null;
+  contract: { summary: string; requirements: Array<{ id: string; kind: string; label: string; claim?: string }> };
+  contractVersion: string;
+  engineVersion: string;
+  source: string;
+  baseline: BuyerTestResultView | null;
+  latest: BuyerTestResultView | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ConfirmQuestion {
+  requirementId: string;
+  label: string;
+  question: string;
+  detail: string;
+  answer: "yes" | "no" | "unsure" | null;
+}
+
+/** Import the public test this merchant just ran (by token, or by their storefront
+ *  host when the App Store install path carried no token). */
+export const claimBuyerTest = (token?: string) =>
+  post<{ testId: number; test: BuyerTestRow; alreadyImported: boolean }>(`/app/api/buyer-tests/claim`, { token });
+
+export const getBuyerTests = () => load<{ tests: BuyerTestRow[] }>(`/app/api/buyer-tests`, { tests: [] });
+
+export const getBuyerTest = (id: number) =>
+  load<{ test: BuyerTestRow | null; runs: Array<Record<string, unknown>>; confirmations: Record<string, string> }>(
+    `/app/api/buyer-tests/${id}`, { test: null, runs: [], confirmations: {} },
+  );
+
+/** Re-run the PINNED contract. Refused (409) if the contract or engine changed. */
+export const runBuyerTest = (id: number, trigger?: string) =>
+  post<BuyerTestResultView & { testId: number; previousRun: unknown }>(`/app/api/buyer-tests/${id}/run`, { trigger });
+
+export const createBuyerTest = (productGid: string) =>
+  post<{ testId: number; result: BuyerTestResultView }>(`/app/api/buyer-tests`, { productGid });
+
+export const getConfirmQuestions = (id: number) =>
+  load<{ questions: ConfirmQuestion[] }>(`/app/api/buyer-tests/${id}/confirm`, { questions: [] });
+
+/** Record the merchant's own answer. Only "yes" makes a proposal possible. */
+export const confirmRequirement = (id: number, requirementId: string, answer: "yes" | "no" | "unsure") =>
+  post<{ closed: boolean; proposalEligible: boolean; message: string }>(`/app/api/buyer-tests/${id}/confirm`, { requirementId, answer });
+
+export const proposeFromTest = (id: number, requirementId: string) =>
+  post<{ created: number; proposalIds: number[] }>(`/app/api/buyer-tests/${id}/propose`, { requirementId });
+
+export const getTestProposals = (id: number) =>
+  load<{ proposals: AppProposalRow[] }>(`/app/api/buyer-tests/${id}/proposals`, { proposals: [] });

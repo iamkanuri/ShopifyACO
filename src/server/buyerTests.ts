@@ -9,6 +9,8 @@ import {
 import { createProposal, getProductForFix } from "../db/fixes.js";
 import { proposeClaimStatement } from "../fixes/propose.js";
 import { loadNormalizedProducts, getStorefrontUrl } from "../db/catalog.js";
+import { fetchShopPolicies } from "../catalog/source.js";
+import { getAccessToken } from "../db/shops.js";
 import type { NormalizedProduct } from "../catalog/normalize.js";
 import { contractVersion, ENGINE_VERSION, type Assertion, type Requirement } from "./productTest.js";
 import { runAuthenticatedTest, unprovenClaimRows, type AuthenticatedTestResult } from "./authenticatedTest.js";
@@ -39,9 +41,16 @@ export function matchProductByUrl(products: NormalizedProduct[], productUrl: str
   return products.find((p) => (p.handle ?? "").toLowerCase() === handle) ?? null;
 }
 
-async function authContext(shop: string): Promise<{ storefrontUrl: string | null }> {
-  const storefrontUrl = await getStorefrontUrl(shop).catch(() => null);
-  return { storefrontUrl };
+/** The authenticated evidence context: the surfaces the public test could not read.
+ *  Every lookup degrades to null rather than throwing — a policy we can't fetch
+ *  leaves its row honestly unadjudicated instead of failing the whole test. */
+async function authContext(shop: string): Promise<{ storefrontUrl: string | null; policyText: string | null }> {
+  const [storefrontUrl, token] = await Promise.all([
+    getStorefrontUrl(shop).catch(() => null),
+    getAccessToken(shop).catch(() => null),
+  ]);
+  const policyText = token ? await fetchShopPolicies(shop, token).catch(() => null) : null;
+  return { storefrontUrl, policyText };
 }
 
 /** Assertions from a stored result blob (public or authenticated). */

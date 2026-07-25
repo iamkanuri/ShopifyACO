@@ -15,21 +15,27 @@ import { Catalog } from "./Catalog";
 import { Settings } from "./Settings";
 import { Billing } from "./Billing";
 import { Measure } from "./Measure";
+import { BuyerTests, BuyerTestDetail } from "./BuyerTests";
 
 // The authenticated embedded experience. A real merchant arrives here after OAuth
 // (shop session cookie); a prospect or local preview sees the same screens backed by
 // demo fixtures with an honest "Demo data" badge + a Connect prompt. Sub-routes use
 // the shared tiny history router (/app, /app/evidence, …).
 
+// V2 CP4 — TESTS and CASES lead. The product is AI Commerce QA: what a merchant
+// owns here is a set of tests over their store and the cases behind them. The old
+// score dashboard is still reachable at /app/overview for anyone who wants it, but
+// it is no longer the thing a merchant lands on, and it is no longer the frame.
 const NAV = [
-  { to: "/app", label: "Dashboard", key: "" },
+  { to: "/app", label: "Tests", key: "" },
+  { to: "/app/evidence", label: "Cases", key: "evidence" },
   { to: "/app/catalog", label: "Catalog", key: "catalog" },
   { to: "/app/measure", label: "Measure", key: "measure" },
-  { to: "/app/evidence", label: "Evidence", key: "evidence" },
   { to: "/app/fixes", label: "Fix Studio", key: "fixes" },
   { to: "/app/experiments", label: "Experiments", key: "experiments" },
   { to: "/app/monitoring", label: "Monitoring", key: "monitoring" },
   { to: "/app/attribution", label: "Attribution", key: "attribution" },
+  { to: "/app/overview", label: "Overview", key: "overview" },
   { to: "/app/billing", label: "Billing", key: "billing" },
   { to: "/app/settings", label: "Settings", key: "settings" },
 ];
@@ -48,8 +54,13 @@ export function AppShell() {
   // show an honest "live data unavailable" state, not the "connect your store" preview.
   const liveError = demo && Boolean(probe.error);
 
+  // `/app/tests/:id` — the saved test detail. Parsed here because the shell owns
+  // sub-routing (the tiny router has no nested-route concept).
+  const testId = /^\/app\/tests\/(\d+)$/.exec(path)?.[1];
+
   let screen: React.ReactNode;
-  if (sub === "catalog") screen = <Catalog />;
+  if (testId) screen = <BuyerTestDetail id={Number(testId)} />;
+  else if (sub === "catalog") screen = <Catalog />;
   else if (sub === "measure") screen = <Measure />;
   else if (sub === "evidence") screen = <Evidence />;
   else if (sub === "fixes") screen = <Fixes />;
@@ -58,9 +69,12 @@ export function AppShell() {
   else if (sub === "attribution") screen = <Attribution />;
   else if (sub === "billing") screen = <Billing />;
   else if (sub === "settings") screen = <Settings connected={!demo} />;
-  else screen = <Dashboard />;
+  else if (sub === "overview") screen = <Dashboard />;
+  // The FIRST authenticated screen is the merchant's own Buyer Test, continued —
+  // never a score dashboard (V2 §3.2/§3.3).
+  else screen = <BuyerTests />;
 
-  const screenName = NAV.find((n) => n.key === sub)?.label ?? "Dashboard";
+  const screenName = testId ? "Tests" : (NAV.find((n) => n.key === sub)?.label ?? "Tests");
 
   return (
     <div className="al-shell">

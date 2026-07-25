@@ -146,3 +146,42 @@ function mockProduct(n: number): Record<string, unknown> {
     metafields: { nodes: [{ namespace: "custom", key: "material", value: n % 2 ? "ceramic" : "steel", type: "single_line_text_field" }] },
   };
 }
+
+// ---- shop policies (V2 CP2) -------------------------------------------------
+// The public Buyer Test honestly reports delivery as "requires store access" when a
+// storefront's policy page can't be read. With the merchant installed we can read
+// their own policies directly, which is exactly what the install promised to add.
+const SHOP_POLICY_QUERY = `query ShopPolicies {
+  shop {
+    shippingPolicy { body }
+    refundPolicy { body }
+  }
+}`;
+
+/** The shop's shipping (and refund) policy text, or null when unavailable. Never
+ *  throws: a policy we can't read leaves the row honestly unadjudicated rather
+ *  than failing the whole test. */
+export async function fetchShopPolicies(shop: string, token: string): Promise<string | null> {
+  if (ENV.shopify.mode === "mock") {
+    return "All orders ship within 2 business days. Returns accepted within 30 days.";
+  }
+  try {
+    const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Shopify-Access-Token": token },
+      body: JSON.stringify({ query: SHOP_POLICY_QUERY }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: { shop?: { shippingPolicy?: { body?: string } | null; refundPolicy?: { body?: string } | null } };
+      errors?: unknown[];
+    };
+    if (json.errors?.length) return null; // e.g. a scope we weren't granted
+    const parts = [json.data?.shop?.shippingPolicy?.body, json.data?.shop?.refundPolicy?.body]
+      .filter((b): b is string => typeof b === "string" && b.trim().length > 0);
+    return parts.length ? parts.join("\n\n").slice(0, 20_000) : null;
+  } catch {
+    return null;
+  }
+}
