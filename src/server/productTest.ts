@@ -4,7 +4,7 @@ import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extra
 import { htmlToText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
-  buildEvidence, findSupport, findTimingSupport, normalize,
+  buildEvidence, findSupport, findViolation, findTimingSupport, normalize,
   SURFACE_LABEL, type EvidenceSentence, type SupportedEvidence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
@@ -129,17 +129,159 @@ const MATERIAL_NOUN = /\b(cotton|wool|merino|cashmere|linen|silk|hemp|jute|canva
  *  in 3 colors with a relaxed length" measured as a pass). */
 const MEASUREMENT = /(\b\d+(\.\d+)?\s?(mm|cm|inch|inches|in\b|ft|feet|foot|oz|ounces?|ml|l\b|liters?|litres?|g\b|kg|grams?|lbs?|pounds?)|\b(dimensions?|capacity|weight|height|width|length|diameter)\s*[:\-–]\s*\d)/i;
 
-/** After an origin frame, a real PLACE. Articles are skipped ("Made in the USA"),
- *  then a capitalised token is required — which "small batches", "partnership" and
- *  "batches of twelve" all fail, and "Vermont", "Japan" and "USA" all pass. */
-const ORIGIN_STOP = /^(small|large|limited|tiny|micro|single|partnership|collaboration|batches?|house|store|studio|shop|store|kitchen|barrels?)\b/i;
+// ---- place detection (v2.5 CP1) ---------------------------------------------
+//
+// REPLACED: a capitalisation heuristic. It required a capital letter after the
+// origin frame, which is not a property of places — it is a property of Title Case.
+// Measured wrong in BOTH directions across 132 probes:
+//   • "Made in Very Small Batches." / "Made in Heaven, worn on Earth." /
+//     "Roasted in Our Roastery" / "Country of origin: Unknown"  → read as countries;
+//   • "made in vermont" (ordinary lowercase copy) and the very common spec label
+//     "Origin: Italy"                                          → read as no origin.
+//
+// A gazetteer is right far more often than a capital letter, is case-insensitive
+// in both directions, and — unlike the heuristic — is auditable: you can read the
+// list and see exactly what the tool will and will not accept as a place.
+// Deliberately a CLOSED list. An open rule is what let "Heaven" through.
+
+const COUNTRIES = [
+  "afghanistan", "albania", "algeria", "andorra", "angola", "argentina", "armenia", "australia",
+  "austria", "azerbaijan", "bahamas", "bahrain", "bangladesh", "barbados", "belarus", "belgium",
+  "belize", "benin", "bhutan", "bolivia", "bosnia", "botswana", "brazil", "brunei", "bulgaria",
+  "burkina faso", "burundi", "cambodia", "cameroon", "canada", "chad", "chile", "china",
+  "colombia", "congo", "costa rica", "croatia", "cuba", "cyprus", "czechia", "czech republic",
+  "denmark", "dominican republic", "ecuador", "egypt", "el salvador", "estonia", "eswatini",
+  "ethiopia", "fiji", "finland", "france", "gabon", "gambia", "georgia", "germany", "ghana",
+  "greece", "guatemala", "guinea", "guyana", "haiti", "honduras", "hungary", "iceland", "india",
+  "indonesia", "iran", "iraq", "ireland", "israel", "italy", "ivory coast", "cote d'ivoire",
+  "côte d'ivoire", "jamaica", "japan", "jordan", "kazakhstan", "kenya", "kosovo", "kuwait",
+  "kyrgyzstan", "laos", "latvia", "lebanon", "lesotho", "liberia", "libya", "liechtenstein",
+  "lithuania", "luxembourg", "madagascar", "malawi", "malaysia", "maldives", "mali", "malta",
+  "mauritania", "mauritius", "mexico", "moldova", "monaco", "mongolia", "montenegro", "morocco",
+  "mozambique", "myanmar", "namibia", "nepal", "netherlands", "holland", "new zealand",
+  "nicaragua", "niger", "nigeria", "north macedonia", "norway", "oman", "pakistan", "palestine",
+  "panama", "papua new guinea", "paraguay", "peru", "philippines", "poland", "portugal", "qatar",
+  "romania", "russia", "rwanda", "samoa", "saudi arabia", "senegal", "serbia", "sierra leone",
+  "singapore", "slovakia", "slovenia", "somalia", "south africa", "south korea", "korea",
+  "south sudan", "spain", "sri lanka", "sudan", "suriname", "sweden", "switzerland", "syria",
+  "taiwan", "tajikistan", "tanzania", "thailand", "togo", "trinidad", "tunisia", "turkey",
+  "türkiye", "turkmenistan", "uganda", "ukraine", "united arab emirates", "united kingdom",
+  "great britain", "britain", "england", "scotland", "wales", "northern ireland",
+  "united states", "united states of america", "america", "uruguay", "uzbekistan", "venezuela",
+  "vietnam", "yemen", "zambia", "zimbabwe",
+];
+
+/** Abbreviations and demonyms that only ever denote a country in this position. */
+const COUNTRY_SHORT = ["usa", "u.s.a.", "u.s.", "us", "uk", "u.k.", "eu", "uae", "prc", "nz", "roc"];
+
+const US_STATES = [
+  "alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut", "delaware",
+  "florida", "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa", "kansas", "kentucky",
+  "louisiana", "maine", "maryland", "massachusetts", "michigan", "minnesota", "mississippi",
+  "missouri", "montana", "nebraska", "nevada", "new hampshire", "new jersey", "new mexico",
+  "new york", "north carolina", "north dakota", "ohio", "oklahoma", "oregon", "pennsylvania",
+  "rhode island", "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont",
+  "virginia", "washington", "west virginia", "wisconsin", "wyoming",
+];
+
+/** Sub-national regions and cities common in origin copy. Kept short on purpose:
+ *  a city list is unbounded, and the frame plus a country covers most real copy. */
+const REGIONS = [
+  "bavaria", "tuscany", "catalonia", "provence", "normandy", "andalusia", "piedmont", "sicily",
+  "yorkshire", "cornwall", "ontario", "quebec", "british columbia", "tasmania", "hokkaido",
+  "kyoto", "okinawa", "seoul", "tokyo", "milan", "florence", "paris", "london", "berlin",
+  "lisbon", "porto", "oaxaca", "jalisco", "antioquia", "yunnan", "kerala", "rajasthan",
+  "sheffield", "solingen", "seki", "murano", "harris tweed", "new england", "pacific northwest",
+  "scandinavia", "the alps", "the andes", "patagonia",
+];
+
+const PLACES = new Set([...COUNTRIES, ...COUNTRY_SHORT, ...US_STATES, ...REGIONS]);
+
+/**
+ * Gazetteer entries that are ALSO ordinary English words, a material, a person's
+ * name or a product noun. These — and only these — must be capitalised to count.
+ *
+ * Measured: a case-insensitive gazetteer false-passed 27 of 40 non-origin sentences,
+ * and the losses were concentrated here — "Made in china clay" (kaolin), "Made in
+ * Turkey red dye", "Roasted in Jordan almonds", "Made in Georgia pine". Requiring a
+ * capital on EVERY entry was the obvious fix and the wrong one: it re-broke lowercase
+ * copy ("made in vermont"), which is exactly what the gazetteer was introduced to
+ * recover. Scoping the requirement to the ambiguous entries keeps both.
+ *
+ * Still open, and pinned in the corpus rather than papered over: a CAPITALISED
+ * ambiguous word followed by a material noun ("Made in Georgia pine") still passes.
+ * Distinguishing that needs the head noun after the place, not more list surgery.
+ */
+const AMBIGUOUS_PLACE = new Set([
+  "china", "turkey", "georgia", "jordan", "chad", "guinea", "wales", "washington",
+  "virginia", "india", "morocco", "panama", "brunei", "cornwall", "mali", "niger",
+  "togo", "oman", "florence", "milan", "paris", "berlin", "canada", "hungary",
+  "montenegro", "malta", "kenya", "somalia", "columbia", "victoria", "sydney",
+  "indiana", "montana", "nevada", "utah", "maine", "delaware", "jersey", "york",
+]);
+/** Longest place name in words — how far ahead `statesAPlace` has to look. */
+const PLACE_MAX_WORDS = 4;
+
+/**
+ * Longest-first prefix lookup, so "new zealand" is tried before "new".
+ *
+ * `requireCap` is what stops the gazetteer being WORSE than the capitalisation
+ * heuristic it replaced. Measured over 40 non-origin sentences, a case-insensitive
+ * gazetteer false-passed 27 of them: every entry that is also an ordinary English
+ * word matched in its ordinary sense — "Made in china clay" (kaolin), "Made in
+ * Turkey red dye", "Roasted in Jordan almonds". Capitalisation had been suppressing
+ * those incidentally.
+ *
+ * So the capital is required again — EXCEPT when the sentence carries no capitals at
+ * all, which is what recovers the lowercase copy the heuristic used to lose
+ * ("each mug is hand-thrown and made in vermont"). The signal is not "is this
+ * capitalised" but "is this capitalised GIVEN that this writer capitalises".
+ */
+function startsWithPlace(words: string[], requireCap: boolean): boolean {
+  for (let n = Math.min(PLACE_MAX_WORDS, words.length); n >= 1; n--) {
+    // Keep any Unicode LETTER — a `[^a-z]` strip turned "côte d'ivoire" into
+    // "cte d'ivoire" and lost a real country.
+    const raw = words.slice(0, n).join(" ").replace(/[^\p{L}.'\s-]/gu, "").trim();
+    const lower = raw.toLowerCase();
+    if (!PLACES.has(lower)) continue;
+    // Only the ambiguous entries have to earn their capital.
+    if (requireCap && AMBIGUOUS_PLACE.has(lower) && !/^\p{Lu}/u.test(raw)) continue;
+    return true;
+  }
+  return false;
+}
+
+/** Does the text after an origin frame name a real place? */
 function statesAPlace(sentence: string, term: string): boolean {
-  const i = sentence.toLowerCase().indexOf(term.toLowerCase());
+  const lower = sentence.toLowerCase();
+  const i = lower.indexOf(term.toLowerCase());
   if (i === -1) return false;
-  let after = sentence.slice(i + term.length).replace(/^[\s:,\-–]+/, "");
-  after = after.replace(/^(the|our|a|an|its)\s+/i, "");
-  if (ORIGIN_STOP.test(after)) return false;
-  return /^[A-Z][A-Za-z.'-]{1,}/.test(after) || /^(USA|US|UK|EU|UAE)\b/i.test(after);
+  // Strip the frame's OWN trailing separator before bounding the clause. Splitting
+  // first cut "Country of Origin: Japan" at the colon and left nothing to inspect —
+  // a regression the corpus caught immediately, on the canonical spec-label form.
+  const tail = sentence.slice(i + term.length).replace(/^[\s:,\-–—]+/, "");
+  // Only the frame's own CLAUSE counts. Scanning the whole sentence would credit
+  // "Made in small batches, shipped from Vermont." with a country of origin, when
+  // what it states is where it ships from — which need not be where it was made.
+  const clause = tail.split(/[.,;:!?)(]/)[0] ?? "";
+  const stripArticle = (s: string): string =>
+    s.replace(/^[\s:,\-–—]+/, "").replace(/^(the|our|a|an|its|my|their)\s+/i, "");
+
+  // Does this writer use capitals at all? If not, a lowercase place name is the
+  // best evidence available and must still count.
+  const requireCap = /\p{Lu}/u.test(sentence);
+
+  const head = stripArticle(clause).trim().split(/\s+/).filter(Boolean);
+  if (head.length && startsWithPlace(head, requireCap)) return true;
+
+  // A second locative inside the same clause: "Handmade in small batches in
+  // Vermont." names its origin, even though the word right after the frame is
+  // "small". The clause bound above is what keeps this from over-reaching.
+  for (const m of clause.matchAll(/\bin\s+/gi)) {
+    const rest = stripArticle(clause.slice(m.index! + m[0].length)).trim().split(/\s+/).filter(Boolean);
+    if (rest.length && startsWithPlace(rest, requireCap)) return true;
+  }
+  return false;
 }
 
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
@@ -189,6 +331,11 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     terms: [
       "made in", "handmade in", "handcrafted in", "crafted in", "manufactured in", "assembled in",
       "produced in", "country of origin", "designed and made in", "grown in", "milled in", "roasted in",
+      // The bare spec label. "Origin: Italy" is one of the commonest ways a store
+      // states provenance and matched nothing before v2.5. The COLON is required:
+      // without it this would match "single origin" coffee, which is a claim about
+      // sourcing, not a stated country.
+      "origin:",
     ],
     // "Made in small batches", "Roasted in small batches every Tuesday", "Grown in
     // partnership with local farms" and "Handmade in batches of twelve" all read as
@@ -225,7 +372,14 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
 /** Subjects that make the sentence about the SHIPMENT rather than the product, when
  *  they appear BEFORE the frame. `MODIFIED_SUBJECT` in testEvidence only looks after
  *  the term, which composition/origin frames structurally defeat. */
-const SUBJECT_BEFORE_VETO = /\b(packaging|package|carton|wrapper|mailer|pallet|shipping box(es)?|shipper|the box it ships in|outer box|our boxes)\b[^.]{0,48}$/i;
+// v2.5: still load-bearing AFTER the subject rule, and complementary to it — it
+// reaches the shapes with no finite verb, where `nonProductSubject` has nothing to
+// delimit a subject with ("Our packaging: made from recycled cardboard.", "Mailer,
+// made from 100% recycled fibre."). The alternation is extended with packaging
+// compounds that are unambiguous. Bare `box` is deliberately still ABSENT: a
+// jewellery box or a keepsake box IS the product, and vetoing "The box is made of
+// walnut" would be a false fail on exactly the merchants who sell boxes.
+const SUBJECT_BEFORE_VETO = /\b(packaging|package|carton|wrapper|wrapping|mailer|pallet|shipping box(es)?|shipper|the box it ships in|outer box|our boxes|gift ?box(es)?|hang ?tag|poly ?bag|tissue ?paper|insert ?card|packing ?slip|shipping ?label)\b[^.]{0,48}$/i;
 
 /** Find a sentence that genuinely STATES this attribute about this product. Layers
  *  the shared evidence discipline (negation, aboutness, chrome veto, presentable
@@ -990,8 +1144,17 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // render is skipped here, so a merchant whose copy happens to say
       // "guaranteed" never has their whole report refused as `unreachable`.
       const quotable = p.evidence.filter((e) => lintStrings([e.text]).ok);
-      // Contrary evidence must clear the same aboutness gates before we report it.
-      const contra = fx.violating.length ? findSupport(quotable, fx.violating) : null;
+      // Contrary evidence must clear the same aboutness gates before we report it —
+      // AND must not be an artefact of one term sitting inside another.
+      //
+      // `contains gluten` is a plain substring of `contains gluten-free`, and the
+      // violating list is checked first, so a store that STATES it is gluten-free
+      // was told its copy "states the opposite of this requirement" — with its own
+      // compliant sentence quoted as the proof. `added fragrance` inside `no added
+      // fragrance` is the same shape. This is the most damaging defect the v2.4
+      // corpus found: not a missed pass, but an assertion about the merchant that
+      // is the reverse of what they wrote.
+      const contra = fx.violating.length ? findViolation(quotable, fx.violating, fx.support) : null;
       if (contra) {
         return {
           label: req.label, status: "not_proven", surfacesChecked: checked,
@@ -999,7 +1162,10 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           evidenceQuote: contra.quote ?? undefined, evidenceSurface: SURFACE_LABEL[contra.surface],
         };
       }
-      const hit = findSupport(quotable, fx.support);
+      // `wholeWord` matters here and was not set before v2.5: the claim dictionary
+      // contains single words, so `organic` matched inside `inorganic` — a word that
+      // asserts the opposite of the claim it was crediting.
+      const hit = findSupport(quotable, fx.support, { wholeWord: true });
       if (hit) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,

@@ -71,32 +71,27 @@ const MATERIALS: Case[] = [
   C("Our label is made from recycled paper.", attr("materials"), "not_proven", "packaging-subject",
     "SUBJECT_BEFORE_VETO is a closed 10-noun list. `label` is not on it, and 13 packaging nouns " +
     "(gift box, box, label, hang tag, tag, sleeve, envelope, tin, tissue paper, poly bag, " +
-    "shipping materials, wrapping, insert card) pass with the packaging sentence as the quote.",
-    "pass_evidenced"),
+    "shipping materials, wrapping, insert card) pass with the packaging sentence as the quote."),
   C("Our packages are made from recycled paper.", attr("materials"), "not_proven", "packaging-subject",
-    "The veto nouns are mostly un-pluralised, so the PLURAL of 7 of the 10 listed nouns escapes.",
-    "pass_evidenced"),
+    "The veto nouns are mostly un-pluralised, so the PLURAL of 7 of the 10 listed nouns escapes."),
   C("Comes in 100% recycled kraft paper packaging.", attr("materials"), "not_proven", "packaging-subject",
     "MODIFIED_SUBJECT is anchored to the 24 chars immediately AFTER the term, so one two-word " +
-    "adjective defeats it. `Shipped in 100% recycled packaging.` correctly returns not_proven.",
-    "pass_evidenced"),
+    "adjective defeats it. `Shipped in 100% recycled packaging.` correctly returns not_proven."),
   C("Every order is wrapped in 100% cotton muslin.", attr("materials"), "not_proven", "packaging-subject",
     "Structurally the worst of the class: the subject is the ORDER and no vetoed noun is present " +
     "at all, so no extension of a noun list can reach it. The verb (wrapped in / arrives in / " +
-    "ships in) is the signal the matcher never reads.",
-    "pass_evidenced"),
+    "ships in) is the signal the matcher never reads."),
   C("Let's talk about our packaging. It is made from 100% recycled cardboard.", attr("materials"), "not_proven", "packaging-subject",
     "Sentence-scoped matching means a pronoun subject in the NEXT sentence loses the veto.",
     "pass_evidenced"),
 
   // --- CONFIRMED GAPS: other subjects ---
   C("Comes with a display stand made of solid oak.", attr("materials"), "not_proven", "bundled-item",
-    "States the material of a BUNDLED item, not the product.", "pass_evidenced"),
+    "States the material of a BUNDLED item, not the product."),
   C("Unlike sets made from aluminum, ours holds its shape.", attr("materials"), "not_proven", "competitor",
-    "The composition stated is a COMPETITOR's.", "pass_evidenced"),
+    "The composition stated is a COMPETITOR's."),
   C("A reviewer wrote that the strap is made from full-grain leather.", attr("materials"), "not_proven", "review-quote",
-    "CONTEXT_VETO's review list does not include `a reviewer wrote`; a review is not the store stating a fact.",
-    "pass_evidenced"),
+    "CONTEXT_VETO's review list does not include `a reviewer wrote`; a review is not the store stating a fact."),
   C("Polish with a cloth made of cotton — never use steel wool.", attr("materials"), "not_proven", "care-instruction",
     "The material belongs to a CARE TOOL, not the product.", "pass_evidenced"),
   C("Made with pride by our team in a converted iron foundry.", attr("materials"), "not_proven", "marketing-idiom",
@@ -109,7 +104,7 @@ const MATERIALS: Case[] = [
     "States what the product is NOT made of. NEGATION only looks back 14 chars from the term.",
     "pass_evidenced"),
   C("This strap is not ever made from leather.", attr("materials"), "not_proven", "negation",
-    "`not ever` puts the negator outside the 14-char window.", "pass_evidenced"),
+    "`not ever` puts the negator outside the 14-char window."),
 
   // --- canonical TRUE phrasings that must keep passing ---
   C("Forged from a single billet of high-carbon steel.", attr("materials"), "pass_evidenced", "canonical-true",
@@ -122,6 +117,19 @@ const MATERIALS: Case[] = [
     "not_proven"),
   C("95% cotton, 5% elastane.", attr("materials"), "pass_evidenced", "canonical-true",
     "The `% cotton` frame exists precisely for this."),
+
+  // MUTATION ANCHORS for the two LEGACY guards, which v2.5's subject rule does NOT
+  // subsume. Both of these have no finite verb, so `nonProductSubject` has nothing
+  // to delimit a subject with and returns null — `SUBJECT_BEFORE_VETO` is the only
+  // thing standing between them and a packaging composition credited to the product.
+  // Without these cases the mutation proof reported that guard as decorative.
+  C("Our packaging: made from recycled cardboard.", attr("materials"), "not_proven", "packaging-subject",
+    "A colon-delimited spec line. The clause splitter cuts at the colon, so the subject is not in " +
+    "the term's clause at all and only the backward-looking legacy veto can see it."),
+  C("Gift box materials: made of recycled kraft paper.", attr("materials"), "not_proven", "packaging-subject",
+    "Found while testing whether the legacy guard was redundant: `gift box` was on no list, so " +
+    "this passed as the product's composition. The alternation now covers unambiguous packaging " +
+    "compounds — but still not bare `box`, because a keepsake box IS the product for some stores."),
 
   // MUTATION ANCHOR — a packaging sentence the guards DO catch. Without one of
   // these the mutation proof reports MODIFIED_SUBJECT as decorative, because every
@@ -147,50 +155,40 @@ const ORIGIN: Case[] = [
   C("Made in Very Small Batches.", attr("origin"), "not_proven", "cap-non-place",
     "ORIGIN_STOP is `^`-anchored after ONE article strip, so any inserted word moves the stop word " +
     "out of range. `Made in Small Batches.` correctly fails; one adverb flips it. Capitalisation is " +
-    "merchant-controlled Title Case, not evidence of a place.",
-    "pass_evidenced"),
+    "merchant-controlled Title Case, not evidence of a place."),
   C("Handcrafted in Truly Limited Runs.", attr("origin"), "not_proven", "cap-non-place",
     "Same mechanism as above with a different filler adverb — `Truly` displaces `Limited` past the " +
-    "`^`-anchored ORIGIN_STOP, so a production-volume statement reads as a country.",
-    "pass_evidenced"),
+    "`^`-anchored ORIGIN_STOP, so a production-volume statement reads as a country."),
   C("Made in the Same Facility As Our Nut Butters.", attr("origin"), "not_proven", "cap-non-place",
     "A shared-facility allergen disclosure, not a country of origin — and an extremely common line " +
-    "in exactly the food categories this tool targets.",
-    "pass_evidenced"),
+    "in exactly the food categories this tool targets."),
   C("Roasted in Our Roastery every Monday.", attr("origin"), "not_proven", "cap-non-place",
-    "`Our` is stripped as an article, exposing the capitalised `Roastery`.", "pass_evidenced"),
+    "`Our` is stripped as an article, exposing the capitalised `Roastery`."),
   C("Made in Heaven, worn on Earth.", attr("origin"), "not_proven", "marketing-idiom",
     "A pure marketing idiom whose capitalised token is a place only in a sense no customs form " +
-    "recognises. Shows the capitalisation heuristic is not measuring place-ness at all.",
-    "pass_evidenced"),
+    "recognises. Shows the capitalisation heuristic is not measuring place-ness at all."),
   C("Our gift box is made in Vietnam.", attr("origin"), "not_proven", "packaging-subject",
-    "`gift box` is not in SUBJECT_BEFORE_VETO — the origin of the PACKAGING.", "pass_evidenced"),
+    "`gift box` is not in SUBJECT_BEFORE_VETO — the origin of the PACKAGING."),
   C("The included travel case is made in China.", attr("origin"), "not_proven", "bundled-item",
     "States the origin of an ACCESSORY in the box. The product's own origin remains unstated, and " +
-    "the row is rendered with this sentence as its proof.",
-    "pass_evidenced"),
+    "the row is rendered with this sentence as its proof."),
   C("Unlike mass-market pans made in China, ours are forged by hand.", attr("origin"), "not_proven", "competitor",
     "The only origin in the sentence is a competitor's, and the contrastive `Unlike … ours` makes " +
-    "that explicit — yet it is quoted as this store's origin evidence.",
-    "pass_evidenced"),
+    "that explicit — yet it is quoted as this store's origin evidence."),
   C("No part of this is made in China.", attr("origin"), "not_proven", "negation",
-    "A denial of an origin is not a stated origin; the negator is outside the 14-char window.",
-    "pass_evidenced"),
+    "A denial of an origin is not a stated origin; the negator is outside the 14-char window."),
   C("Country of origin: Unknown", attr("origin"), "not_proven", "placeholder",
-    "`Unknown` is capitalised, so statesAPlace accepts it as a place.", "pass_evidenced"),
+    "`Unknown` is capitalised, so statesAPlace accepts it as a place."),
 
   // --- CONFIRMED GAPS in the other direction: real places rejected ---
   C("Each mug is hand-thrown and made in vermont.", attr("origin"), "pass_evidenced", "casing",
     "A store writing lowercase copy states its origin just as much as one writing Title Case. " +
-    "Requiring a capital is a false FAIL on ordinary casing.",
-    "not_proven"),
+    "Requiring a capital is a false FAIL on ordinary casing."),
   C("Origin: Italy", attr("origin"), "pass_evidenced", "canonical-true",
-    "`origin:` is not in the term list — only `country of origin`. A very common spec label.",
-    "not_proven"),
+    "`origin:` is not in the term list — only `country of origin`. A very common spec label."),
   C("Handmade in small batches in Vermont.", attr("origin"), "pass_evidenced", "first-occurrence",
     "statesAPlace inspects only the FIRST occurrence of the frame, sees `small`, and stops — " +
-    "even though the same sentence names Vermont.",
-    "not_proven"),
+    "even though the same sentence names Vermont."),
 ];
 
 // ---------------------------------------------------------------------------
@@ -207,11 +205,10 @@ const DIMENSIONS: Case[] = [
 
   // --- CONFIRMED GAPS: not the product's measurement ---
   C("Arrives in 12 x 9 inch boxes.", attr("dimensions"), "not_proven", "shipment-subject",
-    "SHIPMENT_CONTEXT has no `arrives`/`box` term, so the shipment veto never fires.", "pass_evidenced"),
+    "SHIPMENT_CONTEXT has no `arrives`/`box` term, so the shipment veto never fires."),
   C("Parcel weight is 2.4 lbs.", attr("dimensions"), "not_proven", "shipment-subject",
     "`parcel` is absent from SHIPMENT_CONTEXT, so the shipment veto never fires and a despatch " +
-    "weight is reported as the product's weight.",
-    "pass_evidenced"),
+    "weight is reported as the product's weight."),
   C("Minimum order 5 kg.", attr("dimensions"), "not_proven", "threshold",
     "An ORDER THRESHOLD, not a product measurement.", "pass_evidenced"),
   C("Discount applies to purchases over 10 lbs.", attr("dimensions"), "not_proven", "threshold",
@@ -219,15 +216,14 @@ const DIMENSIONS: Case[] = [
     "`purchases over` is not, so the same idea in different words escapes.",
     "pass_evidenced"),
   C("Comes with a free 8 oz sample of our conditioner.", attr("dimensions"), "not_proven", "bundled-item",
-    "The measurement belongs to a bundled item.", "pass_evidenced"),
+    "The measurement belongs to a bundled item."),
   C("Steep in 8 oz of hot water for 3 minutes.", attr("dimensions"), "not_proven", "usage-quantity",
     "A usage instruction quantity, not the product's capacity.", "pass_evidenced"),
   C("This is not a 16 oz bottle.", attr("dimensions"), "not_proven", "negation",
-    "A denial. The negator sits outside the 14-char window.", "pass_evidenced"),
+    "A denial. The negator sits outside the 14-char window."),
   C("Unlike the 32 oz competitor bottle, ours fits a cup holder.", attr("dimensions"), "not_proven", "competitor",
     "The only capacity named belongs to a competitor; the sentence's own contrast says so, and " +
-    "this store's capacity is never stated.",
-    "pass_evidenced"),
+    "this store's capacity is never stated."),
 
   // --- CONFIRMED GAPS: canonical measurements that FAIL ---
   C("Measures 12 x 9 x 4 in.", attr("dimensions"), "pass_evidenced", "canonical-true",
@@ -275,8 +271,7 @@ const CARE: Case[] = [
     "pass_evidenced"),
   C("The included tote bag is machine washable.", attr("care"), "not_proven", "bundled-item",
     "Care for a bundled accessory, quoted as care for the product. Nothing in the pipeline reads " +
-    "the subject `The included tote bag`.",
-    "pass_evidenced"),
+    "the subject `The included tote bag`."),
   C("Care instructions: TBD.", attr("care"), "not_proven", "placeholder",
     "A placeholder. The term `care instructions` matches and nothing checks for an actual instruction.",
     "pass_evidenced"),
@@ -294,41 +289,40 @@ const CARE: Case[] = [
 // ---------------------------------------------------------------------------
 const CLAIMS: Case[] = [
   C("Certified gluten-free.", claimReq("gluten_free"), "pass_evidenced", "canonical-true", "A stated claim."),
+  // MUTATION ANCHOR for MODIFIED_SUBJECT — the original Stage-3 TRAP shape, where
+  // the claim term directly modifies a packaging noun and there is no finite verb
+  // for the subject rule to work with. Also not subsumed by v2.5's subject rule.
+  C("This fragrance-free packaging protects the bar.", claimReq("fragrance_free"), "not_proven", "packaging-subject",
+    "`fragrance-free` modifies `packaging` directly. MODIFIED_SUBJECT reads the noun immediately " +
+    "after the term, which is the one position the subject rule cannot reach here."),
   C("Our packaging is BPA-free.", claimReq("bpa_free"), "not_proven", "packaging-subject",
     "The Stage-3 TRAP the whole evidence module was written to prevent, still reachable: " +
-    "`is BPA-free` puts the subject BEFORE the term, where MODIFIED_SUBJECT never looks.",
-    "pass_evidenced"),
+    "`is BPA-free` puts the subject BEFORE the term, where MODIFIED_SUBJECT never looks."),
   C("The tube is BPA-free.", claimReq("bpa_free"), "not_proven", "packaging-subject",
     "Same shape; the container, not the contents.", "pass_evidenced"),
   C("Includes a vegan travel pouch for your gym bag.", claimReq("vegan"), "not_proven", "bundled-item",
     "The claim attaches to an included ACCESSORY. `Includes a …` is as clear a bundled-item marker " +
-    "as exists, and nothing in CONTEXT_VETO reads it.",
-    "pass_evidenced"),
+    "as exists, and nothing in CONTEXT_VETO reads it."),
   C("Made with inorganic mineral pigments.", claimReq("organic"), "not_proven", "substring-single-word-term",
     "`organic` is matched WITHOUT wholeWord (only attributes set that flag), so it matches inside " +
-    "`inorganic` — a word that asserts the opposite.",
-    "pass_evidenced"),
+    "`inorganic` — a word that asserts the opposite."),
   C("Is this vegan? See our FAQ for the full ingredient list.", claimReq("vegan"), "not_proven", "question",
     "A QUESTION is not a statement. splitSentences breaks on `?`, so the question stands alone and " +
-    "is rendered as the proof.",
-    "pass_evidenced"),
+    "is rendered as the proof."),
   C("This product has no organic certification.", claimReq("organic"), "not_proven", "negation",
     "An explicit denial of the claim. `no` sits 1 char before `organic` so it is inside the " +
-    "negation window, but `no` is not in the NEGATION alternation at all.",
-    "pass_evidenced"),
+    "negation window, but `no` is not in the NEGATION alternation at all."),
   C("Our closest competitor is cruelty-free; we are still working on it.", claimReq("cruelty_free"), "not_proven", "competitor",
-    "The claim belongs to a competitor and the sentence says so.", "pass_evidenced"),
+    "The claim belongs to a competitor and the sentence says so."),
   C("\"Love that it's fragrance-free!\" — a customer in Portland.", claimReq("fragrance_free"), "not_proven", "review-quote",
     "A customer's words are not the store's statement.", "pass_evidenced"),
   C("We believe fair trade should be the industry standard.", claimReq("fair_trade"), "not_proven", "marketing-idiom",
     "An aspiration, not a claim about this product.", "pass_evidenced"),
   C("Contains gluten-free rolled oats and almonds.", claimReq("gluten_free"), "pass_evidenced", "contrary",
     "The violating term `contains gluten` is a plain SUBSTRING of `contains gluten-free`, and the " +
-    "violating list is checked FIRST — so a store stating the claim is told it states the opposite.",
-    "not_proven"),
+    "violating list is checked FIRST — so a store stating the claim is told it states the opposite."),
   C("No added fragrance, ever.", claimReq("fragrance_free"), "pass_evidenced", "contrary",
-    "`added fragrance` is a violating term and matches inside the support phrase `no added fragrance`.",
-    "not_proven"),
+    "`added fragrance` is a violating term and matches inside the support phrase `no added fragrance`."),
 ];
 
 // ---------------------------------------------------------------------------
@@ -340,24 +334,32 @@ const DELIVERY: Case[] = [
   C("Returns are accepted within 30 business days of receipt.", deliveryReq(), "not_proven", "wrong-window",
     "A RETURNS window read as a delivery window: `business days` matches with no subject check.",
     "pass_evidenced"),
+  // `policyStatus: readable` on the four below is load-bearing. Without it the row
+  // correctly returns requires_store_access — we never read the shipping policy, so
+  // we cannot say the store states nothing — and that masks whether the MATCHER did
+  // the right thing. These cases are about the matcher, so the policy is made
+  // readable to isolate it.
   C("We cannot guarantee delivery in 2 business days.", deliveryReq(), "not_proven", "negation",
-    "An explicit refusal to state a window. findSupport iterates TERMS in list order, so " +
-    "`business days` matches before `delivery in` is ever considered and the negation guard is " +
+    "An explicit refusal to state a window. findSupport iterated TERMS in list order, so " +
+    "`business days` matched before `delivery in` was ever considered and the negation guard was " +
     "bypassed structurally.",
-    "pass_evidenced"),
+    undefined, { policyStatus: "readable" }),
   C("We do not offer next-day shipping.", deliveryReq(), "not_proven", "negation",
-    "A denial of a delivery speed reported as stating one.", "pass_evidenced"),
+    "A denial of a delivery speed reported as stating one.",
+    undefined, { policyStatus: "readable" }),
   C("Orders are not delivered within 3 business days during the holidays.", deliveryReq(), "not_proven", "negation",
-    "Same term-order bypass: `business days` (3rd in the list) wins over `delivered within` (10th).",
-    "pass_evidenced"),
+    "Same term-order bypass: `business days` (3rd in the list) won over `delivered within` (10th).",
+    undefined, { policyStatus: "readable" }),
   C("Is same-day shipping available?", deliveryReq(), "not_proven", "question",
     "A question rendered as the proof. In the live FAQ shape the ANSWER that denies it is never consulted.",
-    "pass_evidenced"),
+    undefined, { policyStatus: "readable" }),
   C("Ships in eco-friendly packaging, 100% recycled.", deliveryReq(), "not_proven", "packaging-subject",
-    "requireDigit is satisfied by the `100` in `100%`, and MODIFIED_SUBJECT is one adjective wide.",
-    "pass_evidenced"),
+    "requireDigit is satisfied by the `100` in `100%`, and MODIFIED_SUBJECT was one adjective wide. " +
+    "Closed by the container-object rule: `ships in` + a wrapping noun is not a delivery window. " +
+    "Note delivery SKIPS the subject-head rule (its subject legitimately is the shipment), so this " +
+    "case is what proves the container-object half still applies there.",
+    undefined, { policyStatus: "readable" }),
 
-  // MUTATION ANCHOR for CONTEXT_VETO — a subscription-widget sentence it DOES catch.
   // MUTATION ANCHOR for CONTEXT_VETO. Two things had to be right for this to
   // actually exercise the veto, and the first attempt got both wrong:
   //  • `policyStatus: readable`, else the row returns requires_store_access (we
@@ -372,6 +374,73 @@ const DELIVERY: Case[] = [
     "rule stands between this purchase widget and a rendered delivery proof. This is the case that " +
     "proves that rule still fires.",
     undefined, { policyStatus: "readable" }),
+];
+
+// ---------------------------------------------------------------------------
+// v2.5 — DEFECTS FOUND BY THE FRESH ADVERSARIAL PASS OVER THE v2.5 FIXES.
+//
+// 517 probes across the four changed surfaces, each claim re-executed by an
+// independent verifier. 41 confirmed, 15 of them false passes. The tractable ones
+// were fixed in-session (post-term denial, the NEGATOR vocabulary, the violation
+// containment rule, ambiguous place names). These are what remains — recorded here
+// rather than left to be rediscovered.
+//
+// The honest summary of the class: `CLAUSE_BOUNDARY` is serving two incompatible
+// jobs. The boundaries that stop a negation leaking forward onto an unrelated
+// statement ("Our cups are not dishwasher safe, and they are made from stoneware.")
+// are the same boundaries that stop it reaching a coordinated conjunct it genuinely
+// governs ("We do not offer weekend pickup, or overnight shipping."). One boundary
+// set cannot serve both. Fixing it needs scope, not another list.
+// ---------------------------------------------------------------------------
+const V25_FOUND: Case[] = [
+  // --- FIXED in-session. These are also the mutation anchors for the four
+  //     post-adversarial fixes; without them those guards read as decorative. ---
+  C("Next-day shipping is not available.", deliveryReq(), "not_proven", "post-term-denial",
+    "The pinned sibling (\"We do not offer next-day shipping.\") was fixed by the clause-scoped " +
+    "negation, but `clauseBefore` only looks BACKWARDS — so the same denial with the words " +
+    "reordered still passed, quoting the denial as its proof. `deniedAfter` closes that direction.",
+    undefined, { policyStatus: "readable" }),
+  C("Nothing in this jacket is made from wool.", attr("materials"), "not_proven", "negator-vocabulary",
+    "`nothing` is the commonest total denial in DTC copy and the cruellest miss: `not` is visibly " +
+    "inside it, but the word bound rejects the substring. A 41-phrase sweep found 21 such misses; " +
+    "the NEGATOR alternation now carries the measured set."),
+  C("This is a non-vegan product made with beeswax.", claimReq("vegan"), "not_proven", "violation-containment",
+    "The overlap rule that fixed \"contains gluten-free\" backfired here: `vegan` sits INSIDE " +
+    "`non-vegan`, so the violation was discarded and the fragment passed. A support match now only " +
+    "cancels a violation when it EXTENDS BEYOND it."),
+  C("Made in china clay, this teapot is fired twice.", attr("origin"), "not_proven", "ambiguous-place",
+    "`china clay` is kaolin, a material. Dropping the capitalisation requirement made every " +
+    "gazetteer entry match in its ordinary-noun sense — measured specificity fell to 32%. Ambiguous " +
+    "entries now have to earn their capital, while unambiguous ones still match lowercase copy."),
+
+  C("We do not offer weekend pickup, or overnight shipping.", deliveryReq(), "not_proven", "negation-coordination",
+    "English negation DISTRIBUTES over a coordination, so the second conjunct is denied too. But " +
+    "`, or ` is a clause boundary, so the negator is not in the term's clause and the denial reads " +
+    "as a stated delivery speed. Removing the comma correctly returns not_proven.",
+    "pass_evidenced", { policyStatus: "readable" }),
+  C("We do not guarantee the following: delivery in 2 business days.", deliveryReq(), "not_proven", "negation-colon",
+    "`[;:]` is an unconditional boundary, so any colon between the negator and the term resets the " +
+    "clause. This is the ordinary FAQ/spec-label shape — \"What we don't do:\", \"Sizes we no longer " +
+    "carry:\" — and it produces the same false pass.",
+    "pass_evidenced", { policyStatus: "readable" }),
+  C("We don't offer this in blue, or in a 16 oz size.", attr("dimensions"), "not_proven", "negation-coordination",
+    "The same coordination reset on the dimensions row. It fires only when the second conjunct " +
+    "carries a FRESH occurrence of a list term, which makes it silent and shape-dependent.",
+    "pass_evidenced"),
+  C("Made in Georgia pine.", attr("origin"), "not_proven", "ambiguous-place-capitalised",
+    "`Georgia` is a US state AND a wood. Requiring a capital fixed the lowercase collisions " +
+    "(\"china clay\", \"jordan almonds\") but a capitalised ambiguous word followed by a material " +
+    "noun still passes. Distinguishing it needs the HEAD NOUN after the place, not more list surgery.",
+    "pass_evidenced"),
+  C("Roasted in small batches; grown in Colombia.", attr("origin"), "pass_evidenced", "one-term-per-sentence",
+    "Ordinary coffee copy that names its country. `findAttributeSupport` takes ONE hit per sentence, " +
+    "so when the longest-matching frame (`roasted in`) fails the value guard on its own clause the " +
+    "search moves to the next SENTENCE, never to the next term in the same one.",
+    "not_proven"),
+  C("Made in Republic of Korea.", attr("origin"), "pass_evidenced", "gazetteer-recall",
+    "A real country in its formal form. `startsWithPlace` only tries PREFIXES of the value span, so " +
+    "a leading word the gazetteer does not hold defeats the whole lookup.",
+    "not_proven"),
 ];
 
 // ---------------------------------------------------------------------------
@@ -405,7 +474,7 @@ const IDENTIFIERS: Array<{ label: string; opts: { gtin?: string | null; mpn?: st
 // ---------------------------------------------------------------------------
 const ALL: Array<[string, Case[]]> = [
   ["materials", MATERIALS], ["origin", ORIGIN], ["dimensions", DIMENSIONS],
-  ["care", CARE], ["claims", CLAIMS], ["delivery", DELIVERY],
+  ["care", CARE], ["claims", CLAIMS], ["delivery", DELIVERY], ["v2.5-found", V25_FOUND],
 ];
 
 for (const [group, cases] of ALL) {
@@ -484,7 +553,14 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // Measured 2026-07-25 by executing every case. Each is a confirmed defect that
   // was independently re-executed by an adversarial verifier. Lowering this number
   // is progress; raising it without a decision is a regression.
-  const EXPECTED_OPEN_GAPS = 65;
+  // v2.4 opened at 65.
+  // v2.5 CP1 closed 21 mechanical defects (term-order first-match-wins, substring
+  //         collisions, capitalisation-as-place, interrogatives)            -> 44
+  // v2.5 CP2 closed 19 aboutness defects by reading the SUBJECT (subject.ts) -> 25
+  // v2.5 fresh adversarial pass ADDED 6 newly-found gaps (V25_FOUND)          -> 31
+  //         (517 probes, 41 confirmed, 15 false passes; 11 were fixed in-session,
+  //          these 6 are what remains and they are NOT accepted behaviour)
+  const EXPECTED_OPEN_GAPS = 31;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

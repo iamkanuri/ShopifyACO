@@ -25,6 +25,8 @@
 // Pure + deterministic — no model calls, no network.
 // ===========================================================================
 
+import { nonProductSubject } from "./subject.js";
+
 /** Surfaces whose text is product evidence and may be quoted. Page chrome is
  *  deliberately absent — see the module header. */
 export type QuotableSurface =
@@ -85,19 +87,78 @@ export function buildEvidence(parts: Array<{ surface: QuotableSurface; text: str
 
 // ---- gate 1: aboutness ------------------------------------------------------
 
-const NEGATION_WINDOW = 14;
-const NEGATION = /(^|[^a-z])(not|never|isn'?t|aren'?t|no longer|without being|free from claims of)\s*$/i;
+/**
+ * Negators, matched as whole words anywhere in the term's own CLAUSE.
+ *
+ * v2.4's corpus showed the previous rule — a 14-char window requiring the negator
+ * to sit immediately before the term — misses the ordinary way merchants write a
+ * denial. "We do not offer next-day shipping." was reported as STATING a delivery
+ * speed, because `offer` sits between `not` and the term. So did "Made without
+ * plastic, ever.", "This is not a 16 oz bottle." and "No part of this is made in
+ * China." A denial read as an assertion is the worst class of false pass: the
+ * store said the opposite of what we report.
+ */
+// The vocabulary is a CLOSED list and was measured, not guessed: a 41-phrase sweep
+// of ordinary denial wording found 21 that the first draft silently declined.
+// `nothing` was the cruellest — `not` is visibly inside it, but the `([^a-z]|$)`
+// bound rejects the substring, so the commonest total denial in DTC copy read as an
+// assertion. The additions below are exactly that measured set.
+const NEGATOR = /(^|[^a-z])(not|never|no|none|nothing|neither|nor|zero|cannot|can'?t|do(es)?n'?t|didn'?t|won'?t|wouldn'?t|shouldn'?t|couldn'?t|mustn'?t|isn'?t|aren'?t|wasn'?t|weren'?t|hasn'?t|haven'?t|ain'?t|without|lacks|lacking|devoid of|free from claims of|no longer|unable to|refuses?|refused|stopped|ceased|discontinued|excludes?|excluding|minus|aside from|other than|rather than|instead of|hardly|rarely)([^a-z]|$)/i;
 
-/** True when EVERY occurrence of `term` in `sentence` is negated. Mirrors the
- *  Stage 2 negation guard: only the ~14 chars immediately preceding count. */
+/**
+ * The span a negation can reach: backwards from the term to the nearest CLAUSE
+ * boundary.
+ *
+ * Bounding on commas and coordinating conjunctions is load-bearing in BOTH
+ * directions, and the boundary set was chosen by measuring the failures of the
+ * alternatives:
+ *   • Unbounded (whole sentence) turns "Our cups are not dishwasher safe, and they
+ *     are made from stoneware." into a false FAIL — the negation does not scope
+ *     across the conjunction, and depth pays for pretending it does.
+ *   • Immediate-adjacency (the old 14 chars) misses every denial with a verb in it.
+ * A negator does not normally scope past `, and` / `;` / `but`, and does normally
+ * scope over "do not OFFER x".
+ */
+const CLAUSE_BOUNDARY = /[.!?]\s|[;:]|,\s+(and|but|or|yet|so)\s|\s+(but|however|whereas|although|though)\s/gi;
+
+/** The text from the start of the term's clause up to the term. */
+function clauseBefore(haystack: string, index: number): string {
+  const head = haystack.slice(0, index);
+  let start = 0;
+  CLAUSE_BOUNDARY.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = CLAUSE_BOUNDARY.exec(head)) !== null) start = m.index + m[0].length;
+  return head.slice(start);
+}
+
+/**
+ * A denial that FOLLOWS the term: "Next-day shipping is not available."
+ *
+ * `clauseBefore` only ever looks backwards, so the fresh adversarial pass over the
+ * v2.5 rewrite found the whole post-term direction untouched — the same denial as
+ * the pinned "We do not offer next-day shipping.", with the words reordered, was
+ * reported as STATING a delivery window and quoted the denial as its proof.
+ *
+ * Deliberately narrow: a copular predicate that negates availability, not a general
+ * forward scan. A broad forward rule would suppress "Made in Vermont. Not sold in
+ * stores." and cost real passes.
+ */
+const POST_TERM_DENIAL = /^[^.;:!?]{0,40}?\b(is|are|was|were|has been|have been)\s+(not\s+\w+|un(available|offered)|no longer\s+\w+|discontinued|unavailable)\b/i;
+
+/** True when the clause AFTER the term denies it. */
+function deniedAfter(haystack: string, index: number, termLength: number): boolean {
+  return POST_TERM_DENIAL.test(haystack.slice(index + termLength));
+}
+
+/** True when EVERY occurrence of `term` in `sentence` sits in a negated clause. */
 export function isNegated(sentence: string, term: string): boolean {
   const n = normalize(sentence);
   const t = normalize(term);
   let i = n.indexOf(t);
   if (i === -1) return true; // absent ⇒ certainly not supporting
   while (i !== -1) {
-    const before = n.slice(Math.max(0, i - NEGATION_WINDOW), i);
-    if (!NEGATION.test(before)) return false; // a non-negated occurrence exists
+    const negated = NEGATOR.test(clauseBefore(n, i)) || deniedAfter(n, i, t.length);
+    if (!negated) return false; // a non-negated occurrence exists
     i = n.indexOf(t, i + 1);
   }
   return true;
@@ -130,6 +191,12 @@ export function passesAboutness(sentence: string, term: string, opts: { allowLog
   for (const v of CONTEXT_VETO) {
     if (v.re.test(sentence)) return { ok: false, reason: v.name };
   }
+  // v2.5 CP2 — read the SUBJECT, not a character window. This is the gate the
+  // packaging / shipment / bundled-item / competitor / review false passes needed:
+  // a noun list applied to a fixed span could never reach them (see subject.ts).
+  const at = sentence.toLowerCase().indexOf(term.toLowerCase());
+  const subjectVeto = nonProductSubject(sentence, at >= 0 ? at : 0, opts);
+  if (subjectVeto) return { ok: false, reason: subjectVeto };
   // The term must not merely MODIFY a non-product noun ("aluminum-free packaging").
   // Logistics requirements legitimately talk about shipping, so that subject is
   // allowed there (but never for product claims).
@@ -169,33 +236,47 @@ export function presentableQuote(sentence: string): string | null {
 
 // ---- the uniform support check ----------------------------------------------
 
-/** Substring match, optionally WORD-BOUNDED.
- *
- *  The default (plain `includes`) is safe for the multi-word phrases the claim and
- *  timing dictionaries use — "ships within" cannot hide inside another word. It is
- *  NOT safe for single-word terms, and v2.3's attribute requirements need those:
- *  bare `includes` would match "weight" inside "lightweight", "oz" inside "ozone",
- *  and "cm" inside "cms" — each a silent false PASS, which is the one failure mode
- *  this module exists to prevent. Boundaries here are non-alphanumeric, so hyphen
- *  and slash compounds ("machine-wash", "9.5oz") still match, which is what a
- *  merchant's copy actually looks like. */
-function containsTerm(haystack: string, term: string, wholeWord: boolean): boolean {
-  if (!term) return false;
-  if (!wholeWord) return haystack.includes(term);
-  let i = haystack.indexOf(term);
-  while (i !== -1) {
-    const before = i === 0 ? "" : haystack[i - 1]!;
-    const after = haystack[i + term.length] ?? "";
-    // A LETTER on either side means this is part of a different word. A DIGIT is
-    // fine on both sides, because that is exactly how units are written: "16oz",
-    // "2x4". Blocking digits would reject the commonest real phrasing.
-    const openLeft = !before || !/[a-z]/i.test(before);
-    const openRight = !after || !/[a-z]/i.test(after);
-    if (openLeft && openRight) return true;
-    i = haystack.indexOf(term, i + 1);
+// NOTE — `containsTerm` was removed in v2.5. `termMatches` below subsumes it and
+// additionally reports WHERE each term matched, which is what the overlap check
+// and the longest-match rule both need. Word bounding is unchanged: boundaries are
+// non-alphanumeric, so hyphen and slash compounds ("machine-wash", "9.5oz") still
+// match, which is what a merchant's copy actually looks like, while "weight" no
+// longer hides inside "lightweight".
+
+/** Where a term matched, so callers can reason about OVERLAP between two term
+ *  lists — the only way to tell "contains gluten" apart from the "contains
+ *  gluten-free" it is a substring of. */
+export interface TermMatch { term: string; index: number; end: number }
+
+/** Every term in `terms` that occurs in `haystack` (already normalised), with
+ *  positions. Longest match first, so the most specific term wins. */
+export function termMatches(haystack: string, terms: readonly string[], wholeWord: boolean): TermMatch[] {
+  const out: TermMatch[] = [];
+  for (const term of terms) {
+    const t = normalize(term);
+    if (!t) continue;
+    let i = haystack.indexOf(t);
+    while (i !== -1) {
+      const before = i === 0 ? "" : haystack[i - 1]!;
+      const after = haystack[i + t.length] ?? "";
+      const bounded = !wholeWord || ((!before || !/[a-z]/i.test(before)) && (!after || !/[a-z]/i.test(after)));
+      if (bounded) out.push({ term, index: i, end: i + t.length });
+      i = haystack.indexOf(t, i + 1);
+    }
   }
-  return false;
+  // Longest first. `findSupport` used to take the first term in LIST order, which
+  // meant "Orders are not delivered within 3 business days" matched `business days`
+  // (3rd in the list) before `delivered within` (10th) — and since the negation
+  // guard is only ever applied to the term that matched, a working guard was
+  // bypassed by list order alone. Specificity, not authoring order, decides.
+  return out.sort((a, b) => (b.end - b.index) - (a.end - a.index) || a.index - b.index);
 }
+
+/** A question is not a statement. "Is same-day shipping available?" was rendered
+ *  as the PROOF that a delivery window is stated; in the live FAQ shape the answer
+ *  denying it is a separate sentence that was never consulted. Since `splitSentences`
+ *  breaks after `?`, dropping interrogatives leaves the answer available on its own. */
+const isInterrogative = (s: string): boolean => /\?\s*$/.test(s.trim());
 
 /** Find the first sentence that genuinely supports one of `terms`, on a quotable
  *  product-evidence surface, and produce a presentable quote for it. */
@@ -205,13 +286,75 @@ export function findSupport(
   opts: { allowLogisticsSubject?: boolean; allowContainerSubject?: boolean; requireDigit?: boolean; wholeWord?: boolean } = {},
 ): SupportedEvidence | null {
   for (const ev of evidence) {
+    if (isInterrogative(ev.text)) continue;
+    if (opts.requireDigit && !/\d/.test(ev.text)) continue; // timing needs a number
     const n = normalize(ev.text);
-    for (const term of terms) {
-      if (!containsTerm(n, normalize(term), opts.wholeWord === true)) continue;
-      if (opts.requireDigit && !/\d/.test(ev.text)) continue; // timing needs a number
-      const about = passesAboutness(ev.text, term, opts);
-      if (!about.ok) continue;
-      return { surface: ev.surface, sentence: ev.text, term, quote: presentableQuote(ev.text) };
+    const matches = termMatches(n, terms, opts.wholeWord === true);
+    if (!matches.length) continue;
+    // FAIL CLOSED ACROSS TERMS. If any matched term is negated, the sentence is a
+    // denial and supports nothing — even if a shorter, unnegated term also matched.
+    //
+    // ⚠️ REDUNDANT FOR THE CORPUS, LOAD-BEARING ON REAL COPY. An earlier version of
+    // this comment said "redundant by measurement" because the mutation proof shows
+    // removing the line breaks no corpus case. The fresh adversarial pass then
+    // measured it against ordinary merchant sentences and found the opposite:
+    // removing it flips 12 of 86 probes from not_proven to pass_evidenced, including
+    // multi-clause sentences that mix a denial with a statement. The corpus simply
+    // contains no case of that shape yet.
+    //
+    // Recorded this way on purpose. "The mutation proof says it is redundant" was a
+    // true statement about the corpus and a false one about the code, and shipping it
+    // as a comment would have invited a later session to delete a working guard.
+    if (matches.some((m) => isNegated(ev.text, m.term))) continue;
+    const best = matches.find((m) => passesAboutness(ev.text, m.term, opts).ok);
+    if (!best) continue;
+    return { surface: ev.surface, sentence: ev.text, term: best.term, quote: presentableQuote(ev.text) };
+  }
+  return null;
+}
+
+/**
+ * Find a sentence that genuinely CONTRADICTS a claim.
+ *
+ * Identical discipline to `findSupport`, plus the rule that makes it honest: a
+ * violating term that is CONTAINED WITHIN a supporting term at the same position
+ * is not a contradiction, it is the supporting phrase being read wrong.
+ *
+ *   "Contains gluten-free rolled oats and almonds."
+ *      violating `contains gluten`  → [0, 15)
+ *      supporting `gluten-free`     → [9, 20)   ← overlaps
+ *
+ * Without this the store is told its copy states the opposite of a claim it is
+ * actually making, quoting the compliant sentence as proof.
+ */
+export function findViolation(
+  evidence: EvidenceSentence[],
+  violating: readonly string[],
+  supporting: readonly string[],
+  opts: { allowLogisticsSubject?: boolean; allowContainerSubject?: boolean; wholeWord?: boolean } = {},
+): SupportedEvidence | null {
+  const wholeWord = opts.wholeWord !== false;
+  for (const ev of evidence) {
+    if (isInterrogative(ev.text)) continue;
+    const n = normalize(ev.text);
+    const support = termMatches(n, supporting, wholeWord);
+    for (const v of termMatches(n, violating, wholeWord)) {
+      // The violating string is a fragment of the claim being made only when a
+      // supporting match EXTENDS BEYOND it — that is what makes the support the
+      // longer, more specific reading of the same characters:
+      //
+      //   "Contains gluten-free rolled oats"   violating `contains gluten` [0,15)
+      //                                        support   `gluten-free`     [9,20)  end 20 > 15 → discard
+      //   "This is a non-vegan product"        violating `non-vegan`      [10,19)
+      //                                        support   `vegan`          [14,19)  end 19 = 19 → KEEP
+      //
+      // A plain "any overlap" test discarded the second one too, so a store saying
+      // its product is NON-vegan had the violation dropped and then passed on the
+      // `vegan` fragment. Found by the fresh adversarial pass over this very fix.
+      if (support.some((s) => v.index < s.end && s.index < v.end && s.end > v.end)) continue;
+      if (isNegated(ev.text, v.term)) continue;           // "does not contain gluten"
+      if (!passesAboutness(ev.text, v.term, opts).ok) continue;
+      return { surface: ev.surface, sentence: ev.text, term: v.term, quote: presentableQuote(ev.text) };
     }
   }
   return null;

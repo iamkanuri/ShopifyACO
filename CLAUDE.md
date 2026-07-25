@@ -573,6 +573,38 @@ them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extend
   ⚠️ Still needs the external `embedded=true` flip + `shopify app deploy` + REAL in-admin testing to
   confirm the handshake (the build is the most-likely-correct path, but only live testing proves it).
 
+## Aboutness is decided by the SUBJECT, not a window (`src/server/subject.ts`, v2.5)
+
+The largest false-pass class was aboutness: the store states a fact about its **packaging**,
+**shipment**, a **bundled item**, a **competitor** or a **review**, and the row credits it to
+the product. Two guards were supposed to stop that and structurally could not — a closed
+10-noun list (`SUBJECT_BEFORE_VETO`) and a 24-character window after the term
+(`MODIFIED_SUBJECT`). Neither can ever reach "Every order is wrapped in 100% cotton muslin.",
+which contains no vetoed noun at all: the signal is the subject and the verb.
+
+`nonProductSubject` reads the subject span and the container-verb frame. It **fails OPEN** —
+only a confident non-product reading vetoes — because vetoing on "unknown" would suppress the
+ordinary subject-less copy that fills a Shopify description and gut depth.
+
+> **Why not the semantic tier (v2.5 CP2 decision).** It exists, has the right grant/veto
+> asymmetry, and was inert. It was still the wrong tool here, for a measurable reason: **the
+> adversarial corpus is the acceptance gate and runs offline**, so `judgeClaims` returns empty
+> and a semantic aboutness gate could close no corpus case and could not be reached by the
+> mutation proof. A fix the gate cannot measure is not a fix. The tier remains the right tool
+> for **paraphrase** — recovering true statements no term list can match — which is what it was
+> built for. It is still inert; that is a live decision, not an oversight.
+
+⚠️ **The legacy guards are NOT dead.** Both are still load-bearing and complementary: they reach
+the shapes with no finite verb, where the subject rule has nothing to delimit ("Our packaging:
+made from recycled cardboard."). The corpus carries a control case for each — without them the
+mutation proof reports both as decorative, which is a corpus hole, not a useless guard.
+
+⚠️ **`CLAUSE_BOUNDARY` is serving two incompatible jobs** and this is the known open defect. The
+boundaries that stop a negation leaking forward onto an unrelated statement ("Our cups are not
+dishwasher safe, and they are made from stoneware.") are the same ones that stop it reaching a
+conjunct it genuinely governs ("We do not offer weekend pickup, or overnight shipping."). One
+boundary set cannot serve both; fixing it needs scope, not another list.
+
 > ⚠️ **The `origin` prune (v2.4 CP2) is BLOCKED on a contaminated measurement, deliberately.**
 > The plan was to narrow `origin` (measured 0.91 fail rate, above the 15–85% discrimination
 > band) with a category gate and re-measure. The adversarial corpus then showed the `origin`
