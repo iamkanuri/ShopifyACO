@@ -6,10 +6,35 @@ Written during CP1 so the measurement can start the moment production is live. *
 
 `POST /api/product-test` — body `{ "url": "<product url>", "force": true }`.
 `force: true` is the documented cache bypass (`runProductTest(url, { force: body.force === true })`,
-`src/server/index.ts:529`), which is what the brief requires. The semantic tier is not on this path
-at all — it is a $0 deterministic public-data test with **no model calls** — so "semantic tier
-disabled" is satisfied structurally. Set `PRODUCT_TEST_SEMANTIC=0` on Railway anyway to remove all
-doubt.
+`src/server/index.ts:529`), which is what the brief requires.
+
+> ## ❌ CORRECTION (2026-07-25, after the run) — this paragraph was WRONG
+>
+> It used to read: *"The semantic tier is not on this path at all — it is a $0 deterministic
+> public-data test with **no model calls** — so 'semantic tier disabled' is satisfied
+> structurally."*
+>
+> **False.** `runProductTest` calls `applySemanticTier` (`productTest.ts:887`), which calls
+> `judgeClaims` → one batched OpenAI call, and it is **enabled unless `PRODUCT_TEST_SEMANTIC=0`**
+> (`semanticTier.ts:80`). Every response in the CP2 run carries a `semantic` field, which is how
+> this was caught — after the fact.
+>
+> So the run **did** spend money, and setting `PRODUCT_TEST_SEMANTIC=0` on Railway was not
+> optional insurance — it was the actual control. It was not set (Railway config is the owner's,
+> not this session's).
+>
+> **Cost is bounded, not measured**, because the run recorded `topLevelKeys` but not the
+> `semantic` object itself. Upper bound from the code: one batched call per test, `gpt-5.4-mini`
+> at `fixedPerCallUsd 0.016 + input 0.75/M + output 4.5/M`, with the corpus capped at 12,000 chars
+> (~3k tokens) and `MAX_OUTPUT_TOKENS = 700` → **≤ ~$0.021 per test, ≤ ~$0.32 for all 15** — and
+> realistically well under that, since the tier is skipped when no claim requirement is left
+> unresolved. Within budget either way, but it was not $0.
+>
+> **This does not affect the egress result.** The semantic tier runs *after* fetching, on evidence
+> already retrieved; it cannot change whether a host throttled us. The throttle rate stands.
+>
+> **Next time:** record the whole response body, and set the kill switch rather than reasoning
+> that it doesn't apply.
 
 ## ⚠️ The measurement-integrity trap: our own rate limiter also returns 429
 

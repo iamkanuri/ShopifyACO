@@ -87,6 +87,21 @@ This did not affect the headline (there were zero throttles to split), but it is
 two causes it is — and they have different fixes (an IP pool addresses one and not the
 other). See `EGRESS_DECISION.md`.
 
+## Cost — not $0, and that was a planning error
+
+`CP2_METHOD.md` asserted this endpoint makes no model calls. It does: `runProductTest` →
+`applySemanticTier` → one batched OpenAI call per test, enabled unless
+`PRODUCT_TEST_SEMANTIC=0`, which was never set (Railway config is the owner's). Every response
+carries a `semantic` field — which is how the error was caught, after the run.
+
+The run recorded `topLevelKeys` but not the `semantic` object, so the cost is **bounded, not
+measured**: ≤ ~$0.021/test → **≤ ~$0.32 total**, from `gpt-5.4-mini` pricing with the corpus
+capped at 12k chars and output at 700 tokens. Within budget; not zero. See the correction banner
+in `CP2_METHOD.md`.
+
+**It does not affect the egress result** — the semantic tier runs after fetching, on evidence
+already in hand, so it cannot influence whether a host throttled us.
+
 ## Limitations — read these before trusting 0%
 
 1. **This measures cold, well-spaced egress, not egress under load.** One request per host,
