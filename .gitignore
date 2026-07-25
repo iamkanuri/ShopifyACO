@@ -42,6 +42,9 @@ experiments/v2-1/*
 !experiments/v2-2/
 experiments/v2-2/*
 !experiments/v2-2/*.md
+!experiments/v2-3/
+experiments/v2-3/*
+!experiments/v2-3/*.md
 
 # One-off local probe/render scratch scripts + their output (real store data)
 _extract_probe*

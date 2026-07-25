@@ -2,10 +2,91 @@
 
 ---
 
-# ▶ RELEASE (pending): v2.2 — instrument the funnel
+# ▶ RELEASE (pending): v2.3 — close the install loop, and add depth that discriminates
 
-**Branch:** `feat/v2-2-instrument` · **Base:** `main` @ `87ffcb3` (what production runs)
-**Status:** built + gated, **NOT pushed.** Merge commands in §W below.
+**Branch:** `feat/v2-3-depth` · **Base:** `main` @ `50eb90a` (v2.2, deployed 2026-07-25)
+**Migration:** `0029_shop_storefront_host` (additive, one nullable column)
+
+## X.1 What it carries
+
+- **The install loop now closes on the App Store path** (`FIRST_RUN_AUDIT.md` §F1).
+  The storefront host is resolved from Shopify at install (`{ shop { myshopifyDomain
+  primaryDomain { host } } }`) and persisted on `shops.storefront_host`, so host-match
+  reconciliation no longer depends on a catalog sync that never ran. Mirrored in the mock
+  client with a *different* primary host, so the whole path runs at $0 and actually proves
+  something. A catalog sync is now enqueued on install — **through the queue, never
+  awaited**, because inline is what `triggerSyncHandler` does when the queue is dormant.
+- **Three telemetry corrections** that all distorted the same number: `reconciled` now
+  counts the OAuth-token path (the one that works today), `callbackHandler` no longer
+  re-emits `install_completed` on re-consent, and the probe stays read-only.
+- **Requirement depth, measured** — new `attribute` (materials, dimensions, origin, care)
+  and `identifiers` (GTIN/MPN) rows; table ceiling 6 → 10. Measured offline against 7 real
+  captured storefronts: **median findings 1 → 3, thin-result rate 21% → 0%, and 7 distinct
+  failing SETS across 7 stores.** Every shipped requirement sits inside the 15–85%
+  discrimination band. See `experiments/v2-3/RESULT_QUALITY_2.md`.
+- **First-impression fixes:** the task line now names the product (`product_type` produced
+  *"Find this walk"*, *"Find this confidant"* on real stores); the delivery row is
+  "Delivery timing is stated" (the old label overreached quotes about *processing* time);
+  and a floor below which the tool says it could not read enough, rather than emitting a
+  column of "not stated" rows built on nothing.
+
+## X.2 What this release deliberately does NOT ship
+
+- **`warranty`** was built, measured in-band (0.71), and **removed**. Its terms collide
+  with the claim linter's `guarantee` rule, and the linter lints `evidenceQuote` — so a
+  store whose copy said "30-day money-back guarantee" would have had its whole report
+  blocked and returned as `unreachable`. Evidence sentences are now pre-filtered through
+  the linter so merchant wording can never do that.
+
+## X.3 Merge + push (run these yourself)
+
+```bash
+git fetch origin
+git rev-parse origin/main                 # must equal 50eb90a…; if not, STOP and rebase
+git checkout main && git merge --ff-only feat/v2-3-depth
+git push origin main                      # Railway auto-builds + deploys
+```
+
+## X.4 Railway variables — none required
+
+## X.5 Post-deploy verification
+
+1. `/healthz` → `commit` matches the pushed SHA. **This also proves migration `0029`
+   applied** — `railway.json` runs `npm run migrate && npm start` and `migrate.ts` exits 1
+   on failure, so a failed migration fails the deploy.
+2. Run one Buyer Test at `/test`. Expect **8–10 rows**, a first line that names the
+   product, and **every green Proven row's quote plainly supporting its label**.
+   *If any Pass isn't supported by its quote, roll back — that is the one unrecoverable
+   failure mode.*
+3. `/c/aaaaaaaaaaaa` → `404`; `/api/admin/funnel` → `401`.
+
+## X.6 Rollback
+
+`main` advanced by fast-forward, so there is **no merge commit** and `-m 1` does not apply:
+
+```bash
+# Fastest: Railway → Deployments → the 50eb90a deploy → Redeploy.
+# Or by range:
+git revert --no-edit 50eb90a..<the-sha-you-pushed>
+git push origin main
+```
+
+Migration `0029` is additive (one nullable column), so reverting the code is complete and
+safe — the column simply stops being written. No down-migration exists or is needed.
+
+---
+
+# ▶ RELEASE: v2.2 — instrument the funnel ✅ SHIPPED 2026-07-25, commit `50eb90a`
+
+**Branch:** `feat/v2-2-instrument` · **Base:** `main` @ `87ffcb3`
+**Status:** merged fast-forward `87ffcb3 → 50eb90a` and deployed. `/healthz` confirms the
+commit, which is also proof migration `0028` applied.
+
+> **Post-deploy note.** Steps 1, 3 and 4 of §W.4 passed from outside. Step 2 passed: a live
+> Buyer Test on a stationery product returned **no Cruelty-free row**. Step 5 (reading
+> `GET /api/admin/funnel`) is **not verified** — it needs `FUNNEL_ADMIN_ENABLED=1` set on
+> the Railway service, which is an owner action. Until someone sets it, the funnel is
+> recording but unread.
 
 ## W.1 What it carries
 
