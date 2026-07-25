@@ -134,7 +134,11 @@ function mockProduct(n: number): Record<string, unknown> {
     productType: n % 2 ? "Cookware" : "Accessories",
     tags: ["mock", `tag${n}`],
     status: "ACTIVE",
-    onlineStoreUrl: `https://ai-visibility-dev.myshopify.com/products/mock-product-${n}`,
+    // The real dev store (see IMPLEMENTATION_STATUS.md). `ai-visibility-dev.myshopify.com`
+    // — without the suffix — is a DIFFERENT, third-party store; it was in this fixture and
+    // is the string a reader would copy as "our dev store". Corrected 2026-07-25 (v2.1 CP3),
+    // after authenticating against it by mistake.
+    onlineStoreUrl: `https://ai-visibility-dev-m2su2ozk.myshopify.com/products/mock-product-${n}`,
     seo: { title: `Mock Product ${n} — SEO`, description: `SEO desc ${n}` },
     featuredImage: { url: `https://cdn.example.com/p${n}.jpg` },
     variants: {

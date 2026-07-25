@@ -224,8 +224,8 @@ export interface ConfirmedClaim {
 /**
  * Propose adding a merchant-CONFIRMED claim to the product description.
  *
- * Returns [] unless the claim already has nowhere to live — if the description
- * already states it, there is nothing to fix and we must not duplicate it.
+ * Returns [] when the description already states the claim — there is nothing to fix
+ * and we must not duplicate the merchant's own sentence.
  * The proposal APPENDS; it never rewrites or removes the merchant's copy.
  */
 export function proposeClaimStatement(p: CatalogProduct, claim: ConfirmedClaim): FixProposal[] {

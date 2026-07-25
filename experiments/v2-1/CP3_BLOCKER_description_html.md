@@ -1,7 +1,36 @@
 # CP3 BLOCKER — the confirmed-claim write flattens a merchant's HTML description
 
+> ## ✅ FIXED 2026-07-25 (v2.1 CP2.5, commit `fffa0fd`)
+>
+> The fix shape below was implemented as written, plus one thing the analysis missed:
+> **the proposal is built from the DB, not from a live re-read**, so `products.description_html`
+> had to be added too (migration **`0027_product_description_html.sql`**) — otherwise the raw
+> HTML never reached `proposeClaimStatement` regardless of what the types carried.
+>
+> `liveFieldOf` was **removed**, not repointed (as §3 anticipated): with raw HTML carried end to
+> end, write field == read-back field for all three writable fields, so the indirection was dead
+> weight. A `NOTE` in `propose.ts` records why it is gone.
+>
+> Verified by four tests, all run with every gate set (`RUN_DB_TESTS=1`, `SHOPIFY_MODE=mock`,
+> `APP_ENCRYPTION_KEY`) so the write-path tests did not silently skip:
+> markup survives apply byte for byte · rollback restores byte-identically · the conflict guard
+> **engages** on a real mid-flight edit and leaves the merchant's newer edit untouched · the
+> no-observable-effect guard still fires on this path.
+>
+> Both new guarantees were **mutation-tested**: restoring the stripped-text propose fails the
+> markup test; disabling the conflict check fails the conflict test. The old test could not have
+> caught either.
+>
+> ⚠️ **Existing rows:** a `descriptionHtml` proposal created before this change carries a stripped
+> `based_on`, so it will now be refused as a `conflict` rather than applied. That is the safe
+> direction — refuse, never clobber.
+>
+> **Still not done:** this is proven in mock only. The live walk (CP3) has not run — see
+> `CP3_CREDENTIAL_BLOCKER.md`. `write_products` has still never executed against a real store.
+
 **Found:** 2026-07-24, during CP1 (while tracing the `descriptionHtml` conflict guard the brief
-asked CP3 to prove non-vacuous). **Status:** not fixed. **Severity:** blocker for CP3's apply step.
+asked CP3 to prove non-vacuous). **Status:** FIXED 2026-07-25 (see banner). **Severity:** was a
+blocker for CP3's apply step.
 **Introduced by:** V2 CP3 (`proposeClaimStatement`), **not** by the v2.1 CP0 merge — the merge only
 preserved the write capability. It is reachable on the V2 branch tip too.
 

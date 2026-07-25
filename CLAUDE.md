@@ -370,8 +370,10 @@ into reviewable proposals and applies approved ones to the store.
   rollback** → audited, with `userErrors` (partial failure) surfaced. `rollbackProposal` is itself
   conflict-checked. `src/fixes/apply.ts` + `src/fixes/source.ts` (`productUpdate`/`rereadProduct`;
   mock simulates + records writes so the lifecycle runs at $0).
-- **Proposals never fabricate** (`src/fixes/propose.ts`, pure): direct **write_products** is limited
-  to SEO title/description backfill composed only from existing catalog data; everything else is
+- **Proposals never fabricate** (`src/fixes/propose.ts`, pure): direct **write_products** covers the
+  SEO title/description backfill composed only from existing catalog data, **plus the product body
+  (`descriptionHtml`) — but ONLY to append one sentence the merchant explicitly confirmed**
+  (`proposeClaimStatement`, gated on a `requirement_confirmations` "yes"); everything else is
   **copy_ready** validated JSON-LD — a factual Product snippet from the catalog, plus clearly
   placeholdered AggregateRating/shipping/return/FAQ templates the merchant fills with real numbers.
   **And never propose a placebo** (App Store 2.1.4 kickback, fixed 2026-07-11): when `seo.title` is
@@ -380,13 +382,29 @@ into reviewable proposals and applies approved ones to the store.
   proposes nothing). The proposals list is enriched with the LIVE catalog value per row (`drifted`
   flag; apply/rollback mirror the re-read product straight into the catalog) so Fix Studio always
   agrees with the Shopify admin; the UI refetches on tab focus.
+  ⚠️ **The body write MUST use raw HTML end to end** (v2.1 CP2.5, migration `0027` adds
+  `products.description_html`). `CatalogProduct.description` is `stripHtml()`'d by construction, so
+  the earlier code appended to the STRIPPED text and wrote that into `descriptionHtml` — destroying
+  the merchant's paragraphs/lists/links, while the rationale promised it "changes nothing else",
+  and leaving rollback unable to restore the markup. Keep both views: **stripped** for evidence
+  matching and the claim linter, **raw** for anything the write path touches. `liveFieldOf` was
+  removed with this — every writable field now reads back from the field of the same name.
 - `migrations/0011_fixes.sql` (`fix_proposals` + `findings.signal`; additive). Shop-scoped API
   `src/server/fixes.ts` (`/app/api/fixes/propose|…/{approve,apply,rollback,dismiss}`, tenant-isolated).
   `test/fixes.test.ts` (5 pure + 2 DB-gated lifecycle/conflict/scope). **`write_products` is now in
   the default scopes (`shopify.app.toml` + `SHOPIFY_SCOPES`, 2026-06-25) so one-click apply is
   enabled** — but going live still needs `SHOPIFY_SCOPES` set on Railway → `shopify app deploy` →
-  merchant re-consent → a **dev-store live-write test** (apply + rollback a real SEO edit) before
-  relying on it for a real merchant (the live write path has never run against a real store).
+  merchant re-consent before relying on it for a real merchant.
+  ✅ **The dev-store live-write test is DONE (2026-07-25, v2.1 CP3).** The live write path has
+  now run against a real store: propose → approve → apply → **independent Admin API read** →
+  rerun (`not_proven` → `pass_evidenced`) → rollback → byte-identical restore, 44 assertions,
+  store returned to its pre-session baseline. It exercised the **product body**
+  (`descriptionHtml`), which is the most gated write, not just an SEO field. Record:
+  `experiments/v2-1/CP3_LIVE_WALK.md`. Two things it established: **Shopify normalizes
+  `descriptionHtml` on write**, so "unchanged" must always be judged against the verified
+  re-read (which `apply` already does); and the dev store is
+  **`ai-visibility-dev-m2su2ozk.myshopify.com`** — the suffix-less form is a live *third-party*
+  store, so always assert `{ shop { myshopifyDomain } }` before any write.
 
 **Phase 7 (Experiments & verification — "prove whether it worked") is built on branch
 `phase7-experiments`** (off `main`), mock-verified at $0. **The differentiator.** A matched pair
