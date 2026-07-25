@@ -253,6 +253,34 @@ function findAttributeSupport(evidence: EvidenceSentence[], spec: AttributeSpec)
   return null;
 }
 
+// ---- identifier plausibility (v2.4 CP1) -------------------------------------
+// The identifiers row promises that "a machine buyer can match this product to a
+// catalogue entry". A value that cannot do that must not satisfy it.
+//
+// The previous guard was a fully-anchored token list (`^(n\/?a|tbd|…)$`), so ANY
+// affix defeated it. Executed against 34 placeholder values, 24 passed as real
+// published identifiers — "N/A.", "N/A - see description", "TBD-001", "test123",
+// "n / a", "NA/NA", "PLACEHOLDER", "YOUR-MPN-HERE", "0-0", "???" among them. This
+// is not hypothetical shape: a merchant filling a required field with nothing is
+// exactly how these values arise.
+const PLACEHOLDER_TOKEN = "na|tbd|none|null|nil|unknown|unspecified|notapplicable|placeholder|sample|default|test|undefined|false|example|dummy|temp|blank|nomlpn|nompn|nogtin|nosku|yourmpnhere|yourgtinhere";
+/** Token(s), then optional trailing digits, then an optional "see …"/"on request" note. */
+const PLACEHOLDER_CORE = new RegExp(`^(?:${PLACEHOLDER_TOKEN})+\\d*(?:see\\w*|onrequest|tbc|comingsoon)?$`, "i");
+
+/** True when this identifier value cannot identify anything. */
+export function isPlaceholderIdentifier(raw: string): boolean {
+  // Separators and punctuation carry no identifying information, and stripping
+  // them is what collapses "N/A.", "n / a", "N.A." and "n-a" onto one token.
+  const core = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!core) return true;
+  // A real MPN is never this short; a catalogue key of "abc" or "123" matches
+  // nothing. (The old rule allowed anything >= 3 characters.)
+  if (core.length < 4) return true;
+  // A single repeated character: "0000", "xxxx", "----".
+  if (/^(.)\1*$/.test(core)) return true;
+  return PLACEHOLDER_CORE.test(core);
+}
+
 /** Only "required" phrasings — a store merely OFFERING a subscription is not a blocker. */
 const SUBSCRIPTION_REQUIRED = ["subscription required", "subscription is required", "subscription only", "subscribe to purchase", "only available by subscription", "must subscribe"];
 
@@ -1108,9 +1136,17 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const info = p.extracted.product;
       const gtinRaw = (info?.gtin ?? "").trim();
       const mpnRaw = (info?.mpn ?? "").trim();
-      const PLACEHOLDER = /^(n\/?a|tbd|none|null|nil|unknown|-+|0+|x+|test)$/i;
-      const realMpn = mpnRaw.length >= 3 && !PLACEHOLDER.test(mpnRaw);
-      const realGtin = isValidGtin(gtinRaw);
+      const realMpn = !isPlaceholderIdentifier(mpnRaw);
+      // Merchants publish GTINs with the separators printed on the barcode
+      // ("0-36000-29145-2", "400 638 133 3931"). Those are the same number, and
+      // rejecting them told stores that DO publish an identifier that they don't.
+      // Normalised HERE rather than in `isValidGtin`, which is shared with the feed
+      // validator — there the spec genuinely requires a digits-only value, so
+      // loosening it would weaken a different, correct check.
+      const gtinDigits = gtinRaw.replace(/[\s-]/g, "");
+      // All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the
+      // commonest "I had to put something in the field" value there is.
+      const realGtin = isValidGtin(gtinDigits) && !/^0+$/.test(gtinDigits);
       const have = [realGtin ? "GTIN" : null, realMpn ? "MPN" : null].filter(Boolean) as string[];
       if (have.length) {
         return {

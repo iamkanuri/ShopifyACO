@@ -44,12 +44,71 @@ export function resolveCaseFile(dir: string | undefined, token: string): string 
   return file;
 }
 
+/**
+ * Artefacts that make a pre-rendered case UNSENDABLE (v2.4 CP3).
+ *
+ * The bundle generator does not live in this repository — the cases are rendered
+ * artefacts dropped onto the volume — so the template guard cannot be applied at
+ * render time. This is the last boundary that can refuse a broken page, and it is
+ * the same posture `productTest.ts` takes when the claim linter trips: a result
+ * that cannot meet the standard is NOT shown.
+ *
+ * That matters more here than for an ordinary 404. These pages go to a named
+ * third-party merchant as outreach. A page that contradicts itself in front of a
+ * prospect spends credibility that the whole product rests on, and unlike a wrong
+ * Fail it is not recoverable by re-running anything.
+ *
+ * Measured on the real 12-case bundle: both rules fired on exactly the two broken
+ * cases and on none of the other ten.
+ */
+export function caseDefects(html: string): string[] {
+  const text = html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const defects: string[] = [];
+
+  // 1. An EMPTY SET rendered as the literal word. The generator writes the string
+  //    "none" into a list slot when the set is empty (it is stored that way in
+  //    `claims-map.json`), so the page asks the merchant to "confirm the things
+  //    shoppers asked for — none, and …". Checking the bare word rather than each
+  //    known slot is deliberate: it catches slots nobody has enumerated yet, which
+  //    is the whole failure mode. No legitimate case in the bundle contains it.
+  const none = /\bnone\b/i.exec(text);
+  if (none) {
+    defects.push(`empty list rendered as the literal word "none": "…${text.slice(Math.max(0, none.index - 40), none.index + 20).trim()}…"`);
+  }
+
+  // 2. A SELF-CONTRADICTING count. "0 of 4 attempts could not confirm one or more
+  //    requirements" immediately followed by the list of requirements the store does
+  //    not state. Both halves are separately true — they come from two different
+  //    measurements (journey outcomes vs. store-data adjudication) — but the sentence
+  //    welds them into one claim that is false as composed.
+  const count = /(\d+) of (\d+) attempts could not confirm/i.exec(text);
+  const gaps = /does not state the following[^:]*:\s*(\S[^.]*)/i.exec(text);
+  if (count && Number(count[1]) === 0 && gaps) {
+    defects.push(`count says "${count[0]}" while the page lists unmet requirements: "${gaps[1]!.trim().slice(0, 60)}"`);
+  }
+  return defects;
+}
+
 export function hostedCaseHandler(req: Request, res: Response): void {
   const token = String(req.params.token ?? "");
   const file = resolveCaseFile(ENV.hostedCasesDir, token);
   // One indistinguishable 404 for "route off", "bad token" and "no such case", so a
   // prober cannot tell whether a given token exists.
   if (!file || !existsSync(file)) {
+    res.status(404).type("text/plain").send("Not found");
+    return;
+  }
+
+  const html = readFileSync(file, "utf8");
+  const defects = caseDefects(html);
+  if (defects.length) {
+    // Loud on OUR side, indistinguishable on theirs — the same 404 as every other
+    // failure, so a recipient never sees a diagnostic about our own bug.
+    console.error(`[hosted-case] REFUSING to serve ${token}: ${defects.join(" | ")}`);
     res.status(404).type("text/plain").send("Not found");
     return;
   }
@@ -73,5 +132,5 @@ export function hostedCaseHandler(req: Request, res: Response): void {
     referrerClass: classifyReferrer(req.get("referer"), req.get("host")),
   });
 
-  res.type("html").send(readFileSync(file, "utf8"));
+  res.type("html").send(html);
 }

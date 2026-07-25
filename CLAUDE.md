@@ -573,6 +573,54 @@ them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extend
   ⚠️ Still needs the external `embedded=true` flip + `shopify app deploy` + REAL in-admin testing to
   confirm the handshake (the build is the most-likely-correct path, but only live testing proves it).
 
+## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
+
+`test/adversarialCorpus.test.ts` + `test/support/adversarial.ts`. **A new requirement
+kind, term list, or guard ships with adversarial corpus entries — not with a passing
+sample of real stores.**
+
+Why this is a rule and not a preference: v2.3 audited 7 real stores, found zero false
+positives, and that was close to worthless as a general claim. A pass that *executed the
+matcher against chosen sentences* then found six more defects on copy those stores merely
+happened not to write. v2.4 ran **959 such probes across every matcher and confirmed 131
+defects**, every one re-executed by an independent adversarial verifier.
+**Sampling real stores catches artefacts; only executing the matcher against deliberately
+chosen input catches logic.**
+
+How the corpus works — read the header of the test file before adding a case:
+- Each case carries `correct` (the honest answer, argued from evidence availability) and,
+  when the engine currently disagrees, `actual` — a **measured, known gap**. The test
+  asserts `actual ?? correct`, so the suite is green on today's behaviour while every
+  defect is pinned in code. It fails in **both** directions: fix a gap and its case fails
+  (delete the `actual`); regress and its case fails.
+- `EXPECTED_OPEN_GAPS` is asserted exactly, so gaps cannot quietly multiply.
+- A case with `actual` is **not an accepted behaviour**. It is a debt with a receipt.
+- Hostile classes to cover for any new matcher: the term present but about **packaging,
+  shipping, a bundled item, a competitor, or a review quote**; present as a **placeholder**
+  or a **negation**; present in a **marketing idiom**; the **canonical true phrasings** that
+  must still pass; and **merchant-controlled strings** (title, product_type, option values)
+  that must never reach a linted output.
+
+**Mutation proof is part of the standard.** `experiments/v2-4/mutate.mjs` disables each
+guard in turn and requires a specific corpus case to fail. A guard whose removal breaks
+nothing is not a guard. Current state: **12/12 guards load-bearing**. When it first ran,
+4 read as "decorative" — every case written for them was already a known gap, so removing
+the guard changed nothing. That is a corpus coverage hole, not a useless guard: each needed
+a **control case the guard currently catches** (e.g. `"Shipped in 100% recycled packaging."`
+for `MODIFIED_SUBJECT`). Keep those anchors.
+
+> ⚠️ Two traps this session hit, both of which fake a clean result:
+> - **`npx tsx -e` and `python -c` produce NO output** in this environment's PowerShell and
+>   exit 0. A silent one-liner is indistinguishable from a clean sweep. **Always use a
+>   script file.**
+> - **Ripgrep/Grep respects `.gitignore`.** A repo-wide search for the send-pack template
+>   found nothing because the artefacts are under the ignored `experiments/`. Sweeps that
+>   must be exhaustive need a walker that ignores `.gitignore` (see
+>   `experiments/v2-4/findgen.mjs`).
+> - The **Grep tool renders a leading `//` as `\`** in some context lines. It mimics the
+>   0x08 corruption exactly. Confirm at the byte level (`experiments/v2-4/ctlsweep.mjs`)
+>   before believing source is corrupt — it was not.
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned
