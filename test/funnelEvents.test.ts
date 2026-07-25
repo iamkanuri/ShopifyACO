@@ -38,6 +38,23 @@ test("toDomain never returns anything containing a path, query, port or scheme",
   }
 });
 
+test("toDomain rejects IP literals — the table's no-IP guarantee must be literally true", () => {
+  // `registrableDomain` passes bare IPs through on purpose (for citation analysis,
+  // merging distinct IPs would be wrong). Here that would put an IP in the `domain`
+  // column while migration 0028 states no column can hold one. Found by an
+  // adversarial review of this exact claim.
+  for (const ip of [
+    "http://198.51.100.23/products/tee",
+    "203.0.113.45:9292",
+    "192.0.2.14",
+    "http://192.0.2.14:9292/products/tee",
+    "http://[2001:db8:85a3::8a2e:370:7334]/x",
+    "[::ffff:198.51.100.23]",
+  ]) {
+    assert.equal(toDomain(ip), null, `an IP literal must not be stored: ${ip}`);
+  }
+});
+
 test("toDomain returns null rather than inventing a domain for junk input", () => {
   assert.equal(toDomain(""), null);
   assert.equal(toDomain(null), null);

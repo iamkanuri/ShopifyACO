@@ -64,7 +64,17 @@ export interface FunnelEvent {
  */
 export function toDomain(hostOrUrl: string | null | undefined): string | null {
   if (!hostOrUrl) return null;
-  return registrableDomain(hostOrUrl);
+  const d = registrableDomain(hostOrUrl);
+  if (!d) return null;
+  // `registrableDomain` deliberately passes bare IPs through unchanged — for citation
+  // analysis, merging two distinct IPs into one bucket would be wrong. Here the
+  // opposite is true: an IP literal is never a Shopify storefront's registrable
+  // domain, it carries no analytic value, and storing it would contradict this
+  // table's stated guarantee that no column can hold an IP (migration 0028). Covers
+  // IPv4, bracketed IPv6, and the IPv4-mapped form `[::ffff:…]`, which the URL parser
+  // rewrites to hex and which would otherwise slip past a dotted-quad check.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(d) || d.includes(":") || d.startsWith("[")) return null;
+  return d;
 }
 
 /**
