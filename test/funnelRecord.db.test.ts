@@ -125,9 +125,47 @@ test("funnelWindow computes the throttle split with OUR limiter excluded", { ski
     assert.equal(after.throttleUpstream - before.throttleUpstream, 1, "exactly one upstream throttle was added");
     assert.equal(after.throttleOurs - before.throttleOurs, 3, "our own three must be counted separately");
     assert.equal(after.testsFailed - before.testsFailed, 4);
-    // The failure this guards against: reporting 4/4 = 100% when the stores refused
-    // us once. That is the CP2_METHOD "worst way this can fail" made into a test.
-    assert.ok(after.throttleRate === null || after.throttleRate < 1, "our own limiter must not reach the rate");
+    // Our own refusals are in NEITHER side of the rate. Note `our_budget` and
+    // `our_cooldown` report errorKind `rate_limited` while never touching the store,
+    // so the denominator has to filter on throttle_source, not on error kind alone —
+    // filtering by error kind would have let two of these three back in.
+    assert.equal(
+      after.throttleAttempted - before.throttleAttempted, 1,
+      "only the upstream row actually reached a store",
+    );
+  } finally {
+    await cleanup(token);
+  }
+});
+
+test("throttle rate's DENOMINATOR excludes tests that never reached a store", { skip: !RUN_DB }, async () => {
+  // The first version divided by every test_failed row, which includes rows that
+  // never attempted an egress fetch: a malformed paste (http_400), our own per-IP
+  // 429 (http_429), and an internal exception. Those dilute the rate — and they
+  // dilute it HARDEST under load, when our limiter fires most, so the escalation
+  // trigger would go quiet at exactly the moment it should fire.
+  const { recordFunnelEvent, funnelWindow } = await import("../src/db/funnel.js");
+  const token = `t_${Date.now().toString(16)}ffff`;
+  try {
+    const before = await funnelWindow(7);
+
+    // One real upstream refusal — the ONLY row that should be in the numerator.
+    await recordFunnelEvent({ name: "test_failed", testToken: token, host: "up.example", errorKind: "rate_limited", throttleSource: "upstream" });
+    // Three failures that never touched a store. None may enter the denominator.
+    await recordFunnelEvent({ name: "test_failed", testToken: token, host: "a.example", errorKind: "http_400" });
+    await recordFunnelEvent({ name: "test_failed", testToken: token, host: "b.example", errorKind: "http_429", throttleSource: "our_rate_limit" });
+    await recordFunnelEvent({ name: "test_failed", testToken: token, host: "c.example", errorKind: "exception" });
+
+    const after = await funnelWindow(7);
+    assert.equal(after.testsFailed - before.testsFailed, 4, "all four rows were written");
+    assert.equal(
+      after.throttleAttempted - before.throttleAttempted, 1,
+      "only the row that actually reached a store counts toward the denominator",
+    );
+    assert.equal(after.throttleUpstream - before.throttleUpstream, 1);
+    // With the old denominator this window would read 1/4 = 25%; the honest answer
+    // for "of the tests that reached a store, how many were refused" is 100%.
+    assert.equal(after.throttleRate, 1, `expected 100%, got ${after.throttleRate}`);
   } finally {
     await cleanup(token);
   }

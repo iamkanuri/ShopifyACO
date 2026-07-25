@@ -258,7 +258,10 @@ export function ProductTestPage() {
                 )}
               </p>
             </div>
-            <ConnectShopify className="btn btn-primary" label="Connect Shopify to confirm, fix, and rerun" />
+            {/* The ONE funnel-step CTA: it follows a completed test, so a click here
+                has an originating test to attribute it to. Every other ConnectShopify
+                on the site deliberately does not count. */}
+            <ConnectShopify className="btn btn-primary" label="Connect Shopify to confirm, fix, and rerun" countAsFunnelStep />
             <p className="pt-enrich"><i>Included in the full diagnostic: how live AI assistants currently answer questions like this in your category — and which stores they send buyers to instead.</i></p>
           </div>
         </div>

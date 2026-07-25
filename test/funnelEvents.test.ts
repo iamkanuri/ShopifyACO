@@ -55,6 +55,26 @@ test("toDomain rejects IP literals — the table's no-IP guarantee must be liter
   }
 });
 
+test("toDomain bounds what can be stored — an unbounded host is not a domain", () => {
+  // `test_requested` is emitted BEFORE the route's 400-char URL check (deliberately —
+  // the denominator should count real arrivals). That meant an unbounded value reached
+  // an unbounded `text` column: a 200 kB host, well under the 256 kB body cap, was
+  // stored verbatim, twice per request, at 120 req/min/IP, in a table with no
+  // retention job. Node's URL parser does not enforce DNS length limits, so this is
+  // the only place that can.
+  assert.equal(toDomain("https://" + "x".repeat(200_000) + ".com/products/y"), null);
+  assert.equal(toDomain("https://" + "x".repeat(64) + ".com"), null, "a label over 63 chars cannot resolve");
+  assert.equal(toDomain("https://" + "a".repeat(60) + ".com"), (("a".repeat(60)) + ".com"), "a legal long label still works");
+});
+
+test("toDomain drops the myshopify.com bucket rather than fake a unique host", () => {
+  // Every *.myshopify.com store reduces to the same bare suffix, so counting it
+  // inflates uniqueDomains with one meaningless bucket. Keeping the un-reduced form
+  // is not an option — that IS a shop domain, which this table must never hold.
+  assert.equal(toDomain("https://coolbrand.myshopify.com/products/x"), null);
+  assert.equal(toDomain("https://otherbrand.myshopify.com/products/y"), null);
+});
+
 test("toDomain returns null rather than inventing a domain for junk input", () => {
   assert.equal(toDomain(""), null);
   assert.equal(toDomain(null), null);
@@ -96,7 +116,7 @@ test("classifyReferrer collapses everything else to 'other' — no referrer is e
 const emptyWindow = (days: number): FunnelWindow => ({
   days,
   testsRequested: 0, testsCompleted: 0, testsFailed: 0, uniqueDomains: 0,
-  throttleRate: null, throttleUpstream: 0, throttleOurs: 0,
+  throttleRate: null, throttleAttempted: 0, throttleUpstream: 0, throttleOurs: 0,
   medianDurationMs: null, p95DurationMs: null,
   states: { evidenced: 0, noBlocking: 0, notProven: 0, requiresAccess: 0 },
   actionableRate: null,
@@ -112,19 +132,24 @@ test("renderFunnel shows an em-dash for an undefined rate, never 0% — no data 
   assert.doesNotMatch(out, /throttle rate\s+0\.0%/);
 });
 
-test("renderFunnel reports OUR throttles separately and marks them excluded", () => {
+test("renderFunnel reports OUR throttles separately and shows the rate's denominator", () => {
   const w = emptyWindow(7);
   w.testsCompleted = 8;
   w.testsFailed = 2;
   w.throttleUpstream = 1;
   w.throttleOurs = 5;
-  w.throttleRate = 1 / 10;
+  w.throttleAttempted = 5; // only 5 of the 10 rows actually reached a store
+  w.throttleRate = 1 / 5;
   const out = renderFunnel([w]);
-  assert.match(out, /throttle rate\s+ 10\.0%/);
-  // The number that would be wrong (6/10 = 60%) must not appear, and the reader
-  // must be told our own back-pressure was left out of it.
+  assert.match(out, /throttle rate\s+ 20\.0%/);
+  // The two numbers that would be WRONG: 1/10 (denominator diluted by rows that
+  // never attempted a fetch) and 6/10 (our own back-pressure counted as upstream).
+  assert.doesNotMatch(out, /10\.0%/);
   assert.doesNotMatch(out, /60\.0%/);
-  assert.match(out, /ours 5, excluded/);
+  // A rate is never shown without its n.
+  assert.match(out, /upstream 1 of 5 that reached a store/);
+  assert.match(out, /our own throttles\s+5/);
+  assert.match(out, /excluded from BOTH sides/);
 });
 
 test("renderFunnel renders both windows and every case token", () => {

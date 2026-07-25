@@ -64,8 +64,24 @@ export interface FunnelEvent {
  */
 export function toDomain(hostOrUrl: string | null | undefined): string | null {
   if (!hostOrUrl) return null;
+  // Cap BEFORE parsing. `test_requested` is emitted before the route's 400-char URL
+  // check and before the per-IP limiter — deliberately, so the denominator counts
+  // real arrivals rather than only the ones that got past a gate. But that ordering
+  // meant an unbounded value reached an unbounded `text` column: a 200 kB host (well
+  // under the 256 kB body cap) was stored verbatim, twice, at 120 req/min/IP, in a
+  // table with no retention job. Node's URL parser does not enforce DNS length
+  // limits, so this is the only place that can.
+  if (hostOrUrl.length > 2048) return null;
   const d = registrableDomain(hostOrUrl);
   if (!d) return null;
+  // Real DNS limits: 253 chars total, 63 per label. A host that breaks them cannot
+  // resolve, so it is junk rather than a domain we failed to shorten.
+  if (d.length > 253 || d.split(".").some((label) => label.length > 63)) return null;
+  // `*.myshopify.com` reduces to the bare suffix, which is the same string for every
+  // store on the platform — it inflates `uniqueDomains` with one meaningless bucket
+  // and identifies nothing. Keeping the un-reduced form is not an option: that IS a
+  // shop domain, which this table must never hold. Null is the honest answer.
+  if (d === "myshopify.com") return null;
   // `registrableDomain` deliberately passes bare IPs through unchanged — for citation
   // analysis, merging two distinct IPs into one bucket would be wrong. Here the
   // opposite is true: an IP literal is never a Shopify storefront's registrable
@@ -152,8 +168,12 @@ export interface FunnelWindow {
   testsCompleted: number;
   testsFailed: number;
   uniqueDomains: number;
-  /** (upstream throttles) / (completed + failed) — OUR OWN limiter is excluded. */
+  /** (upstream throttles) / (tests that actually attempted an egress fetch).
+   *  OUR OWN limiter is excluded from BOTH sides — see the query for why the
+   *  denominator is not simply completed+failed. */
   throttleRate: number | null;
+  /** The denominator, exposed so the rate can never be read without its n. */
+  throttleAttempted: number;
   throttleUpstream: number;
   throttleOurs: number;
   medianDurationMs: number | null;
@@ -204,9 +224,14 @@ export async function funnelWindow(days: number): Promise<FunnelWindow> {
     evidenced: string | null; no_blocking: string | null; not_proven: string | null;
     requires_access: string | null; actionable: string; completed: string; semantic_usd: string | null;
   }>(
+    // Duration percentiles EXCLUDE cache hits. A cached result returns in ~1 ms
+    // (runProductTest answers before any fetch), so including them measures the
+    // cache-hit ratio rather than how long a test takes — and would drag the median
+    // down exactly as the cache warms. The result-state sums deliberately DO include
+    // cached rows: a visitor saw those states, cached or not.
     `select
-       percentile_cont(0.5) within group (order by duration_ms)           as median_ms,
-       percentile_cont(0.95) within group (order by duration_ms)          as p95_ms,
+       percentile_cont(0.5) within group (order by duration_ms) filter (where not coalesce(cached, false))  as median_ms,
+       percentile_cont(0.95) within group (order by duration_ms) filter (where not coalesce(cached, false)) as p95_ms,
        sum(evidenced)                                                     as evidenced,
        sum(no_blocking)                                                   as no_blocking,
        sum(not_proven)                                                    as not_proven,
@@ -219,13 +244,38 @@ export async function funnelWindow(days: number): Promise<FunnelWindow> {
     [since],
   );
 
-  // The throttle split. `our_*` sources are OUR limiter/budget/cooldown and are
-  // excluded from the numerator — counting them would report our own back-pressure
-  // as a store refusing us, which is the failure mode CP2_METHOD.md warns about.
-  const { rows: thrRows } = await pgQuery<{ upstream: string; ours: string }>(
+  // The throttle split, and its DENOMINATOR.
+  //
+  // `our_*` sources are our own limiter/budget/cooldown and are excluded from the
+  // numerator — counting them would report our own back-pressure as stores refusing
+  // us, the failure mode CP2_METHOD.md warns about.
+  //
+  // But excluding them from the numerator alone is not enough, and the first version
+  // of this query got it wrong: the denominator was every `test_failed` row, which
+  // includes rows that NEVER ATTEMPTED AN EGRESS FETCH — a malformed paste
+  // (`http_400`), our own per-IP 429 (`http_429`), an internal `exception`, and
+  // `bad_url`. Those dilute the rate, and they dilute it HARDEST under load, when our
+  // limiter fires most — so the escalation trigger would go quiet at exactly the
+  // moment it should fire. The denominator is now "tests that actually tried to reach
+  // a store".
+  const { rows: thrRows } = await pgQuery<{ upstream: string; ours: string; attempted: string }>(
     `select
        count(*) filter (where throttle_source = 'upstream')::bigint as upstream,
-       count(*) filter (where throttle_source like 'our_%')::bigint as ours
+       count(*) filter (where throttle_source like 'our_%')::bigint as ours,
+       count(*) filter (
+         where name = 'test_completed'
+            or (
+                 -- never issued a request: a malformed paste, our own per-IP 429, or
+                 -- an internal error before the fetch layer.
+                 coalesce(error_kind, '') not in ('http_400', 'http_429', 'exception', 'bad_url')
+                 -- ...nor did our own budget or 10-minute negative cache, both of which
+                 -- refuse BEFORE touching the store while still reporting rate_limited,
+                 -- so filtering on error kind alone would let them back in.
+                 -- A COMPLETED test is always included even when one tier hit our
+                 -- budget, because something did answer.
+                 and coalesce(throttle_source, '') not like 'our\\_%' escape '\\'
+               )
+       )::bigint as attempted
      from funnel_events
       where name in ('test_completed','test_failed') and at > now() - $1::interval`,
     [since],
@@ -267,7 +317,8 @@ export async function funnelWindow(days: number): Promise<FunnelWindow> {
     testsCompleted: completed,
     testsFailed: failed,
     uniqueDomains: Number(domRows[0]?.unique_domains ?? 0),
-    throttleRate: ratio(upstream, completed + failed),
+    throttleRate: ratio(upstream, Number(thr?.attempted ?? 0)),
+    throttleAttempted: Number(thr?.attempted ?? 0),
     throttleUpstream: upstream,
     throttleOurs: ours,
     medianDurationMs: agg?.median_ms == null ? null : Math.round(Number(agg.median_ms)),

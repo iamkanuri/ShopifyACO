@@ -55,7 +55,14 @@ export function hostedCaseHandler(req: Request, res: Response): void {
   }
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
   res.setHeader("Cache-Control", "private, no-store");
-  res.setHeader("Referrer-Policy", "no-referrer");
+  // `same-origin`, NOT `no-referrer`. A Referrer-Policy governs requests this
+  // document ORIGINATES, so `no-referrer` stripped the Referer from the recipient's
+  // click through to /test — which made `referrer_class: "hosted_case"` structurally
+  // impossible to record and every outreach arrival look like direct traffic. That
+  // would have silently zeroed the one number this whole route exists to produce.
+  // `same-origin` sends the referrer only to us; a third-party link from the page
+  // still leaks nothing, which is what `no-referrer` was reaching for.
+  res.setHeader("Referrer-Policy", "same-origin");
 
   // The only measurement of outreach that exists. Without it a send is a guess:
   // "no replies" cannot be told apart from "nobody opened it". Fire-and-forget —

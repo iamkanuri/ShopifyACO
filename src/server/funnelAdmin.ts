@@ -37,7 +37,10 @@ export function renderFunnel(windows: FunnelWindow[]): string {
     lines.push("");
     // The metric EGRESS_DECISION.md named as the thing to watch. Our own
     // back-pressure is reported alongside but NEVER inside the rate.
-    lines.push(`  throttle rate          ${pct(w.throttleRate)}   (upstream ${w.throttleUpstream}; ours ${w.throttleOurs}, excluded)`);
+    // Never render the rate without its denominator: "0%" over 3 attempts and "0%"
+    // over 300 are different facts, and the egress decision turns on this number.
+    lines.push(`  throttle rate          ${pct(w.throttleRate)}   (upstream ${w.throttleUpstream} of ${w.throttleAttempted} that reached a store)`);
+    lines.push(`    our own throttles    ${w.throttleOurs}   (excluded from BOTH sides of the rate)`);
     lines.push(`  duration median / p95  ${num(w.medianDurationMs)}ms / ${num(w.p95DurationMs)}ms`);
     lines.push("");
     lines.push("  result states (summed over completed tests)");

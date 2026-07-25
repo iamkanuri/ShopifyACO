@@ -17,6 +17,16 @@ import { useConfig } from "../config";
 // and "nobody clicked" is indistinguishable from "clicking doesn't convert". Sent
 // fire-and-forget (sendBeacon survives the navigation); a failure is ignored, and a
 // blocked beacon must never stop the merchant reaching the listing.
+//
+// OPT-IN per call site (`countAsFunnelStep`), and only the post-test CTA opts in.
+// This component renders in six places and the other five are not funnel steps: the
+// global header nav, the landing hero, and — worse — three surfaces inside /app
+// (the demo-data banner, onboarding, settings), which are only ever seen by
+// merchants who have ALREADY INSTALLED. Beaconing all of them made
+// `installClickRate = clicks / completed tests` a ratio between two unrelated
+// populations, which can exceed 1 and means nothing. CP2 defines the event as
+// "install_clicked | originating test id", so a click with no originating test is
+// not the event.
 function beaconInstallClick(): void {
   try {
     const payload = JSON.stringify({
@@ -34,10 +44,20 @@ function beaconInstallClick(): void {
   }
 }
 
-export function ConnectShopify({ className = "", label = "Get it on the Shopify App Store" }: { className?: string; label?: string }) {
+export function ConnectShopify({
+  className = "",
+  label = "Get it on the Shopify App Store",
+  countAsFunnelStep = false,
+}: { className?: string; label?: string; countAsFunnelStep?: boolean }) {
   const { appStoreUrl, brandName } = useConfig();
   const href = appStoreUrl || `https://apps.shopify.com/search?q=${encodeURIComponent(brandName || "AisleLens")}`;
   return (
-    <a className={className} href={href} target="_blank" rel="noopener noreferrer" onClick={beaconInstallClick}>{label}</a>
+    <a
+      className={className}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={countAsFunnelStep ? beaconInstallClick : undefined}
+    >{label}</a>
   );
 }

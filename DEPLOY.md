@@ -11,9 +11,13 @@
 
 - **Funnel instrumentation** (migration `0028_funnel_events`) — `test_requested`,
   `test_completed`, `test_failed`, `install_clicked`, `install_completed`, `case_viewed`.
-  Typed columns, **no column can hold a URL, email, IP or shop domain** (asserted by a test
-  against `information_schema`). Read surface: `GET /api/admin/funnel` (admin session **and**
-  `FUNNEL_ADMIN_ENABLED=1`; 404 when unlit).
+  Typed columns; **no URL, email, IP or shop domain reaches the table.** Two separate
+  guarantees, because the first draft only had the weaker one: the schema has no column *named*
+  for such a value (asserted against `information_schema`), **and** `toDomain` — the single
+  boundary every host crosses — rejects full URLs, IP literals, over-long hosts and the
+  `myshopify.com` bucket (asserted by value). The self-review found the schema check alone was
+  the wrong question and IPs were getting through. Read surface: `GET /api/admin/funnel` (admin
+  session **and** `FUNNEL_ADMIN_ENABLED=1`; 404 when unlit).
 - **Hosted outreach cases** — `GET /c/:token`, inert unless `HOSTED_CASES_DIR` is set. See §V2.2b.
 - **Egress cause split** — `throttleSource` / `robotsStatus` / `policyStatus` on
   `ProductTestResult`, so an upstream 429, our own budget, and our negative cache stop being
@@ -51,6 +55,19 @@ funnel. Leave `HOSTED_CASES_DIR` unset until the case bundle is on the volume (�
    (unauthenticated). With `FUNNEL_ADMIN_ENABLED=1` + an admin session it renders plain text.
 4. `curl -s -o /dev/null -w '%{http_code}' https://lens.thirdocular.com/c/aaaaaaaaaaaa` → `404`.
 5. Confirm the funnel recorded the test from step 2 (`tests requested` / `tests completed` ≥ 1).
+
+## W.4b Adversarial self-review
+
+The diff was reviewed against itself by five independent lenses, each finding handed to a
+separate agent told to refute it. It found **seven defects in code that already had passing
+tests** — none of them crashes, all of them metrics that would have read fine and meant nothing.
+Six are fixed here (the throttle rate's denominator, a structurally-impossible referrer class,
+install-click noise from five non-funnel CTAs, cache hits skewing duration percentiles, IP
+literals and unbounded values reaching the `domain` column). Full record, including what was
+deliberately left: `experiments/v2-2/SELF_REVIEW.md`.
+
+The review did not complete — it hit a usage limit during the verify phase, and the correctness
+lens never returned. Treat it as a real pass, not an exhaustive one.
 
 ## W.5 What is NOT fixed in this release
 

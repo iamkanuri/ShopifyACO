@@ -141,3 +141,8 @@ matchable at install time.* Tested (`hasMatchablePublicTest probes without claim
 | F2 | Correct fix is queue-based; doing it inline is worse than not doing it. |
 | F4 | UI-only, and F2 is the cause. |
 | Task noun | *"Find this **walk**"* / *"**confidant**"* — the merchant's own `product_type`. Cosmetic but it is the first line they read (CP3 §8). |
+
+An adversarial review of this session's own diff found seven further defects, six of them in
+code that already had passing tests. Six are fixed; the rest are recorded. See
+[`SELF_REVIEW.md`](SELF_REVIEW.md) — including the one that matters most for this audit: the
+`install_completed.reconciled` flag ignores the OAuth-token path, which folds into F1.
