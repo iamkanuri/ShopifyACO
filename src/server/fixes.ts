@@ -90,7 +90,9 @@ export async function listFixesHandler(req: Request, res: Response): Promise<voi
     const row = typeof p.product_gid === "string" ? live.get(p.product_gid) : undefined;
     const field = writableField(String(p.target));
     if (!row || !field) continue;
-    const liveValue = field === "seoTitle" ? row.seoTitle : row.seoDescription;
+    const liveValue = field === "seoTitle" ? row.seoTitle
+      : field === "descriptionHtml" ? row.descriptionHtml
+      : row.seoDescription;
     p.live_current_value = liveValue;
     p.product_title = row.title;
     // Drift only matters while the proposal is still actionable — the apply conflict

@@ -96,14 +96,22 @@ export async function updateProposal(
 export async function getLiveSeoFields(
   shop: string,
   productGids: string[],
-): Promise<Map<string, { title: string | null; seoTitle: string | null; seoDescription: string | null }>> {
-  const out = new Map<string, { title: string | null; seoTitle: string | null; seoDescription: string | null }>();
+): Promise<Map<string, { title: string | null; seoTitle: string | null; seoDescription: string | null; descriptionHtml: string | null }>> {
+  const out = new Map<string, { title: string | null; seoTitle: string | null; seoDescription: string | null; descriptionHtml: string | null }>();
   if (productGids.length === 0) return out;
-  const { rows } = await pgQuery<{ product_gid: string; title: string | null; seo_title: string | null; seo_description: string | null }>(
-    "select product_gid, title, seo_title, seo_description from products where shop_domain=$1 and product_gid = any($2)",
+  // `description_html` is here because `descriptionHtml` is a writable target too (v2.1
+  // CP2.5). Without it the proposals list fell through to seo_description for body
+  // proposals — showing the merchant the wrong "current value" and flagging every one of
+  // them as drifted forever, since an SEO field never equals a body.
+  const { rows } = await pgQuery<{ product_gid: string; title: string | null; seo_title: string | null; seo_description: string | null; description_html: string | null }>(
+    "select product_gid, title, seo_title, seo_description, description_html from products where shop_domain=$1 and product_gid = any($2)",
     [shop, productGids],
   );
-  for (const r of rows) out.set(r.product_gid, { title: r.title, seoTitle: r.seo_title, seoDescription: r.seo_description });
+  for (const r of rows) {
+    out.set(r.product_gid, {
+      title: r.title, seoTitle: r.seo_title, seoDescription: r.seo_description, descriptionHtml: r.description_html,
+    });
+  }
   return out;
 }
 

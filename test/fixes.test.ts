@@ -377,6 +377,38 @@ test("the descriptionHtml conflict guard ENGAGES when the merchant edits the bod
   }
 });
 
+test("the proposals list resolves a body proposal's live value from the body, not an SEO field", { skip: !gate }, async () => {
+  const { upsertShop } = await import("../src/db/shops.js");
+  const { getLiveSeoFields } = await import("../src/db/fixes.js");
+  const { upsertProduct } = await import("../src/db/catalog.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `fixdrift-${Date.now()}.myshopify.com`;
+  const gid = "gid://shopify/Product/1001";
+  try {
+    await upsertShop(shop, { status: "active", scopes: "read_products,write_products" });
+    await upsertProduct(shop, {
+      productGid: gid, handle: "h", title: "T", description: "stripped view",
+      descriptionHtml: RICH_HTML, vendor: null, productType: null, tags: [], status: "ACTIVE",
+      onlineUrl: null, imageUrl: null, seoTitle: "SEO title", seoDescription: "SEO description",
+      metafields: [], variants: [], collections: [], nestedTruncated: false,
+    });
+
+    // Before the fix, a `descriptionHtml` proposal fell through to seo_description here —
+    // so Fix Studio showed the merchant the wrong "current value" and, because an SEO field
+    // never equals a body, flagged every body proposal as drifted forever.
+    const live = (await getLiveSeoFields(shop, [gid])).get(gid)!;
+    assert.equal(live.descriptionHtml, RICH_HTML, "the body is available to the list enrichment");
+    assert.equal(live.seoDescription, "SEO description", "…and is distinct from the SEO field");
+    assert.notEqual(live.descriptionHtml, live.seoDescription);
+  } finally {
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
+  }
+});
+
 test("the no-observable-effect guard still fires on the raw-HTML body path", { skip: !gate }, async () => {
   const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
   const { createProposal, getProposal } = await import("../src/db/fixes.js");
