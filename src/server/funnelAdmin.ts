@@ -69,7 +69,11 @@ export function renderFunnel(windows: FunnelWindow[]): string {
 export async function funnelHandler(req: Request, res: Response): Promise<void> {
   res.setHeader("Cache-Control", "no-store");
   if (!ENV.funnel.adminEnabled) {
-    // 404, not 403: an unlit surface should not advertise that it exists.
+    // 404 rather than 403, so an authenticated admin can't tell "off" from "absent"
+    // and a stale bookmark reads as gone rather than forbidden. Note this is reached
+    // only AFTER `requireAdmin`, so an unauthenticated prober still sees 401 — the
+    // same 401 every other /api/admin/* route gives. The flag is a second lock on
+    // the data, not concealment of the path.
     res.status(404).json({ error: "Not found." });
     return;
   }

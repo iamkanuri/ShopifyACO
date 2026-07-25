@@ -24,6 +24,15 @@
         "FUNNEL_ADMIN_ENABLED": "1",
         "ADMIN_PASSWORD": "local-verify-only-not-a-secret"
       }
+    },
+    {
+      "name": "server-funnel-off",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 8787,
+      "env": {
+        "ADMIN_PASSWORD": "local-verify-only-not-a-secret"
+      }
     }
   ]
 }
