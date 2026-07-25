@@ -70,8 +70,13 @@ Today's measurement sits in the first band with room to spare.
 
 Any **one** of these, and this decision is reopened:
 
-1. **Rolling-24h throttle rate ≥ 10% sustained over 48h** at real traffic. The measured 0% is
-   a *cold, well-spaced* number (one request per host, ≥130s apart). The most likely way it
+1. **The rolling-24h rate leaves §5's first band** — i.e. **≥ 5% sustained for 48h**. Use §5's
+   numbers, not a new set: 5–20% means *tune first* (raise the cache TTL, lower
+   `PRODUCT_TEST_EGRESS_PER_MIN` — env vars, no redeploy), and only **> 20% sustained, or any
+   day where `degraded` exceeds clean results**, justifies building anything from the table
+   below. The brief's "~10%" band and §5's bands are the same decision at different
+   resolutions; §5 is the one already wired to telemetry, so it wins. The measured 0% is a
+   *cold, well-spaced* number (one request per host, ≥130s apart) — the most likely way it
    moves is **concurrency**, not time.
 2. **Bucket C turns out to dominate** once the instrumentation above exists. Per-host WAFs are
    not solved by IP rotation; if most blocks are WAFs, the honest conclusion is that the
