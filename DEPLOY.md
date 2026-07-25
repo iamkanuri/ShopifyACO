@@ -709,3 +709,35 @@ healthcheck overrides (Railway handles those inconsistently). `worker`/`schedule
   request size cap; honeypot field; per-scan + global daily spend caps enforced
   **before** any live API call; scan wall-clock timeout.
 - No secret is read from anything but environment variables.
+
+## v2.4 release — adversarial corpus + identifier plausibility (2026-07-25)
+
+**Commit:** `feat/v2-4-harden` merged to `main`. Verify with `GET /healthz` → `commit`.
+
+**No migration.** Nothing in this release touches the schema, so a rollback is a plain revert
+with no data consideration.
+
+**What changes in production, behaviourally:**
+- `identifiers` stops passing placeholder values. A store publishing `mpn: "N/A."`,
+  `"TBD-001"` or an all-zero GTIN now correctly reads as *not proven* instead of as a
+  published identifier. This **removes** false passes; it cannot add one.
+- GTINs written with the barcode's separators (`0-36000-29145-2`) now pass. This **removes**
+  false fails.
+- `GET /c/:token` refuses a self-contradicting outreach case with the same 404 it already
+  gives for a bad token, and logs `[hosted-case] REFUSING to serve …`. Measured against the
+  real 12-case bundle: fires on exactly the two broken cases, none of the other ten. Both
+  broken cases were repaired in the bundle, so with the current bundle nothing is refused.
+  **If a `REFUSING to serve` line appears in the logs, the bundle on the volume is stale —
+  redeploy it, do not disable the guard.**
+
+**Verification after deploy (no credentials needed):**
+```
+curl -s https://lens.thirdocular.com/healthz          # commit == the merge SHA
+```
+Then, if `HOSTED_CASES_DIR` is set, load one `/c/<token>` and confirm 200 + `X-Robots-Tag:
+noindex, nofollow`, and any bad token → 404.
+
+**Rollback:**
+```
+git revert --no-edit <merge-sha> && git push origin main
+```

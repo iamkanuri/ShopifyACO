@@ -573,6 +573,17 @@ them**. NO new dependency (the no-SDK / raw-`fetch` Stripe integration is extend
   ⚠️ Still needs the external `embedded=true` flip + `shopify app deploy` + REAL in-admin testing to
   confirm the handshake (the build is the most-likely-correct path, but only live testing proves it).
 
+> ⚠️ **The `origin` prune (v2.4 CP2) is BLOCKED on a contaminated measurement, deliberately.**
+> The plan was to narrow `origin` (measured 0.91 fail rate, above the 15–85% discrimination
+> band) with a category gate and re-measure. The adversarial corpus then showed the `origin`
+> matcher is wrong in **both** directions: 10 confirmed false passes (Title-Case marketing copy
+> — `"Made in Very Small Batches."` — reads as a country) and 3 confirmed false fails (ordinary
+> lowercase `"made in vermont"`, and the very common `"Origin: Italy"` spec label, both return
+> not_proven). **The 0.91 is therefore not a measurement of how many stores state an origin**;
+> it is that mixed with a broken matcher. Narrowing it now would tune a category gate against a
+> contaminated number and then re-measure with the same broken instrument — the exact mistake
+> `RESULT_QUALITY_2.md` argues against. Fix `statesAPlace` first, re-measure, then decide.
+
 ## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
 
 `test/adversarialCorpus.test.ts` + `test/support/adversarial.ts`. **A new requirement
