@@ -45,7 +45,7 @@ export function buildOgSvg(p: ReportPreview, brandName: string): string {
 
   <text x="80" y="430" font-family="Inter" font-size="180" font-weight="700" fill="${c}">${score == null ? "—" : score}</text>
   <text x="${80 + (score == null ? 70 : String(score).length * 108)}" y="430" font-family="Inter" font-size="56" fill="#8a8882">/ 100</text>
-  <text x="84" y="478" font-family="Inter" font-size="26" font-weight="700" fill="#8a8882" letter-spacing="1">AI VISIBILITY SCORE</text>
+  <text x="84" y="478" font-family="Inter" font-size="26" font-weight="700" fill="#8a8882" letter-spacing="1">AI BUYER READINESS</text>
 
   <text x="80" y="560" font-family="Inter" font-size="${gapFontSize}" fill="#ECEAE3">${xml(gapLine)}</text>
 </svg>`;

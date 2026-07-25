@@ -53,17 +53,12 @@ export function Dashboard() {
 
       {demo && <Onboarding />}
 
+      {/* V2 CP4 — the composite is DEMOTED, not deleted. A score tells you that
+          something moved; a test tells you what broke, and the tests are now the
+          product. The number stays available (some merchants track it, and the
+          formula is still the documented one) but it is no longer the frame, no
+          longer the hero, and no longer what a merchant lands on. */}
       <div className="al-hero">
-        <div className="card al-score">
-          <div className="al-score-ring" style={{ ["--p" as string]: d.score ?? 0 }}>
-            <div className="al-score-inner"><span className="al-score-num">{d.score ?? "—"}</span><span className="al-score-den">{d.score == null ? "" : "/100"}</span></div>
-          </div>
-          <div>
-            <div className="al-score-label">AI Visibility Score</div>
-            <div className="muted al-score-basis">A documented, deterministic blend of recommendation rate, mention rate, rank quality and competitive standing — never a black box.</div>
-          </div>
-        </div>
-
         <div className="al-kpis">
           <div className="card al-kpi">
             <div className="al-kpi-label">Recommendation rate</div>
@@ -86,6 +81,17 @@ export function Dashboard() {
             <div className="muted al-kpi-sub">{d.topThreat ? "winning the queries you lose" : "no competitor recommended yet"}</div>
           </div>
         </div>
+      </div>
+
+      {/* The composite, kept but secondary and plainly described. */}
+      <div className="card al-composite">
+        <span className="al-composite-lab">Composite measure</span>
+        <b className="al-composite-val">{d.score ?? "—"}{d.score == null ? "" : "/100"}</b>
+        <span className="muted al-composite-sub">
+          A documented, deterministic blend of recommendation rate, mention rate, list position
+          and competitive standing — never a black box. It summarises a measurement run; it
+          doesn't tell you what to fix. <Link to="/app">Your tests</Link> do.
+        </span>
       </div>
 
       <div className="al-loop">

@@ -711,7 +711,7 @@ app.post(
     if (!isValidRunId(runId)) return res.status(404).json({ error: "Unknown report." });
     const body = req.body as { email?: string; hp?: string; sourcePage?: string };
     if (body.hp) return res.status(400).json({ error: "Request rejected." });
-    if (!isValidEmail(body.email)) return res.status(400).json({ error: "Enter a valid email to save your scorecard." });
+    if (!isValidEmail(body.email)) return res.status(400).json({ error: "Enter a valid email to save your report." });
     const email = body.email;
     const ipH = ipHash(clientIp(req));
     if (!rateLimit(`claim:${clientIp(req)}`, 8, 60_000)) return res.status(429).json({ error: "Too many requests — give it a minute." });

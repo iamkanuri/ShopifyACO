@@ -21,7 +21,7 @@ export function ShareBar({ runId, shareText }: { runId: string; shareText: strin
 
   return (
     <div className="sharebar no-print">
-      <span className="muted sharebar-label">Share your scorecard</span>
+      <span className="muted sharebar-label">Share this report</span>
       <button className="btn" onClick={copy}>{copied ? "Link copied ✓" : "Copy link"}</button>
       <a className="btn" href={xUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent("report_share_x", runId, {})}>Post on X</a>
       <a className="btn" href={liUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent("report_share_linkedin", runId, {})}>Share on LinkedIn</a>

@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   });
 
   console.log(`Re-analyzed ${run.results.length} results (offline, no API calls).`);
-  console.log(`  AI Visibility Score: ${analysis.visibilityScore.score}/100`);
+  console.log(`  AI buyer readiness: ${analysis.visibilityScore.score}/100`);
   console.log(`  Fix cards: ${analysis.fixCards.length}`);
   console.log(`  Report:  ${mdPath}`);
   console.log(`  Results: ${jsonPath}`);

@@ -24,7 +24,7 @@ export function ScorePanel({ score }: { score: VisibilityScore }) {
           </div>
         </div>
         <div>
-          <div className="label">AI Visibility Score</div>
+          <div className="label">AI buyer readiness</div>
           <div className="basis">
             Based on {score.basedOnResponses} grounded responses. Deterministic — every
             component is shown below, no black box.

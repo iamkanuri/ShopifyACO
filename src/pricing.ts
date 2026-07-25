@@ -25,7 +25,7 @@ export const PLANS: PlanDef[] = [
     price: "$0",
     cadence: "",
     blurb: "See if AI assistants know you.",
-    features: ["5 buyer-intent prompts", "3 engines (ChatGPT, Gemini, Perplexity)", "Visibility score + competitor leaderboard"],
+    features: ["5 buyer-intent prompts", "3 engines (ChatGPT, Gemini, Perplexity)", "Readiness measure + competitor leaderboard"],
   },
   {
     id: "full_report",

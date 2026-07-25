@@ -101,7 +101,7 @@ export async function runScanJob(runId: string, config: Config, opts: ScanJobOpt
       costUsd: totalCostUsd,
       engineErrors,
     });
-    await appendProgress(runId, `Done. Visibility score ${analysis.visibilityScore.score}/100, $${totalCostUsd.toFixed(4)}.`);
+    await appendProgress(runId, `Done. AI buyer readiness ${analysis.visibilityScore.score}/100, $${totalCostUsd.toFixed(4)}.`);
   } catch (err) {
     const message = (err as Error).message;
     await setStatus(runId, { status: "failed", error: message });

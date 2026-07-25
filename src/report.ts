@@ -83,10 +83,10 @@ function buildMarkdown(
   L.push(`**Generated:** ${meta.finishedAt}`);
   L.push("");
 
-  // ---- AI Visibility Score + executive insight (analysis-driven) -----------
+  // ---- AI buyer readiness + executive insight (analysis-driven) -----------
   const vs = analysis.visibilityScore;
   const runSizeLabel = { mini: "Mini scan", standard: "Standard scan", deep: "Deep scan" }[analysis.runSize];
-  L.push(vs.score == null ? `## AI Visibility Score: not enough data` : `## AI Visibility Score: ${vs.score}/100`);
+  L.push(vs.score == null ? `## AI buyer readiness: not enough data` : `## AI buyer readiness: ${vs.score}/100`);
   L.push("");
   L.push(`> **${analysis.headline}**`);
   L.push("");

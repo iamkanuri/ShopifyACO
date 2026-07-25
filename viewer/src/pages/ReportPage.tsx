@@ -118,7 +118,7 @@ export function ReportPage({ runId }: { runId: string }) {
           {data.failedRefunded
             ? "Your payment was refunded automatically — no action needed."
             : "You'll be refunded automatically — no action needed."}{" "}
-          Your free scorecard is below. Run a new scan to try again.
+          Your free report is below. Run a new scan to try again.
           <div style={{ marginTop: 12 }}>
             <Link to={retryHref} className="btn btn-primary">Run a new scan →</Link>
           </div>
@@ -150,7 +150,7 @@ function PreviewClaim({ runId, preview: p, onClaimed }: { runId: string; preview
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   async function claim() {
-    if (!valid) { setErr("Enter a valid email to save your scorecard."); return; }
+    if (!valid) { setErr("Enter a valid email to save your report."); return; }
     setBusy(true); setErr("");
     try {
       const r = await fetch(`/api/runs/${runId}/claim`, {
@@ -173,12 +173,12 @@ function PreviewClaim({ runId, preview: p, onClaimed }: { runId: string; preview
         <span className="chip" style={{ fontWeight: 700 }}>{p.brand}{p.category ? ` · ${p.category}` : ""}</span>
         <span className="chip">{p.basedOnResponses} answers analyzed</span>
       </div>
-      <h1 className="report-headline">{p.headline ?? "Your AI visibility scorecard"}</h1>
+      <h1 className="report-headline">{p.headline ?? "Your AI buyer readiness report"}</h1>
 
       <section className="hero section">
         <div className="card preview-score">
           <div className="preview-score-num">{p.score ?? "—"}<span className="preview-score-den"> / 100</span></div>
-          <div className="muted">AI Visibility Score</div>
+          <div className="muted">AI buyer readiness</div>
         </div>
         <div className="card preview-gap">
           <p className="preview-gap-line">{p.gapLine}</p>
@@ -187,16 +187,16 @@ function PreviewClaim({ runId, preview: p, onClaimed }: { runId: string; preview
       </section>
 
       <div className="card claim-card">
-        <h2>Save &amp; share your scorecard</h2>
-        <p className="muted">Unlock the full competitor leaderboard, the per-assistant breakdown, and every score component — and get a shareable link.</p>
+        <h2>Save &amp; share this report</h2>
+        <p className="muted">Unlock the full competitor leaderboard, the per-assistant breakdown, and every readiness component — and get a shareable link.</p>
         <div className="claim-form">
           <input type="email" placeholder="you@example.com" value={email} aria-label="Your email address"
             onChange={(e) => { setEmail(e.target.value); setErr(""); }}
             onKeyDown={(e) => e.key === "Enter" && claim()} />
-          <button className="btn btn-primary lg" disabled={busy} onClick={claim}>{busy ? "Saving…" : "Save & share your scorecard"}</button>
+          <button className="btn btn-primary lg" disabled={busy} onClick={claim}>{busy ? "Saving…" : "Save & share this report"}</button>
         </div>
         {err && <div className="banner-error" role="alert">{err}</div>}
-        <p className="muted al-fineprint">Your full scorecard opens right here — no waiting on email. This page's link then works for anyone you share it with, showing only public AI answers about public brands (no personal data). The URL is unguessable, so it stays private until you share it.</p>
+        <p className="muted al-fineprint">Your full report opens right here — no waiting on email. This page's link then works for anyone you share it with, showing only public AI answers about public brands (no personal data). The URL is unguessable, so it stays private until you share it.</p>
       </div>
 
       <section className="section">
