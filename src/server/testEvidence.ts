@@ -161,17 +161,45 @@ export function presentableQuote(sentence: string): string | null {
 
 // ---- the uniform support check ----------------------------------------------
 
+/** Substring match, optionally WORD-BOUNDED.
+ *
+ *  The default (plain `includes`) is safe for the multi-word phrases the claim and
+ *  timing dictionaries use — "ships within" cannot hide inside another word. It is
+ *  NOT safe for single-word terms, and v2.3's attribute requirements need those:
+ *  bare `includes` would match "weight" inside "lightweight", "oz" inside "ozone",
+ *  and "cm" inside "cms" — each a silent false PASS, which is the one failure mode
+ *  this module exists to prevent. Boundaries here are non-alphanumeric, so hyphen
+ *  and slash compounds ("machine-wash", "9.5oz") still match, which is what a
+ *  merchant's copy actually looks like. */
+function containsTerm(haystack: string, term: string, wholeWord: boolean): boolean {
+  if (!term) return false;
+  if (!wholeWord) return haystack.includes(term);
+  let i = haystack.indexOf(term);
+  while (i !== -1) {
+    const before = i === 0 ? "" : haystack[i - 1]!;
+    const after = haystack[i + term.length] ?? "";
+    // A LETTER on either side means this is part of a different word. A DIGIT is
+    // fine on both sides, because that is exactly how units are written: "16oz",
+    // "2x4". Blocking digits would reject the commonest real phrasing.
+    const openLeft = !before || !/[a-z]/i.test(before);
+    const openRight = !after || !/[a-z]/i.test(after);
+    if (openLeft && openRight) return true;
+    i = haystack.indexOf(term, i + 1);
+  }
+  return false;
+}
+
 /** Find the first sentence that genuinely supports one of `terms`, on a quotable
  *  product-evidence surface, and produce a presentable quote for it. */
 export function findSupport(
   evidence: EvidenceSentence[],
   terms: readonly string[],
-  opts: { allowLogisticsSubject?: boolean; requireDigit?: boolean } = {},
+  opts: { allowLogisticsSubject?: boolean; requireDigit?: boolean; wholeWord?: boolean } = {},
 ): SupportedEvidence | null {
   for (const ev of evidence) {
     const n = normalize(ev.text);
     for (const term of terms) {
-      if (!n.includes(normalize(term))) continue;
+      if (!containsTerm(n, normalize(term), opts.wholeWord === true)) continue;
       if (opts.requireDigit && !/\d/.test(ev.text)) continue; // timing needs a number
       const about = passesAboutness(ev.text, term, opts);
       if (!about.ok) continue;

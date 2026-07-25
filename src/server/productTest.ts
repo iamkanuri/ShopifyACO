@@ -77,6 +77,86 @@ const CATEGORY_CLAIMS: Array<{ kw: RegExp; claims: string[] }> = [
   { kw: /bottle|container|storage|tumbler/i, claims: ["bpa_free"] },
 ];
 
+// ---- attribute requirements (v2.3 CP2) --------------------------------------
+// Measured motivation: with the defaulted `cruelty_free` row removed, the modal
+// store produced exactly ONE finding and 21% produced none, and that one finding
+// was the same for 71% of stores ("no stated delivery window"). Uniform failure is
+// not depth — it is a template. See experiments/v2-2/RESULT_QUALITY.md.
+//
+// A requirement earns its place by DISCRIMINATION, not by failure rate: one that
+// fails for everyone (cruelty-free, 13/13) and one that fails for no one (price,
+// 0/13) carry exactly the same amount of information, which is none.
+//
+// Every term list below is matched through `findSupport`, so each inherits the same
+// evidence discipline as a claim: sentence-scoped, negation-guarded, aboutness-
+// checked, chrome-excluded, verbatim whole-sentence quote, fail closed. Single-word
+// terms additionally set `wholeWord` — without it "weight" matches "lightweight"
+// and the row becomes a silent false PASS.
+interface AttributeSpec {
+  label: string;
+  /** What the row says when nothing was found. Names the fix, not the failing. */
+  missingDetail: string;
+  terms: readonly string[];
+  requireDigit?: boolean;
+  wholeWord?: boolean;
+  /** When set, the requirement is only asked of products whose category matches —
+   *  "care instructions" is a real buyer constraint for a pan and noise for a pencil. */
+  onlyFor?: RegExp;
+}
+
+const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
+  materials: {
+    label: "Materials are stated",
+    missingDetail: "no statement of what this product is made of that an AI buyer could read",
+    // COMPOSITION FRAMES, not bare material nouns. "aluminum" alone would match
+    // "aluminum-free" — a deodorant claiming to be free of a metal would have read
+    // as having stated its materials. A frame cannot do that.
+    terms: [
+      "made of", "made from", "made with", "crafted from", "crafted of", "constructed from",
+      "constructed of", "material:", "materials:", "fabric:", "composition:", "made in part from",
+      "% cotton", "% wool", "% polyester", "% linen", "% silk", "% nylon", "% leather", "% recycled",
+    ],
+  },
+  dimensions: {
+    label: "Size, capacity or weight is stated",
+    missingDetail: "no readable dimensions, capacity or weight",
+    terms: [
+      "dimensions", "capacity", "diameter", "inches", "inch", "cm", "mm", "millimeters", "centimeters",
+      "liters", "litres", "ml", "oz", "fl oz", "fluid ounces", "ounces", "lbs", "pounds", "grams", "kg",
+      "kilograms", "height", "width", "length", "weighs", "weight",
+    ],
+    requireDigit: true,
+    wholeWord: true,
+  },
+  origin: {
+    label: "Country of origin is stated",
+    missingDetail: "no stated country of origin",
+    terms: [
+      "made in", "handmade in", "handcrafted in", "crafted in", "manufactured in", "assembled in",
+      "produced in", "country of origin", "designed and made in", "grown in", "milled in", "roasted in",
+    ],
+  },
+  // NOTE — a `warranty` requirement was built, measured (0.71 fail rate, in band)
+  // and then DROPPED before shipping. Its term list ("guarantee", "guaranteed",
+  // "satisfaction guarantee") collides head-on with the claim linter's `guarantee`
+  // rule, and the linter lints `evidenceQuote` too. So a store whose copy says
+  // "30-day money-back guarantee" would have had its ENTIRE report blocked and
+  // returned as `unreachable` — a flatly false statement about a store we read
+  // perfectly well. A requirement that can destroy the whole result to add one row
+  // is not worth its discrimination. See experiments/v2-3/RESULT_QUALITY_2.md.
+  care: {
+    label: "Care or use instructions are stated",
+    missingDetail: "no care or use instructions an AI buyer could read",
+    terms: [
+      "machine wash", "machine-wash", "hand wash", "hand-wash", "dishwasher safe", "dishwasher-safe",
+      "care instructions", "wipe clean", "tumble dry", "air dry", "spot clean", "do not bleach",
+      "hand wash only", "season before", "how to use", "instructions for use", "dry flat",
+    ],
+    // Categories where a buyer genuinely constrains on care. A pencil does not.
+    onlyFor: /apparel|clothing|shirt|dress|pant|sock|sweater|jacket|textile|bedding|sheet|towel|linen|rug|cookware|pan|pot|skillet|knife|cutting board|bag|backpack|shoe|boot|footwear|wool|leather|cast iron/i,
+  },
+};
+
 /** Only "required" phrasings — a store merely OFFERING a subscription is not a blocker. */
 const SUBSCRIPTION_REQUIRED = ["subscription required", "subscription is required", "subscription only", "subscribe to purchase", "only available by subscription", "must subscribe"];
 
@@ -532,8 +612,16 @@ export async function attachShippingPolicy(
 }
 
 // ---- buyer task generation (4–6 requirements across surface types) -----------
-export type ReqKind = "claim" | "price_under" | "variant_option" | "no_subscription" | "delivery" | "in_stock";
-export interface Requirement { id: string; kind: ReqKind; label: string; claim?: string; capUsd?: number; optionValue?: string }
+export type ReqKind =
+  | "claim" | "price_under" | "variant_option" | "no_subscription" | "delivery" | "in_stock"
+  // v2.3 CP2 — depth the public data can actually adjudicate.
+  | "attribute"   // a stated product attribute (materials, dimensions, origin, …)
+  | "identifiers"; // GTIN/MPN in structured data — what a machine consumer needs
+export interface Requirement {
+  id: string; kind: ReqKind; label: string; claim?: string; capUsd?: number; optionValue?: string;
+  /** Key into ATTRIBUTE_SPECS. Only set for `attribute` requirements. */
+  attribute?: string;
+}
 
 // ---- contract + engine versioning (V2 §4.4) ---------------------------------
 // A before/after comparison is only evidence if BOTH runs asked the same question
@@ -548,7 +636,11 @@ export const ENGINE_VERSION = "v2.0.0";
  *  process, forever. Deliberately covers only the fields that decide a verdict. */
 export function contractVersion(requirements: Requirement[]): string {
   const canonical = requirements
-    .map((r) => [r.kind, r.claim ?? "", r.capUsd ?? "", r.optionValue ?? ""].join(":"))
+    // `attribute` is appended ONLY when present, so every pre-v2.3 requirement
+    // hashes to exactly the byte string it always did. Widening the tuple
+    // unconditionally would have changed every stored contract's fingerprint at
+    // once and made every saved before/after comparison refuse itself as "drifted".
+    .map((r) => [r.kind, r.claim ?? "", r.capUsd ?? "", r.optionValue ?? "", ...(r.attribute ? [r.attribute] : [])].join(":"))
     .sort()
     .join("|");
   // FNV-1a — short, deterministic, dependency-free. Not a security hash: this
@@ -606,8 +698,43 @@ function adjudicability(p: PublicProduct, r: Requirement): number {
     case "in_stock": return p.ldAvailability || p.variants.length ? 3 : 1;
     case "no_subscription": return 2; // absence-based, always answerable
     case "delivery": return 2;        // the policy fetch usually resolves it
+    // Decidable exactly when there is product text to decide it against.
+    case "attribute": return p.evidence.length ? 3 : 0;
+    // Structural and binary: readable whenever the page markup was readable.
+    case "identifiers": return p.extracted ? 3 : 0;
   }
 }
+
+// ---- the first line the merchant reads --------------------------------------
+// `product_type` is the merchant's own taxonomy field and is frequently not a
+// noun for the thing: the v2.2 sample produced "Find this walk", "Find this
+// products" and "Find this confidant". Their data, our sentence — and it made a
+// specific diagnosis look broken before the merchant reached a single finding.
+//
+// The product TITLE is always the merchant's own name for the product and is
+// never nonsense, so it leads. `product_type` is used only when it looks like an
+// actual category word, and a neutral phrasing is the floor.
+const PRODUCT_TYPE_STOPLIST = /^(products?|all|default|misc|miscellaneous|other|none|home ?page|frontpage|new|featured|shop|collection|item|untitled|general|\d+)$/i;
+
+export function taskSubject(p: PublicProduct): string {
+  const title = (p.title ?? "").replace(/\s+/g, " ").trim();
+  if (title && title.length <= 70) return `the ${title}`;
+  if (title) {
+    // Long titles are usually "Name — long marketing subtitle"; keep the head.
+    const head = title.split(/\s+[–—|:]\s+/)[0]!.trim();
+    if (head && head.length <= 70) return `the ${head}`;
+  }
+  const type = (p.productType ?? "").replace(/\s+/g, " ").trim();
+  if (type && type.length <= 30 && /^[a-z][a-z\s&'-]*$/i.test(type) && !PRODUCT_TYPE_STOPLIST.test(type)) {
+    return `this ${type.toLowerCase()}`;
+  }
+  return "this product";
+}
+
+/** Upper bound on rows in the table. v2.2 shipped 4–6; the measured consequence was
+ *  a modal store with ONE genuine finding. The target (v2.3 CP2) is 8–12 tested with
+ *  2–4 failing, and a failing SET that differs between stores. */
+const MAX_REQUIREMENTS = 10;
 
 export function buildBuyerTask(p: PublicProduct): { summary: string; requirements: Requirement[] } {
   // Candidate pool, then ranked by whether public data can decide it.
@@ -622,7 +749,16 @@ export function buildBuyerTask(p: PublicProduct): { summary: string; requirement
   if (optionValue) candidates.push({ id: "variant", kind: "variant_option", optionValue, label: `${optionValue} option available` });
   candidates.push({ id: "stock", kind: "in_stock", label: "In stock and purchasable" });
   candidates.push({ id: "sub", kind: "no_subscription", label: "Available as a one-time purchase" });
-  candidates.push({ id: "delivery", kind: "delivery", label: "Ships in the US within a week" });
+  candidates.push({ id: "delivery", kind: "delivery", label: "Delivery timing is stated" });
+  // v2.3 CP2 — attribute + structured-data depth. `onlyFor` keeps a requirement out
+  // of categories where it isn't a real buyer constraint: asking a graphite pencil
+  // for care instructions is the same mistake as asking it to be cruelty-free.
+  const categoryHay = `${p.productType ?? ""} ${p.title ?? ""}`;
+  for (const [key, spec] of Object.entries(ATTRIBUTE_SPECS)) {
+    if (spec.onlyFor && !spec.onlyFor.test(categoryHay)) continue;
+    candidates.push({ id: `attr_${key}`, kind: "attribute", attribute: key, label: spec.label });
+  }
+  candidates.push({ id: "ids", kind: "identifiers", label: "Product identifier (GTIN or MPN) is published" });
 
   // Selection: keep 4–6 requirements that SPAN the surface types (claim · price ·
   // variant · purchase terms · logistics) — depth across surfaces is what makes the
@@ -632,27 +768,37 @@ export function buildBuyerTask(p: PublicProduct): { summary: string; requirement
     : r.kind === "no_subscription" ? "terms"
     : r.kind === "delivery" ? "logistics"
     : r.kind === "price_under" ? "price"
+    : r.kind === "identifiers" ? "machine"
+    : r.kind === "attribute" ? `attr:${r.attribute}`
     : "claim";
   const pool = candidates
     .map((r, i) => ({ r, i, score: adjudicability(p, r) }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score || a.i - b.i);
 
-  // Pass 1: the best adjudicable candidate from each surface type.
+  // Pass 1: the best adjudicable candidate from each surface type, in priority
+  // order. Spanning surfaces is what makes a result read as a diagnosis rather
+  // than a checklist, and it is also what stops one dominant gap (delivery, 71%
+  // of stores in the v2.2 sample) from being the entire report.
+  const SURFACE_PRIORITY = [
+    "claim", "logistics", "attr:materials", "attr:dimensions", "machine",
+    "price", "variant", "terms", "attr:origin", "attr:warranty", "attr:care",
+  ];
   const picked = new Set<Requirement>();
-  for (const type of ["claim", "price", "variant", "terms", "logistics"]) {
+  for (const type of SURFACE_PRIORITY) {
+    if (picked.size >= MAX_REQUIREMENTS) break;
     const best = pool.find((x) => surfaceType(x.r) === type && !picked.has(x.r));
     if (best) picked.add(best.r);
   }
-  // Pass 2: fill the remaining slots (up to 6) with the next-best candidates.
+  // Pass 2: fill the remaining slots with the next-best candidates.
   for (const x of pool) {
-    if (picked.size >= 6) break;
+    if (picked.size >= MAX_REQUIREMENTS) break;
     picked.add(x.r);
   }
   const ordered = candidates.filter((c) => picked.has(c)); // restore reading order
 
   const claimWords = claims.map((c) => (CLAIM_LABEL[c] ?? c).toLowerCase()).join(", ");
-  const summary = `Find this ${p.productType?.toLowerCase() || "product"}${claimWords ? `, confirm it's ${claimWords}` : ""}, purchasable one-time with fast US shipping.`;
+  const summary = `Find ${taskSubject(p)}${claimWords ? `, confirm it's ${claimWords}` : ""}, purchasable one-time with fast US shipping.`;
   return { summary, requirements: ordered };
 }
 
@@ -778,6 +924,75 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       return {
         label: req.label, status: "pass_no_blocking", surfacesChecked: checked,
         detail: "Nothing in your public product data requires a subscription. This is the absence of a blocker, not a stated one-time-purchase option.",
+      };
+    }
+    case "attribute": {
+      const spec = ATTRIBUTE_SPECS[req.attribute!]!;
+      // PRODUCT surfaces only. The shipping policy is evidence about ORDERS, not
+      // about this product, and matching attributes there produces false passes —
+      // measured, not hypothesised: "Size, capacity or weight is stated" passed a
+      // real store on "If an order exceeds 150 lbs, it will be delivered via
+      // freight." That sentence says nothing about the product's weight. Delivery
+      // is the one requirement whose subject genuinely IS the shipping policy, and
+      // it reads `p.evidence` directly.
+      // Also drop any sentence we could not legally show. The claim linter runs over
+      // `evidenceQuote` as a final gate and BLOCKS the whole result when it trips —
+      // returning `errorKind: "unreachable"` for a store we read perfectly well. A
+      // merchant's own wording must never be able to do that, so an unquotable
+      // sentence is skipped here and the search continues. Fail closed per ROW
+      // (not_proven if nothing clean is found), never fail the whole report.
+      const productEvidence = p.evidence.filter(
+        (e) => e.surface !== "shipping_policy" && lintStrings([e.text]).ok,
+      );
+      const checked = textSurfaces({ ...p, evidence: productEvidence });
+      const hit = findSupport(productEvidence, spec.terms, {
+        requireDigit: spec.requireDigit,
+        wholeWord: spec.wholeWord,
+      });
+      if (hit) {
+        return {
+          label: req.label, status: "pass_evidenced", surfacesChecked: checked,
+          // Attributes are commonly stated in a spec BLOCK ("Dimensions: 11.42W x
+          // 18.9H … Capacity: 20 L"), which `presentableQuote` rejects as symbol
+          // soup — correctly, it is not a sentence. The match is still real, so the
+          // row says where it found it and why there is nothing to quote, rather
+          // than passing with a silently empty evidence slot.
+          detail: hit.quote
+            ? `Stated in your ${SURFACE_LABEL[hit.surface]}.`
+            : `Stated in your ${SURFACE_LABEL[hit.surface]}, in a specification block rather than a sentence we can quote.`,
+          evidenceQuote: hit.quote ?? undefined, evidenceSurface: SURFACE_LABEL[hit.surface],
+        };
+      }
+      // A degraded fetch means we never got to look — reporting "you don't publish
+      // this" would be an accusation rather than a finding (§2.3).
+      if (p.diagnostics?.degraded) {
+        return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: THROTTLED_DETAIL };
+      }
+      return {
+        label: req.label, status: "not_proven", surfacesChecked: checked,
+        detail: `Checked ${listPhrase(checked)} — ${spec.missingDetail}.`,
+      };
+    }
+    case "identifiers": {
+      // Purely structural: read from JSON-LD, never from prose. There is no text
+      // matching here and therefore no way for this row to produce a false pass.
+      const checked = ["structured data"];
+      const sig = p.extracted?.signals;
+      if (!p.extracted) {
+        return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "We couldn't read this product's page markup to check for structured identifiers.") };
+      }
+      const have = [sig?.gtin ? "GTIN" : null, sig?.mpn ? "MPN" : null].filter(Boolean) as string[];
+      if (have.length) {
+        return {
+          label: req.label, status: "pass_evidenced", surfacesChecked: checked,
+          detail: `Your structured data publishes ${listPhrase(have)}.`, evidenceSurface: "structured data",
+        };
+      }
+      return {
+        label: req.label, status: "not_proven", surfacesChecked: checked,
+        detail: sig?.productSchema
+          ? "Your product structured data publishes no GTIN or MPN, so a machine buyer can't match this product to a catalogue entry."
+          : "This product publishes no Product structured data, so there is no GTIN or MPN for a machine buyer to read.",
       };
     }
     case "delivery": {
@@ -987,6 +1202,38 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
   });
   assertions = tableAssertions;
   const count = (s: AssertionStatus) => assertions.filter((a) => a.status === s).length;
+
+  // FLOOR (v2.3 CP3): below a minimum of actually-read data, say so plainly.
+  //
+  // The v2.2 sample had one store return `ok: true` with no answering fetch tier,
+  // one surface checked and zero proven rows — a test that ran on almost nothing
+  // and reported as though it had run. v2.3 makes that strictly worse: with 8–10
+  // requirements instead of 4–6, a store we could barely read now produces a long
+  // column of "not stated" rows built on no evidence. That is the difference
+  // between a finding and an accusation, at scale.
+  //
+  // The floor is deliberately about INPUT (did we read a product surface?), not
+  // about the verdict distribution — a genuinely sparse store that we DID read is
+  // a real result and must keep rendering.
+  const readSomething =
+    product.evidence.length > 0 ||
+    Boolean(product.extracted?.hasProductSchema) ||
+    product.variants.length > 0 ||
+    product.minPriceUsd != null;
+  if (!readSomething || count("pass_evidenced") + count("pass_no_blocking") === 0) {
+    return {
+      ...base,
+      error:
+        "We couldn't read enough of this store's public data to run a meaningful test — " +
+        "not enough of the product page, structured data or variants was readable. " +
+        "That's a limit on what we could see, not a finding about this product.",
+      errorKind: "unreachable",
+      retryable: true,
+      throttledTiers: product.diagnostics?.throttled,
+      robotsStatus: product.diagnostics?.robots,
+      throttleSource: product.diagnostics?.throttleSource ?? null,
+    };
+  }
 
   const notInspectable = ["product metafields"];
   if ([...assertions, ...deferred].some((a) => a.status === "requires_store_access" && /ship|deliver/i.test(a.label))) {

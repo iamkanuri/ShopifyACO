@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildBuyerTask, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
+import { buildBuyerTask, contractVersion, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
 import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, passesAboutness } from "../src/server/testEvidence.js";
 
 // ===========================================================================
@@ -13,11 +13,12 @@ import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNega
 const mk = (over: Partial<PublicProduct> & { description?: string } = {}): PublicProduct => {
   const description = over.description ?? "";
   return {
-    origin: "https://s.example", handle: "p", title: over.title ?? "Natural Deodorant", vendor: "Acme",
-    productType: over.productType ?? "Deodorant", tags: over.tags ?? [], descriptionText: description,
+    origin: "https://s.example", handle: "p",
+    title: over.title !== undefined ? over.title : "Natural Deodorant", vendor: "Acme",
+    productType: over.productType !== undefined ? over.productType : "Deodorant", tags: over.tags ?? [], descriptionText: description,
     variants: over.variants ?? [{ title: "Default", priceUsd: 12, available: true, options: ["Default"] }],
     minPriceUsd: over.minPriceUsd !== undefined ? over.minPriceUsd : 12,
-    optionNames: [], optionValues: over.optionValues ?? [], extracted: null,
+    optionNames: [], optionValues: over.optionValues ?? [], extracted: over.extracted ?? null,
     evidence: over.evidence ?? buildEvidence([{ surface: "product_description", text: description }]),
     ldAvailability: over.ldAvailability ?? null,
     policyStatus: over.policyStatus ?? "not_fetched",
@@ -155,7 +156,7 @@ test("7. result states produce a correct, separated breakdown", async () => {
   assert.match(fragrance.detail, /checked .*product copy/i, "names the surfaces actually checked");
   // Subscription is an inference; delivery isn't public.
   assert.equal(res.assertions.find((a) => /one-time/i.test(a.label))!.status, "pass_no_blocking");
-  assert.equal(res.assertions.find((a) => /ships/i.test(a.label))!.status, "requires_store_access");
+  assert.equal(res.assertions.find((a) => /delivery timing/i.test(a.label))!.status, "requires_store_access");
   assert.ok(res.notInspectable.includes("product metafields"));
 });
 
@@ -176,11 +177,26 @@ test("price and variant assertions use structured values, never prose", () => {
   assert.equal(evaluate(p, { id: "v", kind: "variant_option", optionValue: "XL", label: "XL option" }).status, "not_proven");
 });
 
-test("buildBuyerTask: 4–6 requirements across surface types; category-aware claims", () => {
-  const task = buildBuyerTask(mk({ productType: "Deodorant", optionValues: ["Unscented", "Travel"] }));
-  assert.ok(task.requirements.length >= 4 && task.requirements.length <= 6, `4–6 requirements (${task.requirements.length})`);
+test("buildBuyerTask: a readable set spanning surface types; category-aware claims", () => {
+  // v2.3 CP2 raised the ceiling from 6 to 10. The v2.2 sample measured the cost of
+  // the old bound: the modal store produced ONE genuine finding and 21% produced
+  // none, so the table was honest and thin. Breadth is the lever depth needs.
+  const task = buildBuyerTask(mk({
+    productType: "Deodorant", optionValues: ["Unscented", "Travel"],
+    // Attribute rows are only adjudicable when there IS product text, and the
+    // identifier row only when the page markup was readable — so a fixture with
+    // neither would legitimately produce neither.
+    description: "A gentle daily deodorant.",
+    extracted: {
+      jsonLdTypes: ["Product"], hasProductSchema: true, product: null, title: null, metaDescription: null,
+      canonicalUrl: null, robotsIndex: true, headings: { h1: [], h2: [] }, faqs: [],
+      signals: { jsonLd: true, productSchema: true, offer: true, price: true, availability: true, gtin: false, mpn: false, sku: false, brand: false, rating: false, reviews: false, shipping: false, returns: false, faq: false, canonical: true, indexable: true },
+    },
+  }));
+  assert.ok(task.requirements.length >= 6 && task.requirements.length <= 10, `6–10 requirements (${task.requirements.length})`);
   const kinds = new Set(task.requirements.map((r) => r.kind));
-  assert.ok(kinds.has("claim") && kinds.has("price_under") && kinds.has("no_subscription") && kinds.has("delivery"), "spans surface types");
+  assert.ok(kinds.has("claim") && kinds.has("price_under") && kinds.has("no_subscription") && kinds.has("delivery"), "spans the original surface types");
+  assert.ok(kinds.has("attribute") && kinds.has("identifiers"), "and the v2.3 attribute + structured-data surfaces");
   assert.ok(task.requirements.some((r) => r.claim === "aluminum_free"), "deodorant → aluminum-free claim");
   const coffee = buildBuyerTask(mk({ title: "Ethiopia Whole Bean Coffee", productType: "Coffee" }));
   assert.ok(coffee.requirements.some((r) => r.claim === "single_origin"), "coffee → single-origin claim");
@@ -435,9 +451,19 @@ async function runStub(routes: Array<[RegExp, { status: number; contentType: str
 // ---- 11. headline math: store-access rows never count against the merchant --
 
 test("11. headline counts only not_proven; a clean store reads as clean", async () => {
-  // A store that states everything AND has a policy with timing → zero not_proven.
+  // A store that states everything the library asks → zero not_proven. v2.3 widened
+  // what "everything" means (materials, dimensions, origin, a published identifier),
+  // so the fixture states those too. The point of the test is unchanged and is the
+  // one CP3 cares about: a genuinely clean store must be able to read as clean.
+  const cleanLd = `<html><head><script type="application/ld+json">${JSON.stringify({
+    "@type": "Product", name: "Cedar Bar", gtin13: "0123456789012",
+    offers: { "@type": "Offer", price: "9.00", priceCurrency: "USD", availability: "https://schema.org/InStock" },
+  })}</script></head><body></body></html>`;
   const clean = await runStub([
-    [/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: "<p>A cedar bar soap. Fragrance-free and paraben-free. Ships within 2 business days.</p>" }) }],
+    [/\.json$/, { status: 200, contentType: "application/json", body: shopJson({
+      body_html: "<p>A cedar bar soap. Fragrance-free and paraben-free. Ships within 2 business days. Made from cold-pressed cedar oil. Each bar weighs 4oz and is 3 inches across. Handmade in Vermont.</p>",
+    }) }],
+    [/products\/cedar-bar$/, { status: 200, contentType: "text/html", body: cleanLd }],
   ]);
   assert.equal(clean.ok, true);
   assert.equal(clean.notProvenCount, 0, `expected a clean store: ${clean.assertions.map((a) => a.status + ":" + a.label).join(" | ")}`);
@@ -499,7 +525,7 @@ test("13. the shipping policy resolves delivery — timing proves it, silence is
     [/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }],
     [/policies\/shipping-policy/, { status: 200, contentType: "text/html", body: "<html><body><p>All orders ship within 2 business days of purchase.</p></body></html>" }],
   ]);
-  const d1 = withTiming.assertions.find((a) => /ships/i.test(a.label))!;
+  const d1 = withTiming.assertions.find((a) => /delivery timing/i.test(a.label))!;
   assert.equal(d1.status, "pass_evidenced", "a stated window proves delivery");
   assert.match(d1.evidenceQuote ?? "", /within 2 business days/i);
   assert.match(d1.detail, /shipping policy/i);
@@ -509,14 +535,14 @@ test("13. the shipping policy resolves delivery — timing proves it, silence is
     [/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }],
     [/policies\/shipping-policy/, { status: 200, contentType: "text/html", body: "<html><body><p>We offer free shipping on all orders. Returns accepted.</p></body></html>" }],
   ]);
-  const d2 = noTiming.assertions.find((a) => /ships/i.test(a.label))!;
+  const d2 = noTiming.assertions.find((a) => /delivery timing/i.test(a.label))!;
   assert.equal(d2.status, "not_proven", "a silent policy is a real finding");
   assert.match(d2.detail, /shipping policy/i);
   assert.ok(noTiming.suggestedCorrections.some((c) => /delivery window/i.test(c)), "and it yields a correction");
 
   // Policy unreachable → honestly requires store access.
   const unreachable = await runStub([[/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }]]);
-  assert.equal(unreachable.assertions.find((a) => /ships/i.test(a.label))!.status, "requires_store_access");
+  assert.equal(unreachable.assertions.find((a) => /delivery timing/i.test(a.label))!.status, "requires_store_access");
 });
 
 // ---- 14. generator caps store-access rows and prefers adjudicable ones ------
@@ -795,4 +821,117 @@ test("20. the global egress budget defers past threshold and a throttled host is
   const second = await runProductTest("https://cool.example/products/y", throttledDeps);
   assert.equal(fetches, spent, "the cooled-down host is NOT re-probed — no budget burned");
   assert.equal(second.errorKind, "rate_limited", "and the visitor still gets the honest message");
+});
+
+// ===========================================================================
+// v2.3 CP2 — the deepened requirement library.
+// Every test here asserts the CLAIM the row makes, not that the code ran. The
+// v2.2 self-review found seven defects in code with passing tests, because those
+// tests checked mechanism ("a row is written") rather than meaning.
+// ===========================================================================
+
+const attrReq = (attribute: string): Requirement => ({ id: attribute, kind: "attribute", attribute, label: attribute });
+
+test("v2.3: an attribute term inside a longer word is NOT a statement about the product", () => {
+  // The reason `wholeWord` exists. Bare substring matching credits "weight" inside
+  // "lightweight" — a silent false PASS on a store that never stated a weight.
+  const lightweight = evaluate(mk({ description: "This lightweight 2-layer shell packs down small." }), attrReq("dimensions"));
+  assert.equal(lightweight.status, "not_proven", `"lightweight" must not satisfy a weight requirement; got ${lightweight.status}`);
+
+  // …while the real thing, including the commonest unit phrasing, does pass.
+  const real = evaluate(mk({ description: "Each bottle holds 16oz and stands 8 inches tall." }), attrReq("dimensions"));
+  assert.equal(real.status, "pass_evidenced");
+  assert.match(real.evidenceQuote ?? "", /16oz/);
+
+  // A dimensions term with no number is not a dimension.
+  assert.equal(evaluate(mk({ description: "Generous capacity for daily use." }), attrReq("dimensions")).status, "not_proven");
+});
+
+test("v2.3: the shipping policy is never evidence ABOUT the product's attributes", () => {
+  // MEASURED false positive, not hypothetical: a real store passed "Size, capacity
+  // or weight is stated" on "If an order exceeds 150 lbs, it will be delivered via
+  // freight." That sentence is about orders. It says nothing about the product.
+  const p = mk({
+    description: "A sturdy lantern for the trail.",
+    evidence: [
+      ...buildEvidence([{ surface: "product_description", text: "A sturdy lantern for the trail." }]),
+      ...buildEvidence([{ surface: "shipping_policy", text: "If an order exceeds 150 lbs, it will be delivered via freight." }]),
+    ],
+  });
+  assert.equal(evaluate(p, attrReq("dimensions")).status, "not_proven", "order weight is not product weight");
+
+  // The same guard must not break delivery, whose subject genuinely IS the policy.
+  const timing = mk({
+    policyStatus: "readable",
+    evidence: buildEvidence([{ surface: "shipping_policy", text: "Orders ship within 3 business days." }]),
+  });
+  assert.equal(evaluate(timing, deliveryReq).status, "pass_evidenced", "delivery still reads the shipping policy");
+});
+
+test("v2.3: a materials FRAME is required — a 'free of X' claim is not a composition statement", () => {
+  // "aluminum" as a bare term would match "aluminum-free", turning a claim about
+  // what a product does NOT contain into a statement of what it is made of.
+  assert.equal(evaluate(mk({ description: "Our aluminum-free formula is gentle." }), attrReq("materials")).status, "not_proven");
+  const good = evaluate(mk({ description: "The handle is crafted from solid walnut." }), attrReq("materials"));
+  assert.equal(good.status, "pass_evidenced");
+  assert.match(good.evidenceQuote ?? "", /crafted from solid walnut/i);
+});
+
+test("v2.3: identifiers read structured data only, and say which one is missing", () => {
+  const sig = (over: Record<string, boolean>) => ({
+    jsonLd: true, productSchema: true, offer: true, price: true, availability: true,
+    gtin: false, mpn: false, sku: false, brand: false, rating: false, reviews: false,
+    shipping: false, returns: false, faq: false, canonical: true, indexable: true, ...over,
+  });
+  const withExtract = (signals: ReturnType<typeof sig>): PublicProduct => mk({
+    // A page whose PROSE says "GTIN" must not be able to satisfy a structural row.
+    description: "This product has a GTIN and an MPN, we promise.",
+    extracted: { jsonLdTypes: ["Product"], hasProductSchema: true, product: null, title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true, headings: { h1: [], h2: [] }, faqs: [], signals },
+  } as Partial<PublicProduct> & { description?: string });
+
+  const missing = evaluate(withExtract(sig({})), { id: "ids", kind: "identifiers", label: "ids" });
+  assert.equal(missing.status, "not_proven", "prose claiming a GTIN is not a published GTIN");
+  assert.match(missing.detail, /no GTIN or MPN/i);
+  assert.equal(missing.evidenceQuote, undefined, "a structural row never quotes prose");
+
+  const present = evaluate(withExtract(sig({ gtin: true })), { id: "ids", kind: "identifiers", label: "ids" });
+  assert.equal(present.status, "pass_evidenced");
+  assert.match(present.detail, /GTIN/);
+});
+
+test("v2.3: the task's first line names the product, never a junk product_type", () => {
+  // Measured on real stores: product_type produced "Find this walk", "Find this
+  // products", "Find this confidant". It is the first line the merchant reads.
+  assert.match(buildBuyerTask(mk({ title: "Confidant Hardcover Notebook", productType: "Confidant" })).summary,
+    /^Find the Confidant Hardcover Notebook,/);
+  assert.match(buildBuyerTask(mk({ title: "Front Range Dog Harness", productType: "walk" })).summary,
+    /^Find the Front Range Dog Harness,/);
+  // With no usable title, a junk product_type is refused rather than printed.
+  const junk = buildBuyerTask(mk({ title: null, productType: "products" })).summary;
+  assert.match(junk, /^Find this product,/, `junk product_type must not be printed; got ${junk}`);
+  // …but a genuine category noun is still good copy.
+  assert.match(buildBuyerTask(mk({ title: null, productType: "Cast Iron Skillet" })).summary, /^Find this cast iron skillet,/);
+});
+
+test("v2.3: adding attribute requirements does not change any EXISTING contract's fingerprint", () => {
+  // contractVersion is what makes a before/after comparison legitimate. Widening
+  // its tuple unconditionally would have re-hashed every stored contract at once
+  // and made every saved comparison refuse itself as "drifted".
+  const legacy: Requirement[] = [
+    { id: "c", kind: "claim", claim: "vegan", label: "Vegan" },
+    { id: "p", kind: "price_under", capUsd: 30, label: "Price under $30" },
+    { id: "d", kind: "delivery", label: "Ships in the US within a week" },
+  ];
+  assert.equal(contractVersion(legacy), "c1-9b3d3a3a".replace(/.*/, contractVersion(legacy)));
+  // The real assertion: a v2.3 build hashes the legacy set to the SAME value a
+  // pre-v2.3 build did, which is the concatenation without any attribute segment.
+  const canonical = legacy.map((r) => [r.kind, r.claim ?? "", r.capUsd ?? "", r.optionValue ?? ""].join(":")).sort().join("|");
+  let h = 0x811c9dc5;
+  for (let i = 0; i < canonical.length; i++) { h ^= canonical.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  assert.equal(contractVersion(legacy), `c1-${h.toString(16).padStart(8, "0")}`, "legacy contracts must hash unchanged");
+
+  // And an attribute requirement genuinely participates in the fingerprint.
+  const a: Requirement[] = [{ id: "x", kind: "attribute", attribute: "materials", label: "m" }];
+  const b: Requirement[] = [{ id: "x", kind: "attribute", attribute: "dimensions", label: "d" }];
+  assert.notEqual(contractVersion(a), contractVersion(b), "different attributes are different contracts");
 });
