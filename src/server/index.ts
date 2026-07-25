@@ -83,6 +83,9 @@ import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
 import { runProductTest } from "./productTest.js";
 import { newTestToken, storePublicTest } from "../db/buyerTests.js";
+import { recordFunnelEvent, classifyReferrer } from "../db/funnel.js";
+import { funnelHandler } from "./funnelAdmin.js";
+import { hostedCaseHandler } from "./hostedCase.js";
 import {
   claimTestHandler, listTestsHandler, createTestHandler, getTestHandler,
   runTestHandler, confirmQuestionsHandler, confirmHandler,
@@ -184,7 +187,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.get("/robots.txt", (req, res) => {
   res
     .type("text/plain")
-    .send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nAllow: /\n\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
+    // /c/ = the unlisted outreach cases. They already send X-Robots-Tag: noindex,
+    // but a Disallow keeps a compliant crawler from fetching them at all — and a
+    // case page names a real third-party store, so it should never be indexed.
+    .send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nDisallow: /c/\nAllow: /\n\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
 });
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
@@ -512,22 +518,53 @@ app.post(
 
 // --- AI-buyer PRODUCT TEST (Phase B). Paste a Shopify product URL → a buyer task
 //     of 4–6 requirements run as honest, evidence-availability assertions against
-//     PUBLIC data. $0, deterministic, NO model calls (no spend cap needed); SSRF-safe
-//     + robots-respecting fetch inside runProductTest. Per-IP rate-limited.
+//     PUBLIC data. Deterministic apart from ONE batched model call: `applySemanticTier`
+//     (productTest.ts) resolves claim rows the lexical pass couldn't, and is enabled
+//     unless `PRODUCT_TEST_SEMANTIC=0`. Measured cost ≈ $0.0013–$0.003 per test — small,
+//     but NOT zero; this comment used to say "$0, no model calls" and that was wrong
+//     (v2.1 CP2 correction, experiments/v2-1/CP2_METHOD.md). SSRF-safe + robots-respecting
+//     fetch inside runProductTest. Per-IP rate-limited.
 app.post(
   "/api/product-test",
   wrap(async (req, res) => {
     const body = (req.body ?? {}) as { url?: unknown; force?: unknown };
     const url = typeof body.url === "string" ? body.url.trim() : "";
-    if (!url || url.length > 400) return res.status(400).json({ error: "Paste a Shopify product URL." });
+    const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
+    // Funnel telemetry (v2.2 CP2). Emitted for EVERY arrival, before any gate, so the
+    // denominator is real: counting only tests that got past the rate limiter would
+    // hide exactly the demand we most need to see. `host` is reduced to a registrable
+    // domain inside recordFunnelEvent; the Referer is classified and then discarded.
+    const referrerClass = classifyReferrer(req.get("referer"), req.get("host"));
+    void recordFunnelEvent({ name: "test_requested", host, referrerClass });
+
+    if (!url || url.length > 400) {
+      void recordFunnelEvent({ name: "test_failed", host, referrerClass, errorKind: "http_400" });
+      return res.status(400).json({ error: "Paste a Shopify product URL." });
+    }
     // Per-IP budget: 5 tests / 10 minutes. Cached repeats still count (cheap), so a
     // burst can't be used to walk many stores from one client.
     if (!rateLimit(`producttest:${clientIp(req)}`, 5, 10 * 60_000)) {
+      // OUR limiter, recorded as such. A throttle rate that quietly folded this in
+      // would report our own back-pressure as stores refusing us.
+      void recordFunnelEvent({
+        name: "test_failed", host, referrerClass,
+        errorKind: "http_429", throttleSource: "our_rate_limit",
+      });
       return res.status(429).json({ error: "You've run several tests just now — give it a few minutes and try again." });
     }
     const startedAt = Date.now();
-    const result = await runProductTest(url, { force: body.force === true });
-    const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
+    let result: Awaited<ReturnType<typeof runProductTest>>;
+    try {
+      result = await runProductTest(url, { force: body.force === true });
+    } catch (err) {
+      // The one path that produces a 500. Previously invisible to telemetry, so a
+      // systematic crash would have looked like an absence of traffic.
+      void recordFunnelEvent({
+        name: "test_failed", host, referrerClass,
+        errorKind: "exception", durationMs: Date.now() - startedAt,
+      });
+      throw err;
+    }
 
     // V2 CP2 — mint a short token for a successful result so the merchant can carry
     // THIS test through install and land on it, continued, instead of a cold app.
@@ -557,6 +594,31 @@ app.post(
       tier: result.fetchTier ?? null, throttled: (result.throttledTiers ?? []).join(",") || null,
       degraded: Boolean(result.degraded),
     }).catch(() => {});
+
+    // Funnel outcome (v2.2 CP2). `runProductTest` answers HTTP 200 even when it failed,
+    // so the discriminator is `result.ok`, never the status code.
+    void recordFunnelEvent({
+      name: result.ok ? "test_completed" : "test_failed",
+      host, referrerClass,
+      testToken: result.testToken ?? null,
+      cached: Boolean(result.cached),
+      durationMs: Date.now() - startedAt,
+      fetchTier: result.fetchTier ?? null,
+      evidenced: result.ok ? result.evidencedCount : null,
+      noBlocking: result.ok ? result.noBlockingCount : null,
+      notProven: result.ok ? result.notProvenCount : null,
+      requiresAccess: result.ok ? result.requiresAccessCount : null,
+      requirements: result.ok ? result.total : null,
+      // "Invoked" means the tier actually ran and reported stats — a cached result
+      // carries the ORIGINAL run's stats, and its cost was already counted then, so
+      // it must not be summed again.
+      semanticInvoked: result.cached ? false : Boolean(result.semantic),
+      semanticCostUsd: result.cached ? null : (result.semantic?.costUsd ?? null),
+      errorKind: result.errorKind ?? null,
+      throttleSource: result.throttleSource ?? null,
+      robotsStatus: result.robotsStatus ?? null,
+      policyStatus: result.policyStatus ?? null,
+    });
     res.json(result);
   }),
 );
@@ -966,6 +1028,29 @@ app.post(
   }),
 );
 
+// --- funnel: the install CLICK (v2.2 CP2) ----------------------------------
+//     "Connect Shopify" is a plain link to the Shopify App Store — App Store rule
+//     2.3.1 forbids a domain prompt, so installation begins on a Shopify-owned
+//     surface and NO server route of ours is hit by the click itself. Without this
+//     beacon the funnel would show tests and installs with nothing in between, and
+//     we could never tell "nobody clicked" from "clicking doesn't convert".
+//     Fire-and-forget: it always 204s so a failed beacon never blocks navigation.
+app.post(
+  "/api/funnel/install-click",
+  wrap(async (req, res) => {
+    const b = (req.body ?? {}) as { testToken?: unknown; host?: unknown };
+    const testToken = typeof b.testToken === "string" && /^t_[a-f0-9]{20}$/.test(b.testToken) ? b.testToken : null;
+    void recordFunnelEvent({
+      name: "install_clicked",
+      testToken,
+      // Only ever a host; recordFunnelEvent reduces it to a registrable domain.
+      host: typeof b.host === "string" ? b.host.slice(0, 253) : null,
+      referrerClass: classifyReferrer(req.get("referer"), req.get("host")),
+    });
+    res.status(204).end();
+  }),
+);
+
 // ============ ADMIN ========================================================
 app.post(
   "/api/admin/login",
@@ -1004,6 +1089,12 @@ app.get(
     res.json(await buildAdminData());
   }),
 );
+
+// Funnel read surface (v2.2 CP2) — admin session AND `FUNNEL_ADMIN_ENABLED`.
+// text/plain by default so it is readable over curl; `?format=json` for the raw
+// windows. 404s (not 403s) when the flag is off — an unlit surface shouldn't
+// announce itself. robots.txt already Disallows /api/.
+app.get("/api/admin/funnel", requireAdmin, wrap(funnelHandler));
 
 // On-demand engine-key health check (pings each provider — see healthcheck.ts).
 app.post(
@@ -1315,6 +1406,27 @@ async function serveIndex(req: Request, res: Response) {
   if (req.path.startsWith("/admin")) res.setHeader("Cache-Control", "no-store");
   res.type("html").send(html);
 }
+
+// --- hosted outreach cases (v2.2 CP4) --------------------------------------
+//     MUST be registered BEFORE the SPA catch-all below: that handler only defers
+//     paths starting with /api, so a /c/:token route registered after it would be
+//     dead code that silently served index.html with a 200. Inert until
+//     HOSTED_CASES_DIR points at a bundle on the volume (see DEPLOY.md).
+//     The `/api` rate limiter does not match `/c/*`, so this carries its own.
+app.get("/c/:token", (req, res) => {
+  if (!rateLimit(`case:${clientIp(req)}`, 60, 60_000)) {
+    return res.status(429).type("text/plain").send("Too many requests");
+  }
+  hostedCaseHandler(req, res);
+});
+// Everything else under /c — `/c`, `/c/`, `/c/a/b`, a mistyped token — is a hard
+// 404, never the SPA. Verified against a running server: without this the catch-all
+// below served the marketing homepage with HTTP 200, so a broken outreach link
+// would have looked like it worked and quietly reported a visit that never happened.
+// There is deliberately no index page: the case set must not be browsable.
+app.use("/c", (_req, res) => {
+  res.status(404).type("text/plain").send("Not found");
+});
 
 if (existsSync(dist)) {
   app.use(express.static(dist, { index: false }));

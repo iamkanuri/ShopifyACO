@@ -12,7 +12,9 @@ import {
   audit, consumeOAuthState, getAccessToken, getShop, recordInstallation,
   saveOAuthState, storeCredentials, upsertShop, webhookSeen, unmarkWebhookSeen,
 } from "../db/shops.js";
-import { claimPublicTest } from "../db/buyerTests.js";
+import { claimPublicTest, hasMatchablePublicTest } from "../db/buyerTests.js";
+import { getStorefrontUrl } from "../db/catalog.js";
+import { recordFunnelEvent } from "../db/funnel.js";
 import { enqueue } from "../queue/jobs.js";
 import { processWebhookTopic } from "./webhookProcess.js";
 import { activatePixelForShop } from "../pixel/activate.js";
@@ -177,6 +179,20 @@ async function completeInstall(shop: string, tok: TokenExchange, source: string)
 
   // Mirror the Shopify Managed Pricing subscription into entitlements (free on first install).
   await syncShopifyEntitlement(shop);
+
+  // Funnel telemetry (v2.2 CP2). `reconciled` records whether a prior public test was
+  // MATCHABLE at this moment — the actual import happens later, lazily, when the
+  // merchant first opens /app. Read-only and best-effort: an install must never fail
+  // because a counter could not be written.
+  try {
+    const storefront = await getStorefrontUrl(shop).catch(() => null);
+    const hosts = [shop];
+    if (storefront) { try { hosts.push(new URL(storefront).host); } catch { /* ignore */ } }
+    const matchable = await hasMatchablePublicTest(hosts).catch(() => false);
+    await recordFunnelEvent({ name: "install_completed", reconciled: matchable });
+  } catch (err) {
+    console.warn(`[shopify] install telemetry skipped: ${(err as Error).message}`);
+  }
 }
 
 // ---- callback: verify, exchange code, encrypt+store, register webhooks -----

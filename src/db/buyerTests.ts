@@ -125,6 +125,31 @@ export async function claimPublicTestByHost(shop: string, hosts: string[], since
   return rows[0] ?? null;
 }
 
+/**
+ * READ-ONLY: is there an unclaimed public test this shop could import by host match?
+ *
+ * Deliberately does not claim. Reconciliation happens later and lazily, when the
+ * merchant first opens /app and `claimTestHandler` runs; claiming here would set
+ * `shop_domain` and make that handler report "nothing to import", breaking the
+ * first authenticated screen. So this answers the narrower, honest question —
+ * *was a prior test matchable at install time* — which is what the install
+ * telemetry records. Same predicate as `claimPublicTestByHost`, minus the update.
+ */
+export async function hasMatchablePublicTest(hosts: string[], sinceMs = 30 * 24 * 60 * 60 * 1000): Promise<boolean> {
+  const candidates = [...new Set(hosts.filter(Boolean).map((h) => h.toLowerCase().replace(/^www\./, "")))];
+  if (!candidates.length) return false;
+  const { rows } = await pgQuery<{ token: string }>(
+    `select token from public_tests
+      where shop_domain is null
+        and expires_at > now()
+        and created_at > now() - make_interval(secs => $2)
+        and regexp_replace(lower(coalesce(store_host,'')), '^www\\.', '') = any($1::text[])
+      limit 1`,
+    [candidates, Math.floor(sinceMs / 1000)],
+  );
+  return rows.length > 0;
+}
+
 // ---- buyer tests (post-install, shop-owned) ---------------------------------
 
 export async function createBuyerTest(args: {

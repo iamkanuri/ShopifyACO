@@ -246,6 +246,22 @@ export const ENV = {
     // pixel has been re-activated with a token.
     requireToken: process.env.PIXEL_REQUIRE_TOKEN === "1" || process.env.PIXEL_REQUIRE_TOKEN === "true",
   },
+
+  // ---- Funnel instrumentation + hosted cases (v2.2) -----------------------
+  funnel: {
+    // WRITING events is on by default: the whole point is that we stop learning
+    // nothing from real traffic, and the table holds no PII (migration 0028).
+    // `FUNNEL_EVENTS=0` is the kill switch, matching the pixel-ingest idiom.
+    enabled: process.env.FUNNEL_EVENTS !== "0",
+    // READING them is opt-IN and additionally requires an admin session. The read
+    // surface aggregates the whole funnel, so it stays dark unless deliberately lit.
+    adminEnabled: process.env.FUNNEL_ADMIN_ENABLED === "1" || process.env.FUNNEL_ADMIN_ENABLED === "true",
+  },
+  // Directory holding the pre-rendered outreach cases served at /c/:token. UNSET =>
+  // the route 404s everything, which is the correct posture until the links are
+  // meant to be live. Never a bundled asset: the cases describe real third-party
+  // stores and are deployed onto the Railway volume, never committed.
+  hostedCasesDir: str(process.env.HOSTED_CASES_DIR),
 };
 
 /** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */

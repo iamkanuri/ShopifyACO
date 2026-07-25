@@ -29,6 +29,9 @@ interface TestResult {
   degraded?: boolean;
   /** The failure is an upstream limit, not a verdict — offer a retry, not a shrug. */
   retryable?: boolean;
+  /** Carries THIS result through install so the first authenticated screen is the
+   *  merchant's own test, continued. Also ties a later install click back to it. */
+  testToken?: string;
 }
 
 const RESULT_LABEL: Record<AssertionStatus, string> = {
@@ -110,6 +113,13 @@ export function ProductTestPage() {
         return;
       }
       setResult(data);
+      // Remember which test this was, so a later "Connect Shopify" click can be tied
+      // back to it. The token is the server's own unguessable id and the host is
+      // already public; neither identifies a person. Same pattern as `al_last_run`.
+      try {
+        if (data.testToken) localStorage.setItem("al_last_test_token", data.testToken);
+        localStorage.setItem("al_last_test_host", new URL(/^https?:\/\//i.test(target) ? target : `https://${target}`).host);
+      } catch { /* private mode / bad URL — telemetry is optional */ }
       setPhase("done");
     } catch {
       setError("Network error — try again.");
