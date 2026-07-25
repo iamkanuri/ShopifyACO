@@ -12,7 +12,7 @@ import { rereadProduct } from "../fixes/source.js";
 import { mirrorToCatalog } from "../fixes/apply.js";
 import { loadNormalizedProducts, getStorefrontUrl } from "../db/catalog.js";
 import { fetchShopPolicies } from "../catalog/source.js";
-import { getAccessToken } from "../db/shops.js";
+import { getAccessToken, shopCandidateHosts } from "../db/shops.js";
 import type { NormalizedProduct } from "../catalog/normalize.js";
 import { contractVersion, ENGINE_VERSION, type Assertion, type Requirement } from "./productTest.js";
 import { runAuthenticatedTest, unprovenClaimRows, type AuthenticatedTestResult } from "./authenticatedTest.js";
@@ -76,8 +76,17 @@ export async function claimTestHandler(req: Request, res: Response): Promise<voi
   // recent unclaimed test run against THIS store's own storefront host.
   let claimed = token ? await claimPublicTest(token, shop) : null;
   if (!claimed) {
+    // v2.3 CP1 — the candidate hosts now START from the storefront host resolved
+    // from Shopify at install time (migration 0029). Before that they came only
+    // from `products.online_url`, which is empty until a catalog sync runs, and
+    // nothing synced on install — so on a fresh App Store install the only
+    // candidate was the `*.myshopify.com` domain while the merchant had tested
+    // their custom domain. The two sets could not intersect, and this fallback
+    // could never fire on the one path App Store rule 2.3.1 permits.
+    // See experiments/v2-2/FIRST_RUN_AUDIT.md §F1.
+    const hosts = await shopCandidateHosts(shop).catch(() => [shop]);
+    // Catalog-derived host retained as a fallback for shops installed before 0029.
     const storefront = await getStorefrontUrl(shop).catch(() => null);
-    const hosts = [shop];
     if (storefront) { try { hosts.push(new URL(storefront).host); } catch { /* ignore */ } }
     claimed = await claimPublicTestByHost(shop, hosts);
   }

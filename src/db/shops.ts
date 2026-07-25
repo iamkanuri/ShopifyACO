@@ -17,6 +17,11 @@ export interface ShopRow {
   uninstalled_at: string | null;
   web_pixel_id: string | null;
   pixel_ingest_token: string | null;
+  /** The shop's PRIMARY storefront host (custom domain when one is configured),
+   *  resolved from Shopify at install time. The host a shopper — and therefore a
+   *  public Buyer Test — actually uses. Null when the query failed or predates
+   *  migration 0029. See setStorefrontHost. */
+  storefront_host: string | null;
 }
 
 export async function upsertShop(shopDomain: string, opts: { scopes?: string; status?: string } = {}): Promise<void> {
@@ -40,6 +45,27 @@ export async function getShop(shopDomain: string): Promise<ShopRow | null> {
 /** Record the app-owned Web Pixel id (Phase 10) so re-activation updates in place. */
 export async function setWebPixelId(shopDomain: string, webPixelId: string): Promise<void> {
   await pgQuery("update shops set web_pixel_id = $2, updated_at = now() where shop_domain = $1", [shopDomain, webPixelId]);
+}
+
+/** Persist the shop's primary storefront host (migration 0029). Written at install
+ *  time so host-match reconciliation never depends on a catalog sync having run.
+ *  Stored lowercase and host-only; a null/blank resolve is a no-op rather than a
+ *  write, so a failed query never ERASES a host we already knew. */
+export async function setStorefrontHost(shopDomain: string, host: string | null): Promise<void> {
+  const clean = (host ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!clean) return;
+  await pgQuery("update shops set storefront_host = $2, updated_at = now() where shop_domain = $1", [shopDomain, clean]);
+}
+
+/** Every host a carried public test could plausibly have been run against, for this
+ *  shop: the `*.myshopify.com` domain plus the persisted primary storefront host.
+ *  Deliberately does NOT consult the catalog — that dependency is exactly what §F1
+ *  was. Callers may append catalog-derived hosts as a fallback. */
+export async function shopCandidateHosts(shopDomain: string): Promise<string[]> {
+  const row = await getShop(shopDomain).catch(() => null);
+  const hosts = [shopDomain];
+  if (row?.storefront_host) hosts.push(row.storefront_host);
+  return [...new Set(hosts.filter(Boolean))];
 }
 
 /** The shop's per-shop pixel ingest token, generating + persisting one on first use. Injected

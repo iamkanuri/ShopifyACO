@@ -10,9 +10,10 @@ import { safeEqualStr } from "../shopify/crypto.js";
 import { chooseScopes, parseScopes, hasScope } from "../shopify/scopes.js";
 import {
   audit, consumeOAuthState, getAccessToken, getShop, recordInstallation,
-  saveOAuthState, storeCredentials, upsertShop, webhookSeen, unmarkWebhookSeen,
+  saveOAuthState, setStorefrontHost, shopCandidateHosts, storeCredentials, upsertShop,
+  webhookSeen, unmarkWebhookSeen,
 } from "../db/shops.js";
-import { claimPublicTest, hasMatchablePublicTest } from "../db/buyerTests.js";
+import { claimPublicTest, getPublicTest, hasMatchablePublicTest } from "../db/buyerTests.js";
 import { getStorefrontUrl } from "../db/catalog.js";
 import { recordFunnelEvent } from "../db/funnel.js";
 import { enqueue } from "../queue/jobs.js";
@@ -153,10 +154,28 @@ async function resolveGrantedScopes(shop: string, accessToken: string, exchangeS
  *  webhooks (best-effort), audit, and activate the Web Pixel (best-effort). Shared by the
  *  classic OAuth callback and the embedded token-exchange path so both behave identically.
  *  `source` distinguishes them in installations/audit ("install" | "install_token_exchange"). */
-async function completeInstall(shop: string, tok: TokenExchange, source: string): Promise<void> {
+async function completeInstall(
+  shop: string,
+  tok: TokenExchange,
+  source: string,
+  opts: { testToken?: string | null; countAsNewInstall?: boolean } = {},
+): Promise<void> {
   // Record the REAL granted scopes (not just what exchange reported) so the write gate is accurate.
   const granted = await resolveGrantedScopes(shop, tok.accessToken, tok.scope);
   await upsertShop(shop, { scopes: granted, status: "active" });
+
+  // Resolve + persist the PRIMARY storefront host (v2.3 CP1, migration 0029).
+  // This is the fix for FIRST_RUN_AUDIT.md §F1: reconciliation used to build its
+  // candidate hosts from `products.online_url`, which only exists after a catalog
+  // sync — and nothing synced on install. A real merchant tests their custom
+  // domain, so the only candidate left (`*.myshopify.com`) could never match.
+  // Best-effort: a failed lookup degrades to the old behaviour, it never fails an install.
+  try {
+    const hosts = await getShopifyClient().fetchShopHosts(shop, tok.accessToken);
+    await setStorefrontHost(shop, hosts.primaryHost ?? hosts.myshopifyDomain ?? null);
+  } catch (err) {
+    console.warn(`[shopify] storefront host lookup failed for ${shop}: ${(err as Error).message}`);
+  }
   // Persist the access token + its rotating refresh token + expiries (expiring offline tokens).
   await storeCredentials(shop, tok.accessToken, granted, { refreshToken: tok.refreshToken, expiresIn: tok.expiresIn, refreshTokenExpiresIn: tok.refreshTokenExpiresIn });
   await recordInstallation(shop, source, granted);
@@ -180,15 +199,51 @@ async function completeInstall(shop: string, tok: TokenExchange, source: string)
   // Mirror the Shopify Managed Pricing subscription into entitlements (free on first install).
   await syncShopifyEntitlement(shop);
 
+  // Seed the catalog (v2.3 CP1, FIRST_RUN_AUDIT.md §F2). A fresh install has an empty
+  // `products` table, which leaves Fix Studio's picker dead and the authenticated
+  // Buyer Test with no product to match. This goes through the QUEUE and is never
+  // awaited inline: `triggerSyncHandler` runs the sync synchronously when the queue
+  // is dormant, and doing that here would turn the install redirect into a full
+  // cursor-paginated catalogue crawl. Idempotent by key, so a repeat install is free.
+  try {
+    await enqueue({
+      type: "catalog_sync",
+      payload: { shop },
+      shop,
+      idempotencyKey: `catalog_sync:install:${shop}:${new Date().toISOString().slice(0, 13)}`,
+    });
+  } catch (err) {
+    console.warn(`[shopify] catalog sync not enqueued for ${shop}: ${(err as Error).message}`);
+  }
+
   // Funnel telemetry (v2.2 CP2). `reconciled` records whether a prior public test was
   // MATCHABLE at this moment — the actual import happens later, lazily, when the
   // merchant first opens /app. Read-only and best-effort: an install must never fail
   // because a counter could not be written.
+  // A re-auth is not a new install (v2.3 CP1, SELF_REVIEW.md). `tokenExchangeHandler`
+  // already reaches completeInstall only for genuinely new installs; the classic OAuth
+  // callback had no such guard, so every re-consent (scope change, reinstall) emitted a
+  // second `install_completed` and inflated the denominator of every install metric.
+  if (opts.countAsNewInstall === false) return;
+
   try {
-    const storefront = await getStorefrontUrl(shop).catch(() => null);
-    const hosts = [shop];
-    if (storefront) { try { hosts.push(new URL(storefront).host); } catch { /* ignore */ } }
-    const matchable = await hasMatchablePublicTest(hosts).catch(() => false);
+    // BOTH continuity paths count (v2.3 CP1, SELF_REVIEW.md). This used to probe host
+    // matching only, so the path that actually works today — our own OAuth redirect
+    // carrying an exact test token — was recorded as unreconciled, making the metric
+    // read as a total failure precisely when continuity had succeeded.
+    let matchable = false;
+    if (opts.testToken) {
+      const carried = await getPublicTest(opts.testToken).catch(() => null);
+      // Unclaimed, or already bound to THIS shop — either way continuity is intact.
+      matchable = Boolean(carried && (!carried.shop_domain || carried.shop_domain === shop));
+    }
+    if (!matchable) {
+      const hosts = await shopCandidateHosts(shop).catch(() => [shop]);
+      // Catalog-derived host stays as a fallback for shops installed before 0029.
+      const storefront = await getStorefrontUrl(shop).catch(() => null);
+      if (storefront) { try { hosts.push(new URL(storefront).host); } catch { /* ignore */ } }
+      matchable = await hasMatchablePublicTest(hosts).catch(() => false);
+    }
     await recordFunnelEvent({ name: "install_completed", reconciled: matchable });
   } catch (err) {
     console.warn(`[shopify] install telemetry skipped: ${(err as Error).message}`);
@@ -232,9 +287,18 @@ export async function callbackHandler(req: Request, res: Response): Promise<void
   }
 
   // 4) exchange + persist (encrypted) — shared with the embedded token-exchange path.
+  // Probe "already installed" BEFORE completeInstall writes the shop row, or the
+  // check would always see the row it just created.
+  const existing = await getShop(shop).catch(() => null);
+  const alreadyInstalled = Boolean(
+    existing && existing.status !== "uninstalled" && (await getAccessToken(shop).catch(() => null)),
+  );
   const client = getShopifyClient();
   const tok = await client.exchangeCode(shop, code);
-  await completeInstall(shop, tok, "install");
+  await completeInstall(shop, tok, "install", {
+    testToken: consumed.testToken,
+    countAsNewInstall: !alreadyInstalled,
+  });
 
   // 5) shop session cookie (signed) → onboarding
   res.cookie(SHOP_COOKIE, signShop(shop), {

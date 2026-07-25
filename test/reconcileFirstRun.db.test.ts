@@ -76,37 +76,69 @@ test("host match never re-binds a test another shop already claimed", { skip: !R
   }
 });
 
-test("DEFECT (v2.2 CP6): a fresh install cannot host-match, because it knows no storefront host", { skip: !RUN_DB }, async () => {
-  // This is the audit's central first-run finding, pinned so it cannot regress
-  // quietly and so the fix has an executable definition of done.
+test("FIXED (v2.3 CP1): a fresh install DOES host-match, from the storefront host persisted at install", { skip: !RUN_DB }, async () => {
+  // This was the audit's central first-run finding (FIRST_RUN_AUDIT.md §F1), pinned
+  // as a failing-by-design test in v2.2 and fixed here. It now asserts the fix.
   //
-  // `claimTestHandler` builds its candidate hosts from `[shop, getStorefrontUrl(shop)]`.
-  // `getStorefrontUrl` reads `products.online_url` — and NOTHING enqueues a catalog
-  // sync on install, so on a fresh install the products table is empty and it returns
-  // null. The only candidate left is the `.myshopify.com` domain.
+  // The defect: `claimTestHandler` built its candidate hosts from
+  // `[shop, getStorefrontUrl(shop)]`; `getStorefrontUrl` reads `products.online_url`,
+  // and nothing synced a catalog on install — so on a fresh install the only
+  // candidate was the `.myshopify.com` domain, while a real merchant had tested
+  // their custom domain. The two sets could not intersect on the ONLY install path
+  // App Store rule 2.3.1 permits.
   //
-  // But a merchant tests their REAL storefront ("theirbrand.com"), so `store_host` is
-  // the custom domain and never the `.myshopify.com` one. The fallback therefore has
-  // nothing to match on at exactly the moment it is needed — the App Store install,
-  // which is the only install path a real merchant takes.
+  // The fix: resolve `{ shop { myshopifyDomain primaryDomain { host } } }` at install
+  // time and persist it on `shops.storefront_host` (migration 0029). This test asserts
+  // the CLAIM — a fresh install with an EMPTY catalog reconciles — not the mechanism.
   const { claimPublicTestByHost } = await import("../src/db/buyerTests.js");
+  const { upsertShop, setStorefrontHost, shopCandidateHosts } = await import("../src/db/shops.js");
+  const { pgQuery } = await import("../src/db/pg.js");
   const shop = `recon-fresh-${Date.now()}.myshopify.com`;
   const customDomain = `brand4-${Date.now().toString(36)}.example`;
   const token = await seedPublicTest(customDomain);
   try {
-    // What a fresh install can actually offer: its own .myshopify.com domain.
-    const freshInstall = await claimPublicTestByHost(shop, [shop]);
-    assert.equal(
-      freshInstall, null,
-      "records the CURRENT behaviour: with an empty catalog there is nothing to match on",
+    // A genuinely fresh install: shop row exists, storefront host resolved from
+    // Shopify, and — critically — NO products row, so the catalog cannot help.
+    await upsertShop(shop, { status: "active" });
+    await setStorefrontHost(shop, customDomain);
+    const { rows: catalog } = await pgQuery<{ n: string }>(
+      "select count(*)::text as n from products where shop_domain = $1", [shop],
     );
-    // …and the same call succeeds the moment the storefront host is known, which is
-    // exactly what the fix has to supply (resolve it from Shopify at install time
-    // rather than from a catalog that has not been synced yet).
-    const withStorefront = await claimPublicTestByHost(shop, [shop, customDomain]);
-    assert.ok(withStorefront, "knowing the storefront host is the whole fix");
+    assert.equal(catalog[0]?.n, "0", "precondition: the catalog is empty, as on a fresh install");
+
+    // The claim: reconciliation succeeds using ONLY what an install can know.
+    const hosts = await shopCandidateHosts(shop);
+    assert.ok(hosts.includes(customDomain), "the persisted storefront host is a candidate");
+    const claimed = await claimPublicTestByHost(shop, hosts);
+    assert.ok(claimed, "a fresh install reconciles its public test with an empty catalog");
+    assert.equal(claimed!.store_host, customDomain, "and it is the merchant's own test, matched by host");
   } finally {
     await cleanup([token]);
+    await pgQuery("delete from shops where shop_domain = $1", [shop]);
+  }
+});
+
+test("the storefront host is what does the work — without it, a fresh install still cannot match", { skip: !RUN_DB }, async () => {
+  // The companion to the test above, and the reason both exist: if reconciliation
+  // succeeded for some OTHER reason, the test above would pass while the fix did
+  // nothing. This fails if `storefront_host` is not the load-bearing input.
+  const { claimPublicTestByHost } = await import("../src/db/buyerTests.js");
+  const { upsertShop, shopCandidateHosts } = await import("../src/db/shops.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+  const shop = `recon-nohost-${Date.now()}.myshopify.com`;
+  const customDomain = `brand6-${Date.now().toString(36)}.example`;
+  const token = await seedPublicTest(customDomain);
+  try {
+    await upsertShop(shop, { status: "active" }); // installed, but host never resolved
+    const hosts = await shopCandidateHosts(shop);
+    assert.deepEqual(hosts, [shop], "with no persisted host the shop knows only its myshopify domain");
+    assert.equal(
+      await claimPublicTestByHost(shop, hosts), null,
+      "and then it cannot match — which is precisely the defect the persisted host removes",
+    );
+  } finally {
+    await cleanup([token]);
+    await pgQuery("delete from shops where shop_domain = $1", [shop]);
   }
 });
 

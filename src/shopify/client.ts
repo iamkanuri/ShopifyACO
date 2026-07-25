@@ -51,6 +51,13 @@ export interface ShopifyClient {
    *  authoritative grant — the `scope` returned by code/token exchange can under-report,
    *  which would wrongly block scope-gated writes (Fix Studio). Returns the scope handles. */
   fetchGrantedScopes(shop: string, accessToken: string): Promise<string[]>;
+  /** Read the shop's own domains: the canonical `*.myshopify.com` and the PRIMARY
+   *  storefront host (the custom domain a shopper — and therefore a public Buyer
+   *  Test — actually uses). Install-time reconciliation depends on this: a merchant
+   *  tests `theirbrand.com`, so matching a carried public test needs that host, and
+   *  the only other source (`products.online_url`) does not exist until a catalog
+   *  sync has run. See experiments/v2-2/FIRST_RUN_AUDIT.md §F1. */
+  fetchShopHosts(shop: string, accessToken: string): Promise<{ myshopifyDomain: string | null; primaryHost: string | null }>;
   /** Read the shop's current active app subscription (Shopify Managed Pricing), or null when
    *  the merchant is on the free plan. Drives entitlement provisioning for the Shopify channel. */
   fetchActiveSubscription(shop: string, accessToken: string): Promise<{ name: string; status: string; currentPeriodEnd: string | null } | null>;
@@ -95,6 +102,13 @@ class MockClient implements ShopifyClient {
     // A mock store "granted" exactly the configured scopes — so the gate is exercised
     // honestly (e.g. write_products present when SHOPIFY_SCOPES includes it).
     return [...ENV.shopify.scopes];
+  }
+  async fetchShopHosts(shop: string): Promise<{ myshopifyDomain: string | null; primaryHost: string | null }> {
+    // The primary host is deliberately DIFFERENT from the myshopify domain, because
+    // that difference is the entire defect this call exists to fix — a mock that
+    // returned the same host for both would run the code path and prove nothing.
+    // `example.com` is IANA-reserved, so this can never collide with a real store.
+    return { myshopifyDomain: shop, primaryHost: `${shop.replace(/\.myshopify\.com$/, "")}.example.com` };
   }
   async fetchActiveSubscription(): Promise<{ name: string; status: string; currentPeriodEnd: string | null } | null> {
     return null; // mock store = free plan (no active subscription)
@@ -206,6 +220,29 @@ export class LiveClient implements ShopifyClient {
     return (json.data?.currentAppInstallation?.accessScopes ?? [])
       .map((s) => s.handle?.trim())
       .filter((h): h is string => Boolean(h));
+  }
+  async fetchShopHosts(shop: string, accessToken: string): Promise<{ myshopifyDomain: string | null; primaryHost: string | null }> {
+    const query = `{ shop { myshopifyDomain primaryDomain { host } } }`;
+    const res = await fetch(`https://${shop}/admin/api/${ENV.shopify.apiVersion}/graphql.json`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Shopify-Access-Token": accessToken },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`shop hosts query failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const json = (await res.json()) as {
+      data?: { shop?: { myshopifyDomain?: string | null; primaryDomain?: { host?: string | null } | null } };
+      errors?: Array<{ message?: string }>;
+    };
+    if (json.errors?.length) throw new Error(`shop hosts query error: ${json.errors[0]?.message ?? "unknown"}`);
+    const norm = (v: string | null | undefined): string | null => {
+      const s = (v ?? "").trim().toLowerCase();
+      return s ? s.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : null;
+    };
+    return {
+      myshopifyDomain: norm(json.data?.shop?.myshopifyDomain),
+      primaryHost: norm(json.data?.shop?.primaryDomain?.host),
+    };
   }
   async fetchActiveSubscription(shop: string, accessToken: string): Promise<{ name: string; status: string; currentPeriodEnd: string | null } | null> {
     const query = `{ currentAppInstallation { activeSubscriptions { name status currentPeriodEnd } } }`;
