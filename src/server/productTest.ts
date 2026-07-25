@@ -161,8 +161,14 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     valueGuard: (s) => MATERIAL_NOUN.test(s),
   },
   dimensions: {
-    label: "Size, capacity or weight is stated",
-    missingDetail: "no readable dimensions, capacity or weight",
+    // Label scope, corrected after the CP4 audit. It used to read "Size, capacity or
+    // weight is stated" and passed a bar-end plug on "Compatible with handlebars
+    // measuring 18 mm to 21.5 mm inner diameter." — a FITMENT dimension, not the
+    // product's own size. The store does publish a machine-readable measurement, so
+    // the evidence-availability claim was true; the LABEL claimed more than its quote
+    // supported. Same class as v2.2's "Ships within a week" passing on processing time.
+    label: "Measurements are stated",
+    missingDetail: "no readable measurements — size, capacity, weight or fit",
     terms: [
       "dimensions", "capacity", "diameter", "inches", "inch", "cm", "mm", "millimeters", "centimeters",
       "liters", "litres", "ml", "oz", "fl oz", "fluid ounces", "ounces", "lbs", "pounds", "grams", "kg",

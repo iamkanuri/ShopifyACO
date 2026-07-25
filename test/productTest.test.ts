@@ -1075,3 +1075,21 @@ test("v2.3 review: a placeholder identifier is not a published identifier", () =
   assert.equal(evaluate(withIds("0123456789012", null), idsReq).status, "pass_evidenced");
   assert.equal(evaluate(withIds(null, "MB-4471-X"), idsReq).status, "pass_evidenced");
 });
+
+test("v2.3 CP4: a measurement row's label never claims more than its quote supports", () => {
+  // Audited in production: a bar-end plug passed "Size, capacity or weight is stated"
+  // on "Compatible with handlebars measuring 18 mm to 21.5 mm inner diameter." — a
+  // FITMENT dimension, not the product's own size. The store does publish a readable
+  // measurement, so the evidence claim was true; the LABEL overreached. Same class as
+  // v2.2's delivery row passing on a quote about processing time.
+  const prod = mk({ description: "Compatible with handlebars measuring 18 mm to 21.5 mm inner diameter." });
+  // Use the SHIPPED requirement, so this asserts the label a merchant actually reads
+  // rather than one the test invented.
+  const req = buildBuyerTask(prod).requirements.find((r) => r.attribute === "dimensions");
+  assert.ok(req, "the measurement row is part of the task");
+  const a = evaluate(prod, req!);
+  assert.equal(a.status, "pass_evidenced", "a published fitment measurement is still a measurement");
+  assert.ok(!/\bsize\b|\bweight\b/i.test(a.label),
+    `the label must not claim size or weight specifically; got "${a.label}"`);
+  assert.match(a.label, /measurements/i);
+});

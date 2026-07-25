@@ -2,6 +2,11 @@
 
 **Date:** 2026-07-25 · **Method:** the v2.2 sample re-measured against the v2.3 requirement
 library. **Hosts are de-identified throughout**; raw bodies live in untracked files.
+**Evidence quotes are redacted** where a verbatim merchant sentence would identify the store —
+distinctive nouns are replaced with `[…]`. The sentence SHAPE is what the audit turns on, and
+that is preserved. (A first pass of this document quoted merchant copy verbatim; that
+contradicted the de-identification claim in this very line, and a `git ls-files | xargs grep`
+sweep returned a false negative on it.)
 
 > This document exists to answer one question with numbers rather than confidence:
 > **is the free Buyer Test's output now compelling enough to earn an install?**
@@ -52,7 +57,7 @@ snapshots — the same code paths production runs, with the network removed.
 
 | | v2.2 baseline | v2.3 |
 |---|---|---|
-| median genuine findings / store | **1** | **3** |
+| median genuine findings / store | **1** | **3** |  ← superseded by §4b (production, n=15)
 | thin-result rate (0 findings) | **21%** | **0/7 = 0%** |
 | requirements per store | 4–6 | 8–10 |
 | **distinct failing SETS** | — | **7 of 7** |
@@ -145,7 +150,7 @@ Root causes, all now fixed and pinned by regression tests using those exact stri
   beverage, coffee and pantry store it publishes no size while its copy said so literally.
 - **Structural is not the same as safe.** A comment here claimed the identifier row "cannot
   produce a false pass"; placeholder values disproved it.
-- A missing `` in category gating meant `pan` matched *Company* and *Japanese*, `pot`
+- A missing `\b` in category gating meant `pan` matched *Company* and *Japanese*, `pot`
   matched *Potato*, `rug` matched *Arugula* — so every brand named "… Company" got a care
   row, which is precisely the irrelevant-uniform-row failure CP2 exists to remove.
 
@@ -161,7 +166,7 @@ evidence about 7 stores. It cannot tell you what a matcher does on copy those 7 
 happen to write. Measuring the output caught the artefacts; only executing the matcher against
 adversarially chosen input caught the logic.
 
-One further defect worth recording because it is invisible to review: a `` written through a
+One further defect worth recording because it is invisible to review: a `\b` written through a
 scripted patch landed as a literal **0x08 byte**, so `SHIPMENT_CONTEXT` was
 `/<BS>(shipping|…)<BS>/i` and matched nothing — while rendering as correct source in every
 diff, editor view and `grep`. It was caught only because the regression disagreed with the
@@ -174,17 +179,96 @@ code, then `cat -A` showed `^H`. All sources are now swept for control bytes.
 - **Structural passes** carry no quote by design and state their basis instead
   (*"Your structured data publishes MPN."*). Correct.
 - **Text-quoted passes**, each verified against the merchant's own sentence:
-  - *"Each box contains 12 firm and smooth premium graphite pencils, crafted from Genuine
-    Incense-cedar."* → materials. Plainly supported.
-  - *"Our scented soy candles are handmade with 100% domestically-grown soy wax, fine
-    fragrance oils, and a pure cotton core wick."* → materials. Plainly supported.
-  - *"…Wood Type: Incense-cedar … Country of Origin: Japan"* → origin. Supported verbatim,
-    though the quote is a specification block rather than prose.
+  - *"Each box contains 12 … pencils, crafted from Genuine […]-cedar."* → materials. A
+    composition frame followed by a named wood. Plainly supported.
+  - *"Our scented […] candles are handmade with 100% […] wax, fine fragrance oils, and a
+    pure cotton core wick."* → materials. Plainly supported.
+  - *"… Country of Origin: [country]"* → origin. Supported verbatim, though the quote is a
+    specification block rather than prose.
 - **One quality issue, fixed rather than accepted:** a store stating
   *"Dimensions: 11.42W x 18.9H x 5.51D" / 26W x 48H x 14D cm Capacity: 20 L Weight: 3.13
   lbs."* passed with **no quote at all** — `presentableQuote` correctly rejects a spec block
   as symbol soup, so the row passed with a silently empty evidence slot. It now says where
   it found the statement and why there is nothing quotable, rather than showing nothing.
+
+## 4b. PRODUCTION measurement (n=15 completed of 17, v2.3 live at 8d81d6c)
+
+The offline n=7 was a sanity check. This is the measurement: the same hosts and the same
+products the v2.2 baseline used, re-run through production after v2.3 deployed.
+
+| | v2.2 (re-derived) | v2.3 production |
+|---|---|---|
+| completed | 14 of 15 | **15 of 17** |
+| median genuine findings | **1** | **4** |
+| thin-result rate | **21%** | **0/15 = 0%** |
+| requirements per store | 4-6 | **4-10** |
+| distinct failing SETS | — | **12 across 15 stores** |
+
+**Paired comparison — same host, same product, both libraries (n=13):**
+
+| | v2.2 | v2.3 |
+|---|---|---|
+| median genuine findings | 1 | **4** |
+| stores with zero findings | 3/13 | **0/13** |
+
+**improved 12 · unchanged 1 · fewer 0.** No store lost a finding.
+
+### Per-requirement discrimination, as shipped in production
+
+| Requirement | tested | failed | rate | band |
+|---|---|---|---|---|
+| Care or use instructions are stated | 2 | 2 | 1.00 | ❌ (n=2, uninformative) |
+| Country of origin is stated | 11 | 10 | **0.91** | ❌ above |
+| Product identifier (GTIN or MPN) | 14 | 12 | **0.86** | ❌ marginally above |
+| Measurements are stated | 12 | 10 | 0.83 | ✅ |
+| Materials are stated | 13 | 9 | 0.69 | ✅ |
+| Delivery timing is stated | 15 | 10 | 0.67 | ✅ |
+| {variant} option available | 5 | 1 | 0.20 | ✅ |
+| In stock and purchasable | 15 | 2 | 0.13 | ❌ below (pre-existing) |
+| Price under $X | 13 | 0 | 0.00 | ❌ below (pre-existing) |
+| Available as a one-time purchase | 15 | 0 | 0.00 | ❌ below (pre-existing) |
+
+### What was pruned, and what was NOT — with the reason
+
+**Pruned before shipping:** `warranty` (§3.2), on a hazard rather than a rate.
+
+**NOT pruned, deliberately, and this is a judgement the numbers alone do not settle:**
+`origin` (0.91) and `identifiers` (0.86) sit above the 15-85% band. The mechanical reading of
+CP2's admission criterion says narrow or remove them. Three reasons that would be the wrong
+call *on this evidence*:
+
+1. The criterion exists to prevent a **new uniform finding replacing the old one**. That is
+   measurable directly, and it did not happen: **12 distinct failing sets across 15 stores**,
+   versus v2.2 where 71% shared the single dominant finding. High-rate requirements are not
+   making reports identical, because each store fails a *different combination*.
+2. `identifiers` is structural, cannot false-pass (post-§3.3), and is the most literally
+   one-line-fixable row in the library.
+3. n=11-14 per requirement. Pruning a real signal on that basis, at the end of a session,
+   would repeat the mistake §3.3 is about.
+
+**Recommendation, not action:** narrow `origin` with an `onlyFor` gate to categories where
+provenance is a genuine buyer constraint (food, apparel, craft goods), then re-measure. Doing
+that here would mean shipping a narrowed requirement whose narrowed rate nobody has measured,
+which is the exact thing this document argues against.
+
+### Evidence audit — all 37 pass_evidenced rows
+
+**36 plainly supported. 1 borderline, corrected rather than logged.**
+
+- Structural rows (price, in-stock, variant, identifier) state their basis explicitly and were
+  spot-checked against source values.
+- Text-quoted rows verified individually, e.g. a composition frame naming a specific wood →
+  materials; *"… Country of Origin: [country]"* → origin; *"Processing Times Orders typically
+  ship within 1-3 business days."* → delivery.
+- **The borderline one:** a bar-end plug passed *"Size, capacity or weight is stated"* on
+  *"Compatible with handlebars measuring [x] mm to [y] mm inner diameter."* That is a
+  **fitment** dimension, not the product's own size. It is not a false pass — the store does
+  publish a machine-readable measurement, which is exactly what the evidence-availability
+  claim asserts — but the **label claimed more than its quote supported**, the same class as
+  v2.2's delivery row passing on a quote about processing time. v2.2 logged that and moved on;
+  here the label was corrected to **"Measurements are stated"** and pinned by a test.
+
+**No false positives. No rollback triggered.**
 
 ## 5. Limits
 
@@ -199,10 +283,12 @@ exact rates are not to be quoted as precise.
 
 **Is the output now compelling enough to earn an install?**
 
-**Materially more so, and for the right reason.** The modal store went from **one** finding
-to **three**, no store in the sample now produces nothing, and — the part that actually
-changes the argument — **the failing set differs for every store**. v2.2's report could be
-guessed before running it. v2.3's cannot.
+**Materially more so, and for the right reason.** Measured in production on the same hosts
+and products as the baseline: the modal store went from **one** genuine finding to **four**,
+the thin-result rate went **21% → 0%**, and on the paired cohort **12 of 13 stores improved
+and none got worse**. The part that actually changes the argument is the last row of §4b:
+**12 distinct failing sets across 15 stores**, where v2.2 had one finding shared by 71% of
+them. v2.2's report could be guessed before running it. v2.3's cannot.
 
 What is still missing, stated plainly: every finding is still about **the merchant's own
 store data**, and store-side gaps are structurally similar across merchants even when the
@@ -214,7 +300,8 @@ improvement in specificity, but it is not yet *competitive* information.
 
 Three cures exist for thinness; this session tested one.
 
-1. **More requirements per product** (this session) — **worked**, and is now largely spent.
+1. **More requirements per product** (this session) — **worked** (1 → 4 findings, 21% → 0%
+   thin, 12/15 distinct sets), and is now largely spent.
    The library covers claim, price, variant, purchase terms, logistics, composition,
    dimensions, provenance, usage and machine-readability. Further additions face a harder
    admission test and a readability ceiling of ~10 rows.
