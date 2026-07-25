@@ -133,7 +133,13 @@ export function snapshotFromCatalog(p: NormalizedProduct, ctx: AuthenticatedCont
     ldAvailability: null,
     policyStatus: ctx.policyText ? "readable" : "not_fetched",
     fetched: { json: true, page: false, js: false, policy: Boolean(ctx.policyText) },
-    diagnostics: { attempted: [], answeredBy: null, throttled: [], degraded: false },
+    // The authenticated run reads the synced catalog over the Admin API — it makes no
+    // storefront fetch at all, so there is no robots.txt request and nothing can throttle
+    // it. `not_fetched` is the honest value here, not a missing measurement.
+    diagnostics: {
+      attempted: [], answeredBy: null, throttled: [], degraded: false,
+      robots: "not_fetched", throttleSource: null,
+    },
   };
 }
 

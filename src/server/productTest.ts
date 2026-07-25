@@ -31,7 +31,12 @@ import { judgeClaims, semanticSpendUsd, type SemanticDeps, type SemanticStats } 
 //     state — never presented as proof.
 //   • Surfaces not publicly inspectable (metafields, full policy pages) are
 //     "requires store access" — never "missing".
-//   • $0, deterministic — NO model calls. Public data only, robots respected.
+//   • Public data only, robots respected. Deterministic APART FROM one batched
+//     model call: `applySemanticTier` resolves claim rows the lexical pass could
+//     not, and is on unless `PRODUCT_TEST_SEMANTIC=0`. Measured ≈ $0.0016/test
+//     (range $0.0003–$0.0030, n=13). This line used to read "$0 — NO model calls";
+//     that was false and a cost experiment was designed around it before anyone
+//     checked (experiments/v2-1/CP2_METHOD.md).
 // ===========================================================================
 
 const LIMITS = { maxBytes: 1_500_000, timeoutMs: 8_000, maxRedirects: 3 };
@@ -113,6 +118,27 @@ export interface FetchDiagnostics {
   throttled: FetchTier[];
   /** A tier was refused but other tiers answered — the test runs, partially (§2.3). */
   degraded: boolean;
+  /**
+   * How the shared `robots.txt` fetch went on THIS host. It is the one request we
+   * always make, so it is the only host-reachability signal that survives when
+   * every product tier is refused — which is precisely when the split matters:
+   *
+   *   • `rate_limited` + robots `ok`      → the throttle is scoped to the
+   *     `/products/*` path class. That is Shopify's per-egress-IP limiter, and
+   *     egress diversity would move it.
+   *   • `rate_limited` + robots `refused` → the host refuses us everywhere, i.e.
+   *     its own bot management. More IPs would not reliably help.
+   *
+   * Without this the two are indistinguishable from the response, and they have
+   * different remedies (EGRESS_DECISION.md, open recommendation #1).
+   */
+  robots: "ok" | "refused" | "unreachable" | "cached" | "not_fetched";
+  /**
+   * WHO refused, when the result is `rate_limited`. `errorKind` alone cannot say,
+   * because our own budgets and an upstream 429 both surface as the same error —
+   * and a throttle rate that silently counts our own limiter measures nothing.
+   */
+  throttleSource: "upstream" | "our_budget" | "our_cooldown" | null;
 }
 
 export type FetchErrorKind = "bad_url" | "not_shopify" | "not_found" | "rate_limited" | "robots_disallowed" | "unreachable";
@@ -241,13 +267,20 @@ export async function fetchPublicProduct(
   const { origin, handle } = parsed;
   const host = new URL(origin).host.toLowerCase();
   const rawFetch = deps.fetchUrl ?? defaultFetchUrl;
-  const diagnostics: FetchDiagnostics = { attempted: [], answeredBy: null, throttled: [], degraded: false };
+  const diagnostics: FetchDiagnostics = {
+    attempted: [], answeredBy: null, throttled: [], degraded: false,
+    robots: "not_fetched", throttleSource: null,
+  };
 
   // NEGATIVE CACHE (§2.4): a host that just refused us is not re-probed for 10
   // minutes. Repeat visitors would otherwise each burn global budget rediscovering
   // the same block — and each wait through it — for nothing.
   const cooldownMs = hostThrottleCooldownMs(host, deps);
   if (cooldownMs > 0) {
+    // OUR cooldown, echoing an earlier upstream refusal — not a fresh measurement.
+    // Counting it as an upstream throttle would inflate the rate by re-reporting one
+    // block once per visitor for ten minutes.
+    diagnostics.throttleSource = "our_cooldown";
     return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited }, diagnostics };
   }
 
@@ -279,6 +312,9 @@ export async function fetchPublicProduct(
   /** Record a tier that the STORE refused (429/403) and start its cooldown. */
   const noteThrottled = (tier: FetchTier): void => {
     if (!diagnostics.throttled.includes(tier)) diagnostics.throttled.push(tier);
+    // An upstream refusal outranks one of our own budgets: if the store said no, that
+    // is the fact worth reporting, whatever our limiter did alongside it.
+    diagnostics.throttleSource = "upstream";
     markHostThrottled(host, deps);
   };
 
@@ -290,7 +326,7 @@ export async function fetchPublicProduct(
   let canonicalOrigin = origin;
   const getRobots = deps.loadRobots ?? (async (o: string) => {
     const cached = getCachedRobots<RobotsPolicy>(o, deps);
-    if (cached) return cached;
+    if (cached) { diagnostics.robots = "cached"; return cached; }
     try {
       const r = await fetchUrl(`${o}/robots.txt`);
       if (r.finalUrl) {
@@ -299,10 +335,19 @@ export async function fetchPublicProduct(
           if (f.host.toLowerCase() !== new URL(o).host.toLowerCase()) canonicalOrigin = `${f.protocol}//${f.host}`;
         } catch { /* keep the requested origin */ }
       }
+      // 429/403 on robots.txt is the host refusing us OUTRIGHT, not a path-class limit —
+      // the distinction the throttle split turns on. Anything else non-200 is just
+      // "no robots.txt here", which is normal and permissive.
+      diagnostics.robots = r.status === 200 ? "ok" : r.status === 429 || r.status === 403 ? "refused" : "unreachable";
       const policy: RobotsPolicy = r.status === 200 ? parseRobots(r.body) : { rules: [], fetched: false };
       storeRobots(o, policy, deps);
       return policy;
-    } catch { return { rules: [], fetched: false }; }
+    } catch {
+      // Includes our own budget refusals, which throw from `fetchUrl`. Those are recorded
+      // as `throttleSource` below; the host itself said nothing, so it is not `refused`.
+      diagnostics.robots = "unreachable";
+      return { rules: [], fetched: false };
+    }
   });
 
   const robots = await getRobots(origin);
@@ -364,6 +409,11 @@ export async function fetchPublicProduct(
   }
 
   const budgetRefused = hostBudgetSpent || globalBudgetSpent;
+  // Only claim OUR budget as the cause when the store never refused us: `noteThrottled`
+  // already set `upstream`, and that is the stronger fact. Without this branch a
+  // self-inflicted refusal is indistinguishable from a store block, which is exactly
+  // the measurement error the CP2 method doc calls the worst way the experiment can fail.
+  if (budgetRefused && diagnostics.throttleSource === null) diagnostics.throttleSource = "our_budget";
   if (!js && !extracted) {
     // Nothing at all came back: the existing specific errors still apply (§2.3).
     if (diagnostics.throttled.length || budgetRefused) return { error: { kind: "rate_limited", message: FETCH_ERROR_MESSAGE.rate_limited }, diagnostics };
@@ -456,7 +506,14 @@ export async function attachShippingPolicy(
     if (r.status === 429 || r.status === 403) {
       return {
         ...product, policyStatus: "rate_limited",
-        diagnostics: { ...product.diagnostics, throttled: [...product.diagnostics.throttled, "policy"], degraded: true },
+        diagnostics: {
+          ...product.diagnostics,
+          throttled: [...product.diagnostics.throttled, "policy"],
+          degraded: true,
+          // The STORE refused this tier — same attribution as `noteThrottled`, which
+          // this path predates and does not go through.
+          throttleSource: "upstream",
+        },
       };
     }
     if (r.status !== 200 || !/html/i.test(r.contentType ?? "")) return { ...product, policyStatus: "unreachable" };
@@ -517,7 +574,21 @@ function inferClaims(p: PublicProduct): string[] {
   for (const key of Object.keys(CLAIM_TERMS)) {
     if (CLAIM_TERMS[key]!.support.some((t) => norm(tagHay).includes(norm(t)))) return [key];
   }
-  return ["cruelty_free"];
+  // NO CLAIM. This used to default to `["cruelty_free"]`, and measuring 13 real
+  // stores (v2.2 CP3) showed what that cost: CATEGORY_CLAIMS covers personal care,
+  // food and drinkware, so dog harnesses, backpacks, notebooks, bike parts,
+  // candles and garden tools ALL fell through to it. "Cruelty-free" was asked of
+  // every one of the 13, failed 13/13, and — because a claim always scores highest
+  // in `adjudicability` — sat at the TOP of every table. It was typically one of
+  // only two not-proven rows, so half the findings we showed were an artifact of
+  // this line, and every report opened with the same irrelevant sentence.
+  //
+  // It was not a false claim: the row says the store doesn't STATE the attribute,
+  // which was true. It was worse than false — it was irrelevant, identical across
+  // unrelated merchants, and it made a specific diagnosis read like a template.
+  // An empty list is honest: `buildBuyerTask` simply builds a task without a claim
+  // row, and the summary already omits the clause.
+  return [];
 }
 function niceCap(min: number): number { return Math.max(10, Math.ceil((min + 0.01) / 5) * 5); }
 
@@ -834,6 +905,18 @@ export interface ProductTestResult {
    *  Reported for production diagnosis of the upstream throttle. */
   fetchTier?: "page" | "json" | null;
   throttledTiers?: string[];
+  /**
+   * Egress diagnosis (v2.2 CP5.1). `rate_limited` on its own is unactionable: it can
+   * mean Shopify's per-IP limit on the `/products/*` path class (which egress diversity
+   * would move), the host's own bot management (which it would not), one of OUR budgets,
+   * or our 10-minute negative cache echoing an earlier refusal. These three fields
+   * separate those cases, so the moment the throttle rate moves we know which remedy
+   * applies instead of guessing. See EGRESS_DECISION.md, open recommendation #1.
+   */
+  robotsStatus?: "ok" | "refused" | "unreachable" | "cached" | "not_fetched";
+  throttleSource?: "upstream" | "our_budget" | "our_cooldown" | null;
+  /** How the shipping-policy fetch went, when the task needed one. */
+  policyStatus?: "not_fetched" | "readable" | "unreachable" | "robots_disallowed" | "rate_limited";
   /** The error is an upstream limit, not a verdict — the UI offers a retry (§2.3). */
   retryable?: boolean;
   /** V2 CP2 — the token that carries THIS result through install, so the first
@@ -869,6 +952,10 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
       // An upstream limit is not a verdict on the store — the UI offers a retry (§2.3).
       retryable: error?.kind === "rate_limited" || error?.kind === "unreachable",
       throttledTiers: diagnostics?.throttled,
+      // The failure path is where the split matters most — there is no product to
+      // read it off, so it comes from the diagnostics the fetcher carried out.
+      robotsStatus: diagnostics?.robots,
+      throttleSource: diagnostics?.throttleSource ?? null,
     };
   }
 
@@ -963,6 +1050,9 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     degraded: product.diagnostics.degraded,
     fetchTier: product.diagnostics.answeredBy,
     throttledTiers: product.diagnostics.throttled,
+    robotsStatus: product.diagnostics.robots,
+    throttleSource: product.diagnostics.throttleSource,
+    policyStatus: product.policyStatus,
   };
   // A degraded result is deliberately NOT cached: it is missing surfaces we would
   // normally read, and pinning it for 7 days would turn a transient upstream block

@@ -1,7 +1,60 @@
 # CP5 — egress architecture decision
 
 **Date:** 2026-07-25 · **Input:** `CP2_RESULTS.md` (production, commit `80f04c1`, n=15)
-**Decision owner:** repo owner · **Status:** recommendation, not yet implemented.
+**Decision owner:** repo owner · **Status:** **recommendation #1 IMPLEMENTED 2026-07-25 (v2.2
+CP5.1); recommendation #2 already done. Decision unchanged: ship as is.**
+
+> ## v2.2 CP5 addendum (2026-07-25)
+>
+> ### 5.1 — the cause split is now on the response ✅
+>
+> Recommendation #1 (below) is implemented. `ProductTestResult` now carries three fields that
+> were computed internally and thrown away:
+>
+> | Field | Values | Answers |
+> |---|---|---|
+> | `throttleSource` | `upstream` · `our_budget` · `our_cooldown` · `null` | **who** refused — the store, or one of our own limits |
+> | `robotsStatus` | `ok` · `refused` · `unreachable` · `cached` · `not_fetched` | whether the host answered us **at all**, which separates bucket **B** from **C** |
+> | `policyStatus` | `not_fetched` · `readable` · `unreachable` · `robots_disallowed` · `rate_limited` | how the policy fetch went |
+>
+> `robots.txt` is the one request every test makes, so it is the only host-reachability signal
+> that survives when every product tier is refused — precisely when the split matters.
+> **`rate_limited` + robots `ok`** ⇒ the throttle is scoped to the `/products/*` path class
+> (Shopify's per-IP limiter; egress diversity would move it). **`rate_limited` + robots
+> `refused`** ⇒ the host refuses us everywhere (its own bot management; more IPs would not
+> reliably help).
+>
+> This also closes a real measurement hazard: `errorKind: "rate_limited"` was returned for an
+> upstream 429 **and** for our own budget refusal **and** for our 10-minute negative cache. A
+> throttle rate that folded those together would have reported our own back-pressure as stores
+> refusing us. All three are now distinct, and v2.2 CP2's `funnel_events` records
+> `throttle_source` per test with `our_*` **excluded from the reported throttle rate**.
+>
+> ### 5.2 — the concurrency threshold was NOT measured, and here is why
+>
+> The plan was 3 rounds against 5 already-measured hosts at 60 s / 20 s / 5 s spacing, stopping
+> at the first upstream throttle. **It cannot be run from an external client, because our own
+> limiter binds far tighter than the spacings being probed:** `POST /api/product-test` allows
+> **5 tests per 10 minutes per client IP** (`index.ts`). Round 1 alone (5 hosts at 60 s) exactly
+> exhausts that budget; every request in rounds 2 and 3 would return our own outer `429`. The
+> probe would have measured our rate limiter and reported it as Shopify's — the exact failure
+> `CP2_METHOD.md` calls "the single worst way this experiment could fail", and it would have
+> produced a plausible-looking number.
+>
+> Running it needs one of: a server-side probe behind the admin session that bypasses the public
+> limiter; a temporary per-IP exemption; or driving the fetch layer directly in a process on the
+> production egress IP. All three are deploy-gated, so this is handed back rather than faked.
+> **CP5.1 is what makes such a probe interpretable when it runs** — without `throttleSource`
+> every 429 would still be ambiguous.
+>
+> **What was added instead, honestly:** a second cold pass over the same 14 hosts through
+> production on 2026-07-25 (v2.2 CP3) — **0 upstream throttles again**, `throttleSource` null on
+> every row. That is a *replication of the cold result*, not a concurrency measurement. The
+> statement in §5 stands unchanged: the 0% is a cold, well-spaced number, and **concurrency
+> remains the most likely way it moves.**
+>
+> **Does this change "ship as is"? No.** Nothing measured moved the number, and the instrument
+> that would detect a move is now in place and recording.
 
 ## The measurement, in one line
 
