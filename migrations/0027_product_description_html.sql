@@ -1,0 +1,13 @@
+-- 0027 — carry the RAW product body HTML alongside the stripped plain text.
+--
+-- Why: the confirmed-claim write (`proposeClaimStatement` → target `descriptionHtml`)
+-- built its proposed value from `products.description`, which is plain text by
+-- construction (`stripHtml(node.descriptionHtml)` in src/catalog/normalize.ts), and
+-- wrote it back into Shopify's HTML body field. Applying a confirmed claim therefore
+-- destroyed the merchant's paragraphs, lists, bold and links — while the proposal's own
+-- rationale promised it "appends one plain sentence and changes nothing else". The
+-- rollback snapshot stored the stripped value too, so the write was not reversible.
+--
+-- `description` (stripped) is UNCHANGED and stays the form evidence matching and the
+-- claim linter read. This column is purely additive: the raw form the write path needs.
+alter table products add column if not exists description_html text;

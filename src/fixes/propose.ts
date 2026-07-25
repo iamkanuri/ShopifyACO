@@ -19,7 +19,12 @@ import type { Finding } from "../diagnosis/diagnose.js";
 export interface CatalogProduct {
   productGid: string;
   title: string | null;
+  /** Stripped plain text — what evidence matching and the claim linter read. */
   description: string | null;
+  /** RAW body HTML. The confirmed-claim write appends to THIS, never to the stripped
+   *  form: writing stripped text into Shopify's `descriptionHtml` destroyed the
+   *  merchant's markup and made rollback irreversible (CP3 blocker). */
+  descriptionHtml?: string | null;
   vendor: string | null;
   productType: string | null;
   onlineUrl: string | null;
@@ -201,6 +206,13 @@ export function claimSentence(claimKey: string, label: string): string | null {
   return /^[a-z0-9 \-]{3,40}$/i.test(clean) ? `This product is ${clean.toLowerCase()}.` : null;
 }
 
+/** The claim sentence is written into an HTML body, so escape it. `claimSentence`
+ *  already restricts the label to `[a-z0-9 -]`, which contains nothing escapable —
+ *  this is defense in depth so loosening that regex can never inject markup. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export interface ConfirmedClaim {
   claimKey: string;
   label: string;
@@ -219,20 +231,30 @@ export interface ConfirmedClaim {
 export function proposeClaimStatement(p: CatalogProduct, claim: ConfirmedClaim): FixProposal[] {
   const sentence = claimSentence(claim.claimKey, claim.label);
   if (!sentence) return [];
-  const current = p.description ?? "";
+  // Two views of the same body, and the distinction is the whole fix:
+  //   • `text` (stripped) decides whether the claim is ALREADY stated — a merchant who
+  //     wrote it inside <b> tags has still stated it, so the check must ignore markup;
+  //   • `html` (raw) is what we propose, snapshot and write back — appending to the
+  //     stripped form and writing that into `descriptionHtml` destroyed the merchant's
+  //     paragraphs, lists and links, and left rollback unable to restore them.
+  const text = p.description ?? "";
+  const html = p.descriptionHtml ?? "";
   // Already stated ⇒ the gap was in a surface we couldn't read, not in the copy.
   const core = sentence.replace(/^This product is\s*/i, "").replace(/\.$/, "").toLowerCase();
-  if (core && current.toLowerCase().includes(core)) return [];
+  if (core && text.toLowerCase().includes(core)) return [];
 
-  const proposed = current.trim() ? `${current.trim()}\n\n${sentence}` : sentence;
+  // APPEND ONE BLOCK, byte-preserving. The existing HTML is not trimmed, re-encoded or
+  // re-serialized — the result is exactly the original bytes plus one <p> block, which
+  // is the only thing that makes the rationale below literally true.
+  const proposed = html ? `${html}\n<p>${escapeHtml(sentence)}</p>` : `<p>${escapeHtml(sentence)}</p>`;
   return [{
     productGid: p.productGid,
     kind: "write_products",
     target: "descriptionHtml",
     label: `State "${claim.label}" in the product description`,
-    currentValue: current || null,
+    currentValue: html || null,
     proposedValue: proposed,
-    basedOn: current || null,
+    basedOn: html || null,
     rationale:
       `You confirmed this product is ${claim.label.toLowerCase()}. Your product description doesn't state it, so an AI buyer reading your public data has no way to verify it. This appends one plain sentence and changes nothing else.`,
     evidence: {
@@ -283,17 +305,13 @@ export function proposeFixes(product: CatalogProduct, findings: Finding[]): FixP
 
 export type WritableField = "seoTitle" | "seoDescription" | "descriptionHtml";
 
-/**
- * The field on a re-read `NormalizedProduct` that holds a writable field's live
- * value — the conflict baseline. The names differ for the body: we WRITE
- * `descriptionHtml` but Shopify hands it back as plain-text `description`, so
- * comparing `live.descriptionHtml` would read `undefined` and treat every product
- * as unchanged. That would silently disable the one guard that stops us clobbering
- * a merchant's edit, so the mapping is explicit rather than incidental.
- */
-export function liveFieldOf(field: WritableField): "seoTitle" | "seoDescription" | "description" {
-  return field === "descriptionHtml" ? "description" : field;
-}
+// NOTE (v2.1 CP2.5): `liveFieldOf` is GONE, deliberately. It existed to map the write
+// field `descriptionHtml` onto the read-back field `description`, because a re-read
+// product only carried the stripped text. That mapping was lossy in exactly the place it
+// mattered: both sides of the conflict comparison were stripped, so the guard could not
+// see markup loss, and the rollback snapshot stored stripped text and could not restore
+// the original. `NormalizedProduct` now carries raw `descriptionHtml`, so every writable
+// field reads back from the field of the same name and the indirection is dead weight.
 
 /** Map a write_products proposal target → the NormalizedProduct field the apply
  *  engine re-reads (for the conflict check) and writes. Returns null for copy_ready

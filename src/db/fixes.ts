@@ -110,10 +110,10 @@ export async function getLiveSeoFields(
 /** Load the catalog data needed to propose fixes for one product (incl. a price). */
 export async function getProductForFix(shop: string, productGid: string): Promise<CatalogProduct | null> {
   const { rows } = await pgQuery<{
-    product_gid: string; title: string | null; description: string | null; vendor: string | null;
+    product_gid: string; title: string | null; description: string | null; description_html: string | null; vendor: string | null;
     product_type: string | null; online_url: string | null; seo_title: string | null; seo_description: string | null; price: string | null;
   }>(
-    `select p.product_gid, p.title, p.description, p.vendor, p.product_type, p.online_url, p.seo_title, p.seo_description,
+    `select p.product_gid, p.title, p.description, p.description_html, p.vendor, p.product_type, p.online_url, p.seo_title, p.seo_description,
             (select min(v.price) from product_variants v where v.shop_domain=p.shop_domain and v.product_gid=p.product_gid) as price
        from products p where p.shop_domain=$1 and p.product_gid=$2`,
     [shop, productGid],
@@ -121,7 +121,7 @@ export async function getProductForFix(shop: string, productGid: string): Promis
   const r = rows[0];
   if (!r) return null;
   return {
-    productGid: r.product_gid, title: r.title, description: r.description, vendor: r.vendor,
+    productGid: r.product_gid, title: r.title, description: r.description, descriptionHtml: r.description_html, vendor: r.vendor,
     productType: r.product_type, onlineUrl: r.online_url, seoTitle: r.seo_title, seoDescription: r.seo_description,
     price: r.price != null ? Number(r.price) : null, currency: "USD",
   };

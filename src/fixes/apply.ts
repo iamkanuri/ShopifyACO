@@ -1,7 +1,7 @@
 import { ENV } from "../server/env.js";
 import { getAccessToken, getShop, audit } from "../db/shops.js";
 import { getProposal, updateProposal, type ProposalRow } from "../db/fixes.js";
-import { writableField, liveFieldOf, type WritableField } from "./propose.js";
+import { writableField, type WritableField } from "./propose.js";
 import { buildProductInput, productUpdate, rereadProduct } from "./source.js";
 import { hasScope } from "../shopify/scopes.js";
 import { upsertProduct } from "../db/catalog.js";
@@ -105,7 +105,9 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     return { ok: false, status: "failed", detail: "product no longer exists" };
   }
 
-  const liveValue = (live[liveFieldOf(field)] as string | null) ?? null;
+  // Read back from the SAME field we write. For `descriptionHtml` that is the raw body:
+  // comparing the stripped view here made this guard blind to markup loss (v2.1 CP2.5).
+  const liveValue = (live[field] as string | null) ?? null;
   // Conflict: the field changed since we based the proposal on it. Never clobber.
   if ((liveValue ?? "") !== (p.based_on ?? "")) {
     await updateProposal(id, { status: "conflict", error: `live value changed since proposal (now: ${truncErr(liveValue)})` });
@@ -130,11 +132,10 @@ export async function applyProposal(shop: string, id: number, actor: string): Pr
     let verified = false; // re-read succeeded, so snapshot.applied is the store's real value
     try {
       const after = await rereadProduct(shop, token, p.product_gid);
-      // liveFieldOf, not `field`: we WRITE descriptionHtml but Shopify reads back plain
-      // `description`. Reading `after[field]` there would be undefined ⇒ snapshot.applied
-      // null ⇒ the no-observable-effect guard below and rollback's conflict check would
-      // both compare against nothing. Same mapping as the pre-write read above.
-      snapshot.applied = (after?.[liveFieldOf(field)] as string | null) ?? null;
+      // Same field we wrote (raw HTML for the body) — so the no-observable-effect guard
+      // below and rollback's conflict check compare like with like, in the form the
+      // store actually holds.
+      snapshot.applied = (after?.[field] as string | null) ?? null;
       verified = true;
       await mirrorToCatalog(shop, after);
     } catch {
@@ -183,7 +184,7 @@ export async function rollbackProposal(shop: string, id: number, actor: string):
   // held right after apply (snap.applied), NOT the raw proposed value: Shopify normalizes SEO
   // fields, so proposed_value rarely matches the stored form byte-for-byte. Fall back to
   // proposed_value for snapshots written before snap.applied existed.
-  const liveValue = (live?.[liveFieldOf(snap.field)] as string | null) ?? null;
+  const liveValue = (live?.[snap.field] as string | null) ?? null;
   const expected = snap.applied !== undefined ? snap.applied : (p.proposed_value ?? null);
   if ((liveValue ?? "") !== (expected ?? "")) {
     await updateProposal(id, { status: "conflict", error: `value changed after apply (live: ${truncErr(liveValue)}, expected: ${truncErr(expected)})` });

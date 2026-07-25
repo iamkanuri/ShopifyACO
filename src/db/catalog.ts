@@ -8,17 +8,18 @@ import type { NormalizedProduct } from "../catalog/normalize.js";
 export async function upsertProduct(shop: string, p: NormalizedProduct, syncId?: number): Promise<void> {
   await pgTx(async (c) => {
     await c.query(
-      `insert into products (shop_domain, product_gid, handle, title, description, vendor, product_type,
+      `insert into products (shop_domain, product_gid, handle, title, description, description_html, vendor, product_type,
          tags, status, online_url, image_url, seo_title, seo_description, metafields, last_sync_id, nested_truncated,
          last_synced_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16, now(), now())
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16,$17, now(), now())
        on conflict (shop_domain, product_gid) do update set
-         handle=excluded.handle, title=excluded.title, description=excluded.description, vendor=excluded.vendor,
+         handle=excluded.handle, title=excluded.title, description=excluded.description,
+         description_html=excluded.description_html, vendor=excluded.vendor,
          product_type=excluded.product_type, tags=excluded.tags, status=excluded.status, online_url=excluded.online_url,
          image_url=excluded.image_url, seo_title=excluded.seo_title, seo_description=excluded.seo_description,
          metafields=excluded.metafields, nested_truncated=excluded.nested_truncated,
-         last_sync_id=coalesce($15, products.last_sync_id), last_synced_at=now(), updated_at=now()`,
-      [shop, p.productGid, p.handle, p.title, p.description, p.vendor, p.productType, p.tags, p.status,
+         last_sync_id=coalesce($16, products.last_sync_id), last_synced_at=now(), updated_at=now()`,
+      [shop, p.productGid, p.handle, p.title, p.description, p.descriptionHtml, p.vendor, p.productType, p.tags, p.status,
        p.onlineUrl, p.imageUrl, p.seoTitle, p.seoDescription, JSON.stringify(p.metafields), syncId ?? null, p.nestedTruncated ?? false],
     );
 
@@ -170,11 +171,12 @@ export async function loadNormalizedProducts(shop: string, opts: { cap?: number 
   const cap = Math.min(100_000, Math.max(1, opts.cap ?? 50_000));
   const { rows: prods } = await pgQuery<{
     product_gid: string; handle: string | null; title: string | null; description: string | null;
+    description_html: string | null;
     vendor: string | null; product_type: string | null; tags: string[] | null; status: string | null;
     online_url: string | null; image_url: string | null; seo_title: string | null; seo_description: string | null;
     metafields: unknown; nested_truncated: boolean | null;
   }>(
-    `select product_gid, handle, title, description, vendor, product_type, tags, status,
+    `select product_gid, handle, title, description, description_html, vendor, product_type, tags, status,
             online_url, image_url, seo_title, seo_description, metafields, nested_truncated
        from products where shop_domain=$1 order by product_gid asc limit $2`,
     [shop, cap],
@@ -210,6 +212,7 @@ export async function loadNormalizedProducts(shop: string, opts: { cap?: number 
     handle: p.handle,
     title: p.title,
     description: p.description,
+    descriptionHtml: p.description_html,
     vendor: p.vendor,
     productType: p.product_type,
     tags: Array.isArray(p.tags) ? p.tags : [],

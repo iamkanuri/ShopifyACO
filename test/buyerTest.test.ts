@@ -7,7 +7,7 @@ import {
 } from "../src/server/authenticatedTest.js";
 import { contractFromPublicResult, claimKeyFromLabel, matchProductByUrl } from "../src/server/buyerTests.js";
 import { contractVersion, ENGINE_VERSION, type Requirement } from "../src/server/productTest.js";
-import { proposeClaimStatement, claimSentence, writableField, liveFieldOf, type CatalogProduct } from "../src/fixes/propose.js";
+import { proposeClaimStatement, claimSentence, writableField, type CatalogProduct } from "../src/fixes/propose.js";
 
 // ===========================================================================
 // V2 CP2/CP3 — the walk from a public Buyer Test to a fixed, re-tested,
@@ -26,6 +26,7 @@ const mkProduct = (over: Partial<NormalizedProduct> = {}): NormalizedProduct => 
   handle: "cedar-bar",
   title: "Cedar Bar Soap",
   description: "A cedar bar soap for daily use.",
+  descriptionHtml: "<p>A cedar bar soap for daily use.</p>",
   vendor: "Acme",
   productType: "Bar Soap",
   tags: [],
@@ -163,7 +164,9 @@ test("22b. the delta classifier distinguishes resolved, improved, regressed and 
 test("23. a claim the merchant has not confirmed produces no proposal text at all", () => {
   const catalogProduct: CatalogProduct = {
     productGid: "gid://shopify/Product/1001", title: "Cedar Bar Soap",
-    description: "A cedar bar soap for daily use.", vendor: "Acme", productType: "Bar Soap",
+    description: "A cedar bar soap for daily use.",
+    descriptionHtml: "<p>A cedar bar soap for daily use.</p>",
+    vendor: "Acme", productType: "Bar Soap",
     onlineUrl: "https://acme.example/products/cedar-bar", seoTitle: null, seoDescription: null,
   };
 
@@ -177,9 +180,10 @@ test("23. a claim the merchant has not confirmed produces no proposal text at al
   const p = proposals[0]!;
   assert.equal(p.kind, "write_products");
   assert.equal(p.target, "descriptionHtml");
-  assert.equal(p.proposedValue, "A cedar bar soap for daily use.\n\nThis product is fragrance-free.");
-  assert.ok(p.proposedValue.startsWith(catalogProduct.description!), "APPENDS — never rewrites the merchant's copy");
-  assert.equal(p.basedOn, catalogProduct.description, "the conflict baseline is the live description");
+  // The proposal is built from the RAW body and is the original bytes plus ONE block.
+  assert.equal(p.proposedValue, "<p>A cedar bar soap for daily use.</p>\n<p>This product is fragrance-free.</p>");
+  assert.ok(p.proposedValue.startsWith(catalogProduct.descriptionHtml!), "APPENDS — never rewrites the merchant's copy");
+  assert.equal(p.basedOn, catalogProduct.descriptionHtml, "the conflict baseline is the live RAW body, not the stripped view");
 
   // No invented benefit, no superlative, no promise.
   assert.doesNotMatch(p.proposedValue, /best|premium|luxur|perfect|guarantee|will (improve|boost|increase)/i);
@@ -204,18 +208,63 @@ test("23. a claim the merchant has not confirmed produces no proposal text at al
 
 // ---- 24/25. the write path and the rerun guard ------------------------------
 
-test("24. descriptionHtml is a writable target and its conflict baseline reads the right live field", () => {
+test("24. a confirmed-claim proposal preserves the merchant's markup byte for byte", () => {
   // The half-built seam Stage 4 left: buildProductInput could write descriptionHtml
   // but writableField() rejected it, so a description proposal could never apply.
   assert.equal(writableField("descriptionHtml"), "descriptionHtml");
   assert.equal(writableField("seo.title"), "seoTitle");
   assert.equal(writableField("jsonld:Product"), null, "copy_ready targets are still never directly written");
 
-  // The name mismatch that would have silently disabled the anti-clobber guard:
-  // we WRITE descriptionHtml, Shopify hands it back as plain-text `description`.
-  assert.equal(liveFieldOf("descriptionHtml"), "description");
-  assert.equal(liveFieldOf("seoTitle"), "seoTitle");
-  assert.equal(liveFieldOf("seoDescription"), "seoDescription");
+  // v2.1 CP2.5 — the blocker this replaces. The proposal used to be built from the
+  // STRIPPED description and written into the HTML field, so applying a confirmed claim
+  // destroyed every paragraph, list, bold and link, while the rationale promised it
+  // "changes nothing else". The rationale is only true if this assertion holds.
+  const html = [
+    "<p>Cold-pressed in <b>small batches</b>.</p>",
+    "<ul><li>Aluminum-free</li><li>Unscented</li></ul>",
+    '<p>Free returns within 30 days. <a href="/pages/care">Care guide</a></p>',
+  ].join("\n");
+  const rich: CatalogProduct = {
+    productGid: "gid://shopify/Product/1001", title: "Cedar Bar Soap",
+    description: "Cold-pressed in small batches. Aluminum-free Unscented Free returns within 30 days. Care guide",
+    descriptionHtml: html,
+    vendor: "Acme", productType: "Bar Soap", onlineUrl: null, seoTitle: null, seoDescription: null,
+  };
+
+  const p = proposeClaimStatement(rich, {
+    claimKey: "fragrance_free", label: "Fragrance-free / unscented", confirmationId: 1,
+  })[0]!;
+
+  // THE assertion: original bytes, untouched, plus exactly one appended block.
+  assert.equal(p.proposedValue, `${html}\n<p>This product is fragrance-free.</p>`);
+  assert.ok(p.proposedValue.startsWith(html), "the merchant's HTML is a byte-exact prefix of the proposal");
+  for (const markup of ["<p>", "<ul>", "<li>", "<b>", '<a href="/pages/care">']) {
+    assert.ok(p.proposedValue.includes(markup), `markup preserved: ${markup}`);
+  }
+  // Exactly ONE block was added — not a re-serialization that happens to contain the same tags.
+  assert.equal(p.proposedValue.length, html.length + '\n<p>This product is fragrance-free.</p>'.length);
+  assert.equal(p.proposedValue.split("<p>").length - 1, 3, "two original <p> blocks plus exactly one appended");
+  // Rollback restores THIS, so the snapshot baseline must be the raw form too.
+  assert.equal(p.basedOn, html);
+
+  // A product with no body at all still gets a well-formed block, not bare text.
+  assert.equal(
+    proposeClaimStatement({ ...rich, description: null, descriptionHtml: null }, {
+      claimKey: "fragrance_free", label: "Fragrance-free / unscented", confirmationId: 1,
+    })[0]!.proposedValue,
+    "<p>This product is fragrance-free.</p>",
+  );
+
+  // The "already stated" check reads the STRIPPED view on purpose: a merchant who wrote
+  // the claim inside markup has still stated it, and we must not duplicate their sentence.
+  assert.deepEqual(
+    proposeClaimStatement({
+      ...rich,
+      description: "Gentle and fragrance-free.",
+      descriptionHtml: "<p>Gentle and <b>fragrance-free</b>.</p>",
+    }, { claimKey: "fragrance_free", label: "Fragrance-free / unscented", confirmationId: 1 }),
+    [],
+  );
 });
 
 test("25. a rerun is refused when the contract or the engine version differs", async () => {

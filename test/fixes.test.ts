@@ -237,6 +237,185 @@ test("apply reports failure when the write has no observable effect", { skip: !g
   }
 });
 
+// ---------------------------------------------------------------------------
+// v2.1 CP2.5 — the raw-HTML body write path.
+//
+// The blocker these defend: `proposeClaimStatement` built its value from the STRIPPED
+// plain-text description and wrote it into Shopify's HTML body, so applying a
+// merchant-confirmed claim destroyed their paragraphs, lists, bold and links — while
+// the proposal's own rationale promised it "appends one plain sentence and changes
+// nothing else". Worse, the rollback snapshot stored the stripped value, so the write
+// was NOT reversible. Neither the conflict guard nor the no-observable-effect guard
+// could see it, because both sides of every comparison were already stripped.
+// ---------------------------------------------------------------------------
+
+/** A body with everything a merchant would lose: paragraphs, a list, bold, a link. */
+const RICH_HTML = [
+  "<p>Cold-pressed in <b>small batches</b>.</p>",
+  "<ul><li>Aluminum-free</li><li>Unscented</li></ul>",
+  '<p>Free returns within 30 days. <a href="/pages/care">Care guide</a></p>',
+].join("\n");
+
+test("a confirmed-claim apply preserves the merchant's markup and rolls back byte-identically", { skip: !gate }, async () => {
+  const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
+  const { createProposal, getProposal } = await import("../src/db/fixes.js");
+  const { approveProposal, applyProposal, rollbackProposal } = await import("../src/fixes/apply.js");
+  const { __resetMockWrites, productUpdate, rereadProduct } = await import("../src/fixes/source.js");
+  const { proposeClaimStatement } = await import("../src/fixes/propose.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `fixhtml-${Date.now()}.myshopify.com`;
+  const gid = "gid://shopify/Product/1001";
+  __resetMockWrites();
+  try {
+    await upsertShop(shop, { status: "active", scopes: "read_products,write_products" });
+    await storeCredentials(shop, "mock_token", "read_products,write_products");
+
+    // Give the mock store a body worth preserving, then read it back the way the apply
+    // engine will — this is the pre-write baseline the rollback must restore exactly.
+    await productUpdate(shop, "mock_token", { id: gid, descriptionHtml: RICH_HTML });
+    const before = await rereadProduct(shop, "mock_token", gid);
+    assert.equal(before!.descriptionHtml, RICH_HTML, "the live body is raw HTML, not stripped text");
+
+    // Build the proposal the way the route does: from the catalog product's BOTH views.
+    const proposal = proposeClaimStatement({
+      productGid: gid, title: before!.title, description: before!.description,
+      descriptionHtml: before!.descriptionHtml, vendor: before!.vendor, productType: before!.productType,
+      onlineUrl: before!.onlineUrl, seoTitle: before!.seoTitle, seoDescription: before!.seoDescription,
+    }, { claimKey: "fragrance_free", label: "Fragrance-free / unscented", confirmationId: 1 })[0]!;
+    const expected = `${RICH_HTML}\n<p>This product is fragrance-free.</p>`;
+    assert.equal(proposal.proposedValue, expected);
+
+    const id = await createProposal(shop, null, null, proposal);
+    assert.equal((await applyProposal(shop, id, "merchant")).status, "rejected", "approval gates the write");
+    assert.equal((await approveProposal(shop, id, "merchant")).ok, true);
+
+    const applied = await applyProposal(shop, id, "merchant");
+    assert.equal(applied.ok, true, applied.detail);
+    assert.equal(applied.status, "applied");
+
+    // THE assertion: the store now holds the original bytes plus exactly one block.
+    const after = await rereadProduct(shop, "mock_token", gid);
+    assert.equal(after!.descriptionHtml, expected);
+    assert.ok(after!.descriptionHtml!.startsWith(RICH_HTML), "the merchant's HTML survived as a byte-exact prefix");
+    for (const markup of ["<ul>", "<li>", "<b>", '<a href="/pages/care">']) {
+      assert.ok(after!.descriptionHtml!.includes(markup), `markup preserved through the write: ${markup}`);
+    }
+
+    // The snapshot stores the RAW before-state — the only thing that makes rollback real.
+    const snap = (await getProposal(id))!.applied_snapshot as { before: string; applied: string };
+    assert.equal(snap.before, RICH_HTML);
+    assert.equal(snap.applied, expected);
+
+    // The catalog mirror carries both views, so Fix Studio agrees with the Shopify admin.
+    const mirrored = await pgQuery<{ description_html: string | null; description: string | null }>(
+      "select description_html, description from products where shop_domain=$1 and product_gid=$2", [shop, gid]);
+    assert.equal(mirrored.rows[0]?.description_html, expected);
+    assert.match(String(mirrored.rows[0]?.description), /fragrance-free/, "the stripped view stays in sync");
+
+    // Rollback restores the original markup byte for byte — not flattened text.
+    const rolled = await rollbackProposal(shop, id, "merchant");
+    assert.equal(rolled.ok, true, rolled.detail);
+    const restored = await rereadProduct(shop, "mock_token", gid);
+    assert.equal(restored!.descriptionHtml, RICH_HTML, "REVERSIBLE: the original HTML is back, byte for byte");
+  } finally {
+    __resetMockWrites();
+    await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+    await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
+  }
+});
+
+test("the descriptionHtml conflict guard ENGAGES when the merchant edits the body between proposal and apply", { skip: !gate }, async () => {
+  const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
+  const { createProposal } = await import("../src/db/fixes.js");
+  const { approveProposal, applyProposal } = await import("../src/fixes/apply.js");
+  const { __resetMockWrites, productUpdate, rereadProduct } = await import("../src/fixes/source.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `fixconf-${Date.now()}.myshopify.com`;
+  const gid = "gid://shopify/Product/1001";
+  __resetMockWrites();
+  try {
+    await upsertShop(shop, { status: "active", scopes: "read_products,write_products" });
+    await storeCredentials(shop, "mock_token", "read_products,write_products");
+    await productUpdate(shop, "mock_token", { id: gid, descriptionHtml: RICH_HTML });
+
+    // Proposed against the body as it stood; approved by the merchant.
+    const id = await createProposal(shop, null, null, {
+      productGid: gid, kind: "write_products", target: "descriptionHtml", label: "State the claim",
+      currentValue: RICH_HTML, proposedValue: `${RICH_HTML}\n<p>This product is fragrance-free.</p>`,
+      basedOn: RICH_HTML, rationale: "t", evidence: {},
+    });
+    await approveProposal(shop, id, "merchant");
+
+    // ...and THEN the merchant edits their own description in the Shopify admin.
+    const merchantEdit = `${RICH_HTML}\n<p>Now made in Vermont.</p>`;
+    await productUpdate(shop, "mock_token", { id: gid, descriptionHtml: merchantEdit });
+
+    // The guard must engage. Previously both sides of this comparison were stripped
+    // text, so this is the case that proves it is reading the raw body it writes.
+    const out = await applyProposal(shop, id, "merchant");
+    assert.equal(out.ok, false);
+    assert.equal(out.status, "conflict");
+    assert.equal(out.conflict, true);
+
+    // And the merchant's newer edit is untouched — refusing means NOT clobbering.
+    const live = await rereadProduct(shop, "mock_token", gid);
+    assert.equal(live!.descriptionHtml, merchantEdit, "the merchant's edit was never overwritten");
+  } finally {
+    __resetMockWrites();
+    await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+    await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
+  }
+});
+
+test("the no-observable-effect guard still fires on the raw-HTML body path", { skip: !gate }, async () => {
+  const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
+  const { createProposal, getProposal } = await import("../src/db/fixes.js");
+  const { approveProposal, applyProposal } = await import("../src/fixes/apply.js");
+  const { __resetMockWrites, productUpdate } = await import("../src/fixes/source.js");
+  const { pgQuery } = await import("../src/db/pg.js");
+
+  const shop = `fixnoop-${Date.now()}.myshopify.com`;
+  const gid = "gid://shopify/Product/1001";
+  __resetMockWrites();
+  try {
+    await upsertShop(shop, { status: "active", scopes: "read_products,write_products" });
+    await storeCredentials(shop, "mock_token", "read_products,write_products");
+    await productUpdate(shop, "mock_token", { id: gid, descriptionHtml: RICH_HTML });
+
+    // A write whose value equals what the store already holds. Shopify ACCEPTS it, but
+    // nothing observable changed, so "applied" would be a placebo (App Store 2.1.4).
+    const id = await createProposal(shop, null, null, {
+      productGid: gid, kind: "write_products", target: "descriptionHtml", label: "no-op",
+      currentValue: RICH_HTML, proposedValue: RICH_HTML, basedOn: RICH_HTML, rationale: "t", evidence: {},
+    });
+    await approveProposal(shop, id, "merchant");
+
+    const out = await applyProposal(shop, id, "merchant");
+    assert.equal(out.ok, false);
+    assert.equal(out.status, "failed");
+    assert.match(out.detail ?? "", /unchanged|no observable effect/i);
+    assert.equal((await getProposal(id))!.status, "failed", "never recorded as applied");
+  } finally {
+    __resetMockWrites();
+    await pgQuery("delete from fix_proposals where shop_domain=$1", [shop]);
+    for (const t of ["product_variants", "product_collections", "products"]) {
+      await pgQuery(`delete from ${t} where shop_domain=$1`, [shop]);
+    }
+    await pgQuery("delete from shop_credentials where shop_domain=$1", [shop]);
+    await pgQuery("delete from shops where shop_domain=$1", [shop]);
+  }
+});
+
 test("apply is refused on stale baseline (conflict) and without write scope", { skip: !gate }, async () => {
   const { upsertShop, storeCredentials } = await import("../src/db/shops.js");
   const { createProposal } = await import("../src/db/fixes.js");

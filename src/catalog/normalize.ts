@@ -28,6 +28,10 @@ export interface NormalizedProduct {
   productType: string | null;
   tags: string[];
   status: string | null;
+  /** RAW body HTML, exactly as Shopify holds it. `description` above is the stripped
+   *  plain-text view used for evidence matching; this is the form the write path must
+   *  append to, snapshot and compare, so a confirmed-claim write cannot flatten markup. */
+  descriptionHtml: string | null;
   onlineUrl: string | null;
   imageUrl: string | null;
   seoTitle: string | null;
@@ -135,6 +139,9 @@ export function normalizeProduct(node: RawNode): NormalizedProduct | null {
     handle: str(node.handle),
     title: str(node.title),
     description: stripHtml(node.descriptionHtml),
+    // The RAW body, kept verbatim (no trim): the write path appends to it, snapshots it
+    // for rollback, and compares it for conflicts. Stripping it there destroyed markup.
+    descriptionHtml: typeof node.descriptionHtml === "string" ? node.descriptionHtml : null,
     vendor: str(node.vendor),
     productType: str(node.productType),
     tags,

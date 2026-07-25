@@ -1,6 +1,6 @@
 import { ENV } from "../server/env.js";
 import { fetchProduct } from "../catalog/source.js";
-import { normalizeProduct, type NormalizedProduct } from "../catalog/normalize.js";
+import { normalizeProduct, stripHtml, type NormalizedProduct } from "../catalog/normalize.js";
 
 // Write-back source for Fix Studio (Phase 6). Re-reads a single product (for the
 // conflict check) and performs the gated GraphQL Admin `productUpdate`. mock mode
@@ -41,9 +41,14 @@ export async function rereadProduct(shop: string, token: string, productGid: str
     if (ov) {
       if (ov.seoTitle !== undefined) norm.seoTitle = ov.seoTitle;
       if (ov.seoDescription !== undefined) norm.seoDescription = ov.seoDescription;
-      // Written as descriptionHtml, read back as `description` — mirrors the real API's
-      // asymmetry (see liveFieldOf in propose.ts) so mock exercises the same code path live does.
-      if (ov.descriptionHtml !== undefined) norm.description = ov.descriptionHtml;
+      // The body is written and read back as RAW HTML (v2.1 CP2.5) — that is what the
+      // conflict guard and the rollback snapshot compare. `description` is kept in sync
+      // as the stripped view, exactly as normalizeProduct derives it live, so mock and
+      // live agree on BOTH forms and evidence matching still sees plain text.
+      if (ov.descriptionHtml !== undefined) {
+        norm.descriptionHtml = ov.descriptionHtml;
+        norm.description = stripHtml(ov.descriptionHtml);
+      }
     }
   }
   return norm;
