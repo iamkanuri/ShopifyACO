@@ -741,3 +741,36 @@ noindex, nofollow`, and any bad token → 404.
 ```
 git revert --no-edit <merge-sha> && git push origin main
 ```
+
+## v2.5 release — false-pass closure in the evidence matchers (2026-07-25)
+
+**Commit:** `feat/v2-5-false-passes` merged to `main`. Verify with `GET /healthz` → `commit`.
+**No migration.** Rollback is a plain revert with no data consideration.
+
+**What changes behaviourally.** Every change makes a matcher STRICTER, so the movement is
+`pass_evidenced` → `not_proven`. It removes claims we could not support; it cannot add one.
+Measured paired on the same stores (n=7 captured snapshots): median genuine findings 3 → 4,
+median `pass_evidenced` unchanged at 3, thin-result rate 0%, no store lost all its passes.
+All 18 `pass_evidenced` rows were audited individually — zero false positives.
+
+The user-visible shape of the change: a store whose copy *denies* something ("We do not offer
+next-day shipping", "Nothing in this jacket is made from wool") is no longer told it STATES it;
+a store stating a claim ("Contains gluten-free rolled oats") is no longer told its copy "states
+the opposite"; and facts about packaging, shipments, bundled items, competitors and reviews are
+no longer credited to the product.
+
+**Known and deliberately shipped:** 4 false passes remain, pinned in
+`test/adversarialCorpus.test.ts` (`V25_FOUND`). Each was measured against production's own code
+at `a3505c7` and behaves **identically there** — they are pre-existing defects this session
+discovered, not regressions. The root cause is recorded in `CLAUDE.md`: `CLAUSE_BOUNDARY` is
+serving two incompatible jobs and needs scope, not another list.
+
+**Verification after deploy (no credentials needed):**
+```
+curl -s https://lens.thirdocular.com/healthz
+```
+
+**Rollback:**
+```
+git revert --no-edit <sha> && git push origin main
+```
