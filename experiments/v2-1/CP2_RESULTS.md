@@ -94,9 +94,15 @@ other). See `EGRESS_DECISION.md`.
 `PRODUCT_TEST_SEMANTIC=0`, which was never set (Railway config is the owner's). Every response
 carries a `semantic` field — which is how the error was caught, after the run.
 
-The run recorded `topLevelKeys` but not the `semantic` object, so the cost is **bounded, not
-measured**: ≤ ~$0.021/test → **≤ ~$0.32 total**, from `gpt-5.4-mini` pricing with the corpus
-capped at 12k chars and output at 700 tokens. Within budget; not zero. See the correction banner
+The run recorded `topLevelKeys` but not the `semantic` object, so its own cost was bounded at
+≤ ~$0.021/test (≤ ~$0.32 total) from `gpt-5.4-mini` pricing with the corpus capped at 12k chars
+and output at 700 tokens.
+
+**Then measured, on the post-deploy smoke test (2026-07-25):** a real call returned
+`semantic: {called: true, granted: 0, vetoed: 0, discarded: 0, costUsd: 0.00126}` — so the
+bound was ~17× pessimistic, because it included `fixedPerCallUsd` (a web-search fee that does
+not apply to this tier). **Realistic CP2 cost ≈ 15 × ~$0.0013 ≈ $0.02.** Varies with evidence
+corpus size, so treat ~$0.0013 as typical and ~$0.021 as the ceiling. See the correction banner
 in `CP2_METHOD.md`.
 
 **It does not affect the egress result** — the semantic tier runs after fetching, on evidence

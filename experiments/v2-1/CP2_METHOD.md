@@ -26,9 +26,12 @@ Written during CP1 so the measurement can start the moment production is live. *
 > **Cost is bounded, not measured**, because the run recorded `topLevelKeys` but not the
 > `semantic` object itself. Upper bound from the code: one batched call per test, `gpt-5.4-mini`
 > at `fixedPerCallUsd 0.016 + input 0.75/M + output 4.5/M`, with the corpus capped at 12,000 chars
-> (~3k tokens) and `MAX_OUTPUT_TOKENS = 700` → **≤ ~$0.021 per test, ≤ ~$0.32 for all 15** — and
-> realistically well under that, since the tier is skipped when no claim requirement is left
-> unresolved. Within budget either way, but it was not $0.
+> (~3k tokens) and `MAX_OUTPUT_TOKENS = 700` → **≤ ~$0.021 per test, ≤ ~$0.32 for all 15**.
+>
+> **Since measured** (post-deploy smoke test, 2026-07-25): a real call reported
+> `costUsd: 0.00126`. The bound was ~17× pessimistic because it included `fixedPerCallUsd`,
+> a web-search fee this tier does not incur. **Typical ≈ $0.0013/test → CP2 ≈ $0.02 actual.**
+> Within budget either way, but it was not $0.
 >
 > **This does not affect the egress result.** The semantic tier runs *after* fetching, on evidence
 > already retrieved; it cannot change whether a host throttled us. The throttle rate stands.

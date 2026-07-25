@@ -128,16 +128,52 @@ All optional — every one has a working default. Set only if you need to tune.
 
 ```bash
 # Fastest: Railway → Deployments → previous green deploy → Redeploy.
-# Or by commit — revert the merge, keeping main's first parent:
-git revert --no-edit -m 1 <the-merge-sha-you-pushed>
+# Or by commit — see the note below on WHICH form applies.
+git revert --no-edit -m 1 <the-merge-sha-you-pushed>    # only if a MERGE COMMIT exists
 git push origin main
 ```
+
+> ⚠️ **`-m 1` only works if there is a merge commit — and V2.1 §V2.1 tells you to use
+> `--ff-only`, which does not create one.** After a fast-forward, `main` simply advances and
+> there is no second parent to keep. Use **Railway → Redeploy the previous green deploy**
+> (instant, no git surgery), or revert the range:
+> `git revert --no-edit <old-sha>..<new-sha>`. Check with `git log --merges -1` before
+> reaching for `-m 1`.
 
 Migration `0026` is additive, so reverting the code is complete and safe; the new tables simply
 stop being written to. No down-migration exists and none is needed.
 
 Kill switches, no redeploy required: `PRODUCT_TEST_SEMANTIC=0` disables the semantic tier;
 `DAILY_SPEND_CAP_USD=0` halts all live scan spend.
+
+## V2.6 ✅ SHIPPED — v2.1 CP2–CP5 (deployed 2026-07-25, commit `031f271`)
+
+Fast-forward `80f04c1 → 031f271`, 7 commits. **No merge commit** (see the rollback note above).
+
+Gate, all green before the push: full suite **357/357, 0 fail, 0 skipped** with all three
+env gates (`RUN_DB_TESTS=1` + `SHOPIFY_MODE=mock` + `APP_ENCRYPTION_KEY`); typecheck clean;
+viewer builds; `origin/main` fetched and confirmed an ancestor.
+
+Carries: the **raw-HTML body write path** (migration `0027` adds `products.description_html`;
+`liveFieldOf` removed) · the **CP2 production egress measurement** (0% throttle — §5 corrected)
+· the **CP5 decision memo** · a Fix Studio enrichment fix · the CP3 live-walk record.
+
+Verified post-deploy: `/healthz` = `031f271`; `/healthz/deep` db `ok`, new worker heartbeating;
+`/ /test /index /demo /privacy /scan` all 200; `<title>` server-substituted (no
+`__BRAND_NAME__`); a live product test returned a full 5-row table with every green row
+plainly supported and `pass_no_blocking` correctly distinguished from a proven pass.
+
+⚠️ **Migration `0027` was NOT independently verified.** Railway runs migrations non-fatally, so
+a failure still boots a healthy-looking app, and every path touching `description_html`
+(`getProductForFix`, `getLiveSeoFields`, `loadNormalizedProducts`) is shop-scoped — no public
+endpoint exercises it. Confirm via the deploy log line `applying:
+0027_product_description_html.sql`, or by opening Fix Studio on the dev store (a missing column
+500s immediately). Additive + idempotent, so a code rollback needs no down-migration.
+
+ℹ️ **Existing catalog rows have `description_html = NULL` until the next catalog sync.** A
+confirmed-claim proposal built from such a row gets `basedOn = null`, and the apply conflict
+guard then **refuses** it (live raw HTML ≠ `""`) rather than clobbering the body. Safe
+direction; a catalog sync clears it.
 
 ---
 
