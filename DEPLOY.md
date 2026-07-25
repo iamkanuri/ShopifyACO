@@ -242,9 +242,31 @@ refused while the page answers) and it removed a real honesty bug, where a surfa
 blocked from reading was reported as one the store fails to publish.
 
 **Live run, 5 real stores, spaced 20s, from the dev IP:** 1 completed (page tier, full
-6-row result), 3 `rate_limited`, 1 `unreachable` — a **60% throttle rate**. That is already
-past the §2.5 escalation trigger, though a residential dev IP is not a proxy for Railway's;
-re-measure from production before acting.
+6-row result), 3 `rate_limited`, 1 `unreachable` — a **60% throttle rate**, from a
+residential dev IP.
+
+### ✅ Re-measured from PRODUCTION (2026-07-25) — the 60% does NOT describe production
+
+The instruction above ("re-measure from production before acting") was carried out.
+**15 Shopify stores this project had never fetched, one request per host, paced ≥130s,
+through `POST /api/product-test` on production (`80f04c1`): 14 clean, 1 `unreachable`,
+0 `rate_limited` — a 0.0% throttle rate.** Full method, per-host table (de-identified) and
+limitations: `experiments/v2-1/CP2_RESULTS.md`. Decision: `experiments/v2-1/EGRESS_DECISION.md`.
+
+**So production sits in the "< 5% — no action" band below, not past the escalation trigger.**
+Do not buy a proxy pool or build the async path on the strength of the 60% figure; it was
+measured on a different IP and is not a production number.
+
+Three caveats that keep this honest: the sample **excludes Cloudflare-fronted storefronts**
+(they can't be DNS-verified as Shopify) and those are the likeliest bot-protection cases, so
+the true rate is probably above zero; n=15 with one shot per host is a wide interval; and it
+measures **cold, well-spaced** egress, so concurrency is the most likely way it moves.
+
+⚠️ **Known instrumentation gap:** a `rate_limited` result **cannot** tell you whether the
+cause was Shopify's per-IP limiter (an IP pool would help) or the host's own WAF (it would
+not). `policyStatus` is not on `ProductTestResult`, and the policy layer is never probed on
+the failing path. Closing that gap is the one code change `EGRESS_DECISION.md` recommends —
+do it **before** the rate rises, or the first escalation decision will be unmakeable.
 
 **Shipped mitigations (V2 CP1):**
 
