@@ -118,7 +118,14 @@ const CONTEXT_VETO: Array<{ name: string; re: RegExp }> = [
 export interface AboutnessResult { ok: boolean; reason?: string }
 
 /** Does this sentence genuinely assert `term` ABOUT the product under test? */
-export function passesAboutness(sentence: string, term: string, opts: { allowLogisticsSubject?: boolean } = {}): AboutnessResult {
+/** Containers that ARE the product when a measurement modifies them. "16oz bottle"
+ *  and "12 oz bag" are how a beverage or coffee store states its size — treating
+ *  those as a non-product subject told every such store it publishes no dimensions
+ *  while its copy literally said so. Packaging nouns (box, carton, wrapper, mailer)
+ *  are deliberately NOT here: those really are the shipment. */
+const CONTAINER_IS_PRODUCT = /^\W{0,3}(bottle|bag|pouch|container|jar|tin|can|tube|tumbler|canister)\b/i;
+
+export function passesAboutness(sentence: string, term: string, opts: { allowLogisticsSubject?: boolean; allowContainerSubject?: boolean } = {}): AboutnessResult {
   if (isNegated(sentence, term)) return { ok: false, reason: "negated" };
   for (const v of CONTEXT_VETO) {
     if (v.re.test(sentence)) return { ok: false, reason: v.name };
@@ -134,6 +141,7 @@ export function passesAboutness(sentence: string, term: string, opts: { allowLog
     const m = MODIFIED_SUBJECT.exec(after);
     if (!m) return { ok: true }; // this occurrence stands on its own
     if (opts.allowLogisticsSubject && /^(\W{0,3})(shipping|delivery|mailer)\b/i.test(after)) return { ok: true };
+    if (opts.allowContainerSubject && CONTAINER_IS_PRODUCT.test(after)) return { ok: true };
     i = n.indexOf(t, i + 1);
   }
   return { ok: false, reason: "modifies-non-product-subject" };
@@ -194,7 +202,7 @@ function containsTerm(haystack: string, term: string, wholeWord: boolean): boole
 export function findSupport(
   evidence: EvidenceSentence[],
   terms: readonly string[],
-  opts: { allowLogisticsSubject?: boolean; requireDigit?: boolean; wholeWord?: boolean } = {},
+  opts: { allowLogisticsSubject?: boolean; allowContainerSubject?: boolean; requireDigit?: boolean; wholeWord?: boolean } = {},
 ): SupportedEvidence | null {
   for (const ev of evidence) {
     const n = normalize(ev.text);

@@ -5,9 +5,10 @@ import { htmlToText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
   buildEvidence, findSupport, findTimingSupport, normalize,
-  SURFACE_LABEL, type EvidenceSentence, type QuotableSurface,
+  SURFACE_LABEL, type EvidenceSentence, type SupportedEvidence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
+import { isValidGtin } from "../feeds/validate.js";
 import {
   getCachedResult, storeResult, reserveHostSlot, getCachedRobots, storeRobots,
   reserveEgressSlot, withEgressSlot, markHostThrottled, hostThrottleCooldownMs,
@@ -102,6 +103,43 @@ interface AttributeSpec {
   /** When set, the requirement is only asked of products whose category matches —
    *  "care instructions" is a real buyer constraint for a pan and noise for a pencil. */
   onlyFor?: RegExp;
+  /** A term occurring is NOT the attribute being stated. This runs on the ORIGINAL
+   *  sentence (case intact) and must find an actual VALUE — a material, a place, a
+   *  measurement. Without it "Made with love in small batches" states a material and
+   *  "Roasted in small batches" states a country of origin, both of which an
+   *  adversarial review measured as real passes on the commonest DTC copy there is. */
+  valueGuard?: (sentence: string, matchedTerm: string) => boolean;
+  /** Treat bottle/bag/jar/tin as the PRODUCT rather than as packaging. Only correct
+   *  where a measurement modifies them ("16oz bottle"), never for product claims. */
+  allowContainerSubject?: boolean;
+  /** Reject any sentence about the shipment outright. */
+  shipmentVeto?: boolean;
+}
+
+/** A sentence about getting the thing to the buyer is not a statement about the
+ *  thing. Applied whole-sentence for size, where the subject can precede OR follow. */
+const SHIPMENT_CONTEXT = /\b(shipping|shipped|ships|shipment|freight|pallet|courier|mailer|packaging|per order|orders? (over|above|exceed))\b/i;
+
+/** Nouns that identify a genuine material. Deliberately a closed list: an open
+ *  "any capitalised word" rule readmits "Made with Love". */
+const MATERIAL_NOUN = /\b(cotton|wool|merino|cashmere|linen|silk|hemp|jute|canvas|denim|suede|leather|down|felt|latex|rubber|silicone|nylon|polyester|acrylic|resin|plastic|steel|stainless|aluminum|aluminium|brass|copper|zinc|titanium|iron|pewter|wood|walnut|oak|maple|cedar|birch|teak|bamboo|cork|paper|cardboard|glass|borosilicate|ceramic|porcelain|stoneware|clay|stone|marble|granite|slate|wax|beeswax|soy|paraffin|carbon|graphite|recycled|organic|leatherette|nubuck|elastane|spandex|lyocell|tencel|viscose|rayon|polypropylene|neoprene|ethylene|eva|abs|polycarbonate)\b/i;
+
+/** A number bound to a unit. This is what "dimensions are stated" actually means;
+ *  a bare unit word plus any digit elsewhere in the sentence does not ("Available
+ *  in 3 colors with a relaxed length" measured as a pass). */
+const MEASUREMENT = /(\b\d+(\.\d+)?\s?(mm|cm|inch|inches|in\b|ft|feet|foot|oz|ounces?|ml|l\b|liters?|litres?|g\b|kg|grams?|lbs?|pounds?)|\b(dimensions?|capacity|weight|height|width|length|diameter)\s*[:\-–]\s*\d)/i;
+
+/** After an origin frame, a real PLACE. Articles are skipped ("Made in the USA"),
+ *  then a capitalised token is required — which "small batches", "partnership" and
+ *  "batches of twelve" all fail, and "Vermont", "Japan" and "USA" all pass. */
+const ORIGIN_STOP = /^(small|large|limited|tiny|micro|single|partnership|collaboration|batches?|house|store|studio|shop|store|kitchen|barrels?)\b/i;
+function statesAPlace(sentence: string, term: string): boolean {
+  const i = sentence.toLowerCase().indexOf(term.toLowerCase());
+  if (i === -1) return false;
+  let after = sentence.slice(i + term.length).replace(/^[\s:,\-–]+/, "");
+  after = after.replace(/^(the|our|a|an|its)\s+/i, "");
+  if (ORIGIN_STOP.test(after)) return false;
+  return /^[A-Z][A-Za-z.'-]{1,}/.test(after) || /^(USA|US|UK|EU|UAE)\b/i.test(after);
 }
 
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
@@ -116,6 +154,11 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
       "constructed of", "material:", "materials:", "fabric:", "composition:", "made in part from",
       "% cotton", "% wool", "% polyester", "% linen", "% silk", "% nylon", "% leather", "% recycled",
     ],
+    // The frame alone is not a composition statement. "Made with love in small
+    // batches" and "made with care by hand" are among the most common sentences in
+    // exactly the artisan/DTC categories this tool targets, and both passed before
+    // this guard existed.
+    valueGuard: (s) => MATERIAL_NOUN.test(s),
   },
   dimensions: {
     label: "Size, capacity or weight is stated",
@@ -123,10 +166,16 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     terms: [
       "dimensions", "capacity", "diameter", "inches", "inch", "cm", "mm", "millimeters", "centimeters",
       "liters", "litres", "ml", "oz", "fl oz", "fluid ounces", "ounces", "lbs", "pounds", "grams", "kg",
-      "kilograms", "height", "width", "length", "weighs", "weight",
+      "kilograms", "height", "width", "length", "weighs", "weight", "lb", "gram", "ounce",
     ],
     requireDigit: true,
     wholeWord: true,
+    // `requireDigit` only asks that SOME digit exists in the sentence, so "Available
+    // in 3 colors with a relaxed length" and the title "Wizard of Oz 2024 Collector
+    // Poster" both satisfied it. A dimension is a number BOUND to a unit.
+    valueGuard: (s) => MEASUREMENT.test(s),
+    allowContainerSubject: true,
+    shipmentVeto: true,
   },
   origin: {
     label: "Country of origin is stated",
@@ -135,6 +184,10 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
       "made in", "handmade in", "handcrafted in", "crafted in", "manufactured in", "assembled in",
       "produced in", "country of origin", "designed and made in", "grown in", "milled in", "roasted in",
     ],
+    // "Made in small batches", "Roasted in small batches every Tuesday", "Grown in
+    // partnership with local farms" and "Handmade in batches of twelve" all read as
+    // a stated country of origin without this. A place is required.
+    valueGuard: (s, term) => statesAPlace(s, term),
   },
   // NOTE — a `warranty` requirement was built, measured (0.71 fail rate, in band)
   // and then DROPPED before shipping. Its term list ("guarantee", "guaranteed",
@@ -148,14 +201,51 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     label: "Care or use instructions are stated",
     missingDetail: "no care or use instructions an AI buyer could read",
     terms: [
+      // "how to use" and "instructions for use" were REMOVED: they matched "Learn
+      // how to use our rewards program in 3 steps", which is site chrome, not care.
       "machine wash", "machine-wash", "hand wash", "hand-wash", "dishwasher safe", "dishwasher-safe",
       "care instructions", "wipe clean", "tumble dry", "air dry", "spot clean", "do not bleach",
-      "hand wash only", "season before", "how to use", "instructions for use", "dry flat",
+      "hand wash only", "season before", "dry flat", "do not tumble", "iron on low",
     ],
     // Categories where a buyer genuinely constrains on care. A pencil does not.
-    onlyFor: /apparel|clothing|shirt|dress|pant|sock|sweater|jacket|textile|bedding|sheet|towel|linen|rug|cookware|pan|pot|skillet|knife|cutting board|bag|backpack|shoe|boot|footwear|wool|leather|cast iron/i,
+    // WORD-BOUNDED: without \b, "pan" matched "Company" and "Japanese", "pot" matched
+    // "Potato", and "rug" matched "Arugula" and "Rugged" — so every brand named
+    // "… Company" got a care row. That is precisely the irrelevant-uniform-row
+    // failure this whole checkpoint exists to remove.
+    onlyFor: /\b(apparel|clothing|shirts?|dress(es)?|pants?|socks?|sweaters?|jackets?|textiles?|bedding|sheets?|towels?|linens?|rugs?|cookware|pans?|pots?|skillets?|knives|knife|cutting boards?|bags?|backpacks?|shoes?|boots?|footwear|wool|leather|cast iron)\b/i,
   },
 };
+
+/** Subjects that make the sentence about the SHIPMENT rather than the product, when
+ *  they appear BEFORE the frame. `MODIFIED_SUBJECT` in testEvidence only looks after
+ *  the term, which composition/origin frames structurally defeat. */
+const SUBJECT_BEFORE_VETO = /\b(packaging|package|carton|wrapper|mailer|pallet|shipping box(es)?|shipper|the box it ships in|outer box|our boxes)\b[^.]{0,48}$/i;
+
+/** Find a sentence that genuinely STATES this attribute about this product. Layers
+ *  the shared evidence discipline (negation, aboutness, chrome veto, presentable
+ *  quote) with two attribute-specific gates the shared layer cannot express. */
+function findAttributeSupport(evidence: EvidenceSentence[], spec: AttributeSpec): SupportedEvidence | null {
+  for (const ev of evidence) {
+    // Evaluate this sentence in isolation so a veto on one sentence never hides a
+    // genuine statement in the next.
+    // A whole-sentence shipment veto. The subject can sit on EITHER side of the
+    // term — "Rated for a 300 lbs weight capacity on the shipping pallet" puts it
+    // after — so for size statements the safest rule is that a sentence about the
+    // shipment is never a statement about the product's size.
+    if (spec.shipmentVeto && SHIPMENT_CONTEXT.test(ev.text)) continue;
+    const hit = findSupport([ev], spec.terms, {
+      requireDigit: spec.requireDigit, wholeWord: spec.wholeWord,
+      allowContainerSubject: spec.allowContainerSubject,
+    });
+    if (!hit) continue;
+    const idx = ev.text.toLowerCase().indexOf(hit.term.toLowerCase());
+    const before = idx > 0 ? ev.text.slice(0, idx) : "";
+    if (SUBJECT_BEFORE_VETO.test(before)) continue;
+    if (spec.valueGuard && !spec.valueGuard(ev.text, hit.term)) continue;
+    return hit;
+  }
+  return null;
+}
 
 /** Only "required" phrasings — a store merely OFFERING a subscription is not a blocker. */
 const SUBSCRIPTION_REQUIRED = ["subscription required", "subscription is required", "subscription only", "subscribe to purchase", "only available by subscription", "must subscribe"];
@@ -718,14 +808,22 @@ const PRODUCT_TYPE_STOPLIST = /^(products?|all|default|misc|miscellaneous|other|
 
 export function taskSubject(p: PublicProduct): string {
   const title = (p.title ?? "").replace(/\s+/g, " ").trim();
-  if (title && title.length <= 70) return `the ${title}`;
+  // The summary is LINTED, and a failed lint blocks the ENTIRE result and returns
+  // `unreachable` for a store we read perfectly. Piping the merchant's raw title
+  // into it therefore kills the whole test, deterministically and unfixably by
+  // retry, for real products: "Lifetime Guarantee Leather Belt" trips `guarantee`,
+  // "Rank Higher: The SEO Workbook" trips `ranking-prediction`. This is the same
+  // hazard that got the `warranty` requirement dropped — it must not come back in
+  // through the first line of the page.
+  const usable = (s: string): boolean => lintStrings([`Find the ${s}, purchasable one-time with fast US shipping.`]).ok;
+  if (title && title.length <= 70 && usable(title)) return `the ${title}`;
   if (title) {
     // Long titles are usually "Name — long marketing subtitle"; keep the head.
     const head = title.split(/\s+[–—|:]\s+/)[0]!.trim();
-    if (head && head.length <= 70) return `the ${head}`;
+    if (head && head.length <= 70 && usable(head)) return `the ${head}`;
   }
   const type = (p.productType ?? "").replace(/\s+/g, " ").trim();
-  if (type && type.length <= 30 && /^[a-z][a-z\s&'-]*$/i.test(type) && !PRODUCT_TYPE_STOPLIST.test(type)) {
+  if (type && type.length <= 30 && /^[a-z][a-z\s&'-]*$/i.test(type) && !PRODUCT_TYPE_STOPLIST.test(type) && lintStrings([`Find this ${type.toLowerCase()}.`]).ok) {
     return `this ${type.toLowerCase()}`;
   }
   return "this product";
@@ -745,7 +843,14 @@ export function buildBuyerTask(p: PublicProduct): { summary: string; requirement
     const cap = niceCap(p.minPriceUsd);
     candidates.push({ id: "price", kind: "price_under", capUsd: cap, label: `Price under $${cap}` });
   }
-  const optionValue = p.optionValues.find((v) => v && !/^(default|title)$/i.test(v));
+  // The label embeds a MERCHANT-supplied option value, and every rendered string is
+  // linted with the whole result refused on a violation. A variant named "Lifetime
+  // Guarantee" or "Rank Higher" would therefore destroy the merchant's own report,
+  // deterministically. Same hazard as the product title and the dropped `warranty`
+  // requirement — drop the candidate instead of the result.
+  const optionValue = p.optionValues.find(
+    (v) => v && !/^(default|title)$/i.test(v) && lintStrings([`${v} option available`]).ok,
+  );
   if (optionValue) candidates.push({ id: "variant", kind: "variant_option", optionValue, label: `${optionValue} option available` });
   candidates.push({ id: "stock", kind: "in_stock", label: "In stock and purchasable" });
   candidates.push({ id: "sub", kind: "no_subscription", label: "Available as a one-time purchase" });
@@ -847,8 +952,12 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     case "claim": {
       const fx = CLAIM_TERMS[req.claim!]!;
       const checked = textSurfaces(p);
+      // Same protection the attribute rows get: a sentence we could not legally
+      // render is skipped here, so a merchant whose copy happens to say
+      // "guaranteed" never has their whole report refused as `unreachable`.
+      const quotable = p.evidence.filter((e) => lintStrings([e.text]).ok);
       // Contrary evidence must clear the same aboutness gates before we report it.
-      const contra = fx.violating.length ? findSupport(p.evidence, fx.violating) : null;
+      const contra = fx.violating.length ? findSupport(quotable, fx.violating) : null;
       if (contra) {
         return {
           label: req.label, status: "not_proven", surfacesChecked: checked,
@@ -856,7 +965,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           evidenceQuote: contra.quote ?? undefined, evidenceSurface: SURFACE_LABEL[contra.surface],
         };
       }
-      const hit = findSupport(p.evidence, fx.support);
+      const hit = findSupport(quotable, fx.support);
       if (hit) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
@@ -945,10 +1054,16 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
         (e) => e.surface !== "shipping_policy" && lintStrings([e.text]).ok,
       );
       const checked = textSurfaces({ ...p, evidence: productEvidence });
-      const hit = findSupport(productEvidence, spec.terms, {
-        requireDigit: spec.requireDigit,
-        wholeWord: spec.wholeWord,
-      });
+      // Two further gates, both from measured false passes:
+      //
+      //  • SUBJECT-BEFORE veto. `passesAboutness` only inspects the noun AFTER the
+      //    term, but composition and origin frames put their subject in FRONT of it
+      //    — so "Our packaging is made from 100% recycled cardboard" and "Our
+      //    shipping boxes are made in the USA" read as product facts. Excluding the
+      //    shipping-policy SURFACE does not help: merchants routinely inline the
+      //    same sentence in the product body.
+      //  • VALUE guard. A term occurring is not the attribute being stated.
+      const hit = findAttributeSupport(productEvidence, spec);
       if (hit) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
@@ -974,14 +1089,23 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       };
     }
     case "identifiers": {
-      // Purely structural: read from JSON-LD, never from prose. There is no text
-      // matching here and therefore no way for this row to produce a false pass.
+      // Structural: read from JSON-LD, never from prose. But "structural" is NOT the
+      // same as "cannot false-pass" — an earlier comment here claimed exactly that
+      // and was wrong. `signals.gtin/mpn` are set for ANY non-empty string, so
+      // `mpn: "N/A"`, `"TBD"`, `"-"` and `gtin: "0"` all read as a published
+      // identifier, while the row's own copy promises a machine buyer can match the
+      // product to a catalogue entry. The VALUE has to be plausible.
       const checked = ["structured data"];
-      const sig = p.extracted?.signals;
       if (!p.extracted) {
         return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "We couldn't read this product's page markup to check for structured identifiers.") };
       }
-      const have = [sig?.gtin ? "GTIN" : null, sig?.mpn ? "MPN" : null].filter(Boolean) as string[];
+      const info = p.extracted.product;
+      const gtinRaw = (info?.gtin ?? "").trim();
+      const mpnRaw = (info?.mpn ?? "").trim();
+      const PLACEHOLDER = /^(n\/?a|tbd|none|null|nil|unknown|-+|0+|x+|test)$/i;
+      const realMpn = mpnRaw.length >= 3 && !PLACEHOLDER.test(mpnRaw);
+      const realGtin = isValidGtin(gtinRaw);
+      const have = [realGtin ? "GTIN" : null, realMpn ? "MPN" : null].filter(Boolean) as string[];
       if (have.length) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
@@ -990,7 +1114,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       }
       return {
         label: req.label, status: "not_proven", surfacesChecked: checked,
-        detail: sig?.productSchema
+        detail: p.extracted.signals.productSchema
           ? "Your product structured data publishes no GTIN or MPN, so a machine buyer can't match this product to a catalogue entry."
           : "This product publishes no Product structured data, so there is no GTIN or MPN for a machine buyer to read.",
       };
@@ -1212,15 +1336,22 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
   // column of "not stated" rows built on no evidence. That is the difference
   // between a finding and an accusation, at scale.
   //
-  // The floor is deliberately about INPUT (did we read a product surface?), not
-  // about the verdict distribution — a genuinely sparse store that we DID read is
-  // a real result and must keep rendering.
+  // The floor is deliberately about INPUT (did we read a product surface?) and
+  // ONLY about input. Two rejected alternatives, both of which look like better
+  // safety nets and are not:
+  //   • "no passes at all" is DEAD as a condition — `no_subscription` is always a
+  //     candidate and returns pass_no_blocking unless a subscription blocker is
+  //     found, so the count is ~never zero. It would read as a guard and never fire.
+  //   • "no pass_evidenced" would fire, but on the wrong cases: a store we read
+  //     perfectly well that genuinely states none of it is a REAL result — the
+  //     harshest one the tool produces — and suppressing it would be dishonest in
+  //     the merchant's favour.
   const readSomething =
     product.evidence.length > 0 ||
     Boolean(product.extracted?.hasProductSchema) ||
     product.variants.length > 0 ||
     product.minPriceUsd != null;
-  if (!readSomething || count("pass_evidenced") + count("pass_no_blocking") === 0) {
+  if (!readSomething) {
     return {
       ...base,
       error:

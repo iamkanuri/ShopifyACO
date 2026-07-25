@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildBuyerTask, contractVersion, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
 import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, passesAboutness } from "../src/server/testEvidence.js";
+import { lintStrings } from "../src/server/claimLinter.js";
 
 // ===========================================================================
 // Phase B — assertion evaluator HONESTY tests. Pure (no network).
@@ -298,10 +299,17 @@ test("10b. a non-compliant result is NOT rendered (the linter is a blocking gate
         ? { status: 200, contentType: "application/json", body: html }
         : { status: 404, contentType: "text/html", body: "" },
   });
-  // The task summary embeds product_type → "…rank higher…" trips the linter.
-  assert.equal(res.ok, false, "a result containing a forbidden phrase is refused");
-  assert.match(res.error ?? "", /reporting standard/i, "the refusal is honest, not a crash");
-  assert.equal(res.assertions.length, 0, "nothing is rendered");
+  // v2.3 CHANGED THIS CONTRACT, deliberately. The linter is still a blocking gate on
+  // strings WE compose, but merchant-supplied text (title, product_type, option
+  // values, their own sentences) is now filtered BEFORE it can reach a rendered
+  // string. Otherwise a store whose product is called "Rank Higher Serum" had its
+  // entire report refused as `unreachable` — a false statement about a store we read
+  // perfectly, and unfixable by retry because it is deterministic.
+  assert.equal(res.ok, true, "a merchant's own wording must never destroy their report");
+  assert.ok(lintStrings([res.task]).ok, "and the summary we render is still clean");
+  assert.ok(!/rank higher/i.test(res.task), "the offending merchant string is not echoed");
+  // The gate itself is unchanged and still rejects a forbidden phrase.
+  assert.equal(lintStrings(["you'll rank higher in AI answers"]).ok, false, "the linter still blocks");
 });
 
 // ---- 8. cache: TTL hit, re-run bypass, throttle ----------------------------
@@ -883,10 +891,10 @@ test("v2.3: identifiers read structured data only, and say which one is missing"
     gtin: false, mpn: false, sku: false, brand: false, rating: false, reviews: false,
     shipping: false, returns: false, faq: false, canonical: true, indexable: true, ...over,
   });
-  const withExtract = (signals: ReturnType<typeof sig>): PublicProduct => mk({
+  const withExtract = (signals: ReturnType<typeof sig>, gtin: string | null = null): PublicProduct => mk({
     // A page whose PROSE says "GTIN" must not be able to satisfy a structural row.
     description: "This product has a GTIN and an MPN, we promise.",
-    extracted: { jsonLdTypes: ["Product"], hasProductSchema: true, product: null, title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true, headings: { h1: [], h2: [] }, faqs: [], signals },
+    extracted: { jsonLdTypes: ["Product"], hasProductSchema: true, product: { name: null, brand: null, sku: null, gtin, mpn: null, offer: null, rating: null, reviewCount: null }, title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true, headings: { h1: [], h2: [] }, faqs: [], signals },
   } as Partial<PublicProduct> & { description?: string });
 
   const missing = evaluate(withExtract(sig({})), { id: "ids", kind: "identifiers", label: "ids" });
@@ -894,7 +902,7 @@ test("v2.3: identifiers read structured data only, and say which one is missing"
   assert.match(missing.detail, /no GTIN or MPN/i);
   assert.equal(missing.evidenceQuote, undefined, "a structural row never quotes prose");
 
-  const present = evaluate(withExtract(sig({ gtin: true })), { id: "ids", kind: "identifiers", label: "ids" });
+  const present = evaluate(withExtract(sig({ gtin: true }), "0123456789012"), { id: "ids", kind: "identifiers", label: "ids" });
   assert.equal(present.status, "pass_evidenced");
   assert.match(present.detail, /GTIN/);
 });
@@ -934,4 +942,136 @@ test("v2.3: adding attribute requirements does not change any EXISTING contract'
   const a: Requirement[] = [{ id: "x", kind: "attribute", attribute: "materials", label: "m" }];
   const b: Requirement[] = [{ id: "x", kind: "attribute", attribute: "dimensions", label: "d" }];
   assert.notEqual(contractVersion(a), contractVersion(b), "different attributes are different contracts");
+});
+
+test("v2.3: the near-empty floor fires on an unreadable store and NOT on a sparse real one", async () => {
+  // A store we could barely read must not yield a column of "not stated" rows built
+  // on nothing — with 8-10 requirements that is an accusation, not a diagnosis.
+  const empty = await runStub([]); // every tier 404s
+  assert.equal(empty.ok, false, "nothing readable is an honest failure, not a result");
+
+  // But a store we DID read, which simply states very little, is a real result and
+  // must still render. This is the case the floor must never swallow.
+  const sparse = await runStub([
+    [/\.json$/, { status: 200, contentType: "application/json", body: shopJson({ body_html: "<p>A bar.</p>" }) }],
+  ]);
+  assert.equal(sparse.ok, true, "a readable but sparse store is a real result");
+  assert.ok(sparse.notProvenCount > 0, "and its findings are genuine, not suppressed");
+});
+
+// ===========================================================================
+// v2.3 — the adversarial correctness review's findings, pinned.
+// Each sentence below was DEMONSTRATED to produce a wrong verdict before the
+// matcher was hardened. They are the regression suite for the one unrecoverable
+// failure mode, so they use the reviewer's exact strings.
+// ===========================================================================
+
+test("v2.3 review: a frame without a VALUE is not a stated attribute", () => {
+  // "made with love" / "made in small batches" are among the most common sentences
+  // in the artisan and DTC categories this tool targets. All of these passed.
+  const falsePasses: Array<[string, string]> = [
+    ["Made with love in small batches.", "materials"],
+    ["Every bar is made with care by hand.", "materials"],
+    ["Made in small batches in our studio.", "origin"],
+    ["Roasted in small batches every Tuesday.", "origin"],
+    ["Grown in partnership with local farms.", "origin"],
+    ["Handmade in batches of twelve.", "origin"],
+    ["Available in 3 colors with a relaxed length.", "dimensions"],
+    ["Learn how to use our rewards program in 3 steps.", "care"],
+  ];
+  for (const [sentence, a] of falsePasses) {
+    assert.equal(evaluate(mk({ description: sentence }), attrReq(a)).status, "not_proven",
+      `must not state ${a}: ${sentence}`);
+  }
+  // The genuine article still passes, or the guard would just be a mute button.
+  const truePasses: Array<[string, string]> = [
+    ["The handle is crafted from solid walnut.", "materials"],
+    ["Handmade in Vermont from local clay.", "origin"],
+    ["Made in the USA.", "origin"],
+    ["Each bottle stands 8 inches tall.", "dimensions"],
+    ["Machine wash cold, tumble dry low.", "care"],
+  ];
+  for (const [sentence, a] of truePasses) {
+    assert.equal(evaluate(mk({ description: sentence }), attrReq(a)).status, "pass_evidenced",
+      `must state ${a}: ${sentence}`);
+  }
+});
+
+test("v2.3 review: the non-product subject may sit BEFORE the frame, or after it", () => {
+  // `passesAboutness` only inspects the noun AFTER the term, and composition and
+  // origin frames put their subject in front — so the shared guard structurally
+  // could not fire. Excluding the shipping-policy SURFACE did not help: merchants
+  // routinely inline the same sentence in the product body.
+  for (const [sentence, a] of [
+    ["Our packaging is made from 100% recycled cardboard.", "materials"],
+    ["The box it ships in is made of recycled kraft paper.", "materials"],
+    ["Our shipping boxes are made in the USA.", "origin"],
+    ["Rated for a 300 lbs weight capacity on the shipping pallet.", "dimensions"],
+  ] as Array<[string, string]>) {
+    assert.equal(evaluate(mk({ description: sentence }), attrReq(a)).status, "not_proven",
+      `shipment-scoped sentence must not be a product fact: ${sentence}`);
+  }
+});
+
+test("v2.3 review: a container IS the product when a measurement modifies it", () => {
+  // The mirror defect. `MODIFIED_SUBJECT` vetoes bottle/bag/container, so every
+  // beverage, coffee and pantry store was told it publishes no dimensions while
+  // its copy literally said "16oz bottle".
+  for (const sentence of [
+    "16oz bottle of cold brew.",
+    "Each 12 oz bag holds a week of coffee.",
+    "A 500 ml bottle for daily hydration.",
+    "The 2 lb container keeps it fresh.",
+  ]) {
+    assert.equal(evaluate(mk({ description: sentence }), attrReq("dimensions")).status, "pass_evidenced",
+      `canonical size phrasing must pass: ${sentence}`);
+  }
+});
+
+test("v2.3 review: a merchant's own product title can never block their report", () => {
+  // The summary is linted, and a lint failure returns `unreachable` for a store we
+  // read perfectly — deterministically, so retry never helps. Piping the raw title
+  // into it reintroduced exactly the hazard that got `warranty` dropped.
+  for (const title of [
+    "Lifetime Guarantee Leather Belt",
+    "Guaranteed Fresh Whole Bean Coffee",
+    "Grow Your Sales — Shopify Playbook (PDF)",
+    "Rank Higher: The SEO Workbook",
+  ]) {
+    const { summary } = buildBuyerTask(mk({ title, productType: "Belt", description: "A thing." }));
+    assert.ok(lintStrings([summary]).ok, `title must not block the result: ${title} -> ${summary}`);
+  }
+});
+
+test("v2.3 review: category gating matches words, not substrings", () => {
+  // "pan" ⊂ Company/Japanese, "pot" ⊂ Potato, "rug" ⊂ Arugula/Rugged — so any brand
+  // named "… Company" got a care row. That is the irrelevant-uniform-row failure
+  // this checkpoint exists to remove, reintroduced by a missing \b.
+  for (const title of ["Soap | Portland Soap Company", "Snacks | Kettle Potato Chips", "Coffee | Arugula Blend", "Notebook | Rugged Field Journal"]) {
+    const { requirements } = buildBuyerTask(mk({ title, productType: "Soap", description: "Made from olive oil." }));
+    assert.ok(!requirements.some((r) => r.attribute === "care"), `no care row for: ${title}`);
+  }
+  const sweater = buildBuyerTask(mk({ title: "Merino Wool Sweater", productType: "Sweater", description: "Soft." }));
+  assert.ok(sweater.requirements.some((r) => r.attribute === "care"), "a real sweater still gets one");
+});
+
+test("v2.3 review: a placeholder identifier is not a published identifier", () => {
+  // `signals.gtin/mpn` are true for ANY non-empty string, and the row's copy promises
+  // a machine buyer can match the product to a catalogue entry. "N/A" does not.
+  const withIds = (gtin: string | null, mpn: string | null): PublicProduct => mk({
+    description: "A thing.",
+    extracted: {
+      jsonLdTypes: ["Product"], hasProductSchema: true,
+      product: { name: null, brand: null, sku: null, gtin, mpn, offer: null, rating: null, reviewCount: null },
+      title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true, headings: { h1: [], h2: [] }, faqs: [],
+      signals: { jsonLd: true, productSchema: true, offer: true, price: true, availability: true, gtin: Boolean(gtin), mpn: Boolean(mpn), sku: false, brand: false, rating: false, reviews: false, shipping: false, returns: false, faq: false, canonical: true, indexable: true },
+    },
+  } as Partial<PublicProduct> & { description?: string });
+  const idsReq: Requirement = { id: "ids", kind: "identifiers", label: "ids" };
+  for (const [g, m] of [[null, "N/A"], [null, "TBD"], [null, "-"], ["0", null], ["12345", null]] as Array<[string | null, string | null]>) {
+    assert.equal(evaluate(withIds(g, m), idsReq).status, "not_proven", `placeholder must not pass: gtin=${g} mpn=${m}`);
+  }
+  // A real GTIN-13 (valid check digit) and a real MPN do pass.
+  assert.equal(evaluate(withIds("0123456789012", null), idsReq).status, "pass_evidenced");
+  assert.equal(evaluate(withIds(null, "MB-4471-X"), idsReq).status, "pass_evidenced");
 });
