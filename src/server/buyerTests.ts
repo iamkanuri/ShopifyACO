@@ -8,6 +8,8 @@ import {
 } from "../db/buyerTests.js";
 import { createProposal, getProductForFix } from "../db/fixes.js";
 import { proposeClaimStatement } from "../fixes/propose.js";
+import { rereadProduct } from "../fixes/source.js";
+import { mirrorToCatalog } from "../fixes/apply.js";
 import { loadNormalizedProducts, getStorefrontUrl } from "../db/catalog.js";
 import { fetchShopPolicies } from "../catalog/source.js";
 import { getAccessToken } from "../db/shops.js";
@@ -411,8 +413,31 @@ export async function proposeFromTestHandler(req: Request, res: Response): Promi
   }
 
   if (!row.product_gid) return bad(res, 409, "Run this test against your connected catalog first so we know which product to change.");
-  const product = await getProductForFix(shop, row.product_gid);
+  let product = await getProductForFix(shop, row.product_gid);
   if (!product) return bad(res, 404, "Product not found in the synced catalog for this shop.");
+
+  // SELF-HEAL a stale catalog row before proposing. `products.description_html` is
+  // NULL on every row synced before migration 0027, and a body proposal cannot be
+  // built safely without the raw HTML (see proposeClaimStatement). Rather than make
+  // the merchant guess that "re-sync your catalog" is the answer, fetch the one
+  // product we need and mirror it back — the same read+mirror the apply path
+  // already performs after a write. Best-effort: if it fails we fall through to an
+  // honest refusal below rather than proposing from an unknown body.
+  if (!product.descriptionHtml && (product.description ?? "").trim()) {
+    try {
+      const token = await getAccessToken(shop);
+      if (token) {
+        const live = await rereadProduct(shop, token, row.product_gid);
+        if (live) {
+          await mirrorToCatalog(shop, live);
+          product = (await getProductForFix(shop, row.product_gid)) ?? product;
+        }
+      }
+    } catch (err) {
+      console.warn(`[buyer-tests] could not refresh product body for ${shop}: ${(err as Error).message}`);
+    }
+  }
+  const rawBodyUnknown = !product.descriptionHtml && (product.description ?? "").trim().length > 0;
 
   const proposals = proposeClaimStatement(product, {
     claimKey: requirement.claim ?? claimKeyFromLabel(requirement.label),
@@ -421,6 +446,13 @@ export async function proposeFromTestHandler(req: Request, res: Response): Promi
     buyerTestId: id,
   });
   if (!proposals.length) {
+    // Two different reasons produce zero proposals, and telling them apart matters:
+    // one means "nothing to do", the other means "we refused on purpose".
+    if (rawBodyUnknown) {
+      return bad(res, 409,
+        "We hold an out-of-date copy of this product's description, so we won't propose a change to it — " +
+        "editing from a stale copy could overwrite your formatting. Sync your catalog and try again.");
+    }
     return bad(res, 422, "Your product description already states this, so there's nothing to change here. The gap is in a surface we couldn't read publicly.");
   }
 

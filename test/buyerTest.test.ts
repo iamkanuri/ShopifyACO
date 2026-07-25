@@ -421,7 +421,11 @@ test("23b/24b. a 'no' produces no proposal; a 'yes' produces one that applies on
     // A proposal raised from the confirmed claim is auditably tied to it.
     const confirmationId = (await latestConfirmations(shop, testId)).get("claim1")!.id;
     const pid = await createProposal(shop, null, null, proposeClaimStatement(
-      { productGid: "gid://shopify/Product/1001", title: "Cedar", description: "A cedar bar.", vendor: null, productType: null, onlineUrl: null, seoTitle: null, seoDescription: null },
+      // `descriptionHtml` is REQUIRED for a body proposal: a row that has stripped text
+      // but no raw HTML is a pre-0027 catalog row whose real body we don't hold, and
+      // proposing from it would replace the merchant's whole description (v2.2 CP1).
+      // This test is about the approval lifecycle, so it supplies a known body.
+      { productGid: "gid://shopify/Product/1001", title: "Cedar", description: "A cedar bar.", descriptionHtml: "<p>A cedar bar.</p>", vendor: null, productType: null, onlineUrl: null, seoTitle: null, seoDescription: null },
       { claimKey: "vegan", label: "Vegan", confirmationId, buyerTestId: testId },
     )[0]!);
     await linkProposalToConfirmation(pid, confirmationId, testId);

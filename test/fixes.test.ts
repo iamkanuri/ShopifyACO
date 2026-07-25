@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { composeSeoTitle, proposeFixes, proposeSeoBackfill, writableField, type CatalogProduct } from "../src/fixes/propose.js";
+import { composeSeoTitle, proposeClaimStatement, proposeFixes, proposeSeoBackfill, writableField, type CatalogProduct } from "../src/fixes/propose.js";
 import { buildProductInput } from "../src/fixes/source.js";
 import { hasWriteScope } from "../src/fixes/apply.js";
 import type { Finding } from "../src/diagnosis/diagnose.js";
@@ -491,4 +491,72 @@ test("apply is refused on stale baseline (conflict) and without write scope", { 
       await pgQuery("delete from shops where shop_domain=$1", [s]);
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// v2.2 CP1 — a NULL raw body is "unknown", not "empty".
+//
+// `products.description_html` is NULL on every catalog row synced before migration
+// 0027, while `products.description` still holds the stripped text. The proposer
+// read `p.descriptionHtml ?? ""` and could not tell those apart, so for a stale row
+// it proposed the confirmed sentence AS THE ENTIRE BODY — replacing everything the
+// merchant had written, under a rationale promising it "appends one plain sentence
+// and changes nothing else".
+//
+// Apply's conflict guard did stop it ("" never matches a real live body), so no
+// merchant copy was ever destroyed. But a guard is the last line of defense, not a
+// licence to emit a wrong proposal, and the merchant was left with a refusal they
+// could not act on. The proposer now refuses at the source.
+// ---------------------------------------------------------------------------
+
+const staleRow = (descriptionHtml: string | null | undefined) => ({
+  productGid: "gid://shopify/Product/9001",
+  title: "Cedar Hollow Deodorant",
+  description: "Cold-pressed in small batches. Aluminum-free. Unscented.",
+  descriptionHtml,
+  vendor: "Cedar Hollow",
+  productType: "Deodorant",
+  onlineUrl: null,
+  seoTitle: null,
+  seoDescription: null,
+});
+
+// A claim the fixture description does NOT already state — otherwise the proposer's
+// "already stated" short-circuit returns [] for a reason unrelated to this guard.
+const claim = { claimKey: "fragrance_free", label: "Fragrance-free", confirmationId: 1, buyerTestId: 1 };
+
+test("a stale catalog row (raw body unknown) produces NO body proposal", () => {
+  // NULL and undefined are both "we never captured it" — neither may be treated as
+  // an empty body while the stripped description proves a body exists.
+  for (const raw of [null, undefined]) {
+    const out = proposeClaimStatement(staleRow(raw), claim);
+    assert.equal(out.length, 0, `expected no proposal when descriptionHtml is ${String(raw)}`);
+  }
+});
+
+test("REGRESSION: the refused proposal would have replaced the whole body", () => {
+  // Pins what the bug actually was. Reverting the guard in proposeClaimStatement
+  // makes this produce a proposal whose value is JUST the sentence — the merchant's
+  // three paragraphs gone — which is what the assertions below describe.
+  const stale = staleRow(null);
+  const out = proposeClaimStatement(stale, claim);
+  assert.equal(out.length, 0);
+  // And prove the sentence alone is NOT a superset of their copy, i.e. that
+  // applying it really would have been a destructive replace rather than an append.
+  const withBody = proposeClaimStatement({ ...stale, descriptionHtml: "<p>Cold-pressed in <b>small batches</b>.</p>" }, claim);
+  assert.equal(withBody.length, 1, "a KNOWN body still proposes normally");
+  assert.ok(withBody[0]!.proposedValue.startsWith("<p>Cold-pressed in <b>small batches</b>.</p>"),
+    "the real proposal APPENDS — it keeps the original bytes first");
+  assert.ok(!withBody[0]!.proposedValue.includes("Cold-pressed in small batches. Aluminum-free."),
+    "the stripped text must never appear in a value destined for descriptionHtml");
+});
+
+test("a genuinely empty product still gets a proposal — 'unknown' and 'empty' differ", () => {
+  // The refusal must not become a blanket block: a product with no body at all is a
+  // legitimate, safe case (basedOn null matches an absent live value).
+  const empty = { ...staleRow(null), description: "" };
+  const out = proposeClaimStatement(empty, claim);
+  assert.equal(out.length, 1, "an empty body is knowable, and appending to nothing is safe");
+  assert.equal(out[0]!.basedOn, null);
+  assert.equal(out[0]!.proposedValue, "<p>This product is fragrance-free.</p>");
 });

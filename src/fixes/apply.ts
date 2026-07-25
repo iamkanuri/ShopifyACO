@@ -10,7 +10,7 @@ import type { NormalizedProduct } from "../catalog/normalize.js";
 /** Best-effort: mirror a just-written product back into the synced catalog so every
  *  screen (Fix Studio live values, Catalog) agrees with the Shopify admin IMMEDIATELY
  *  after our own write — the products/update webhook is the eventual backstop. */
-async function mirrorToCatalog(shop: string, product: NormalizedProduct | null | undefined): Promise<void> {
+export async function mirrorToCatalog(shop: string, product: NormalizedProduct | null | undefined): Promise<void> {
   if (!product) return;
   try {
     await upsertProduct(shop, product);

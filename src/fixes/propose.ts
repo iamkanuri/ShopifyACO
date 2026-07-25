@@ -243,6 +243,22 @@ export function proposeClaimStatement(p: CatalogProduct, claim: ConfirmedClaim):
   const core = sentence.replace(/^This product is\s*/i, "").replace(/\.$/, "").toLowerCase();
   if (core && text.toLowerCase().includes(core)) return [];
 
+  // "We don't know the raw body" is NOT "the body is empty" — and conflating them
+  // is the same class of bug as writing stripped text into `descriptionHtml`
+  // (v2.1 CP2.5). `description_html` is NULL on every catalog row synced before
+  // migration 0027, while `description` still holds the stripped text. In that
+  // state the append below would have proposed the single sentence AS THE WHOLE
+  // BODY, replacing everything the merchant wrote, under a rationale promising it
+  // "changes nothing else".
+  //
+  // Apply's conflict guard does stop it (`"" !== "<the real body>"`), so nothing
+  // was ever destroyed — but the merchant sees a refusal they can't act on, and a
+  // guard is the last line of defense, not a licence to emit a wrong proposal.
+  // Refusing here is the honest answer: re-sync the product and the raw body is
+  // known. (An empty `description` AND an empty body is genuinely empty, and that
+  // case still proposes correctly.)
+  if (!p.descriptionHtml && text.trim()) return [];
+
   // APPEND ONE BLOCK, byte-preserving. The existing HTML is not trimmed, re-encoded or
   // re-serialized — the result is exactly the original bytes plus one <p> block, which
   // is the only thing that makes the rationale below literally true.
