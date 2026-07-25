@@ -2,7 +2,83 @@
 
 ---
 
-# ▶ RELEASE: "AI Commerce QA" repositioning + the Buyer Test
+# ▶ RELEASE: V2 — close the funnel
+
+**Branch:** `feat/v2-close-the-funnel` · **Base:** `feat/phase-b-v1-1` → `main`
+**Carries:** everything in the release below (repositioning + Buyer Test + v1.1), PLUS
+CP1 egress resilience · CP2 post-install continuity · CP3 the authenticated loop ·
+CP4 the score→test reframe.
+
+Nothing is deployed until you run the push below.
+
+## V2.1 Merge + push (run these yourself)
+
+```bash
+git checkout main
+git merge --ff-only feat/v2-close-the-funnel   # must fast-forward; if it refuses, STOP
+git push origin main                            # Railway auto-builds + deploys
+```
+
+`npm run migrate` runs at startup on Railway and applies **`0025_buyer_tests.sql`**
+(additive + idempotent: `public_tests`, `buyer_tests`, `buyer_test_runs`,
+`requirement_confirmations`, plus `oauth_states.test_token` and two nullable
+`fix_proposals` columns). Nothing existing is altered, so a code rollback is safe
+without a down-migration.
+
+## V2.2 Railway variables
+
+All optional — every one has a working default. Set only if you need to tune.
+
+| Variable | Default | Why |
+|---|---|---|
+| `PRODUCT_TEST_EGRESS_PER_MIN` | `20` | process-wide Shopify fetch budget across ALL hosts |
+| `PRODUCT_TEST_EGRESS_CONCURRENCY` | `2` | max simultaneous outbound product fetches |
+| `PRODUCT_TEST_EGRESS_MAX_WAIT_MS` | `10000` | past this a request is refused, not parked on a spinner |
+| `PRODUCT_TEST_SEMANTIC` | *unset* | `0` kills the semantic tier without a redeploy |
+
+## V2.3 Post-deploy verification (in order)
+
+1. **`/healthz`** → `ok:true`, `commit` matches the SHA you pushed.
+2. **Migration applied**: deploy logs show `applying: 0025_buyer_tests.sql` (or
+   `already applied` on a re-deploy). If it failed, the app still boots — the Buyer
+   Test keeps working, but install continuity and saved tests will 500. Check first.
+3. **Public test still works**: run one at `/test` on a real Shopify product URL.
+   Confirm the assertion table renders and every green **Proven** row shows a quote
+   that plainly supports it. *If any Pass isn't plainly supported by its quote, roll
+   back — that is the one unrecoverable failure mode.*
+4. **Egress telemetry**: `product_test` log lines now carry `tier`, `throttled`,
+   `degraded`. Watch the throttle rate for 24h against the §5 escalation thresholds —
+   this is the first production read on whether the funnel has a capacity ceiling.
+5. **Install continuity** (needs a dev store): run a public test on that store's own
+   product, install, and confirm the first authenticated screen is **Tests** showing
+   that test — not a dashboard. If the test doesn't appear, the host-match fallback
+   didn't fire; check `public_tests.store_host` against the shop's storefront host.
+6. **`/app` is Tests**, `/app/overview` still reaches the old dashboard, and
+   `/app/tests/:id` renders the assertion table + Confirm + Proposed changes.
+7. **Legacy surfaces**: an old `/report/<id>` link still loads and says *AI buyer
+   readiness*; its OG card (`/report/<id>/og.png`) says **AI BUYER READINESS**.
+8. **Re-scrape the social card once** (LinkedIn Post Inspector / X Card Validator).
+
+## V2.4 What is NOT proven yet
+
+- **`write_products` has still never run against a real store.** The full
+  confirm → propose → approve → apply → rerun → rollback loop was verified end to end,
+  but in `SHOPIFY_MODE=mock`. Do a dev-store live write (apply + rollback one real
+  description edit) before relying on it for a merchant.
+- **Install continuity has only been exercised through our own OAuth redirect.** The
+  App Store managed-install path (no token, host-match fallback) is built and unit-safe
+  but has not run against a real Shopify install.
+- **Automatic re-run triggers are documented, not built** — product edits, policy edits,
+  catalog sync and engine updates. Re-runs are manual today, and the UI says so.
+
+## V2.5 Rollback
+
+Same as §4 below. Migration `0025` is additive, so reverting the code is complete and
+safe; the new tables simply stop being written to.
+
+---
+
+# ▶ RELEASE (previous): "AI Commerce QA" repositioning + the Buyer Test
 
 **Branch:** `feat/phase-b-v1-1` · **Base:** `main` (fast-forward, no merge commit)
 **Carries:** the public repositioning · Phase B (the Buyer Test) · the hardening ·
@@ -61,20 +137,51 @@ tier; `DAILY_SPEND_CAP_USD=0` halts all live scan spend.
 
 ## 5. Known production risk: the egress throttle (watch this)
 
-Shopify applies a rate limit (`local_rate_limited`) that is **per-egress-IP and
-endpoint-specific, applied across all stores** — not per store. Observed during v1.1 smoke
-testing: `/products/*` returned 429 on three unrelated brands we had never touched, while
-`/robots.txt` and `/policies/*` **on those same hosts** returned 200, and shell `curl` with
-the identical UA succeeded. It persisted past a six-minute cooldown. Every Buyer Test
-originates from one Railway IP, so this is a capacity ceiling on the whole funnel, not a
-per-store courtesy problem — and per-host throttling structurally cannot help, because the
-limiter does not count per host.
+Shopify applies a rate limit (`local_rate_limited`) that is **keyed to the egress IP and
+applied across all stores** — not per store. Every Buyer Test originates from one Railway
+IP, so this is a capacity ceiling on the whole funnel, not a per-store courtesy problem —
+and per-host throttling structurally cannot help, because the limiter does not count per host.
+
+### ⚠️ Measured behavior (2026-07-24) — corrects the v1.1 assumption
+
+V1.1 smoke testing suggested the HTML tier survived while `.json` was throttled, and V2
+§2.1 was designed on that premise. **Direct per-endpoint probing from the dev IP does not
+reproduce it.** Measured twice, ~45s apart, stable both times:
+
+| Host | `/robots.txt` | `/policies/*` | `/products/<h>` | `/products/<h>.json` |
+|---|---|---|---|---|
+| `www.bombas.com` | **429** | **429** | **429** | **429** |
+| `ritual.com` | 200 | 404 | **429** | **429** |
+| `drsquatch.com` | 200 | 404 | 404 | 404 |
+
+Two distinct regimes, and neither is `.json`-specific:
+- **`ritual.com`** — the throttle covers the whole **`/products/*` path class**. `robots.txt`
+  still serves 200, so it IS endpoint-scoped, but the product PAGE is refused exactly like
+  the `.json`. Page-first does not rescue this host.
+- **`www.bombas.com`** — blanket 429 on every path, i.e. the IP is fully blocked for that
+  storefront (bot management, not a rate limiter).
+
+**So: the page-first reorder is NOT a throttle mitigation, and should not be relied on as
+one.** It is still worth having for the reasons it demonstrably delivers — on a healthy
+store (`drsquatch.com`) the entire test now runs from ONE page fetch with no `.json` and no
+`.js` request, which is a ~50% cut in outbound requests per test and therefore in how fast
+we spend the shared budget. But when a host throttles, it throttles the page too, and the
+merchant gets the honest `rate_limited` error with a retry — not a partial test.
+
+The partial-test path (§2.3) still earns its place: it covers the mixed case (e.g. `.js`
+refused while the page answers) and it removed a real honesty bug, where a surface we were
+blocked from reading was reported as one the store fails to publish.
+
+**Live run, 5 real stores, spaced 20s, from the dev IP:** 1 completed (page tier, full
+6-row result), 3 `rate_limited`, 1 `unreachable` — a **60% throttle rate**. That is already
+past the §2.5 escalation trigger, though a residential dev IP is not a proxy for Railway's;
+re-measure from production before acting.
 
 **Shipped mitigations (V2 CP1):**
 
 | Defense | Where | Behavior |
 |---|---|---|
-| Page-first fetch order | `productTest.ts` | HTML product page is tier 1 (it survives when `.json` is throttled); `.json` only fills a gap the page left; `.js` last |
+| Page-first fetch order | `productTest.ts` | HTML product page is tier 1; `.json` only fills a gap the page left; `.js` last. **Cuts requests per test (~50% on a well-marked-up store), but see the measured note above — it does NOT survive a throttled host** |
 | Global egress budget | `productTestCache.ts` | process-wide **20 fetches/min across all hosts** + concurrency 2; bursts wait, they don't stampede |
 | Honest degradation | `productTest.ts` | a throttled tier yields a **partial test** with the affected rows marked `requires_store_access` and the accurate reason — never "this store publishes nothing", never an error page |
 | Result cache | `productTestCache.ts` | **7 days** per normalized URL ("Tested 3 days ago · Run again") |
@@ -95,9 +202,12 @@ Every test logs a `product_test` line carrying `tier` (which fetch tier answered
 - **< 5%** — no action. The caches and budget are absorbing it.
 - **5–20% sustained for 48h** — raise the cache TTL and lower `PRODUCT_TEST_EGRESS_PER_MIN`
   first; these are env-var changes, no redeploy of code paths.
-- **> 20% sustained, or any day where `degraded` exceeds clean results** — pick one:
-  1. **Egress proxy pool** — route product fetches through N rotating egress IPs. Highest
-     leverage, since the limiter keys on IP. Cost: a proxy vendor + a per-IP budget split.
+- **> 20% sustained, or any day where `degraded` exceeds clean results** — pick one.
+  Given the measured behavior above (the block covers the whole `/products/*` class, and on
+  some hosts every path), **option 1 is the only one that addresses the actual mechanism**:
+  1. **Egress proxy pool** — route product fetches through N rotating egress IPs. The
+     limiter keys on IP, so this is the only mitigation that changes the input it keys on.
+     Cost: a proxy vendor + a per-IP budget split.
   2. **Queued async flow** — accept the URL, return "we'll show your result in a minute",
      run it off the existing Phase-1 job queue at a paced rate. Removes the interactive
      deadline that makes throttling visible, at the cost of the instant-gratification funnel.
