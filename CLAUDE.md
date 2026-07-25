@@ -149,10 +149,14 @@ process. No Vercel, no CORS.
 - **Migration workflow (own the lifecycle — never hand-run SQL):** version-controlled
   `migrations/NNNN_*.sql` applied by `src/db/migrate.ts` (`npm run migrate`), tracked in
   `schema_migrations`, idempotent. Runs locally against `DATABASE_URL` (Supabase session
-  pooler, port 5432) AND at **startup** on Railway (`railway.json` start =
-  `npm run migrate; npm start`, non-fatal so a DB hiccup degrades gracefully instead of
-  crash-looping). Migrations need vars on the **service** (project Shared Variables are
-  NOT auto-injected). First connection failure ⇒ almost always the password isn't
+  pooler, port 5432) AND at **startup** on Railway. ⚠️ **Corrected 2026-07-25:** this used to
+  say the start command was `npm run migrate; npm start`, "non-fatal". It is
+  **`npm run migrate && npm start`** (`railway.json`) and `migrate.ts` exits `1` on failure —
+  so **a failed migration fails the deploy**, it does not degrade. The useful consequence:
+  **a green `/healthz` on a known commit is proof that every migration applied**, since the
+  app cannot start otherwise. That is the one-step, credential-free way to verify any
+  migration in production. Migrations need vars on the **service** (project Shared Variables
+  are NOT auto-injected). First connection failure ⇒ almost always the password isn't
   URL-encoded (`@` → `%40`) or the `[…]` brackets were left in `DATABASE_URL`.
 - **Abuse / spend protection (`src/server/guards.ts`, enforced in `src/server/index.ts`):**
   email-gated scans (stored as a `scan_gate` lead); per-email + per-IP daily free-scan

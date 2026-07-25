@@ -2,6 +2,68 @@
 
 ---
 
+# ▶ RELEASE (pending): v2.2 — instrument the funnel
+
+**Branch:** `feat/v2-2-instrument` · **Base:** `main` @ `87ffcb3` (what production runs)
+**Status:** built + gated, **NOT pushed.** Merge commands in §W below.
+
+## W.1 What it carries
+
+- **Funnel instrumentation** (migration `0028_funnel_events`) — `test_requested`,
+  `test_completed`, `test_failed`, `install_clicked`, `install_completed`, `case_viewed`.
+  Typed columns, **no column can hold a URL, email, IP or shop domain** (asserted by a test
+  against `information_schema`). Read surface: `GET /api/admin/funnel` (admin session **and**
+  `FUNNEL_ADMIN_ENABLED=1`; 404 when unlit).
+- **Hosted outreach cases** — `GET /c/:token`, inert unless `HOSTED_CASES_DIR` is set. See §V2.2b.
+- **Egress cause split** — `throttleSource` / `robotsStatus` / `policyStatus` on
+  `ProductTestResult`, so an upstream 429, our own budget, and our negative cache stop being
+  the same `rate_limited`. Recorded per test; **our own throttles are excluded from the
+  reported rate.**
+- **A result-quality fix with a measured justification** — `inferClaims` no longer defaults to
+  `cruelty_free` for unrecognised categories. It was asked of 13/13 real stores, failed 13/13,
+  and opened every report. See `experiments/v2-2/RESULT_QUALITY.md`.
+- **A body-proposal safety fix** — a pre-`0027` catalog row (raw HTML unknown, stripped text
+  present) no longer yields a proposal that would replace the merchant's whole description; the
+  propose route self-heals by re-reading that one product. See §V2.6 and
+  `experiments/v2-2/FIRST_RUN_AUDIT.md`.
+
+## W.2 Merge + push (run these yourself)
+
+```bash
+git fetch origin
+git rev-parse origin/main                 # must equal 87ffcb3…; if not, STOP and rebase
+git checkout main && git merge --ff-only feat/v2-2-instrument
+git push origin main                      # Railway auto-builds + deploys
+```
+
+## W.3 Railway variables — none required
+
+Every new variable has a working default. Optionally set `FUNNEL_ADMIN_ENABLED=1` to read the
+funnel. Leave `HOSTED_CASES_DIR` unset until the case bundle is on the volume (§V2.2b).
+
+## W.4 Post-deploy verification
+
+1. `/healthz` → `commit` matches the pushed SHA. **This also proves migration `0028` applied** —
+   `railway.json` runs `npm run migrate && npm start`, so a failed migration fails the deploy.
+2. Run one Buyer Test at `/test`. It must return a table with **no "Cruelty-free" row** unless
+   the product is genuinely in a category that asks for it.
+3. `curl -s -o /dev/null -w '%{http_code}' https://lens.thirdocular.com/api/admin/funnel` → `401`
+   (unauthenticated). With `FUNNEL_ADMIN_ENABLED=1` + an admin session it renders plain text.
+4. `curl -s -o /dev/null -w '%{http_code}' https://lens.thirdocular.com/c/aaaaaaaaaaaa` → `404`.
+5. Confirm the funnel recorded the test from step 2 (`tests requested` / `tests completed` ≥ 1).
+
+## W.5 What is NOT fixed in this release
+
+- **The host-match reconciliation still cannot fire on a fresh App Store install** — the
+  storefront host is unknown until a catalog sync, and nothing syncs on install. Pinned by a
+  test; fix scoped in `experiments/v2-2/FIRST_RUN_AUDIT.md` §F1. This is the highest-value
+  open item.
+- Nothing enqueues a catalog sync on install (§F2). Fix Studio's picker has no empty state (§F4).
+- The concurrency threshold is still unmeasured — it cannot be probed from an external client
+  without measuring our own rate limiter. See `EGRESS_DECISION.md` §5.2.
+
+---
+
 # ▶ RELEASE: V2 — close the funnel
 
 **Branch:** `feat/v2-1-production-truth` · **Base:** `main` @ `fb30a2e` (what production runs)
@@ -54,6 +116,45 @@ All optional — every one has a working default. Set only if you need to tune.
 | `PRODUCT_TEST_EGRESS_CONCURRENCY` | `2` | max simultaneous outbound product fetches |
 | `PRODUCT_TEST_EGRESS_MAX_WAIT_MS` | `10000` | past this a request is refused, not parked on a spinner |
 | `PRODUCT_TEST_SEMANTIC` | *unset* | `0` kills the semantic tier without a redeploy |
+| `FUNNEL_EVENTS` | *unset* (= on) | `0` stops writing `funnel_events` without a redeploy |
+| `FUNNEL_ADMIN_ENABLED` | *unset* (= off) | `1` lights `GET /api/admin/funnel` (also needs an admin session) |
+| `HOSTED_CASES_DIR` | *unset* (= off) | path to the outreach-case bundle; unset ⇒ every `/c/:token` 404s |
+
+## V2.2b Hosted outreach cases — putting the bundle on the volume
+
+`GET /c/:token` serves one pre-rendered case from `HOSTED_CASES_DIR`. **With that variable
+unset the route 404s everything**, which is the correct posture until the links are meant to be
+live. There is no code flag to remember.
+
+**The bundle is never committed.** Each case names a real third-party store, so it lives on the
+Railway volume and is excluded by `.gitignore` (`experiments/*`). Do not `git add -f` it.
+
+Layout the route expects — one directory per token, `index.html` inside:
+
+```
+$HOSTED_CASES_DIR/
+└── c/
+    ├── <token>/index.html
+    └── <token>/index.html
+```
+
+Tokens are 12 chars of `[a-z2-7]` (60 bits). Anything else 404s before touching the disk.
+
+**Deploy the bundle (one-off):**
+
+1. Railway → the `web` service → **Volume** is already mounted at `DATA_DIR` (e.g. `/data`).
+2. Upload the bundle to `/data/hosted` (Railway shell, or `railway run` + `scp`/`rsync`), so the
+   cases land at `/data/hosted/c/<token>/index.html`.
+3. Set `HOSTED_CASES_DIR=/data/hosted` on the **web** service. Railway restarts it.
+4. Verify: `curl -sI https://lens.thirdocular.com/c/<token>` → `200` with
+   `X-Robots-Tag: noindex, nofollow`; `curl -s -o /dev/null -w '%{http_code}'` on an unknown
+   token, on `/c/`, and on `/c` → `404` each.
+
+**Adding a case later needs no redeploy** — copy one more `c/<token>/index.html` into the same
+directory. The route reads from disk per request; nothing is cached in the process.
+
+**Turning it off** is unsetting `HOSTED_CASES_DIR` (restart). Existing links then 404 — they do
+not fall through to the marketing site.
 
 ## V2.3 Post-deploy verification (in order)
 
@@ -163,17 +264,30 @@ Verified post-deploy: `/healthz` = `031f271`; `/healthz/deep` db `ok`, new worke
 `__BRAND_NAME__`); a live product test returned a full 5-row table with every green row
 plainly supported and `pass_no_blocking` correctly distinguished from a proven pass.
 
-⚠️ **Migration `0027` was NOT independently verified.** Railway runs migrations non-fatally, so
-a failure still boots a healthy-looking app, and every path touching `description_html`
-(`getProductForFix`, `getLiveSeoFields`, `loadNormalizedProducts`) is shop-scoped — no public
-endpoint exercises it. Confirm via the deploy log line `applying:
-0027_product_description_html.sql`, or by opening Fix Studio on the dev store (a missing column
-500s immediately). Additive + idempotent, so a code rollback needs no down-migration.
+✅ **Migration `0027` IS verified — and the reasoning that said otherwise was wrong.**
 
-ℹ️ **Existing catalog rows have `description_html = NULL` until the next catalog sync.** A
-confirmed-claim proposal built from such a row gets `basedOn = null`, and the apply conflict
-guard then **refuses** it (live raw HTML ≠ `""`) rather than clobbering the body. Safe
-direction; a catalog sync clears it.
+> The paragraph that used to sit here read: *"Railway runs migrations non-fatally, so a failure
+> still boots a healthy-looking app."* **False.** `railway.json` sets
+> `"startCommand": "npm run migrate && npm start"` — `&&`, not `;` — and `src/db/migrate.ts`
+> calls `process.exit(1)` on failure. A failed migration therefore never reaches `npm start`,
+> the `/healthz` healthcheck fails, and the deploy fails.
+>
+> So: **production answers `/healthz` with `commit: 87ffcb3`, which means `npm start` ran, which
+> means `npm run migrate` exited 0, which means every pending migration applied — including
+> `0027`.** No credentials, no dashboard, no log-grepping required. (CLAUDE.md carries the same
+> stale "non-fatal" claim; corrected there too.)
+>
+> The general lesson is worth more than the specific check: **a green `/healthz` on a known
+> commit is proof that migrations applied**, for every future release.
+
+ℹ️ **Existing catalog rows have `description_html = NULL` until the next catalog sync** — and
+v2.2 CP1 found this was worse than "the guard refuses". The proposer read
+`p.descriptionHtml ?? ""`, so it could not tell *"the body is empty"* from *"we never captured
+the body"*, and for a stale row it proposed the confirmed sentence **as the entire body** —
+replacing everything the merchant had written, under a rationale promising it "changes nothing
+else". Apply's conflict guard did stop it every time, so no copy was ever destroyed. Now the
+proposer refuses at the source, and the propose route re-reads the one product and mirrors it
+back so the merchant is not left with an unactionable refusal.
 
 ---
 
