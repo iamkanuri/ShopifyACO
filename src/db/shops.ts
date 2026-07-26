@@ -17,11 +17,29 @@ export interface ShopRow {
   uninstalled_at: string | null;
   web_pixel_id: string | null;
   pixel_ingest_token: string | null;
-  /** The shop's PRIMARY storefront host (custom domain when one is configured),
-   *  resolved from Shopify at install time. The host a shopper — and therefore a
-   *  public Buyer Test — actually uses. Null when the query failed or predates
-   *  migration 0029. See setStorefrontHost. */
+  /** The shop's PRIMARY storefront host (custom domain when one is configured).
+   *  The host a shopper — and therefore a public Buyer Test — actually uses.
+   *  Null when the query failed or predates migration 0029. See setStorefrontHost. */
   storefront_host: string | null;
+  /** When the host was last CONFIRMED against Shopify (migration 0030). Null means
+   *  never — which is true of every row written before 0030, and is what makes them
+   *  stale by construction rather than needing a separate backfill script. */
+  storefront_host_checked_at: string | null;
+}
+
+/** How long a resolved host is trusted before it is re-confirmed. A merchant
+ *  connecting a custom domain after installing is normal, so "resolved once at
+ *  install" was never going to stay true. Seven days keeps the refresh cost at
+ *  roughly one Shopify call per shop per week. */
+export const STOREFRONT_HOST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Is this row's storefront host due for re-confirmation? Pure, so the policy is
+ *  testable without a database. */
+export function storefrontHostIsStale(row: Pick<ShopRow, "storefront_host_checked_at">, now = Date.now()): boolean {
+  if (!row.storefront_host_checked_at) return true; // never confirmed (incl. pre-0030 rows)
+  const at = Date.parse(row.storefront_host_checked_at);
+  if (!Number.isFinite(at)) return true;
+  return now - at >= STOREFRONT_HOST_TTL_MS;
 }
 
 export async function upsertShop(shopDomain: string, opts: { scopes?: string; status?: string } = {}): Promise<void> {
@@ -54,7 +72,27 @@ export async function setWebPixelId(shopDomain: string, webPixelId: string): Pro
 export async function setStorefrontHost(shopDomain: string, host: string | null): Promise<void> {
   const clean = (host ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   if (!clean) return;
-  await pgQuery("update shops set storefront_host = $2, updated_at = now() where shop_domain = $1", [shopDomain, clean]);
+  // The freshness stamp moves ONLY on a successful resolve. A failed lookup must not
+  // look like a confirmation, or a shop whose Shopify calls are failing would go
+  // quiet for a week holding a value nobody checked.
+  await pgQuery(
+    "update shops set storefront_host = $2, storefront_host_checked_at = now(), updated_at = now() where shop_domain = $1",
+    [shopDomain, clean],
+  );
+}
+
+/** Shops whose storefront host is due for re-confirmation, oldest first.
+ *  Bounded by `limit` so a sweep can never fan out to every shop at once. */
+export async function shopsNeedingHostRefresh(limit = 25): Promise<string[]> {
+  const { rows } = await pgQuery<{ shop_domain: string }>(
+    `select shop_domain from shops
+      where status <> 'uninstalled'
+        and (storefront_host_checked_at is null or storefront_host_checked_at < now() - ($1 || ' milliseconds')::interval)
+      order by storefront_host_checked_at asc nulls first
+      limit $2`,
+    [String(STOREFRONT_HOST_TTL_MS), limit],
+  );
+  return rows.map((r) => r.shop_domain);
 }
 
 /** Every host a carried public test could plausibly have been run against, for this

@@ -3,6 +3,7 @@ import { audit, markUninstalled, recordInstallation, upsertShop } from "../db/sh
 import { deleteProduct, productGidFromId, syncOneProduct } from "../catalog/sync.js";
 import { redactShop } from "../db/redact.js";
 import { registerHandler } from "../queue/handlers.js";
+import { refreshStorefrontHostOnShopUpdate } from "../shopify/storefrontHost.js";
 
 // Topic dispatch for a Shopify webhook whose HMAC has ALREADY been verified. Pure of HTTP —
 // called inline (queue disabled) and by the durable `shopify_webhook` job (queue enabled).
@@ -25,10 +26,18 @@ export async function processWebhookTopic(topic: string, shop: string | null, ra
       await audit(shop, "webhook", "app_uninstalled", "shop");
       break;
 
-    case "shop/update":
+    case "shop/update": {
       await upsertShop(shop, {});
-      await audit(shop, "webhook", "shop_update", "shop");
+      // `shop/update` is the event that fires when a merchant changes their domain,
+      // which is exactly when a stored storefront host becomes wrong. Migration 0029
+      // wrote the host only at install, and a shop/update for a shop holding NULL was
+      // observed arriving and doing nothing — so this is where that is repaired.
+      // Best-effort: a failed resolve must not fail the webhook and force a redelivery
+      // of work that already succeeded.
+      const moved = await refreshStorefrontHostOnShopUpdate(shop);
+      await audit(shop, "webhook", "shop_update", "shop", null, { storefront_host_changed: moved.after !== moved.before });
       break;
+    }
 
     case "products/create":
     case "products/update":

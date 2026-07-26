@@ -8,6 +8,7 @@ import { runDueSchedules } from "./monitoring/execute.js";
 import { runRetentionPurge } from "./retention/purge.js";
 import { reconcileFailedReports } from "./paid/reconcile.js";
 import { sweepHeldRefunds } from "./paid/refundSweep.js";
+import { sweepStorefrontHosts } from "./shopify/storefrontHost.js";
 
 // Scheduler process (PROCESS_MODE=scheduler / `npm run scheduler`). Runs periodic
 // maintenance: recovers abandoned jobs and (in later phases) enqueues due recurring
@@ -35,6 +36,12 @@ async function tick(): Promise<void> {
   // fails alerts loudly for manual action — never silent.
   const refunds = await sweepHeldRefunds();
   if (refunds.considered) console.log(`[scheduler] refund sweep: ${refunds.refunded} refunded, ${refunds.failed} failed of ${refunds.considered} held`);
+  // v2.6 CP1: re-confirm storefront hosts that are stale or were never resolved.
+  // The lazy path on `requireShop` covers shops whose merchant opens the app; this
+  // is the only thing that ever repopulates a shop that does not — which is exactly
+  // the pre-0029 row that sat NULL while a shop/update went past it. Bounded per tick.
+  const hosts = await sweepStorefrontHosts();
+  if (hosts.checked) console.log(`[scheduler] storefront hosts: re-confirmed ${hosts.resolved} of ${hosts.checked} stale`);
   await touchHeartbeat("scheduler", { tickMs: TICK_MS });
 }
 

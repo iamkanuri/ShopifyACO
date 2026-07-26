@@ -13,6 +13,7 @@ import {
   saveOAuthState, setStorefrontHost, shopCandidateHosts, storeCredentials, upsertShop,
   webhookSeen, unmarkWebhookSeen,
 } from "../db/shops.js";
+import { refreshStorefrontHostIfStale } from "../shopify/storefrontHost.js";
 import { claimPublicTest, getPublicTest, hasMatchablePublicTest } from "../db/buyerTests.js";
 import { getStorefrontUrl } from "../db/catalog.js";
 import { recordFunnelEvent } from "../db/funnel.js";
@@ -95,6 +96,12 @@ export async function requireShop(req: Request, res: Response, next: NextFunctio
       return;
     }
     (req as Request & { shopDomain?: string }).shopDomain = shop;
+    // Re-confirm the storefront host when it is stale. Fire-and-forget by design:
+    // a merchant must never pay a Shopify round-trip to load their own dashboard,
+    // and reconciliation tolerates the value being right one request late. This is
+    // what repopulates rows written before migration 0029 (null) and rows whose
+    // custom domain was connected after install (stale).
+    refreshStorefrontHostIfStale(shop, row);
     next();
   } catch (err) {
     res.status(500).json({ error: "Authorization check failed." });
