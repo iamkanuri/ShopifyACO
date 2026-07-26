@@ -489,6 +489,33 @@ const V25_FOUND: Case[] = [
 // recorded here rather than lost with the requirement that exposed it.
 // ---------------------------------------------------------------------------
 const V28_FOUND: Case[] = [
+  // --- the two false positives the v2.8 FITNESS run found on real stores ---------
+  // Both reproduce byte-identically at 44fd4e0, so neither was introduced by v2.8.
+  // They are the first defects this project has found by measuring real merchant
+  // copy rather than by attacking the matcher: v2.3 (37 rows) and v2.5 (18 rows)
+  // both reported zero, and both were too small to reach these shapes.
+  C("Each serving contains 12 grams of protein.", attr("dimensions"), "not_proven", "usage-quantity",
+    "A NUTRITION quantity, not the product's size, capacity, weight or fit. `grams` is a dimensions " +
+    "term and MEASUREMENT is satisfied by any number bound to a unit, so a nutrient measured INSIDE " +
+    "the product reads as a measurement OF the product. Found on a real store, which was told its " +
+    "measurements are stated on the strength of a protein-content sentence. Same root as the pinned " +
+    "\"Steep in 8 oz of hot water for 3 minutes.\", but that case is a usage instruction and this is " +
+    "product content, so the shape a fix has to cover is wider than the existing case shows.",
+    "pass_evidenced"),
+  C("A gift bundle of our house blends.", claimReq("organic"), "not_proven", "surface-scoping",
+    "The product copy makes NO organic claim. The pass comes entirely from the SHIPPING POLICY, whose " +
+    "text carries the store's own SEO page title (\"…: Organic Loose Leaf Teas…\"). Two mechanisms " +
+    "compound: attribute rows filter `shipping_policy` out of their evidence (productTest.ts) and " +
+    "CLAIM rows do not, so a claim about the product can be proven from a document about orders; and " +
+    "the policy fold-in carries nav/SEO chrome, which is precisely what the product-surface rule " +
+    "exists to keep out. The merchant is told \"Organic — stated in your shipping policy\" with NO " +
+    "quote, because presentableQuote rejects the chrome it matched on.",
+    "pass_evidenced",
+    { evidence: [
+      { surface: "product_description", text: "A gift bundle of our house blends." },
+      { surface: "shipping_policy", text: "Shipping policy Sennen Tea: Organic Loose Leaf Teas, Tea Bags & Tea Gift Free Shipping over $60." },
+    ] as never }),
+
   C("Most cheap versions are made from thin stamped steel.", attr("materials"), "not_proven", "competitor",
     "A COMPETITOR's composition, credited to this product and quoted as its proof. `subject.ts`'s " +
     "comparative veto is `most (other )?\\w+ (are|use|come)`, which tolerates exactly ONE word between " +
@@ -632,7 +659,9 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // carried them no longer ships, so they became unreachable. Counting a removal as
   // three repairs is exactly the kind of flattering arithmetic this session exists to
   // stop. The only gap genuinely CLOSED by engineering this session is `12 fl oz`.
-  const EXPECTED_OPEN_GAPS = 29;
+  // v2.8 CP4 the FITNESS run over 35 real stores found 2 confirmed false positives,
+  //         both pre-existing (byte-identical at 44fd4e0). Pinned.               -> 31
+  const EXPECTED_OPEN_GAPS = 31;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

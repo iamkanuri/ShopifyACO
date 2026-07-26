@@ -65,3 +65,9 @@ experiments/v2-5/*
 !experiments/v2-6/
 experiments/v2-6/*
 !experiments/v2-6/*.md
+!experiments/v2-7/
+experiments/v2-7/*
+!experiments/v2-7/*.md
+!experiments/v2-8/
+experiments/v2-8/*
+!experiments/v2-8/*.md

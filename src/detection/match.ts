@@ -41,7 +41,9 @@ export function isCommonWordPhrase(s: string): boolean {
   return tokens.length > 0 && tokens.every((t) => COMMON_WORDS.has(t));
 }
 
-/** Strip "https://", "www.", and any path -> bare host like "allbirds.com". */
+/** Strip "https://", "www.", and any path -> bare host like "examplebrand.com".
+ *  (Illustrative host deliberately fictional: a real brand name here would collide
+ *  with the de-identified measurement samples in experiments/.) */
 export function extractHost(url: string): string | null {
   const m = url
     .trim()
