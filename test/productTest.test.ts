@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildBuyerTask, contractVersion, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
+import { attachShippingPolicy, buildBuyerTask, contractVersion, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
 import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, passesAboutness } from "../src/server/testEvidence.js";
 import { lintStrings } from "../src/server/claimLinter.js";
 
@@ -1012,6 +1012,73 @@ test("v2.3 review: the non-product subject may sit BEFORE the frame, or after it
     assert.equal(evaluate(mk({ description: sentence }), attrReq(a)).status, "not_proven",
       `shipment-scoped sentence must not be a product fact: ${sentence}`);
   }
+});
+
+// ===========================================================================
+// v2.9 CP1 — the POLICY FOLD-IN must deliver sentences, not a document.
+//
+// This is the mutation anchor for `htmlToBlockText`. It cannot live in the adversarial
+// corpus, because that harness hands evidence in as ready-made strings and so never
+// exercises `attachShippingPolicy` at all — which is exactly how the defect survived:
+// every corpus case about policy text asserted on text that had already been extracted.
+// ===========================================================================
+
+const POLICY_HTML = `<!doctype html><html>
+<head><title>Sennen Tea: Organic Loose Leaf Teas, Tea Bags &amp; Tea Gift</title></head>
+<body>
+  <nav><a href="/c/organic">Organic Teas</a><a href="/c/gifts">Gift Sets</a></nav>
+  <header>Free shipping over $60 on all Organic Teas</header>
+  <main>
+    <h1>Shipping policy</h1>
+    <p>We aim to dispatch all orders within 1-2 business days.</p>
+    <p>Most parcels arrive in 3-5 business days once dispatched.</p>
+  </main>
+  <footer>Sennen Tea — Organic Teas since 2011. Cruelty-free and vegan.</footer>
+</body></html>`;
+
+const withPolicy = async () => {
+  const base = mk({ description: "A gift bundle of our house blends." });
+  return attachShippingPolicy(base, {
+    robots: { rules: [], fetched: false },
+    fetchUrl: async () => ({ status: 200, contentType: "text/html", body: POLICY_HTML }),
+  });
+};
+
+test("v2.9: policy chrome never becomes product evidence", async () => {
+  const p = await withPolicy();
+  assert.equal(p.policyStatus, "readable");
+  const policyText = p.evidence.filter((e) => e.surface === "shipping_policy").map((e) => e.text);
+  const joined = policyText.join(" | ");
+  // The store's SEO title, nav, header banner and footer are all chrome. Each of them
+  // contains a claim word, and each of them produced a live false positive.
+  for (const chrome of ["Sennen Tea: Organic Loose Leaf", "Gift Sets", "Free shipping over $60", "since 2011"]) {
+    assert.ok(!joined.includes(chrome), `policy evidence still carries chrome: ${chrome}`);
+  }
+  // …while the real policy prose survives, as SEPARATE sentences rather than one blob.
+  assert.ok(policyText.some((t) => t.includes("dispatch all orders within 1-2 business days")));
+  assert.ok(policyText.some((t) => t.includes("arrive in 3-5 business days")));
+  // Segmentation is the point: no sentence may fuse the heading onto the prose.
+  assert.ok(
+    policyText.every((t) => t.length < 200),
+    `a policy sentence fused into a blob: ${policyText.find((t) => t.length >= 200)?.slice(0, 120)}`,
+  );
+});
+
+test("v2.9: a claim is never proven from the shipping policy", async () => {
+  const p = await withPolicy();
+  // The product copy makes no claim; the policy footer says "Cruelty-free and vegan".
+  for (const claim of ["vegan", "cruelty_free", "organic"]) {
+    const a = evaluate(p, { id: "c", kind: "claim", claim, label: claim });
+    assert.equal(a.status, "not_proven", `${claim} was proven from a document about orders`);
+  }
+});
+
+test("v2.9: delivery still reads the policy, and quotes real prose", async () => {
+  const p = await withPolicy();
+  const a = evaluate(p, { id: "delivery", kind: "delivery", label: "Delivery timing is stated" });
+  assert.equal(a.status, "pass_evidenced");
+  assert.match(a.evidenceQuote ?? "", /business days/);
+  assert.doesNotMatch(a.evidenceQuote ?? "", /Organic Loose Leaf|Gift Sets/);
 });
 
 test("v2.3 review: a container IS the product when a measurement modifies it", () => {

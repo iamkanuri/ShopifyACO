@@ -239,8 +239,9 @@ const DIMENSIONS: Case[] = [
     "pass_evidenced"),
   C("Comes with a free 8 oz sample of our conditioner.", attr("dimensions"), "not_proven", "bundled-item",
     "The measurement belongs to a bundled item."),
+  // CLOSED v2.9 CP1 — `nonProductQuantity` reads the USAGE verb governing the clause.
   C("Steep in 8 oz of hot water for 3 minutes.", attr("dimensions"), "not_proven", "usage-quantity",
-    "A usage instruction quantity, not the product's capacity.", "pass_evidenced"),
+    "A usage instruction quantity, not the product's capacity."),
   C("This is not a 16 oz bottle.", attr("dimensions"), "not_proven", "negation",
     "A denial. The negator sits outside the 14-char window."),
   C("Unlike the 32 oz competitor bottle, ours fits a cup holder.", attr("dimensions"), "not_proven", "competitor",
@@ -500,8 +501,10 @@ const V28_FOUND: Case[] = [
     "the product reads as a measurement OF the product. Found on a real store, which was told its " +
     "measurements are stated on the strength of a protein-content sentence. Same root as the pinned " +
     "\"Steep in 8 oz of hot water for 3 minutes.\", but that case is a usage instruction and this is " +
-    "product content, so the shape a fix has to cover is wider than the existing case shows.",
-    "pass_evidenced"),
+    "product content, so the shape a fix has to cover is wider than the existing case shows. " +
+    "CLOSED v2.9 CP1: every measurement occurrence is now judged in its own window, and a nutrient " +
+    "noun in the `of …` complement vetoes that occurrence while leaving any genuine size in the same " +
+    "sentence free to pass."),
   C("A gift bundle of our house blends.", claimReq("organic"), "not_proven", "surface-scoping",
     "The product copy makes NO organic claim. The pass comes entirely from the SHIPPING POLICY, whose " +
     "text carries the store's own SEO page title (\"…: Organic Loose Leaf Teas…\"). Two mechanisms " +
@@ -509,12 +512,54 @@ const V28_FOUND: Case[] = [
     "CLAIM rows do not, so a claim about the product can be proven from a document about orders; and " +
     "the policy fold-in carries nav/SEO chrome, which is precisely what the product-surface rule " +
     "exists to keep out. The merchant is told \"Organic — stated in your shipping policy\" with NO " +
-    "quote, because presentableQuote rejects the chrome it matched on.",
-    "pass_evidenced",
+    "quote, because presentableQuote rejects the chrome it matched on. " +
+    "CLOSED v2.9 CP1 by BOTH halves: claim rows now apply the same product-surface filter the " +
+    "attribute rows always did, and `htmlToBlockText` drops <head>/<nav>/<footer> and segments the " +
+    "policy document so its chrome can no longer arrive as a sentence at all.",
+    undefined,
     { evidence: [
       { surface: "product_description", text: "A gift bundle of our house blends." },
       { surface: "shipping_policy", text: "Shipping policy Sennen Tea: Organic Loose Leaf Teas, Tea Bags & Tea Gift Free Shipping over $60." },
     ] as never }),
+
+  // ── v2.9 CP2 — THE OWED MUTATION ANCHOR, now closed ────────────────────────
+  // Removing `origin` in v2.8 deleted the only corpus case that failed when
+  // `termMatches`'s longest-match-first sort was reverted, so the mutation proof
+  // reported that guard DEAD while it remained load-bearing. This is the replacement,
+  // and it is natural rather than constructed: a combinatorial sweep of 198,744
+  // rank-flipping term pairs found 78,472 status divergences, of which this is the
+  // clearest. Mechanism — the sentence carries two composition terms at different
+  // positions, `% recycled` at 18 and `made of` at 94:
+  //   longest-first  → picks `% recycled`, whose 18-char prefix puts the packaging
+  //                    subject inside SUBJECT_BEFORE_VETO's 48-char reach → vetoed.
+  //   sort removed   → picks `made of` at 94, prefix now 81 chars, the veto cannot
+  //                    reach the subject → pass_evidenced, quoting a sentence that is
+  //                    entirely about the packaging (the Stage-3 TRAP).
+  C("Our packaging: 100% recycled kraft, printed with soy ink, folded by hand and sealed with tape made of cornstarch.",
+    attr("materials"), "not_proven", "packaging-subject",
+    "Every clause is about the PACKAGING; the store never says what the product is made of. The " +
+    "packaging clause has no finite verb, so `nonProductSubject` has no subject span to read — " +
+    "SUBJECT_BEFORE_VETO is the only guard that reaches it, and it only reaches the term that " +
+    "`termMatches`'s longest-first sort selects. This case is the mutation anchor for that sort."),
+
+  // ── v2.9 — DELIBERATELY LEFT OPEN, with the reason ────────────────────────
+  // Both are head-noun problems: telling them apart needs to know whether the measured
+  // substance IS the product, which no term list can decide. `origin` was removed after
+  // three attempts at exactly that shape, so these are pinned rather than guessed at.
+  C("A 500 ml refill pouch is included.", attr("dimensions"), "not_proven", "bundled-item",
+    "The capacity of a BUNDLED item, not the product. `nonProductQuantity` closed the usage, " +
+    "nutrition, dose, density and pack-weight classes, but bundled-component capacity needs the " +
+    "existing BUNDLED_SUBJECT rule in subject.ts, which handles a leading marker (\"Comes with a " +
+    "500 ml jar\") and not a trailing one (\"… is included.\"). 15 of the 21 surviving false passes " +
+    "in the independent 412-probe set are this shape.",
+    "pass_evidenced"),
+  C("Formulated with 2 grams of salicylic acid.", attr("dimensions"), "not_proven", "usage-quantity",
+    "An INGREDIENT concentration, not the product's size. Structurally identical to the canonical " +
+    "TRUE \"Each tin contains 250 g of loose leaf tea.\" — same frame, same `<n> <unit> of <noun>` " +
+    "shape, opposite answer — and the only thing separating them is whether the noun IS the product. " +
+    "That is a head-noun judgement, the class `origin` was removed for failing three times. Not " +
+    "attempted; 6 of the 21 surviving false passes are this shape.",
+    "pass_evidenced"),
 
   C("Most cheap versions are made from thin stamped steel.", attr("materials"), "not_proven", "competitor",
     "A COMPETITOR's composition, credited to this product and quoted as its proof. `subject.ts`'s " +
@@ -661,7 +706,19 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // stop. The only gap genuinely CLOSED by engineering this session is `12 fl oz`.
   // v2.8 CP4 the FITNESS run over 35 real stores found 2 confirmed false positives,
   //         both pre-existing (byte-identical at 44fd4e0). Pinned.               -> 31
-  const EXPECTED_OPEN_GAPS = 31;
+  //
+  // v2.9 CP1 CLOSED 3 BY ENGINEERING — the two production false positives, plus the
+  //          usage-quantity gap the nutrition one generalised:
+  //            · "Steep in 8 oz of hot water for 3 minutes."   (usage quantity)
+  //            · "Each serving contains 12 grams of protein."  (nutrition quantity)
+  //            · "A gift bundle of our house blends."          (policy-chrome claim)
+  //          and ADDED 2 that the independent probe sets found and this session
+  //          deliberately did NOT attempt, both head-noun problems of the class
+  //          `origin` was removed for failing three times:
+  //            · "A 500 ml refill pouch is included."          (bundled capacity)
+  //            · "Formulated with 2 grams of salicylic acid."  (ingredient conc.)
+  //                                                                             -> 30
+  const EXPECTED_OPEN_GAPS = 30;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

@@ -45,6 +45,71 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
+/**
+ * A WHOLE DOCUMENT reduced to text, with chrome removed and block structure kept as
+ * line breaks. Use this for any page-level HTML; `htmlToText` is for a single FIELD.
+ *
+ * WHY THIS EXISTS (v2.9). `attachShippingPolicy` ran `htmlToText` over an entire policy
+ * page under the comment "Policy pages are chrome-heavy; keep only the main text" —
+ * which was false. `htmlToText` is a TAG stripper: it drops `<script>`/`<style>` and the
+ * angle brackets, and keeps the *text* of `<title>`, `<nav>`, `<header>` and `<footer>`
+ * verbatim. It then collapses all whitespace, so the document arrives as prose with no
+ * newlines. Two consequences, both measured on real stores:
+ *
+ *   • The store's own SEO title became an ordinary sentence on the evidence surface. A
+ *     tea merchant was told "Organic — stated in your shipping policy" because their
+ *     `<title>` read "…: Organic Loose Leaf Teas, Tea Bags & Tea Gift". An independent
+ *     probe set put the false-pass rate for chrome shapes at 364/390.
+ *   • With newlines gone, `splitSentences` has only `.!?` to cut on, and navigation
+ *     carries no sentence punctuation — so head + nav + banner FUSE with the first real
+ *     sentence into one ~1000-character "sentence". That single fact defeats three
+ *     downstream guards at once: `presentableQuote` rejects the blob as too long and the
+ *     row passes with NO quote; `nonProductSubject` reads a subject span that is a
+ *     thousand characters of menu; and whether either fires depends on the store's menu
+ *     length rather than on anything about the product.
+ *
+ * So the fix is not a blocklist of chrome phrases — sentence-blacklisting would delete
+ * real delivery windows along with the nav, because on a real store the first timing
+ * statement is often INSIDE the fused blob. The fix is to segment the document before
+ * anything tries to read sentences out of it, which is what this does:
+ *   1. drop `<head>` outright (that is where `<title>` lives),
+ *   2. drop the containers that are chrome by definition,
+ *   3. turn block-level boundaries into newlines so prose separates from navigation.
+ */
+const CHROME_BLOCKS = ["nav", "header", "footer", "aside", "noscript", "template", "select", "svg", "form", "dialog"];
+const BLOCK_TAGS =
+  "address|article|aside|blockquote|br|dd|details|div|dl|dt|fieldset|figcaption|figure|" +
+  "footer|form|h1|h2|h3|h4|h5|h6|header|hr|li|main|nav|ol|p|pre|section|summary|table|" +
+  "tbody|td|th|thead|tr|ul";
+
+export function htmlToBlockText(html: string): string {
+  let s = html
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    // `<head>` carries `<title>` and the meta block: never body content.
+    .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, " ");
+  for (const tag of CHROME_BLOCKS) {
+    s = s.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}>`, "gi"), " ");
+  }
+  return s
+    // Block boundaries become NEWLINES, which `splitSentences` already treats as a
+    // sentence break — so a menu item can no longer fuse onto a policy sentence.
+    .replace(new RegExp(`</?(?:${BLOCK_TAGS})\\b[^>]*>`, "gi"), "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    // Collapse spaces and tabs, but PRESERVE the newlines just inserted.
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/\n[ \t]*/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
+
 /** Truncate to a byte/char budget with an ellipsis. */
 export function truncate(text: string, max = 4000): string {
   if (text.length <= max) return text;

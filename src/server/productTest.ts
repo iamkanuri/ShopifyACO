@@ -1,7 +1,7 @@
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extract.js";
-import { htmlToText } from "../crawler/sanitize.js";
+import { htmlToText, htmlToBlockText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
   buildEvidence, findSupport, findViolation, findTimingSupport, normalize,
@@ -171,13 +171,103 @@ const FL = String.raw`(?:fl\b\.?\s?)?`;
 // stay OUT of the dimensions TERM list. v2.7 added them and 196 independent probes
 // attributed six false-pass mechanisms to that half — "Only 2 L left in stock."
 // passed as a measurement and `ft.` matched "featuring".
-const MEASUREMENT = new RegExp(
+const MEASUREMENT_SRC =
   `(?:` +
     String.raw`\b\d+(?:\.\d+)?\s?${FL}${UNIT}` +
     `|` + String.raw`\b(?:dimensions?|capacity|weight|height|width|length|diameter)\s*[:\-–]\s*\d` +
-  `)`,
-  "i",
-);
+  `)`;
+const MEASUREMENT = new RegExp(MEASUREMENT_SRC, "i");
+/** Same pattern, global — so every occurrence can be judged in its own local context. */
+const MEASUREMENT_ALL = new RegExp(MEASUREMENT_SRC, "gi");
+
+// ---- v2.9 CP1: a quantity of something INSIDE the product is not its size ----
+//
+// THE MEASURED PROBLEM. The `dimensions` row claims "Measurements are stated", missing
+// detail "no readable measurements — size, capacity, weight or fit". A live store was
+// told its measurements were stated on the strength of "…has 11-14 grams of high
+// quality protein…". An independent 412-probe set then put the false-pass rate at
+// 112/258 on clear negatives (43.4%), worst in dosage/usage instructions (15/15),
+// external-substance quantity (20/25), nutrition per serving (24/32) and the capacity
+// of a COMPONENT rather than the product (15/25).
+//
+// AND THE DEFENCE WAS AN ACCIDENT, NOT A GUARD. Of the 146 clear negatives that
+// correctly returned not_proven, 117 did so ONLY because no term in the dimensions list
+// matched at all — a guard fired on just 29. `mg`, `mcg`, `mAh`, `W`, `V`, `%`, `gsm`,
+// `denier`, `grit`, `SPF` and `pH` simply are not in the term list; the moment a
+// merchant writes the same fact in grams, ml, oz or `capacity:` it passes.
+//
+// WHY THIS IS POSITIONAL. `MEASUREMENT` is tested against the WHOLE SENTENCE, so the
+// matched term and the matched measurement need not be the same span — the defect that
+// let "Case dimensions match every 4-G and Wi-Fi tablet." pass in v2.8. Vetoing on a
+// whole-sentence signal would repeat that error in reverse: "Each 12 oz bag contains 8 g
+// of protein." states a real size AND a nutrient, and must still pass. So every
+// measurement occurrence is judged in its OWN window, and the row passes if any single
+// occurrence reads as the product's own extent.
+const NUTRIENT =
+  /\b(protein|sugars?|sodium|salt|fats?|saturates|fibre|fiber|carb(?:s|ohydrates?)?|calories?|kcal|cholesterol|caffeine|alcohol|abv|cbd|thc|vitamins?|minerals?|omega|probiotics?|collagen|electrolytes?|added sugar)\b/i;
+/**
+ * Markers that the quantity is per unit of CONSUMPTION, not per product.
+ *
+ * ⚠️ The noun list is deliberately restricted to units that are ONLY ever a serving.
+ * A first draft included `bar`, `slice`, `cup` and `glass`, and cost 8 real positives
+ * immediately — "One bar weighs 8 oz." and "Net weight 8 oz per bar." are a chocolate
+ * or soap maker stating the product's weight, and a cup or glass is a product in its
+ * own right on any drinkware store. `scoop`, `capsule`, `gummy` and `sachet` have no
+ * such second reading.
+ */
+const PER_SERVING =
+  /\b(per|each|one|every)\s+(serving|portion|scoop|capsule|tablet|gummy|sachet|serve|dose|load|wash|application|treatment)\b|\bserving size\b|\bdaily (?:value|intake)\b|\bper day\b/i;
+/** A stated DOSE is an instruction for use, whatever verb introduces it. */
+const DOSE_NOUN = /\b(dose|dosage|serving)\b/i;
+/**
+ * Verbs that make the measurement a USAGE instruction rather than a product extent.
+ * Inflections matter: the first draft wrote bare `brew`, which does not match "Brewed
+ * with 0.2 grams of espresso extract." — the `\b` fails against the following `e`.
+ */
+const USAGE_VERB =
+  /\b(steep|brew|dissolve|dilute|mix|stir|blend|apply|take|ingest|swallow|add|pour|spray|rinse|soak|marinate|infuse|combine)(?:s|ed|ing)?\b/i;
+/** A quantity PER UNIT AREA/LENGTH is a density (GSM, thread count), not an extent. */
+const PER_MEASURE = /\bper\s+(?:square|linear|cubic|running)\s+\w+|\bg\/m2\b|\bgsm\b/i;
+/** Containers that are a SHIPMENT or a multi-unit pack, not the item being bought. */
+const PACK_SUBJECT =
+  /\b(case|cases|pallet|pallets|carton|cartons|crate|crates|shipment|shipments|batch|batches)\b/i;
+/** Non-volumetric senses of `capacity`, which the label-branch reads as a size. */
+const OTHER_CAPACITY = /\b(battery|memory|storage|data|power|load|weight|seating|passenger)\s+capacity\b/i;
+
+/**
+ * Is THIS measurement occurrence a quantity of something other than the product?
+ * Judged on a local window, not the sentence, for the reason in the block above.
+ */
+function nonProductQuantity(sentence: string, index: number, matched: string): boolean {
+  // The clause the occurrence sits in — bounded so a second, unrelated statement in the
+  // same sentence cannot veto a genuine measurement.
+  const before = sentence.slice(Math.max(0, index - 90), index);
+  const after = sentence.slice(index + matched.length, index + matched.length + 60);
+  const clauseBefore = before.split(/[.;:!?]|,\s+(?:and|but|or)\s/).pop() ?? before;
+  const local = `${clauseBefore} ${matched} ${after}`;
+
+  if (OTHER_CAPACITY.test(local)) return true;          // "Battery capacity: 5000 mAh."
+  if (PER_SERVING.test(local)) return true;             // "…per serving", "…per load"
+  if (PER_MEASURE.test(local)) return true;             // "280 grams per square meter"
+  if (DOSE_NOUN.test(clauseBefore)) return true;        // "Recommended dose is 8 oz…"
+  if (NUTRIENT.test(after) || NUTRIENT.test(clauseBefore)) return true; // "…of protein"
+  if (USAGE_VERB.test(clauseBefore)) return true;       // "Steep in 8 oz of hot water"
+  if (PACK_SUBJECT.test(clauseBefore)) return true;     // "Each case weighs 24 lbs."
+  return false;
+}
+
+/** True when at least ONE measurement in the sentence reads as the product's own extent. */
+function statesProductMeasurement(sentence: string): boolean {
+  MEASUREMENT_ALL.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  let sawAny = false;
+  while ((m = MEASUREMENT_ALL.exec(sentence)) !== null) {
+    sawAny = true;
+    if (!nonProductQuantity(sentence, m.index, m[0])) return true;
+  }
+  // No measurement at all ⇒ unchanged behaviour (the row fails for the old reason).
+  return sawAny ? false : false;
+}
 
 // ---- origin: REMOVED (v2.8 CP2) ---------------------------------------------
 //
@@ -277,7 +367,7 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     // `requireDigit` only asks that SOME digit exists in the sentence, so "Available
     // in 3 colors with a relaxed length" and the title "Wizard of Oz 2024 Collector
     // Poster" both satisfied it. A dimension is a number BOUND to a unit.
-    valueGuard: (s) => MEASUREMENT.test(s),
+    valueGuard: (s) => statesProductMeasurement(s),
     allowContainerSubject: true,
     shipmentVeto: true,
   },
@@ -818,8 +908,17 @@ export async function attachShippingPolicy(
       };
     }
     if (r.status !== 200 || !/html/i.test(r.contentType ?? "")) return { ...product, policyStatus: "unreachable" };
-    // Policy pages are chrome-heavy; keep only the main text and cap it.
-    const text = htmlToText(r.body).slice(0, 20_000);
+    // ⚠️ This line used to call `htmlToText` under the comment "Policy pages are
+    // chrome-heavy; keep only the main text and cap it." That was FALSE: `htmlToText`
+    // is a tag stripper, so it kept the text of <title>, <nav>, <header> and <footer>
+    // verbatim and then collapsed every newline. Only the cap was real. The result was
+    // a measured false positive on a live store — "Organic — stated in your shipping
+    // policy", where the word appeared solely in the store's SEO title — and, because
+    // the whole document arrived as one unbroken run, a fused ~1000-char "sentence"
+    // that defeated the quote gate and the subject gate at the same time.
+    // `htmlToBlockText` drops <head> and the chrome containers and turns block
+    // boundaries into newlines, so `splitSentences` sees sentences rather than a page.
+    const text = htmlToBlockText(r.body).slice(0, 20_000);
     if (!text) return { ...product, policyStatus: "unreachable" };
     return {
       ...product,
@@ -1087,10 +1186,26 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     case "claim": {
       const fx = CLAIM_TERMS[req.claim!]!;
       const checked = textSurfaces(p);
-      // Same protection the attribute rows get: a sentence we could not legally
-      // render is skipped here, so a merchant whose copy happens to say
-      // "guaranteed" never has their whole report refused as `unreachable`.
-      const quotable = p.evidence.filter((e) => lintStrings([e.text]).ok);
+      // PRODUCT surfaces only — the same filter the attribute rows apply, and for the
+      // same reason. The shipping policy is evidence about ORDERS, not about this
+      // product, and a claim proven from it is a statement the merchant never made
+      // about the thing being tested. The asymmetry (attribute rows filtered, claim
+      // rows did not) was unintentional and produced a measured false positive on a
+      // live store; an independent probe set then false-passed 364 of 390 chrome
+      // negatives, spread across six surfaces.
+      //
+      // Blast radius, measured before making the change: all 13 CLAIM_TERMS keys that
+      // pass off policy text also pass identically from `product_description`, and no
+      // claim class was found whose evidence legitimately lives ONLY in policy text —
+      // the plausible shapes ("We only ship organic products.") are store-wide
+      // statements on a logistics document, while the row asserts the claim about THIS
+      // product. Policy sentences are appended last and `findSupport` takes the first
+      // match, so the policy only ever decided a row when the product surfaces were
+      // silent — exactly when the merchant is being told something new.
+      //
+      // The lint filter is unchanged: a sentence we could not legally render is skipped
+      // so a merchant whose copy says "guaranteed" never has their report refused.
+      const quotable = p.evidence.filter((e) => e.surface !== "shipping_policy" && lintStrings([e.text]).ok);
       // Contrary evidence must clear the same aboutness gates before we report it —
       // AND must not be an artefact of one term sitting inside another.
       //
@@ -1113,10 +1228,28 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // contains single words, so `organic` matched inside `inorganic` — a word that
       // asserts the opposite of the claim it was crediting.
       const hit = findSupport(quotable, fx.support, { wholeWord: true });
+      // A PASS WITHOUT A QUOTE MUST SAY SO. `findSupport` returns a hit with
+      // `quote: null` when no clean sentence can be cut, and this branch used to render
+      // `hit.quote ?? undefined` — so the row passed showing the merchant nothing to
+      // check, silently. That is the shape the live false positive took: "Organic —
+      // stated in your shipping policy", no quote at all.
+      //
+      // ⚠️ FAILING CLOSED HERE WAS TRIED AND MEASURED WRONG. It looked right — the
+      // testEvidence.ts header states "anything that can't clear all three gates is NOT
+      // a pass" — but on the independent 390-negative chrome set, ZERO of the 195
+      // surviving false passes were quote-less, so it closed nothing; and it cost four
+      // real positives plus a canonical corpus case, all for the same reason:
+      // `presentableQuote` rejects anything under three words, and "Certified
+      // gluten-free." and variant values like "Organic Cotton." are two. Blocking a
+      // merchant's genuine two-word claim to fix a defect that does not travel this path
+      // is a bad trade. So the row passes and DISCLOSES, exactly as the attribute row
+      // does for a spec block.
       if (hit) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
-          detail: `Stated in your ${SURFACE_LABEL[hit.surface]}.`,
+          detail: hit.quote
+            ? `Stated in your ${SURFACE_LABEL[hit.surface]}.`
+            : `Stated in your ${SURFACE_LABEL[hit.surface]}, in wording we can't quote back as a clean sentence.`,
           evidenceQuote: hit.quote ?? undefined, evidenceSurface: SURFACE_LABEL[hit.surface],
         };
       }
@@ -1168,7 +1301,14 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     }
     case "no_subscription": {
       const checked = textSurfaces(p);
-      const hard = findSupport(p.evidence, SUBSCRIPTION_REQUIRED);
+      // Same PRODUCT-surface + lint filter as the claim and attribute rows. This row
+      // searched `p.evidence` raw — no surface filter and not even the lint pre-filter —
+      // which was undocumented and unintentional. Two consequences: a subscription
+      // sentence in the SHIPPING POLICY ("Subscribe & save on every delivery") is a
+      // statement about the store's ordering options, not about whether THIS product can
+      // be bought once; and an unlintable policy sentence could refuse the whole report.
+      const quotable = p.evidence.filter((e) => e.surface !== "shipping_policy" && lintStrings([e.text]).ok);
+      const hard = findSupport(quotable, SUBSCRIPTION_REQUIRED);
       if (hard) {
         return {
           label: req.label, status: "not_proven", surfacesChecked: checked,
