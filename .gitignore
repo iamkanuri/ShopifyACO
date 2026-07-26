@@ -62,3 +62,6 @@ listing-assets/
 !experiments/v2-5/
 experiments/v2-5/*
 !experiments/v2-5/*.md
+!experiments/v2-6/
+experiments/v2-6/*
+!experiments/v2-6/*.md
