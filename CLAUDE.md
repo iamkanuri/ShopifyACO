@@ -605,16 +605,49 @@ dishwasher safe, and they are made from stoneware.") are the same ones that stop
 conjunct it genuinely governs ("We do not offer weekend pickup, or overnight shipping."). One
 boundary set cannot serve both; fixing it needs scope, not another list.
 
-> ⚠️ **The `origin` prune (v2.4 CP2) is BLOCKED on a contaminated measurement, deliberately.**
-> The plan was to narrow `origin` (measured 0.91 fail rate, above the 15–85% discrimination
-> band) with a category gate and re-measure. The adversarial corpus then showed the `origin`
-> matcher is wrong in **both** directions: 10 confirmed false passes (Title-Case marketing copy
-> — `"Made in Very Small Batches."` — reads as a country) and 3 confirmed false fails (ordinary
-> lowercase `"made in vermont"`, and the very common `"Origin: Italy"` spec label, both return
-> not_proven). **The 0.91 is therefore not a measurement of how many stores state an origin**;
-> it is that mixed with a broken matcher. Narrowing it now would tune a category gate against a
-> contaminated number and then re-measure with the same broken instrument — the exact mistake
-> `RESULT_QUALITY_2.md` argues against. Fix `statesAPlace` first, re-measure, then decide.
+> ✅ **RESOLVED (v2.8 CP2): `origin` was REMOVED from the shipped library.** It had been deferred
+> four times. Two independent measurers plus a refuting verifier wrote three separate sets and one
+> natural-frequency read of 5,322 real product descriptions. The session's fixed decision rule
+> could not arbitrate — the same matcher scored **100.0%, 94.0% and 17.0%** specificity on the three
+> independently-written negative sets, which makes that term a property of the set author. What
+> decided it: on 369 naturally-occurring origin sentences the proposed narrowing was **17 true
+> statements lost, 0 false passes gained**, and the class it closed (`"Made in Georgia pine."`) has
+> **zero instances across all 5,322 real products**. The shipped form could not stay either — it
+> answered "no stated country of origin" to `"Made in the U.S.A."` (the clause splitter cuts on the
+> abbreviation's dots), `"Handcrafted in Nepal."`, and every city (the gazetteer had none, while
+> `AMBIGUOUS_PLACE` listed five entries that were not in `PLACES` and could never fire). Wrong in
+> both directions, and `not_proven` in 10 of the 11 stores that carried it. **Losing one row of
+> depth costs less than one false statement about a real store.** The measured path back — the
+> terminator rule closed every false pass, the frame narrowing closed none and cost 32 of 33 lost
+> positives — is in the tombstone above `MEASUREMENT` in `productTest.ts` and in
+> `experiments/v2-8/FITNESS.md`. **Do not attempt a third head-noun rule.**
+
+## A measurement that did not complete is not a passing measurement (v2.8 CP0)
+
+`src/measure/completion.ts`. Every aggregate, sweep and harness resolves to exactly one of
+**`VERIFIED_CLEAN` · `DEFECTS_FOUND` · `INCOMPLETE`**, and `confirmedCount` is `number | null` —
+**`null` on INCOMPLETE, never `0`** — so an incomplete run cannot be summed into a defect total or
+read as a pass by a caller that only looks at the number. `requireDecisive()` throws at the top of
+any ship decision.
+
+This exists because the same bug has appeared four times, always in the flattering direction:
+a workflow returned `confirmed: 0` because its three verifiers died holding 24 candidates; an
+`xargs`-piped hygiene sweep reported CLEAN over a real leak; `python -c` / `npx tsx -e` emit no
+output and exit 0; and a v2.8 sample probe **failed open on an unreadable `robots.txt`**, printing a
+line identical to a permitted read. Zero is the most dangerous number a broken instrument returns,
+because it is also what a healthy one returns.
+
+`INCOMPLETE` is forced by: a unit that did not return; candidates no verifier adjudicated; attackers
+with no verifier scheduled; nothing scheduled at all; or `confirmed > adjudicated`. A dead verifier
+makes even a `DEFECTS_FOUND` run non-decisive — partial verification reports a floor of unknown
+depth. **Two agents died mid-run in the session that shipped this; both were resumed, and both then
+returned findings that changed what shipped.**
+
+> ⚠️ **Real-store audits before v2.8 were UNDERPOWERED, not reassuring.** v2.3 audited 37 rows and
+> v2.5 audited 18, both reporting zero false positives, and that was read as evidence the engine is
+> fit on real copy. v2.8 audited **100 pass rows across 35 stores and found two** — a nutrition
+> quantity read as a product measurement, and a product claim proven from the shipping policy's SEO
+> chrome. Both predate v2.8. "Zero across 55 rows" was a statement about sample size.
 
 ## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
 
