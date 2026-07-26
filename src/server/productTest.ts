@@ -127,162 +127,118 @@ const MATERIAL_NOUN = /\b(cotton|wool|merino|cashmere|linen|silk|hemp|jute|canva
 /** A number bound to a unit. This is what "dimensions are stated" actually means;
  *  a bare unit word plus any digit elsewhere in the sentence does not ("Available
  *  in 3 colors with a relaxed length" measured as a pass). */
-const MEASUREMENT = /(\b\d+(\.\d+)?\s?(mm|cm|inch|inches|in\b|ft|feet|foot|oz|ounces?|ml|l\b|liters?|litres?|g\b|kg|grams?|lbs?|pounds?)|\b(dimensions?|capacity|weight|height|width|length|diameter)\s*[:\-–]\s*\d)/i;
-
-// ---- place detection (v2.5 CP1) ---------------------------------------------
-//
-// REPLACED: a capitalisation heuristic. It required a capital letter after the
-// origin frame, which is not a property of places — it is a property of Title Case.
-// Measured wrong in BOTH directions across 132 probes:
-//   • "Made in Very Small Batches." / "Made in Heaven, worn on Earth." /
-//     "Roasted in Our Roastery" / "Country of origin: Unknown"  → read as countries;
-//   • "made in vermont" (ordinary lowercase copy) and the very common spec label
-//     "Origin: Italy"                                          → read as no origin.
-//
-// A gazetteer is right far more often than a capital letter, is case-insensitive
-// in both directions, and — unlike the heuristic — is auditable: you can read the
-// list and see exactly what the tool will and will not accept as a place.
-// Deliberately a CLOSED list. An open rule is what let "Heaven" through.
-
-const COUNTRIES = [
-  "afghanistan", "albania", "algeria", "andorra", "angola", "argentina", "armenia", "australia",
-  "austria", "azerbaijan", "bahamas", "bahrain", "bangladesh", "barbados", "belarus", "belgium",
-  "belize", "benin", "bhutan", "bolivia", "bosnia", "botswana", "brazil", "brunei", "bulgaria",
-  "burkina faso", "burundi", "cambodia", "cameroon", "canada", "chad", "chile", "china",
-  "colombia", "congo", "costa rica", "croatia", "cuba", "cyprus", "czechia", "czech republic",
-  "denmark", "dominican republic", "ecuador", "egypt", "el salvador", "estonia", "eswatini",
-  "ethiopia", "fiji", "finland", "france", "gabon", "gambia", "georgia", "germany", "ghana",
-  "greece", "guatemala", "guinea", "guyana", "haiti", "honduras", "hungary", "iceland", "india",
-  "indonesia", "iran", "iraq", "ireland", "israel", "italy", "ivory coast", "cote d'ivoire",
-  "côte d'ivoire", "jamaica", "japan", "jordan", "kazakhstan", "kenya", "kosovo", "kuwait",
-  "kyrgyzstan", "laos", "latvia", "lebanon", "lesotho", "liberia", "libya", "liechtenstein",
-  "lithuania", "luxembourg", "madagascar", "malawi", "malaysia", "maldives", "mali", "malta",
-  "mauritania", "mauritius", "mexico", "moldova", "monaco", "mongolia", "montenegro", "morocco",
-  "mozambique", "myanmar", "namibia", "nepal", "netherlands", "holland", "new zealand",
-  "nicaragua", "niger", "nigeria", "north macedonia", "norway", "oman", "pakistan", "palestine",
-  "panama", "papua new guinea", "paraguay", "peru", "philippines", "poland", "portugal", "qatar",
-  "romania", "russia", "rwanda", "samoa", "saudi arabia", "senegal", "serbia", "sierra leone",
-  "singapore", "slovakia", "slovenia", "somalia", "south africa", "south korea", "korea",
-  "south sudan", "spain", "sri lanka", "sudan", "suriname", "sweden", "switzerland", "syria",
-  "taiwan", "tajikistan", "tanzania", "thailand", "togo", "trinidad", "tunisia", "turkey",
-  "türkiye", "turkmenistan", "uganda", "ukraine", "united arab emirates", "united kingdom",
-  "great britain", "britain", "england", "scotland", "wales", "northern ireland",
-  "united states", "united states of america", "america", "uruguay", "uzbekistan", "venezuela",
-  "vietnam", "yemen", "zambia", "zimbabwe",
-];
-
-/** Abbreviations and demonyms that only ever denote a country in this position. */
-const COUNTRY_SHORT = ["usa", "u.s.a.", "u.s.", "us", "uk", "u.k.", "eu", "uae", "prc", "nz", "roc"];
-
-const US_STATES = [
-  "alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut", "delaware",
-  "florida", "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa", "kansas", "kentucky",
-  "louisiana", "maine", "maryland", "massachusetts", "michigan", "minnesota", "mississippi",
-  "missouri", "montana", "nebraska", "nevada", "new hampshire", "new jersey", "new mexico",
-  "new york", "north carolina", "north dakota", "ohio", "oklahoma", "oregon", "pennsylvania",
-  "rhode island", "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont",
-  "virginia", "washington", "west virginia", "wisconsin", "wyoming",
-];
-
-/** Sub-national regions and cities common in origin copy. Kept short on purpose:
- *  a city list is unbounded, and the frame plus a country covers most real copy. */
-const REGIONS = [
-  "bavaria", "tuscany", "catalonia", "provence", "normandy", "andalusia", "piedmont", "sicily",
-  "yorkshire", "cornwall", "ontario", "quebec", "british columbia", "tasmania", "hokkaido",
-  "kyoto", "okinawa", "seoul", "tokyo", "milan", "florence", "paris", "london", "berlin",
-  "lisbon", "porto", "oaxaca", "jalisco", "antioquia", "yunnan", "kerala", "rajasthan",
-  "sheffield", "solingen", "seki", "murano", "harris tweed", "new england", "pacific northwest",
-  "scandinavia", "the alps", "the andes", "patagonia",
-];
-
-const PLACES = new Set([...COUNTRIES, ...COUNTRY_SHORT, ...US_STATES, ...REGIONS]);
-
+const UNIT = String.raw`(?:mm|cm|inch|inches|in\b|ft|feet|foot|oz|ounces?|ml|l\b|liters?|litres?|g\b|kg|grams?|lbs?|pounds?)`;
 /**
- * Gazetteer entries that are ALSO ordinary English words, a material, a person's
- * name or a product noun. These — and only these — must be capitalised to count.
+ * An intervening `fl` — "12 fl oz", "12 fl. oz." A merchant writing fluid ounces puts
+ * a token between the number and the unit, and digit-adjacency read that as no
+ * measurement at all.
  *
- * Measured: a case-insensitive gazetteer false-passed 27 of 40 non-origin sentences,
- * and the losses were concentrated here — "Made in china clay" (kaolin), "Made in
- * Turkey red dye", "Roasted in Jordan almonds", "Made in Georgia pine". Requiring a
- * capital on EVERY entry was the obvious fix and the wrong one: it re-broke lowercase
- * copy ("made in vermont"), which is exactly what the gazetteer was introduced to
- * recover. Scoping the requirement to the ambiguous entries keeps both.
- *
- * Still open, and pinned in the corpus rather than papered over: a CAPITALISED
- * ambiguous word followed by a material noun ("Made in Georgia pine") still passes.
- * Distinguishing that needs the head noun after the place, not more list surgery.
+ * ⚠️ THE `\b` IS THE WHOLE GUARD, and it was missing in the first draft. Without it
+ * `\d+\s?fl` + `ounces?` matches inside ordinary English words: "Midi length, 3
+ * flounces, side pockets." passed as a stated measurement, as did "12 flinches"
+ * (fl+inch). `flounce` is routine apparel copy. Found by an independent adversarial
+ * pass; I had reasoned this half was provably safe because a regex differential
+ * showed it only widens strings containing `fl` — which is true, and which includes
+ * "flounce". The proof was right and the inference from it was wrong.
  */
-const AMBIGUOUS_PLACE = new Set([
-  "china", "turkey", "georgia", "jordan", "chad", "guinea", "wales", "washington",
-  "virginia", "india", "morocco", "panama", "brunei", "cornwall", "mali", "niger",
-  "togo", "oman", "florence", "milan", "paris", "berlin", "canada", "hungary",
-  "montenegro", "malta", "kenya", "somalia", "columbia", "victoria", "sydney",
-  "indiana", "montana", "nevada", "utah", "maine", "delaware", "jersey", "york",
-]);
-/** Longest place name in words — how far ahead `statesAPlace` has to look. */
-const PLACE_MAX_WORDS = 4;
+const FL = String.raw`(?:fl\b\.?\s?)?`;
+// v2.8 CP1 — the `fl` ADJACENCY FIX, and ONLY that.
+//
+// ⚠️ A HYPHEN BRANCH ("12-oz mug") WAS BUILT HERE AND REMOVED. It closed a real gap
+// and 334 independent probes then attributed four distinct false-pass mechanisms to
+// it, none of which the legacy tree had:
+//   • a one-letter unit as the tail of a hyphenated non-measurement token — "Case
+//     dimensions match every 4-G and Wi-Fi tablet.", "Screen height matches the 2-L
+//     edition exactly." My own note here used to claim `l`/`ft`/`g` were safe in
+//     MEASUREMENT "where a term must match first". That is true of the TERM and
+//     false of the LOCATION: MEASUREMENT is tested against the WHOLE SENTENCE, so
+//     the matched term and the matched measurement need not be the same span. This
+//     is the shape the corpus already pins as "Lightweight frame, 5 ft of reach."
+//   • an all-caps style code whose unit ENDS the token — "Style 16-OZ is the black
+//     colourway." slips both guards, and worse, DISPLACES THE QUOTE: given
+//     "Colourway 3-LB is the darker press. Total weight comes to 2 lbs once cured."
+//     the row still passes but now quotes the colourway instead of the weight.
+//   • it removed the last backstop under the aboutness classes the corpus already
+//     pins as open (usage quantity, bundled item, order threshold, fitment), roughly
+//     doubling the written forms in which those gaps fire.
+//   • a thousands separator satisfies the lookbehind, so "A 1,200-lb rated ceiling
+//     hook." matches on "200-lb".
+// The guards could not be tightened without also refusing "A 12-inch-tall vase",
+// which is the commonest compound-adjective form of a real dimension. Left OPEN and
+// pinned in the corpus rather than shipped half-working.
+//
+// ⚠️ Also deliberately NOT widened: `l`, `ft`, `feet`, `foot`, `liter` and `measures`
+// stay OUT of the dimensions TERM list. v2.7 added them and 196 independent probes
+// attributed six false-pass mechanisms to that half — "Only 2 L left in stock."
+// passed as a measurement and `ft.` matched "featuring".
+const MEASUREMENT = new RegExp(
+  `(?:` +
+    String.raw`\b\d+(?:\.\d+)?\s?${FL}${UNIT}` +
+    `|` + String.raw`\b(?:dimensions?|capacity|weight|height|width|length|diameter)\s*[:\-–]\s*\d` +
+  `)`,
+  "i",
+);
 
-/**
- * Longest-first prefix lookup, so "new zealand" is tried before "new".
- *
- * `requireCap` is what stops the gazetteer being WORSE than the capitalisation
- * heuristic it replaced. Measured over 40 non-origin sentences, a case-insensitive
- * gazetteer false-passed 27 of them: every entry that is also an ordinary English
- * word matched in its ordinary sense — "Made in china clay" (kaolin), "Made in
- * Turkey red dye", "Roasted in Jordan almonds". Capitalisation had been suppressing
- * those incidentally.
- *
- * So the capital is required again — EXCEPT when the sentence carries no capitals at
- * all, which is what recovers the lowercase copy the heuristic used to lose
- * ("each mug is hand-thrown and made in vermont"). The signal is not "is this
- * capitalised" but "is this capitalised GIVEN that this writer capitalises".
- */
-function startsWithPlace(words: string[], requireCap: boolean): boolean {
-  for (let n = Math.min(PLACE_MAX_WORDS, words.length); n >= 1; n--) {
-    // Keep any Unicode LETTER — a `[^a-z]` strip turned "côte d'ivoire" into
-    // "cte d'ivoire" and lost a real country.
-    const raw = words.slice(0, n).join(" ").replace(/[^\p{L}.'\s-]/gu, "").trim();
-    const lower = raw.toLowerCase();
-    if (!PLACES.has(lower)) continue;
-    // Only the ambiguous entries have to earn their capital.
-    if (requireCap && AMBIGUOUS_PLACE.has(lower) && !/^\p{Lu}/u.test(raw)) continue;
-    return true;
-  }
-  return false;
-}
+// ---- origin: REMOVED (v2.8 CP2) ---------------------------------------------
+//
+// A `Country of origin is stated` requirement lived here, with a closed gazetteer of
+// countries, US states and regions behind it. It has been REMOVED from the shipped
+// library. This is a decision, not a deferral — it had been deferred four times.
+//
+// WHAT WAS MEASURED. Two independently-written adversarial sets, plus a
+// natural-frequency read of 5,322 real product descriptions from 20 live stores:
+//
+//   set              recall            specificity
+//   A  shipped       76.1% (105/138)   88.8% (119/134)
+//   A  narrowed      63.8%  (88/138)   94.0% (126/134)
+//   B  shipped       73.8% (104/141)   95.4% (124/130)
+//   B  narrowed      50.4%  (71/141)  100.0% (130/130)
+//
+// The session's fixed decision rule was: keep the narrowed form iff specificity ≥95%
+// AND recall ≥40%. The two independent sets STRADDLE that threshold (94.0% / 100.0%),
+// so the rule did not discriminate — and pooling the sets flatters the narrowing
+// (97.0%) while failing the shipped form (92.0%), which is a fact about set
+// composition rather than about the matcher.
+//
+// WHAT DECIDED IT was the natural-frequency read, which the rule did not anticipate
+// and which is the better estimator of merchant impact. Over 369 naturally-occurring
+// origin sentences held out from the hand-built sets, the narrowing was **17 true
+// statements lost, 0 false passes gained**. The one false-pass class it closes — a
+// gazetteer word in its ordinary sense (`Georgia pine`, `Turkey red`, `Jordan
+// almonds`) — has **zero observed instances across all 5,322 real products**. So the
+// narrowing must not ship: it makes the product wrong more often, to fix something
+// that does not occur.
+//
+// AND THE SHIPPED FORM CANNOT STAY EITHER, because it is wrong in the OTHER direction
+// at scale. These all return "no stated country of origin" against copy that plainly
+// states one, in BOTH the shipped and narrowed forms:
+//     "Made in the U.S.A."      (the clause splitter cuts on the abbreviation's dots)
+//     "Handcrafted in Nepal."   "Grown in Panama."   "Milled in Japan."
+//     "Made in Los Angeles."    "Made in Barcelona."  (no cities in the gazetteer)
+//     "Origin — Italy"          (only `:` is accepted as the label separator)
+// Telling a merchant whose page says "Handcrafted in Nepal." that they publish no
+// origin is a false statement about a store we read perfectly well. That is precisely
+// the class the `warranty` requirement was dropped for in v2.3.
+//
+// AND IT CARRIED LITTLE INFORMATION EVEN WHEN RIGHT: in the v2.3 production sample the
+// row appeared in 11 of 17 stores and returned not_proven in 10 of those 11 — a 0.91
+// fail rate, which the standing CLAUDE.md caveat already flags as a contaminated
+// measurement precisely because the matcher is broken in both directions.
+//
+// Losing one row of depth costs less than one false statement about a real store.
+//
+// THE MEASURED PATH BACK, if a future session wants this row. The two halves of the
+// narrowing are separable and only one did any work: the TERMINATOR rule (place must
+// be followed by a clause end or an allow-listed continuation) closed every false
+// pass; the FRAME narrowing closed none and cost 32 of the 33 lost positives. Shipped
+// frames + the terminator projects to 73.0% recall at 100% specificity — a projection,
+// never measured, and it must be measured before it is believed. Three mechanical bugs
+// are worth fixing first, all pre-existing and all cheap: protect dotted abbreviations
+// before the clause split; the gazetteer has no cities, while AMBIGUOUS_PLACE listed
+// `sydney`, `columbia`, `victoria`, `jersey` and `york` — none of which were in
+// PLACES, so they were dead entries that could never fire; and accept `-`/`—` as label
+// separators. Full record: experiments/v2-8/FITNESS.md.
 
-/** Does the text after an origin frame name a real place? */
-function statesAPlace(sentence: string, term: string): boolean {
-  const lower = sentence.toLowerCase();
-  const i = lower.indexOf(term.toLowerCase());
-  if (i === -1) return false;
-  // Strip the frame's OWN trailing separator before bounding the clause. Splitting
-  // first cut "Country of Origin: Japan" at the colon and left nothing to inspect —
-  // a regression the corpus caught immediately, on the canonical spec-label form.
-  const tail = sentence.slice(i + term.length).replace(/^[\s:,\-–—]+/, "");
-  // Only the frame's own CLAUSE counts. Scanning the whole sentence would credit
-  // "Made in small batches, shipped from Vermont." with a country of origin, when
-  // what it states is where it ships from — which need not be where it was made.
-  const clause = tail.split(/[.,;:!?)(]/)[0] ?? "";
-  const stripArticle = (s: string): string =>
-    s.replace(/^[\s:,\-–—]+/, "").replace(/^(the|our|a|an|its|my|their)\s+/i, "");
-
-  // Does this writer use capitals at all? If not, a lowercase place name is the
-  // best evidence available and must still count.
-  const requireCap = /\p{Lu}/u.test(sentence);
-
-  const head = stripArticle(clause).trim().split(/\s+/).filter(Boolean);
-  if (head.length && startsWithPlace(head, requireCap)) return true;
-
-  // A second locative inside the same clause: "Handmade in small batches in
-  // Vermont." names its origin, even though the word right after the frame is
-  // "small". The clause bound above is what keeps this from over-reaching.
-  for (const m of clause.matchAll(/\bin\s+/gi)) {
-    const rest = stripArticle(clause.slice(m.index! + m[0].length)).trim().split(/\s+/).filter(Boolean);
-    if (rest.length && startsWithPlace(rest, requireCap)) return true;
-  }
-  return false;
-}
 
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
   materials: {
@@ -325,23 +281,10 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     allowContainerSubject: true,
     shipmentVeto: true,
   },
-  origin: {
-    label: "Country of origin is stated",
-    missingDetail: "no stated country of origin",
-    terms: [
-      "made in", "handmade in", "handcrafted in", "crafted in", "manufactured in", "assembled in",
-      "produced in", "country of origin", "designed and made in", "grown in", "milled in", "roasted in",
-      // The bare spec label. "Origin: Italy" is one of the commonest ways a store
-      // states provenance and matched nothing before v2.5. The COLON is required:
-      // without it this would match "single origin" coffee, which is a claim about
-      // sourcing, not a stated country.
-      "origin:",
-    ],
-    // "Made in small batches", "Roasted in small batches every Tuesday", "Grown in
-    // partnership with local farms" and "Handmade in batches of twelve" all read as
-    // a stated country of origin without this. A place is required.
-    valueGuard: (s, term) => statesAPlace(s, term),
-  },
+  // NOTE — an `origin` requirement was built, shipped, deferred four times and then
+  // REMOVED in v2.8 CP2. See the tombstone above MEASUREMENT for the measurements and
+  // the reasoning. Short version: wrong in both directions on real merchant copy, and
+  // a 0.91 fail rate means it carried little information even when right.
   // NOTE — a `warranty` requirement was built, measured (0.71 fail rate, in band)
   // and then DROPPED before shipping. Its term list ("guarantee", "guaranteed",
   // "satisfaction guarantee") collides head-on with the claim linter's `guarantee`
@@ -1073,9 +1016,13 @@ export function buildBuyerTask(p: PublicProduct): { summary: string; requirement
   // order. Spanning surfaces is what makes a result read as a diagnosis rather
   // than a checklist, and it is also what stops one dominant gap (delivery, 71%
   // of stores in the v2.2 sample) from being the entire report.
+  // `attr:origin` and `attr:warranty` were dropped from this list with their
+  // requirements (v2.8 CP2 and v2.3 respectively). A priority entry that matches no
+  // candidate is a silent no-op, which is exactly how `attr:warranty` survived three
+  // sessions after the requirement it named stopped existing.
   const SURFACE_PRIORITY = [
     "claim", "logistics", "attr:materials", "attr:dimensions", "machine",
-    "price", "variant", "terms", "attr:origin", "attr:warranty", "attr:care",
+    "price", "variant", "terms", "attr:care",
   ];
   const picked = new Set<Requirement>();
   for (const type of SURFACE_PRIORITY) {
@@ -1236,7 +1183,12 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       };
     }
     case "attribute": {
-      const spec = ATTRIBUTE_SPECS[req.attribute!]!;
+      // A requirement naming an attribute with no spec is a programming error, not a
+      // merchant's problem. Say so: when `origin` was removed in v2.8 CP2 the bare `!`
+      // turned three stale call sites into "Cannot read properties of undefined
+      // (reading 'shipmentVeto')", which names neither the attribute nor the cause.
+      const spec = ATTRIBUTE_SPECS[req.attribute!];
+      if (!spec) throw new Error(`unknown attribute requirement '${req.attribute}' — no ATTRIBUTE_SPECS entry (was it removed?)`);
       // PRODUCT surfaces only. The shipping policy is evidence about ORDERS, not
       // about this product, and matching attributes there produces false passes —
       // measured, not hypothesised: "Size, capacity or weight is stated" passed a

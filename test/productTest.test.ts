@@ -972,10 +972,11 @@ test("v2.3 review: a frame without a VALUE is not a stated attribute", () => {
   const falsePasses: Array<[string, string]> = [
     ["Made with love in small batches.", "materials"],
     ["Every bar is made with care by hand.", "materials"],
-    ["Made in small batches in our studio.", "origin"],
-    ["Roasted in small batches every Tuesday.", "origin"],
-    ["Grown in partnership with local farms.", "origin"],
-    ["Handmade in batches of twelve.", "origin"],
+    // The four `origin` strings from the v2.3 review are gone with the requirement
+    // (removed v2.8 CP2). They are preserved verbatim in the tombstone above
+    // MEASUREMENT in productTest.ts and in the corpus's origin removal pin, so the
+    // evidence survives the feature. Keeping them here would only assert that a
+    // requirement nobody asks cannot answer.
     ["Available in 3 colors with a relaxed length.", "dimensions"],
     ["Learn how to use our rewards program in 3 steps.", "care"],
   ];
@@ -986,8 +987,6 @@ test("v2.3 review: a frame without a VALUE is not a stated attribute", () => {
   // The genuine article still passes, or the guard would just be a mute button.
   const truePasses: Array<[string, string]> = [
     ["The handle is crafted from solid walnut.", "materials"],
-    ["Handmade in Vermont from local clay.", "origin"],
-    ["Made in the USA.", "origin"],
     ["Each bottle stands 8 inches tall.", "dimensions"],
     ["Machine wash cold, tumble dry low.", "care"],
   ];
@@ -1005,7 +1004,9 @@ test("v2.3 review: the non-product subject may sit BEFORE the frame, or after it
   for (const [sentence, a] of [
     ["Our packaging is made from 100% recycled cardboard.", "materials"],
     ["The box it ships in is made of recycled kraft paper.", "materials"],
-    ["Our shipping boxes are made in the USA.", "origin"],
+    // "Our shipping boxes are made in the USA." went with the `origin` requirement
+    // (removed v2.8 CP2). The same subject-before-frame shape is still covered by the
+    // two `materials` rows above, which is what this test is actually asserting.
     ["Rated for a 300 lbs weight capacity on the shipping pallet.", "dimensions"],
   ] as Array<[string, string]>) {
     assert.equal(evaluate(mk({ description: sentence }), attrReq(a)).status, "not_proven",

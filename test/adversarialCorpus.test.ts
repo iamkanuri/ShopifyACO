@@ -142,54 +142,76 @@ const MATERIALS: Case[] = [
 // ---------------------------------------------------------------------------
 // ORIGIN — "Country of origin is stated".
 // ---------------------------------------------------------------------------
-const ORIGIN: Case[] = [
-  C("Made in small batches in our studio.", attr("origin"), "not_proven", "marketing-idiom",
-    "ORIGIN_STOP catches the lowercase form."),
-  C("Roasted in small batches every Tuesday.", attr("origin"), "not_proven", "marketing-idiom",
-    "Same, via the `roasted in` frame."),
-  C("Made in the USA.", attr("origin"), "pass_evidenced", "canonical-true", "A stated country."),
-  C("Country of Origin: Japan", attr("origin"), "pass_evidenced", "canonical-true", "The explicit field form."),
-  C("Handmade in Vermont from local clay.", attr("origin"), "pass_evidenced", "canonical-true", "A stated place."),
+// ---------------------------------------------------------------------------
+// ORIGIN — REMOVED FROM THE SHIPPED LIBRARY (v2.8 CP2).
+//
+// The requirement is gone, so there are no `attr("origin")` cases to run: building
+// one would now throw, which is itself the strongest possible pin. What remains is
+// the structural assertion that it cannot come back by accident, plus the sentences
+// that decided it — kept verbatim in the comments so a future session inherits the
+// evidence rather than the conclusion.
+//
+// It was removed because it was wrong in BOTH directions on real merchant copy:
+//   FALSE PASS  "Made in Georgia pine."      (a wood, read as a US state)
+//   FALSE FAIL  "Made in the U.S.A."         (the clause splitter cuts on the dots)
+//   FALSE FAIL  "Handcrafted in Nepal."      "Grown in Panama."  "Milled in Japan."
+//   FALSE FAIL  "Made in Los Angeles."       (the gazetteer holds no cities)
+//   FALSE FAIL  "Origin — Italy"             (only `:` was accepted as a separator)
+// and because at a 0.91 production fail rate it carried little information even when
+// right. Full record and the measured path back: experiments/v2-8/FITNESS.md.
+//
+// ⚠️ Removing a requirement DELETED 3 open gaps rather than fixing them. They were
+// real defects; they are now unreachable because the feature that carried them does
+// not ship. Do not read the drop in EXPECTED_OPEN_GAPS as three defects repaired.
+//
+// ⚠️ OWED: a replacement control for `termMatches` longest-match-first ordering.
+// The mutation proof measured that guard LOAD-BEARING before this removal and DEAD
+// after it — its only anchor was the origin case "Roasted in small batches; grown in
+// Colombia.", and deleting the requirement deleted the anchor. The guard is NOT
+// redundant; it is now uncovered, which is a corpus hole this session created and did
+// not close. It is hard to anchor via the surviving requirements because no remaining
+// attribute `valueGuard` consumes the matched term (origin's `statesAPlace` was the
+// only one that did), so ordering now only shows up through `findViolation` overlap
+// and per-term aboutness. Write that case before trusting the mutation proof's count
+// again. Sibling precedent: `findSupport rejects if ANY matched term is negated` has
+// been corpus-DEAD and real-copy load-bearing since v2.5, and says so in its comment.
+// ---------------------------------------------------------------------------
 
-  // --- CONFIRMED GAPS: statesAPlace requires a CAPITALISED token ---
-  C("Made in Very Small Batches.", attr("origin"), "not_proven", "cap-non-place",
-    "ORIGIN_STOP is `^`-anchored after ONE article strip, so any inserted word moves the stop word " +
-    "out of range. `Made in Small Batches.` correctly fails; one adverb flips it. Capitalisation is " +
-    "merchant-controlled Title Case, not evidence of a place."),
-  C("Handcrafted in Truly Limited Runs.", attr("origin"), "not_proven", "cap-non-place",
-    "Same mechanism as above with a different filler adverb — `Truly` displaces `Limited` past the " +
-    "`^`-anchored ORIGIN_STOP, so a production-volume statement reads as a country."),
-  C("Made in the Same Facility As Our Nut Butters.", attr("origin"), "not_proven", "cap-non-place",
-    "A shared-facility allergen disclosure, not a country of origin — and an extremely common line " +
-    "in exactly the food categories this tool targets."),
-  C("Roasted in Our Roastery every Monday.", attr("origin"), "not_proven", "cap-non-place",
-    "`Our` is stripped as an article, exposing the capitalised `Roastery`."),
-  C("Made in Heaven, worn on Earth.", attr("origin"), "not_proven", "marketing-idiom",
-    "A pure marketing idiom whose capitalised token is a place only in a sense no customs form " +
-    "recognises. Shows the capitalisation heuristic is not measuring place-ness at all."),
-  C("Our gift box is made in Vietnam.", attr("origin"), "not_proven", "packaging-subject",
-    "`gift box` is not in SUBJECT_BEFORE_VETO — the origin of the PACKAGING."),
-  C("The included travel case is made in China.", attr("origin"), "not_proven", "bundled-item",
-    "States the origin of an ACCESSORY in the box. The product's own origin remains unstated, and " +
-    "the row is rendered with this sentence as its proof."),
-  C("Unlike mass-market pans made in China, ours are forged by hand.", attr("origin"), "not_proven", "competitor",
-    "The only origin in the sentence is a competitor's, and the contrastive `Unlike … ours` makes " +
-    "that explicit — yet it is quoted as this store's origin evidence."),
-  C("No part of this is made in China.", attr("origin"), "not_proven", "negation",
-    "A denial of an origin is not a stated origin; the negator is outside the 14-char window."),
-  C("Country of origin: Unknown", attr("origin"), "not_proven", "placeholder",
-    "`Unknown` is capitalised, so statesAPlace accepts it as a place."),
+test("[origin] the origin requirement is NOT in the shipped library", () => {
+  // Copy that plainly states an origin, from a category that would happily carry the
+  // row. If `origin` ever returns, this is where it announces itself.
+  const reqs = requirementsFor({
+    title: "Merino Wool Sweater", productType: "Sweater",
+    description: "Made in Portugal from a merino blend. Handcrafted in Nepal by a small team. Origin: Italy.",
+    minPriceUsd: 120,
+  });
+  assert.equal(reqs.some((r) => r.attribute === "origin"), false, "an origin requirement was asked");
+  assert.equal(
+    reqs.some((r) => /country of origin/i.test(r.label)), false,
+    "a requirement is still labelled as a country-of-origin claim",
+  );
+});
 
-  // --- CONFIRMED GAPS in the other direction: real places rejected ---
-  C("Each mug is hand-thrown and made in vermont.", attr("origin"), "pass_evidenced", "casing",
-    "A store writing lowercase copy states its origin just as much as one writing Title Case. " +
-    "Requiring a capital is a false FAIL on ordinary casing."),
-  C("Origin: Italy", attr("origin"), "pass_evidenced", "canonical-true",
-    "`origin:` is not in the term list — only `country of origin`. A very common spec label."),
-  C("Handmade in small batches in Vermont.", attr("origin"), "pass_evidenced", "first-occurrence",
-    "statesAPlace inspects only the FIRST occurrence of the frame, sees `small`, and stops — " +
-    "even though the same sentence names Vermont."),
-];
+test("[origin] no requirement anywhere claims to read a country of origin", () => {
+  // Across categories, so a category-gated resurrection is caught too.
+  for (const [title, productType] of [
+    ["Cast Iron Skillet", "Cookware"], ["Single Origin Coffee", "Coffee"],
+    ["Leather Boots", "Footwear"], ["Ceramic Mug", "Drinkware"], ["Graphite Pencil", "Pencil"],
+  ] as const) {
+    const reqs = requirementsFor({
+      title, productType, minPriceUsd: 40,
+      description: "Made in Italy. Roasted in small batches. Country of origin: Japan.",
+    });
+    // NB: bare /origin/ is the WRONG test and caught its own false alarm here — the
+    // `single_origin` CLAIM row is a different, surviving feature ("Single-origin"
+    // coffee sourcing), not the removed country-of-origin attribute.
+    assert.equal(
+      reqs.some((r) => r.attribute === "origin" || /country of origin/i.test(r.label)), false,
+      `origin row resurfaced for ${title}`,
+    );
+  }
+});
+
 
 // ---------------------------------------------------------------------------
 // DIMENSIONS — "Measurements are stated" claims the PRODUCT's own size.
@@ -230,16 +252,50 @@ const DIMENSIONS: Case[] = [
     "No term in the dimensions list appears: `in` is not a term (only `inch`/`inches`). The most " +
     "standard spec line there is returns not_proven.",
     "not_proven"),
+  // CLOSED v2.8 CP1 — the `fl` insertion. Fluid ounces put a token between the number
+  // and the unit, which digit-adjacency read as no measurement at all.
   C("This mug holds 12 fl oz of coffee.", attr("dimensions"), "pass_evidenced", "canonical-true",
-    "`fl oz` matches as a term, but MEASUREMENT requires the digit adjacent to the unit and `12 fl oz` " +
-    "has `fl` in between, so the valueGuard rejects it.",
-    "not_proven"),
+    "Fluid ounces put a token between the number and the unit. Closed by the `fl` insertion in MEASUREMENT."),
+  // MUTATION ANCHOR for the `\b` in the FL group — the one guard that makes the `fl`
+  // insertion safe. Without it `\d+\s?fl` + `ounces?` matches inside ordinary words.
+  C("Midi length, 3 flounces, side pockets.", attr("dimensions"), "not_proven", "unit-substring",
+    "`flounce` is routine apparel copy, and the first draft of the `fl` insertion matched `fl`+`ounce` " +
+    "inside it, passing a qualitative `Midi length` sentence as a stated measurement. The `\\b` after " +
+    "`fl` is the whole guard; this case is what proves it. Sibling: `12 flinches` via `fl`+`inch`."),
+  // STILL OPEN, and this is a DECISION. A hyphen branch was built here and removed:
   C("A 12-oz mug in matte ceramic.", attr("dimensions"), "pass_evidenced", "canonical-true",
-    "MEASUREMENT allows an optional SPACE between number and unit but not a HYPHEN.", "not_proven"),
+    "MEASUREMENT allows an optional SPACE between number and unit but not a HYPHEN. A hyphen branch " +
+    "was built in v2.8 and REMOVED after 334 independent probes attributed four false-pass mechanisms " +
+    "to it that the legacy tree did not have: a one-letter unit as the tail of a hyphenated token " +
+    "(`Case dimensions match every 4-G and Wi-Fi tablet.` — MEASUREMENT is tested on the WHOLE " +
+    "sentence, so the matched term and the matched measurement need not be the same span); an all-caps " +
+    "style code whose unit ends the token (`Style 16-OZ is the black colourway.`, which also DISPLACED " +
+    "the quote off a real weight onto the colourway); a new surface for the already-pinned aboutness " +
+    "gaps (usage quantity, bundled item, threshold, fitment); and a thousands separator satisfying the " +
+    "lookbehind (`A 1,200-lb rated ceiling hook.`). The guards could not be tightened without also " +
+    "refusing `A 12-inch-tall vase`, the commonest compound-adjective form of a real dimension.",
+    "not_proven"),
+  // NEW GAP, found by the v2.8 CP1 probe set. Not caused by the `fl` change —
+  // it is a sentence-splitting limit the change made visible.
+  C("This mug holds 12 fl. oz. of coffee.", attr("dimensions"), "pass_evidenced", "canonical-true",
+    "The abbreviated form. `splitSentences` breaks after any `. ` and does not know `fl.` is an " +
+    "abbreviation, so this becomes three sentences — `This mug holds 12 fl.` / `oz.` / `of coffee.` — " +
+    "and the fragment carrying the unit no longer carries the digit. MEASUREMENT matches the joined " +
+    "text fine; the tokenizer never lets it see it. Fixing this means abbreviation-aware splitting, " +
+    "which can MERGE genuinely separate sentences and is a false-pass risk of its own — deliberately " +
+    "not attempted inside an adjacency-only change.",
+    "not_proven"),
+  // DELIBERATELY STILL OPEN after v2.8 CP1. Closing these needs `ft`/`l` in the
+  // TERM list, and 196 independent probes attributed six false-pass mechanisms to
+  // exactly that: `l` and `ft` are letters before they are units, so "Only 2 L left
+  // in stock." passed as a measurement and `ft.` matched "featuring". Two lost rows
+  // of depth cost less than a false statement. This is a decision, not a backlog item.
   C("The cord is 6 ft long.", attr("dimensions"), "pass_evidenced", "canonical-true",
-    "`ft`/`feet`/`foot` are in MEASUREMENT but absent from the dimensions term list.", "not_proven"),
+    "`ft`/`feet`/`foot` are in MEASUREMENT but absent from the dimensions term list, and v2.8 " +
+    "deliberately left them out — adding them measured six false-pass mechanisms in v2.7.", "not_proven"),
   C("Holds 2 L of water.", attr("dimensions"), "pass_evidenced", "canonical-true",
-    "`l` is in MEASUREMENT but the term list has only `liters`/`litres`/`ml`.", "not_proven"),
+    "`l` is in MEASUREMENT but the term list has only `liters`/`litres`/`ml`, and v2.8 deliberately " +
+    "left `l` out: as a term it made \"Only 2 L left in stock.\" pass as a measurement.", "not_proven"),
   C("Weighs 3 lbs and ships free.", attr("dimensions"), "pass_evidenced", "shipment-veto-overreach",
     "A genuine product weight is vetoed because the sentence also mentions shipping. The veto is " +
     "whole-sentence by design, and here that design costs a true statement.",
@@ -408,10 +464,6 @@ const V25_FOUND: Case[] = [
     "The overlap rule that fixed \"contains gluten-free\" backfired here: `vegan` sits INSIDE " +
     "`non-vegan`, so the violation was discarded and the fragment passed. A support match now only " +
     "cancels a violation when it EXTENDS BEYOND it."),
-  C("Made in china clay, this teapot is fired twice.", attr("origin"), "not_proven", "ambiguous-place",
-    "`china clay` is kaolin, a material. Dropping the capitalisation requirement made every " +
-    "gazetteer entry match in its ordinary-noun sense — measured specificity fell to 32%. Ambiguous " +
-    "entries now have to earn their capital, while unambiguous ones still match lowercase copy."),
 
   C("We do not offer weekend pickup, or overnight shipping.", deliveryReq(), "not_proven", "negation-coordination",
     "English negation DISTRIBUTES over a coordination, so the second conjunct is denied too. But " +
@@ -427,20 +479,23 @@ const V25_FOUND: Case[] = [
     "The same coordination reset on the dimensions row. It fires only when the second conjunct " +
     "carries a FRESH occurrence of a list term, which makes it silent and shape-dependent.",
     "pass_evidenced"),
-  C("Made in Georgia pine.", attr("origin"), "not_proven", "ambiguous-place-capitalised",
-    "`Georgia` is a US state AND a wood. Requiring a capital fixed the lowercase collisions " +
-    "(\"china clay\", \"jordan almonds\") but a capitalised ambiguous word followed by a material " +
-    "noun still passes. Distinguishing it needs the HEAD NOUN after the place, not more list surgery.",
+];
+
+// ---------------------------------------------------------------------------
+// v2.8 — found by the fresh adversarial pass over the CP1/CP2 surfaces.
+//
+// This one was found while attacking `origin`, and it OUTLIVED the origin removal:
+// `nonProductSubject` is shared by every requirement, so the hole is general. It is
+// recorded here rather than lost with the requirement that exposed it.
+// ---------------------------------------------------------------------------
+const V28_FOUND: Case[] = [
+  C("Most cheap versions are made from thin stamped steel.", attr("materials"), "not_proven", "competitor",
+    "A COMPETITOR's composition, credited to this product and quoted as its proof. `subject.ts`'s " +
+    "comparative veto is `most (other )?\\w+ (are|use|come)`, which tolerates exactly ONE word between " +
+    "`most` and the verb — so `Most competitors are …` is correctly vetoed and any TWO-word noun " +
+    "phrase (`cheap versions`, `budget models`) walks straight through. Shape-dependent and therefore " +
+    "silent. The dimensions row has the identical hole: `Most cheap versions are 12 oz at most.` passes.",
     "pass_evidenced"),
-  C("Roasted in small batches; grown in Colombia.", attr("origin"), "pass_evidenced", "one-term-per-sentence",
-    "Ordinary coffee copy that names its country. `findAttributeSupport` takes ONE hit per sentence, " +
-    "so when the longest-matching frame (`roasted in`) fails the value guard on its own clause the " +
-    "search moves to the next SENTENCE, never to the next term in the same one.",
-    "not_proven"),
-  C("Made in Republic of Korea.", attr("origin"), "pass_evidenced", "gazetteer-recall",
-    "A real country in its formal form. `startsWithPlace` only tries PREFIXES of the value span, so " +
-    "a leading word the gazetteer does not hold defeats the whole lookup.",
-    "not_proven"),
 ];
 
 // ---------------------------------------------------------------------------
@@ -473,8 +528,9 @@ const IDENTIFIERS: Array<{ label: string; opts: { gtin?: string | null; mpn?: st
 // RUN
 // ---------------------------------------------------------------------------
 const ALL: Array<[string, Case[]]> = [
-  ["materials", MATERIALS], ["origin", ORIGIN], ["dimensions", DIMENSIONS],
+  ["materials", MATERIALS], ["dimensions", DIMENSIONS],
   ["care", CARE], ["claims", CLAIMS], ["delivery", DELIVERY], ["v2.5-found", V25_FOUND],
+  ["v2.8-found", V28_FOUND],
 ];
 
 for (const [group, cases] of ALL) {
@@ -560,7 +616,23 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // v2.5 fresh adversarial pass ADDED 6 newly-found gaps (V25_FOUND)          -> 31
   //         (517 probes, 41 confirmed, 15 false passes; 11 were fixed in-session,
   //          these 6 are what remains and they are NOT accepted behaviour)
-  const EXPECTED_OPEN_GAPS = 31;
+  // v2.6/v2.7 closed nothing: three headline changes were built, each measured as a
+  //         success by its author, and each reverted after an independent
+  //         adversarial pass contradicted it.                                 -> 31
+  // v2.8 CP1 closed 1 dimensions recall gap (intervening `12 fl oz`) and ADDED 1
+  //         newly-found gap (`12 fl. oz.` — a sentence-splitting limit the change
+  //         made visible, not one it caused).                                 -> 31
+  //         A hyphen branch closing `12-oz` was built, measured by its author as
+  //         clean, and withdrawn when 334 independent probes attributed four
+  //         false-pass mechanisms to it.
+  // v2.8 CP2 REMOVED the `origin` requirement, which DELETED 3 gaps.           -> 28
+  // v2.8     +1 newly-found gap: the shared comparative veto in subject.ts.    -> 29
+  //
+  // ⚠️ READ THE -3 CORRECTLY. Those three defects were not fixed; the feature that
+  // carried them no longer ships, so they became unreachable. Counting a removal as
+  // three repairs is exactly the kind of flattering arithmetic this session exists to
+  // stop. The only gap genuinely CLOSED by engineering this session is `12 fl oz`.
+  const EXPECTED_OPEN_GAPS = 29;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
@@ -569,7 +641,9 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
 
 test("the corpus covers every requirement kind that can produce a false pass", () => {
   const kinds = new Set(ALL.flatMap(([, cs]) => cs.map((c) => c.requirement.attribute ?? c.requirement.kind)));
-  for (const k of ["materials", "dimensions", "origin", "care", "claim", "delivery"]) {
+  // `origin` is deliberately absent: the requirement was removed in v2.8 CP2, and the
+  // pin for it is structural (it must never be ASKED) rather than a set of cases.
+  for (const k of ["materials", "dimensions", "care", "claim", "delivery"]) {
     assert.ok(kinds.has(k), `no adversarial coverage for ${k}`);
   }
   assert.ok(IDENTIFIERS.length >= 15, "identifiers coverage is too thin to be meaningful");
