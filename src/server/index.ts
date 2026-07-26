@@ -82,6 +82,7 @@ import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
 import { runProductTest } from "./productTest.js";
+import { discoverProduct } from "./discover.js";
 import { newTestToken, storePublicTest } from "../db/buyerTests.js";
 import { recordFunnelEvent, classifyReferrer } from "../db/funnel.js";
 import { funnelHandler } from "./funnelAdmin.js";
@@ -1239,6 +1240,28 @@ app.post(
     } catch (e) {
       return res.status(409).json({ error: (e as Error).message });
     }
+  }),
+);
+
+// INTERNAL storefront discovery (v2.8 CP3). Reads ONE public endpoint —
+// `/products.json` — and returns ONE product handle, so a measurement sample can be
+// assembled through production's egress. It exists because the dev machine cannot do
+// this: robots.txt itself returns 429 there for most Shopify hosts, so a fail-closed
+// sample assembly is impossible from a laptop. NOT a crawler and NOT a feature: it
+// stores nothing, follows no links, and is double-gated on `requireAdmin` plus
+// `DISCOVERY_ENABLED`. Robots-respecting, SSRF-hardened, and bound by the same
+// per-host and egress budgets as the buyer test, so it can never outrun it.
+app.post(
+  "/api/admin/discover",
+  requireAdmin,
+  wrap(async (req, res) => {
+    const origin = typeof (req.body as { origin?: unknown })?.origin === "string"
+      ? String((req.body as { origin: string }).origin).trim() : "";
+    if (!origin || origin.length > 300) return res.status(400).json({ error: "Pass a storefront origin." });
+    const result = await discoverProduct(origin);
+    // 503 for the flag being off — that is a configuration state, not a bad request.
+    if (!result.ok && result.errorKind === "disabled") return res.status(503).json(result);
+    res.json(result);
   }),
 );
 

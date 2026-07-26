@@ -92,6 +92,18 @@ export const ENV = {
 
   // Admin cockpit.
   adminPassword: str(process.env.ADMIN_PASSWORD),
+  // Internal storefront discovery (v2.8 CP3) — reads a store's public /products.json
+  // through production egress to assemble a measurement sample. DOUBLE-GATED: the
+  // route also sits behind `requireAdmin`, so this flag alone grants nothing.
+  //
+  // Default ON when an admin password exists, because a new Railway variable cannot be
+  // set from this environment and a flag that can never be turned on is not a gate, it
+  // is a dead route. `DISCOVERY_ENABLED=0` is the kill switch, matching the
+  // `DAILY_SPEND_CAP_USD=0` precedent — off without a redeploy.
+  discoveryEnabled:
+    process.env.DISCOVERY_ENABLED === "0" || process.env.DISCOVERY_ENABLED === "false"
+      ? false
+      : Boolean(str(process.env.ADMIN_PASSWORD)),
   // Salt for hashing IPs before storage (privacy). Stable default so hashes match
   // across restarts; override in prod for unlinkability.
   ipHashSalt: str(process.env.IP_HASH_SALT) ?? "shopifyaco-ip-salt-v1",
