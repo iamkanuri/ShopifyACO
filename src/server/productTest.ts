@@ -217,22 +217,27 @@ const NUTRIENT =
  */
 const PER_SERVING =
   /\b(per|each|one|every)\s+(serving|portion|scoop|capsule|tablet|gummy|sachet|serve|dose|load|wash|application|treatment)\b|\bserving size\b|\bdaily (?:value|intake)\b|\bper day\b/i;
-/** A stated DOSE is an instruction for use, whatever verb introduces it. */
-const DOSE_NOUN = /\b(dose|dosage|serving)\b/i;
+/**
+ * A stated DOSE is an instruction for use, whatever verb introduces it.
+ * ⚠️ NOT `serving`: "Acacia serving board, 18 inches long." and "serving bowl" are
+ * products. The per-serving READING is already covered by PER_SERVING, which requires
+ * a quantifier in front of it and so cannot match a serving board.
+ */
+const DOSE_NOUN = /\b(dose|dosage)\b/i;
 /**
  * Verbs that make the measurement a USAGE instruction rather than a product extent.
  * Inflections matter: the first draft wrote bare `brew`, which does not match "Brewed
  * with 0.2 grams of espresso extract." — the `\b` fails against the following `e`.
  */
 const USAGE_VERB =
-  /\b(steep|brew|dissolve|dilute|mix|stir|blend|apply|take|ingest|swallow|add|pour|spray|rinse|soak|marinate|infuse|combine)(?:s|ed|ing)?\b/i;
+  /\b(steep|brew|dissolve|dilute|mix|stir|apply|ingest|swallow|marinate|infuse)(?:s|ed|ing)?\b/i;
 /** A quantity PER UNIT AREA/LENGTH is a density (GSM, thread count), not an extent. */
 const PER_MEASURE = /\bper\s+(?:square|linear|cubic|running)\s+\w+|\bg\/m2\b|\bgsm\b/i;
 /** Containers that are a SHIPMENT or a multi-unit pack, not the item being bought. */
 const PACK_SUBJECT =
-  /\b(case|cases|pallet|pallets|carton|cartons|crate|crates|shipment|shipments|batch|batches)\b/i;
+  /\b(case|cases|pallet|pallets|carton|cartons|shipment|shipments)\b/i;
 /** Non-volumetric senses of `capacity`, which the label-branch reads as a size. */
-const OTHER_CAPACITY = /\b(battery|memory|storage|data|power|load|weight|seating|passenger)\s+capacity\b/i;
+const OTHER_CAPACITY = /\b(battery|memory|data|power)\s+capacity\b/i;
 
 /**
  * Is THIS measurement occurrence a quantity of something other than the product?
@@ -250,7 +255,11 @@ function nonProductQuantity(sentence: string, index: number, matched: string): b
   if (PER_SERVING.test(local)) return true;             // "…per serving", "…per load"
   if (PER_MEASURE.test(local)) return true;             // "280 grams per square meter"
   if (DOSE_NOUN.test(clauseBefore)) return true;        // "Recommended dose is 8 oz…"
-  if (NUTRIENT.test(after) || NUTRIENT.test(clauseBefore)) return true; // "…of protein"
+  // A nutrient AFTER the measurement is its complement — "11 g of protein". A nutrient
+  // merely somewhere BEFORE it is usually the product itself: "Sea salt body scrub,
+  // 8 oz jar." So the backward look is a tight one, enough for the spec-label form
+  // ("Protein: 12 g") and not enough to swallow a product name like "Sea salt scrub".
+  if (NUTRIENT.test(after) || NUTRIENT.test(clauseBefore.slice(-12))) return true;
   if (USAGE_VERB.test(clauseBefore)) return true;       // "Steep in 8 oz of hot water"
   if (PACK_SUBJECT.test(clauseBefore)) return true;     // "Each case weighs 24 lbs."
   return false;
