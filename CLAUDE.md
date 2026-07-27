@@ -648,6 +648,41 @@ returned findings that changed what shipped.**
 > fit on real copy. v2.8 audited **100 pass rows across 35 stores and found two** — a nutrition
 > quantity read as a product measurement, and a product claim proven from the shipping policy's SEO
 > chrome. Both predate v2.8. "Zero across 55 rows" was a statement about sample size.
+>
+> **v2.9 closed both, and measured to a BOUND rather than to a hope.** 172 stores, 507 pass rows,
+> every row audited: **1 false positive**, cluster-adjusted 95% upper bound **1.30%**. Always report
+> the cluster-adjusted figure — pass rows are not independent, they share a store's copy conventions
+> (~2.95 rows/store, DEFF 1.39 at ICC 0.2), and the bare `3/n` rule of three is only its x=0 case.
+
+## Measurement is cheap now — there is no excuse to defer it (v2.9 CP3)
+
+`experiments/v2-9/{capture,replay,audit}.ts`. The fitness measurement went from **76 minutes
+through production to seconds offline**, validated at **99.6% row agreement** against the
+production run it replaces (tolerance stated before the number was read).
+
+Two design rules make it trustworthy, and both were chosen the hard way:
+- **Capture the RAW HTTP responses, never a parsed product.** A parsed snapshot bakes in that
+  day's extraction code, so changing segmentation makes every earlier snapshot incomparable and a
+  mixed run silently averages two engines.
+- **Replay through `runProductTest` itself** with only the transport swapped. Re-implementing the
+  requirement library, the access de-dup, the floor or the linter gate would create a second
+  engine that drifts — the mistake this repo already documents elsewhere.
+
+It earned its cost the day it was built: replaying the changed engine over 172 real stores caught
+a regression (`case` in a veto list killing *"With its case measuring a classic 39mm"* on a watch
+store) that no unit test or corpus case detected. **Re-run it after every matcher change.**
+
+> ⚠️ **`safeFetch` is fingerprint-refused by some Cloudflare-fronted stores.** Capturing through it
+> yielded 11 of 20, every drop `rate_limited`; raw `fetch` got 200 on the same hosts seconds later
+> across every header variant. The cause is the TRANSPORT — `node:https` pinned to a vetted IP,
+> forcing HTTP/1.1 with a distinct TLS fingerprint — not pacing and not the User-Agent. Production
+> is not refused today, but **the throttle rate this project tracks as an escalation signal is
+> partly a property of our transport, not of the stores.**
+
+> ⚠️ **A rule stated only in a comment is not a rule.** v2.9's quantity guard broke
+> `"Each 12 oz bag contains 8 g of protein."` — the sentence its own comment named as a must-pass.
+> Grepping for it returned exactly one hit: the comment. No test, no corpus entry, 157 tests green.
+> If a comment says "must still pass", it owes a corpus case in the same commit.
 
 ## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
 
