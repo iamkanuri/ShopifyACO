@@ -1,0 +1,282 @@
+{
+  "vocabulary_grammar_version": "1.0",
+  "standard_id": "ALS-COFFEE",
+  "standard_version": "1.0",
+  "claim_key": "decaf_no_chemical_solvent",
+  "version": "0.1",
+  "title": "A no-chemical-solvent decaf claim is substantiated by a named method",
+  "status": "draft",
+  "notes": "⚠️ PARTIAL DRAFT, AUTHORED TO STRESS THE FORMAT ON A DIFFERENT STRUCTURAL HAZARD — not a publication candidate, and deliberately narrower than decaf-method.json. Where decaf-method's hazard is MISLEADING SYNONYMS, this one's hazard is SELF-NEGATION AND SUBSTRING COLLISION, because the claim itself is a NEGATIVE claim: `decaffeinated without an added chemical solvent`. A negative claim invites free-from supporting terms, and free-from supporting terms are exactly the `no added fragrance` shape. It also carries the non-empty violating list that decaf-method deliberately does not, so rules V1, V5c and V13 are exercised by a shipped artifact rather than only by a fixture. Two format changes came out of authoring it, both recorded in review.adversarial_findings.",
+
+  "scope": {
+    "establishes": "that the page names a decaffeination method which does not use an added chemical solvent, in a sentence we can quote — so a chemical-free or solvent-free claim on the same page has something behind it",
+    "does_not_establish": "that no chemical solvent was used. It establishes what the page STATES, and a page can state a water process and be wrong. It also does not establish that the named process is solvent-free in a chemist's sense: water is a solvent in a water process and carbon dioxide is the solvent in CO2 extraction, so the claim is about an ADDED chemical solvent and nothing broader."
+  },
+
+  "serves": [
+    {
+      "entry_id": "ALS-COFFEE-1.0-DECAF-002",
+      "effect": "narrows",
+      "note": "The entry asks equals_one_of over named_non_solvent_method_present versus unsubstantiated, and needs the matched member reported back. This vocabulary makes the binary half executable: a named non-solvent method is present, or it is not. It cannot report WHICH method, and it cannot express the entry's requirement that the free-of phrase and the named method appear on the same page rather than merely on the same product.",
+      "still_blocked_by": ["G-03"]
+    }
+  ],
+
+  "accepted_surfaces": ["product_description", "structured_data"],
+
+  "matching": {
+    "whole_word": true,
+    "case_sensitive": false,
+    "engine_call_site": "src/server/productTest.ts claim branch — findSupport(quotable, support, { wholeWord: true }); findViolation reaches wholeWord true through its own default"
+  },
+
+  "insufficient_evidence": [
+    {
+      "form": "\"solvent-free\" standing alone",
+      "example": "A gentle, solvent free decaffeination process.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "THE CENTRAL REFUSAL OF THIS VOCABULARY. A negative claim cannot substantiate itself. The phrase names no method, and it is technically false of two of the methods it is used to praise, since water is the solvent in a water process and carbon dioxide is the solvent in CO2 extraction. It was the first candidate supporting term and was rejected before any supporting term was written."
+    },
+    {
+      "form": "\"chemical-free\"",
+      "example": "100% chemical free decaf, nothing nasty at all.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "Names no method, is compatible with every process including the ester one a buyer using the phrase is trying to avoid, and is literally false of all of them. A free-of claim with nothing behind it is the exact shape this vocabulary exists to refuse."
+    },
+    {
+      "form": "\"no chemical solvents\" with no method named",
+      "example": "We use no chemical solvents in our decaffeination.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "Honest, scoped, falsifiable — and still not an answer to how the caffeine WAS removed, which is the only thing a page can publish that a reader could check. It is the strongest of the unsubstantiated forms and it still fails, which is what makes the rule a rule."
+    },
+    {
+      "form": "\"naturally decaffeinated\"",
+      "example": "This lot is naturally decaffeinated at origin.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "The trade euphemism for ethyl acetate, which is precisely the added chemical solvent the claim is about. Crediting it would invert the assertion."
+    },
+    {
+      "form": "an unqualified \"water process\"",
+      "example": "A water process decaf, sweet and clean.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "At least four distinct water processes are in commercial use, and `Sparkling Water Process` is a CO2 method carrying the same substring, so the phrase cannot identify a method."
+    },
+    {
+      "form": "\"natural process\", the post-harvest method",
+      "example": "A natural process Ethiopian with jammy fruit.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Fruit-drying at origin has nothing to do with caffeine removal, and the word `natural` separately carries the ester euphemism. One sentence, two unrelated meanings, neither of them this claim."
+    },
+    {
+      "form": "a denial that the process is used",
+      "example": "We do not use the Swiss Water Process for this lot.",
+      "hazard_class": "negation",
+      "why_not": "A denial that a named non-solvent method was used is the opposite of substantiating one, and crediting it would report the store as saying what it explicitly said it did not."
+    },
+    {
+      "form": "a scoped negative naming the solvent that was avoided",
+      "example": "Decaffeinated without methylene chloride or any other chlorinated solvent.",
+      "hazard_class": "negation",
+      "why_not": "THE PROOF THAT THE VIOLATING TERMS ARE FRAMED CORRECTLY. A store making the most compliant statement available names the solvent it avoided. With a bare violating term `methylene chloride` this sentence is reported as stating the OPPOSITE of the requirement; with the framed term it correctly returns not_proven, because avoiding a solvent is not the same as naming the method used."
+    },
+    {
+      "form": "\"MC-free\" or \"free of methylene chloride\"",
+      "example": "Our decaf is free of methylene chloride, guaranteed by our importer.",
+      "hazard_class": "negation",
+      "why_not": "The engine's negator list does not contain `free of` or `free from`, so this is the exact sentence a bare violating term misreads as a contradiction. It is pinned here so that any future author who unframes the violating terms breaks a test rather than a merchant."
+    },
+    {
+      "form": "the method in the merchant's own product title",
+      "example": "Swiss Water Process Decaf Colombia 12oz",
+      "hazard_class": "merchant_controlled_string",
+      "why_not": "A title is a name the merchant chose, and naming is not evidence. Inherited from decaf-method.json and equally uncloseable here.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "product_title is a quotable evidence surface and a claim requirement cannot restrict which surfaces it accepts. Closing it needs the surface-scoping asked for in ENGINE_GAPS.md G-06."
+    },
+    {
+      "form": "the process claimed for the packaging",
+      "example": "Our packaging is made from Swiss Water Process kraft board.",
+      "hazard_class": "wrong_subject",
+      "why_not": "The subject is the packaging, not the coffee. Nonsense on its face, which is what makes it a fair test of whether the guard reads the subject rather than the keyword."
+    },
+    {
+      "form": "the method attributed by a reviewer",
+      "example": "One verified buyer said the Swiss Water Process version tastes best.",
+      "hazard_class": "third_party_speech",
+      "why_not": "A buyer's words are not the seller's statement, and a substantiation claim must rest on what the seller published."
+    }
+  ],
+
+  "supporting_terms": [
+    {
+      "term": "swiss water process",
+      "orthography": "canonical",
+      "grounding": [
+        { "source": "USPTO trademark register", "url": "https://tsdr.uspto.gov/", "kind": "regulator", "establishes": "that SWISS WATER is a live registered mark owned by Swiss Water Decaffeinated Coffee Inc., so the phrase names one specific water-based process with a single operator" }
+      ],
+      "positive_examples": ["Decaffeinated with the Swiss Water Process, so no chemical solvent is added."]
+    },
+    {
+      "term": "swiss water® process",
+      "orthography": "symbol_variant",
+      "grounding": [
+        { "source": "Swiss Water Decaffeinated Coffee Inc.", "url": "https://www.swisswater.com/", "kind": "process_licensor", "establishes": "that the licensor writes the mark with the registered symbol inside the phrase, which is the form a careful licensee copies" }
+      ],
+      "positive_examples": ["Decaffeinated with the Swiss Water® Process under licence."],
+      "notes": "Required because `normalize` does not strip the symbol; without it the careful seller fails and the casual one passes."
+    },
+    {
+      "term": "swiss water decaf",
+      "orthography": "canonical",
+      "grounding": [
+        { "source": "Roaster copy conventions observed in search results", "kind": "search_result_snippet", "establishes": "that the attributive short form is the commonest way the process is named in body copy" }
+      ],
+      "positive_examples": ["Our Swiss Water decaf uses only water and green coffee extract."]
+    },
+    {
+      "term": "mountain water process",
+      "orthography": "canonical",
+      "grounding": [
+        { "source": "Descafeinadores Mexicanos S.A. de C.V. (Descamex)", "kind": "process_licensor", "establishes": "that Mountain Water Process names a water-based process operated at a single plant in Veracruz" }
+      ],
+      "positive_examples": ["Decaffeinated by the Mountain Water Process in Veracruz."]
+    },
+    {
+      "term": "mountain water decaf",
+      "orthography": "canonical",
+      "grounding": [
+        { "source": "Roaster copy conventions observed in search results", "kind": "search_result_snippet", "establishes": "that the attributive short form appears in body copy" }
+      ],
+      "positive_examples": ["A Mountain Water decaf with no added solvents at any stage."]
+    },
+    {
+      "term": "supercritical co2",
+      "orthography": "canonical",
+      "grounding": [
+        { "source": "Coffee trade and process literature observed in search results", "kind": "trade_press", "establishes": "that supercritical carbon dioxide extraction is a distinct named process family that adds no chemical solvent" }
+      ],
+      "positive_examples": ["Decaffeinated with supercritical CO2 rather than an added solvent."]
+    },
+    {
+      "term": "liquid co2",
+      "orthography": "canonical",
+      "grounding": [
+        { "source": "CR3-Kaffeeveredelung process description", "kind": "process_licensor", "establishes": "that liquid or subcritical CO2 is operated as a distinct process from the supercritical form" }
+      ],
+      "positive_examples": ["This decaf was produced with liquid CO2 at a plant in Bremen."]
+    },
+    {
+      "term": "co2 decaf",
+      "orthography": "abbreviation",
+      "grounding": [
+        { "source": "Roaster listing conventions observed in search results", "kind": "search_result_snippet", "establishes": "that the short attributive form is how the carbon-dioxide family is named in product copy" }
+      ],
+      "positive_examples": ["A CO2 decaf, which means no chemical solvent was added."]
+    }
+  ],
+
+  "violating_terms": [
+    {
+      "term": "decaffeinated with methylene chloride",
+      "grounding": [
+        { "source": "National Geographic, reporting the Clean Label Project campaign", "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride", "kind": "trade_press", "establishes": "that methylene chloride is an added chemical solvent used in the dominant mass-market decaffeination process, so a page stating it was used states the contrary of this claim" }
+      ],
+      "contradicting_examples": ["This lot was decaffeinated with methylene chloride at a facility in Bremen."],
+      "must_not_contradict_examples": [
+        "Our decaf is free of methylene chloride, guaranteed by our importer.",
+        "Methylene chloride free decaf, roasted to order every Monday.",
+        "Never decaffeinated with methylene chloride, in any lot we have ever sold.",
+        "Decaffeinated without methylene chloride or any other chlorinated solvent."
+      ],
+      "notes": "FRAMED DELIBERATELY. The bare substance name was the first draft and it reported every one of the four sentences above as `states the opposite of this requirement`, quoting the store's own compliant sentence — because no supporting term overlaps it and `free of` is not in the engine's negator list. The frame is the same fix the engine's `materials` attribute already uses, where composition frames replaced bare material nouns because `aluminum` matched `aluminum-free`."
+    },
+    {
+      "term": "decaffeinated using methylene chloride",
+      "grounding": [
+        { "source": "National Geographic, reporting the Clean Label Project campaign", "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride", "kind": "trade_press", "establishes": "that this is the disclosure wording campaigners are asking for, so it is the form an honest seller would use" }
+      ],
+      "contradicting_examples": ["Decaffeinated using methylene chloride, as disclosed by our supplier."],
+      "must_not_contradict_examples": ["Not decaffeinated using methylene chloride, and never has been."]
+    },
+    {
+      "term": "decaffeinated with ethyl acetate",
+      "grounding": [
+        { "source": "Consumer Reports", "url": "https://www.consumerreports.org/coffee/is-decaffeinated-coffee-bad-for-you/", "kind": "consumer_guide", "establishes": "that ethyl acetate is an added solvent and that the trade markets it as `naturally decaffeinated`, so an explicit statement that it was used contradicts a no-added-solvent claim" }
+      ],
+      "contradicting_examples": ["This coffee is decaffeinated with ethyl acetate fermented from sugarcane."],
+      "must_not_contradict_examples": [
+        "Our decaf contains no ethyl acetate and never has.",
+        "Free of ethyl acetate and every other added solvent."
+      ]
+    },
+    {
+      "term": "ethyl acetate process",
+      "grounding": [
+        { "source": "Consumer Reports", "url": "https://www.consumerreports.org/coffee/is-decaffeinated-coffee-bad-for-you/", "kind": "consumer_guide", "establishes": "that the ester method is named this way in technical and consumer writing" }
+      ],
+      "contradicting_examples": ["We use the ethyl acetate process for all of our Colombian decaf."],
+      "must_not_contradict_examples": ["We have never used the ethyl acetate process for any coffee."]
+    }
+  ],
+
+  "limits": [
+    {
+      "limit": "a merchant-chosen product title naming a water or CO2 process substantiates the claim without the page stating anything",
+      "direction": "false_pass",
+      "cause": "product_title is a quotable evidence surface and accepted_surfaces is declared but unenforced",
+      "example": "Swiss Water Process Decaf Colombia 12oz"
+    },
+    {
+      "limit": "the free-of phrase and the named method are not required to be on the same page as each other",
+      "direction": "false_pass",
+      "cause": "a claim requirement evaluates one term list over the whole evidence index and has no way to express a co-occurrence condition, which is what ALS-COFFEE-1.0-DECAF-002 actually asks for",
+      "example": "a page naming the Swiss Water Process for a different lot while making an unqualified chemical-free claim for this one"
+    },
+    {
+      "limit": "a store that discloses an added solvent honestly is reported as stating the opposite of the requirement",
+      "direction": "false_pass",
+      "cause": "the engine's contrary branch renders one fixed sentence, and it reads as an accusation rather than as the neutral fact that the page disclosed a different method. The wording is not the vocabulary's to choose",
+      "example": "Decaffeinated using methylene chloride, as disclosed by our supplier."
+    },
+    {
+      "limit": "an unframed mention of a solvent in an ingredients or FAQ context is not reachable at all",
+      "direction": "false_fail",
+      "cause": "the violating terms are framed to avoid misreading free-from copy, which necessarily means an unframed disclosure such as a bare `Solvent: methylene chloride` spec row is not matched",
+      "example": "Solvent: methylene chloride"
+    },
+    {
+      "limit": "a page stating the process in the same sentence as a delivery cadence or a cross-sell loses the pass",
+      "direction": "false_fail",
+      "cause": "the claim branch inherits CONTEXT_VETO's subscription-widget and related-product regexes",
+      "example": "Swiss Water Process decaf, delivered every 2 weeks."
+    }
+  ],
+
+  "review": {
+    "state": "incomplete",
+    "attacker": "pending — this is a partial draft authored to stress the format, and no independent adversarial pass has been run against it",
+    "refuter": "pending",
+    "adversarial_findings": []
+  },
+
+  "changelog": [
+    {
+      "version": "0.1",
+      "date": "2026-07-26",
+      "summary": "Partial draft authored to stress the vocabulary format on a self-negation and substring-collision hazard rather than a misleading-synonym one, and to exercise the violating-term rules that decaf-method.json deliberately does not carry.",
+      "changes": [
+        {
+          "change_type": "vocabulary_added",
+          "detail": "decaf_no_chemical_solvent",
+          "rationale": "The format had been proven only against a vocabulary with an empty violating list and a misleading-synonym hazard, which left three rules exercised by fixtures alone. Authoring a negative claim with real violating terms forced two changes to the grammar."
+        }
+      ]
+    }
+  ],
+
+  "vocabulary_hash": {
+    "algorithm": "sha256",
+    "canonicalisation": "json-sorted-keys-no-hash-field",
+    "value": "3de3f69dd44e09b5b47a85eb3897bce06ee3b18e542e31d2b65d634911a993dd"
+  }
+}

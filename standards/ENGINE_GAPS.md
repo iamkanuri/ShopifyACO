@@ -10,13 +10,17 @@ required, and **the risk of building it** — especially against the 31 defects 
 these gaps have already been attempted in some form and reverted.
 
 Read alongside [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md), which is where the current capability is
-recorded. Line references are to commit `96ceacd`.
+recorded. Line references are to commit `96ceacd` unless stated otherwise; the G-06 section was
+re-derived against `989b33d` and cites its own lines.
 
-**Priority, if a future session can only do some.** `G-09` first, because without it no standard can
-be run against a public URL at all and every other gap is academic. Then `G-02` (roast date) as the
-highest-value new assertion shape and the cheapest safe one. Then `G-04` (registry), which is the
-genuinely empty market ground. `G-01` last, despite being commercially central, because it is the
-one with a measured history of failing in both directions.
+**Priority, if a future session can only do some.** **G-06's fail-closed fix first** — it is four
+lines and it closes a *live crash* on the engine's own import path (see G-06, "A live defect this gap
+already causes"). Then `G-09`, because without it no standard can be run against a public URL at all
+and every other gap is academic. Then the rest of `G-06` (the vocabulary registry), which is now
+specified in enough detail to build without rediscovering anything and which unblocks the presence
+half of six coffee entries. Then `G-02` (roast date) as the cheapest safe new assertion shape, and
+`G-04` (external registers), which is the genuinely empty market ground. `G-01` last, despite being
+commercially central, because it is the one with a measured history of failing in both directions.
 
 ---
 
@@ -321,33 +325,290 @@ hardcoded dictionaries.** Of the three claim keys coffee can use, `single_origin
 `fair_trade`, none was chosen for coffee: they happen to exist. Every genuinely
 coffee-specific claim class is blocked here.
 
-### What would be required
+### ⚠️ Corrections to the paragraphs above, all measured
 
-Either:
+Three statements in the framing above are wrong and one is materially incomplete. They are corrected
+here rather than edited away, because the errors are instructive.
 
-- **(a) export the dictionaries and accept a `claimVocabulary` override in `RunOptions`** — small,
-  and immediately dangerous, because a supplied term list bypasses every review the built-in lists
-  received. If this path is taken, the vocabulary must pass through the same adversarial corpus gate
-  before it can be used, and the standard's `insufficient_evidence` becomes the negative test set.
-- **(b) a registry keyed by standard id**, so a vocabulary ships *with* a versioned standard and is
-  reviewed *as* a standard. Slower, and it is the correct shape: it makes the vocabulary a published
-  artifact rather than a runtime argument, and it puts the term list under the same changelog and
-  never-weaken discipline as the assertion it serves.
+1. **`-DECAF-003` is not the `chemical-free` entry — `-DECAF-002` is.** `-DECAF-003` is *residual
+   caffeine*, a `matches_format` quantity question. **A vocabulary does nothing for it.**
+2. **The `gluten_free` failure was not a term-list substring collision.** There is no supporting term
+   `contains gluten-free`; the support list is `["gluten-free", "gluten free", "no gluten"]`. The
+   real geometry is a violating term overlapping a supporting one *in the same sentence*, which a
+   rule phrased as "no violating term may be a substring of a supporting term" would not have caught.
+3. **`organic`/`inorganic` is fixed, not live.** The claim branch passes `{ wholeWord: true }`
+   explicitly (`productTest.ts:1113`). Measured: `"Made with inorganic pigments."` → `not_proven`.
+4. **The hazard is not only false passes.** For a coffee vocabulary the measured *dominant* failure
+   is a false **fail**, inherited from gates a vocabulary cannot influence: `CONTEXT_VETO`'s
+   subscription-widget and related-product regexes, and the claim linter's pre-filter. Measured:
+   `"Swiss Water Process decaf, delivered every 2 weeks."` → `not_proven`.
+
+Full derivation: [`VOCABULARY_MECHANISM.md`](VOCABULARY_MECHANISM.md).
+
+### The decision: (b). And (a) is not the cheap option — it may not be implementable at all.
+
+G-06 offered (a) *"export the dictionaries and accept a `claimVocabulary` override in `RunOptions`"*
+as the small-and-dangerous path. **`RunOptions` cannot reach the matcher.** `evaluate(p, req)` is a
+two-argument pure function with no dependency channel, called from two modules that do not share a
+`RunOptions` value — the public path, and `runAuthenticatedTest` (`authenticatedTest.ts:207`), whose
+signature has no `RunOptions` at all. Delivering a vocabulary to `evaluate` under (a) therefore means
+either a third parameter on a pure function called from two places, or a **module-level mutable
+registry** — and a module-level mutable registry with per-request contents is a cross-tenant leak in
+a multi-shop server.
+
+**And the strongest argument for (b) is one measurement.** This vocabulary is entirely
+reasonable-looking, and it is what an unreviewed author writes:
+
+```
+support:   ["free of solvents", "free from solvents", "without solvents", "no solvents"]
+violating: ["solvents"]
+```
+
+Run through the real matcher:
+
+```
+"Free of solvents."                  -> "Your public copy states the opposite of this requirement."
+"This decaf is free of solvents."    -> "Your public copy states the opposite of this requirement."
+"Made without solvents."             -> PASS
+```
+
+`free of` and `free from` are not in the engine's closed negator list; `without` and `no` are. Under
+(a) that reaches a merchant. Under (b) rule V1 rejects it at authoring time and names the pair.
+
+> **The same defect is live in a shipped built-in list today.** `cruelty_free` has violating
+> `tested on animals` suffix-aligned inside supporting `not tested on animals`, and the real
+> `evaluate` returns *"Your public copy states the opposite of this requirement"*, quoting
+> `"Tested on animals: never."` as the proof. Careful review did not catch it; execution did.
+
+### 🔴 A live defect this gap already causes, with no standard involved
+
+**Verified by execution, not inference.** `contractFromPublicResult` (`src/server/buyerTests.ts:139`)
+rebuilds a pinned contract from a *rendered* public result, which stores assertion **labels** rather
+than `Requirement` objects. It recognises price, option, stock, subscription and delivery labels by
+regex and **falls through to `claim` for everything else**, minting a key with `claimKeyFromLabel`:
+
+| rendered label | reconstructed as | `evaluate` |
+|---|---|---|
+| `Materials are stated` | `claim`, key `materials_are_stated` | **TypeError: Cannot read properties of undefined (reading 'violating')** |
+| `Measurements are stated` | `claim`, key `measurements_are_stated` | **TypeError** |
+| `Care or use instructions are stated` | `claim`, key `care_or_use_instructions_are_stated` | **TypeError** |
+
+`runAuthenticatedTest` evaluates with a bare `requirements.map((r) => evaluate(snapshot, r))` and
+**no try/catch**, so the exception propagates out of the run. Three of the engine's own attribute
+labels are among the commonest rows there are. **A merchant who imports a public buyer test whose
+table contained a materials or measurements row has pinned a contract that throws when re-run.**
+
+Two independent causes, and the registry work touches both: `contractFromPublicResult` discards the
+requirement *kind*, and `CLAIM_TERMS[req.claim!]!` fails **hard** instead of failing **closed**.
+This is not a standards problem and it should be fixed regardless of whether the registry is built.
+
+### Half the work already exists: the semantic tier is vocabulary-agnostic
+
+`judgeClaims` (`src/server/semanticTier.ts:109`) takes `attributes: Array<{ key, label }>` as an
+**argument**, builds its allow-list from that argument, and **never consults `CLAIM_TERMS`**. Only
+the **lexical** half is closed. The ask is therefore narrower than it looks: hand the lexical matcher
+the two term lists the semantic tier already accepts as data.
+
+⚠️ Standing caveat: `judgeClaims` returns empty with no API key, so anything routed through the
+semantic tier **cannot be measured by the offline acceptance gate**. The vocabulary format is
+deliberately lexical-only for that reason.
+
+---
+
+### What to build — the specification
+
+The format is authored and proven: [`VOCABULARY.md`](VOCABULARY.md) (human),
+`schema.json` `$defs/vocabulary` (machine), [`vocabulary.ts`](vocabulary.ts) (the executed rules),
+[`VOCABULARY_REVIEW.md`](VOCABULARY_REVIEW.md) (the gate). Two worked artifacts exist under
+`standards/coffee/v1.0/vocabulary/`. **Nothing below requires rediscovering any of it.**
+
+#### 1. The registration seam
+
+```ts
+// src/server/claimVocabulary.ts  (new)
+export interface ClaimVocabulary { support: readonly string[]; violating: readonly string[] }
+export interface VocabularySource { resolve(key: string): ClaimVocabulary | null }
+```
+
+- `CLAIM_TERMS` becomes the **built-in source**, unchanged in content.
+- A standard's compiled contract carries its vocabularies **by value**, resolved at compile time from
+  the standard's own directory. Not a global mutable map: the requirement list is already per-run and
+  per-tenant, and that is the only structure that is.
+- Concretely: `Requirement` gains an optional `vocabulary?: ClaimVocabulary`, and the claim branch
+  reads `req.vocabulary ?? CLAIM_TERMS[req.claim!]`. **No signature change to `evaluate`, no new
+  parameter, no module state, no cross-tenant surface.** This is the whole engine change and it is
+  small — which it only is because the resolution happens in `compileStandard`, outside the engine.
+
+> ⚠️ **Set `wholeWord` explicitly on every path that forwards a vocabulary.** `findSupport`'s default
+> is **`false`** (`opts.wholeWord === true`, `testEvidence.ts:292`) while `findViolation`'s is
+> **`true`** — the two functions default in opposite directions and the unsafe one is the default on
+> the function that produces a pass. Measured: `findSupport(ev("Made with inorganic mineral
+> pigments."), ["organic"])` returns `organic`. The claim branch is safe only because it passes the
+> flag explicitly. `findTimingSupport` does not, and that is a live false pass (see G-08). A registry
+> that forwards a vocabulary without the flag silently reinstates the `organic`/`inorganic` defect
+> this gap cites as history.
+
+#### 2. Fail closed, never hard
+
+```ts
+const fx = req.vocabulary ?? CLAIM_TERMS[req.claim!];
+if (!fx) return { label: req.label, status: "requires_store_access", surfacesChecked: [],
+                  detail: "This requirement references a vocabulary this engine version does not carry." };
+```
+A missing vocabulary must be an honest row, not a thrown `TypeError`. This alone fixes the live
+defect above. `compileStandard` should still refuse an unresolvable key at compile time, so the
+runtime path is a backstop rather than the primary check.
+
+#### 3. Surface scoping — the one genuinely new capability
+
+`accepted_surfaces` is declared in the format and **the engine cannot honour it**. Measured:
+
+| probe | result |
+|---|---|
+| evidence = title `"Single Origin Colombia Huila 12oz"` only | `pass_evidenced`, quoting the title |
+| evidence = options `"Single Origin Whole Bean"` only | `pass_evidenced`, quoting the option |
+| evidence = title `"Organic Decaf"` only | `pass_evidenced`, **with no quote at all** |
+
+`product_title` and `product_options` are **merchant-controlled strings**, which `SCHEMA.md` §2
+already names as insufficient evidence. So `accepted_evidence` in a published standard is
+documentation nothing enforces — the same finding G-10 records for `applicability`. This matters more
+in coffee than elsewhere: process-in-title is the normal convention in specialty and green-coffee
+listings.
+
+**Ask:** `Requirement.acceptedSurfaces?: QuotableSurface[]`, applied as a filter on `p.evidence`
+before matching. Four lines, and it is the difference between a standard's evidence rules being real
+and being prose. Both worked vocabularies pin the current behaviour as `passes_known_gap`, so
+building this **fails those pins** and tells you the debt is closed.
+
+#### 4. One line in `normalize` worth more than it looks
+
+`normalize` folds Unicode dashes and curly apostrophes and nothing else, so `swiss water process`
+cannot match `Swiss Water® Process`. **The failure is inverted against the truth: a registered mark
+is what a *licensed* seller writes.** The worked vocabulary works around it by enumerating symbol
+variants, which is correct-but-ugly data.
+
+**Ask:** strip `®`, `™`, `℠` in `normalize`. It improves every existing vocabulary at once.
+⚠️ It is a **weakening** change in the never-weaken sense — copy that failed would pass — so it needs
+the attestation, and every published vocabulary needs re-validation (its symbol-variant terms become
+redundant, not wrong).
+
+### What the ENGINE enforces vs what the STANDARD enforces
+
+The division is deliberate: the engine cannot re-run an authoring-time proof on every request, and
+the standard cannot enforce anything about a surface it does not control.
+
+| enforced by | what |
+|---|---|
+| **the standard, at authoring time** (`vocabulary.ts`, in CI) | every structural rule V1–V13: substring geometry, term normalisation, duplicates, self-consistency, the executed insufficient set, the executed positive examples, the violation attack, hazard-class coverage, never-weaken, the hash |
+| **`compileStandard`, at compile time** | the claim key resolves; it does not shadow a built-in; the vocabulary's hash matches; `review.state` is not `incomplete` |
+| **the engine, at runtime** | only two things: a missing vocabulary fails **closed**, and `acceptedSurfaces` is honoured |
+
+The engine deliberately does **not** re-check the term lists. A vocabulary is a reviewed published
+artifact; re-deriving its safety per request would be both expensive and a second implementation of
+the rules, which is how the two drift.
+
+### The review gate
+
+A standard may bind a vocabulary only when `validateVocabulary` returns `VERIFIED_CLEAN`, an
+**independent attacker** has run the six attack classes, an **independent refuter** has attacked the
+attacker, and `review.state` is not `incomplete`. `incomplete` **blocks** — it does not read as clean
+and it does not read as a small number of defects. Two of those conditions (attacker ≠ author; all
+six classes attempted) are **not machine-checkable** and are marked as such rather than given a field
+that would imply they were verified. Full protocol: [`VOCABULARY_REVIEW.md`](VOCABULARY_REVIEW.md).
+
+### 🔴 THE MEASURED CONCLUSION: closing the dictionary is NECESSARY AND NOT SUFFICIENT
+
+This is the most important output of the vocabulary session and it is uncomfortable, so it is stated
+before the risk section rather than after it.
+
+The worked vocabulary (`standards/coffee/v1.0/vocabulary/decaf-method.json`) was attacked by **four
+independent agents that did not author it**, producing **40 hostile sentences**, and then a **fifth
+independent agent refuted the attackers**. Narrowing and framing stopped 21 of those specific
+sentences at zero cost to true positives.
+
+> ⚠️ **The refutation showed that sentence count is the wrong measure, and it caught a false claim in
+> the first version of this section.** The attackers' industry/competitor sentences happened to carry
+> no frame verb, so framing stopped them — and this table originally generalised from four sentences
+> to a class. Rewritten *into the shipped frames*, the class passes **13 of 13**:
+> `"Blue Bottle's decaf is decaffeinated with methylene chloride."`,
+> `"Avoid any methylene chloride decaf."` **Attribution is a subject problem wearing a term's
+> clothes.** The error is corrected here rather than deleted, because it is the exact shape the
+> completion-state rule exists to prevent and it was made by the author re-attacking their own fix.
+
+Corrected stratification — by **class**, not by sentence:
+
+| attack class | genuinely closed by fixing the terms? |
+|---|---|
+| adjacent vocabulary (fermentation, sustainability, nitro dispense, packaging gas, botanical extraction, cupping defect, co-fermentation) | **YES — 7 / 7** |
+| denial (`free of X`, `we avoid X`, `X: never`, `X is banned`) | **YES — 5 / 5** |
+| industry, competitor and warning copy | **NO — 0 / 13 when rewritten into the shipped frames** |
+| **subject attribution** (sibling product, gift set, subscription rotation, cross-sell, shipment, packaging, review pull-quote) | **NO — 0 / 12** |
+| **tense and modality** (used-to, hope-to, evaluating, asked-about, conditional) | **NO — 0 / 6** |
+| comparative (`sweeter than a typical …`) | **NO — 0 / 1** |
+
+**Only the classes about the TERM closed. Every class about the SUBJECT is open, and not one of them
+is a property of the dictionary.** These all still return `pass_evidenced` on ordinary roaster copy:
+
+```
+"Our Ethiopian decaf uses the Swiss Water Process."             (a sibling product)
+"Until 2024 we used the Swiss Water Process for this lot."      (past tense)
+"We hope to move this coffee to the Swiss Water Process."       (aspiration)
+"The gift set that goes with this bag contains a Swiss Water decaf."
+"Our subscribers get the Mountain Water decaf in month three."
+```
+
+So the worked vocabulary is published as a **draft and a specification input, and is explicitly NOT
+bound to an executable entry.** The standard this project already set when it removed the `origin`
+attribute applies unchanged: *losing one row of depth costs less than one false statement about a
+real store.*
+
+**What that means for whoever builds this gap.** Build the registry — it is correct, it is specified
+below, and it closes a live crash on the way. But **do not expect it to unblock the coffee
+decaffeination entries by itself**, and do not let a green vocabulary validation be read as a
+runnable assertion. Three things gate that, in order of how much they cost:
+
+1. **Surface scoping** (§3 below) — small, and it removes the merchant-controlled-title channel.
+2. **Subject attribution** — the sibling/bundle/subscription/cross-sell class. This is the same
+   root as G-01's comparative-veto hole and G-11's cross-sentence limit. It is the single highest-value
+   engine investment the standards work has surfaced, and it is worth more than any new requirement kind.
+3. **Tense and modality** — nothing in the engine reads either, and no term list can supply them.
+
+Two supporting notes, both measured. `CONTEXT_VETO` is a **closed phrase list**, so it covers
+`also available` but not `also stock`, `comes with` but not `goes with`, and cadence phrases like
+`deliver every 2 weeks` but not the bare word `subscription`. And the subject rule **fails open on an
+unrecognised subject by design** — correctly, since vetoing on "unknown" would gut depth — which
+means every unlisted subject is a pass.
+
+Three further findings from the refutation, all of which change the ask:
+
+- **Surface scoping must cover NINE surfaces, not six.** Six is the count the *public* path indexes;
+  `QuotableSurface` defines nine, and `shipping_policy`, `product_metafield` and `seo_description`
+  were never probed by anyone. Measured: a process name on any of the three passes, and two of them
+  are merchant-controlled.
+- **Framing a term buys the denial class and sells recall.** An adjective between the frame verb and
+  the compound defeats the term: `"Decaffeinated with natural ethyl acetate from sugarcane."` →
+  `not_proven`, and that is the specialty trade's *standard* EA disclosure. A literal term list
+  cannot admit an arbitrary modifier inside a frame. If the registry ever grows a matching feature,
+  this is the one worth having.
+- **No narrowing here has been measured against real merchant copy.** The natural-frequency read the
+  `origin` tombstone requires was not performed — this session was barred from fetching stores — so
+  every narrowing was decided on hand-written adversarial sets, which is precisely the configuration
+  the tombstone records as unarbitrable. **Treat none of them as settled.**
 
 ### Risk of building it
 
-**High if done as (a), because the term lists are the engine's most defect-dense surface.** The
-measured history is not encouraging about hand-written vocabularies: `gluten_free` had a violating
-term that was a substring of its own supporting term and told compliant stores they stated the
-opposite; `organic` matched inside `inorganic`; `no added fragrance` matched its own violating term.
-Every one of those was a *carefully reviewed* built-in list.
+**Low for the engine change, high for the vocabularies — which is the point of putting the risk in
+the artifact rather than in the code.** The engine change is an optional field, a null check and a
+surface filter. The danger was never the plumbing; it was that a term list reaches a merchant without
+review, and (b) is the shape that makes that structurally impossible.
 
-A decaffeination vocabulary would have all of the same hazards plus one that is worse: **the
-marketing synonyms actively mislead.** `chemical-free`, `natural decaf`, `solvent-free` and
-`water process` are what stores write, and they do not establish the specific licensed process a
-buyer asked about. So a decaf vocabulary must be built with its `insufficient_evidence` set *first*
-and treated as a negative test suite, not as documentation. That is the strongest argument for
-option (b).
+Residual risks the format does **not** close, all declared in each artifact's `limits`:
+false fails from `CONTEXT_VETO` and the linter pre-filter; sentence-scoped matching missing
+cross-sentence facts; and the merchant-controlled-surface false pass until §3 is built.
+
+**Recommendation: build §2 first and separately** — it is four lines, it fixes a live crash, and it
+needs no registry. Then §1 and §3 together, because a registry without surface scoping ships a
+vocabulary whose stated evidence rules the engine ignores.
 
 ---
 
@@ -402,6 +663,27 @@ is the identical failure class that got the `warranty` requirement dropped
 
 Coffee raises the odds: freshness and delivery-speed language is central to the category, and
 "guaranteed fresh" / "delivery guaranteed" are ordinary phrasings.
+
+### 🔴 A second, unrelated defect in the same row, found in the v1.0 vocabulary session
+
+`findTimingSupport` (`src/server/testEvidence.ts:381-386`) calls `findSupport` **without**
+`wholeWord`, and `findSupport`'s default is `false` (`opts.wholeWord === true`, `:292`). So the
+`delivery` row matches its timing terms as **raw substrings**. Verified by executing the real
+function:
+
+| sentence | matched term | row outcome |
+|---|---|---|
+| `Ships internationally to 40 countries.` | **`ships in`** | `pass_evidenced` — "delivery timing is stated" |
+
+`ships in` is a substring of `ships internationally`, and `requireDigit` is satisfied by the
+unrelated `40`. **A store that ships internationally and publishes no delivery window is told it
+published one** — and `delivery` is the engine's best-discriminating requirement at a 71% fail rate,
+so this fires on the row that matters most.
+
+Fix: pass `{ wholeWord: true }` in both `findTimingSupport` calls, then re-check the
+self-contained terms, which contain hyphens and must still match (`next-day shipping`). Note the
+asymmetry that caused it: `findViolation` defaults `wholeWord` to **true** and `findSupport` defaults
+it to **false**, so the unsafe direction is the default on the function that produces a pass.
 
 ### What would be required
 

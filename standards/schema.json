@@ -612,6 +612,366 @@
         }
       ]
     },
+    "vocabularyCitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "kind", "establishes"],
+      "description": "Grounding for a TERM. Deliberately a separate definition from `#/$defs/grounding`'s citation, because the question is different: an entry's grounding asks whether a SHOPPER asks this question, while a term's grounding asks whether a STORE writes this string. A term invented because it sounds like something a store would write is how a vocabulary becomes plausible and wrong.",
+      "properties": {
+        "source": { "type": "string", "minLength": 4 },
+        "url": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "regulator",
+            "legal_instrument",
+            "certification_body",
+            "trade_body",
+            "buyer_community",
+            "consumer_guide",
+            "trade_press",
+            "academic",
+            "retailer_help_centre",
+            "process_licensor",
+            "search_result_snippet",
+            "internal_measurement"
+          ],
+          "description": "`process_licensor` and `search_result_snippet` exist only here. A licensor's own page is the authority on how it permits its mark to be written and is NOT independent evidence that the process was used. A search-result snippet is how store copy is observed without fetching a store."
+        },
+        "establishes": { "type": "string", "minLength": 15 }
+      }
+    },
+    "supportingTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "grounding", "positive_examples"],
+      "description": "One string whose presence, on an accepted surface, in a sentence that clears the engine's aboutness gates, is accepted as the claim being stated.",
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Must already be in engine-normalised form: lower case, single spaces, no leading or trailing whitespace, ASCII hyphens. Enforced behaviourally by standards/vocabulary.ts rule V6, which runs the engine's own `normalize` over it — a term that normalises to something else can never match and would be a silent no-op."
+        },
+        "orthography": {
+          "type": "string",
+          "enum": ["canonical", "symbol_variant", "abbreviation", "hyphen_variant", "spelling_variant"],
+          "description": "Why this term exists alongside another. `symbol_variant` is the (R)/(TM) case: the engine's `normalize` does NOT strip trademark symbols, so `swiss water process` cannot match `Swiss Water(R) Process` — and a registered mark is exactly what a licensed seller writes. See VOCABULARY_MECHANISM.md section 3."
+        },
+        "grounding": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyCitation" }
+        },
+        "positive_examples": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Sentences a store might really write that MUST produce a pass. Executed by the validator: a term whose own examples do not pass is a term that does not work. This is also what forces symbol variants to be enumerated, because an example written with a registered-mark symbol fails until a term matches it.",
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "violatingTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "grounding", "contradicting_examples", "must_not_contradict_examples"],
+      "description": "One string whose presence means the page states the CONTRARY. Checked BEFORE support and winning outright (src/server/productTest.ts:1105), so a wrong violating term does not merely lose a pass — it prints `Your public copy states the opposite of this requirement` beside the merchant's own compliant sentence.",
+      "properties": {
+        "term": { "type": "string", "minLength": 2 },
+        "grounding": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyCitation" }
+        },
+        "contradicting_examples": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Sentences that MUST be reported as contradicting. Executed by the validator.",
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "must_not_contradict_examples": {
+          "type": "array",
+          "minItems": 1,
+          "description": "THE VIOLATION ATTACK, MADE A REQUIRED FIELD. Sentences in which a COMPLIANT store mentions this substance or method — the free-from constructions, the denials, the scoped negatives — and which must therefore NOT be reported as contradicting. Executed by rule V13.\n\nThis field exists because of a measured defect. A bare violating term `methylene chloride` flags the store that writes `Methylene chloride free decaf.`: the term matches, no supporting term overlaps it, and `free` is not in the engine's closed negator list. The fix is to FRAME the violating term — `decaffeinated with methylene chloride` rather than the bare substance — which is the same lesson the engine already learned for attributes, where `materials` uses composition frames because the bare noun `aluminum` would have matched `aluminum-free`. The lesson was never carried across to claims.\n\nAuthored rather than auto-generated, so a vocabulary is not failed by a construction no seller would ever write — the precedent being the origin-attribute removal, where a narrowing justified by invented copy cost 17 true statements per 0 false passes gained.",
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "insufficientProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "example", "hazard_class", "why_not"],
+      "description": "THE NEGATIVE TEST SUITE, AND THE POINT OF THE FORMAT. Built first, executed by the validator: every example must fail to produce a pass. A vocabulary whose insufficient set does not fail against its own terms is INVALID, not merely under-documented.",
+      "properties": {
+        "form": { "type": "string", "minLength": 3 },
+        "example": {
+          "type": "string",
+          "minLength": 10,
+          "description": "A whole sentence a real store might write. Not a fragment: the engine matches sentence-scoped, so a fragment tests nothing the engine would ever see."
+        },
+        "hazard_class": {
+          "type": "string",
+          "enum": [
+            "misleading_synonym",
+            "adjacent_vocabulary",
+            "aspiration",
+            "placeholder",
+            "negation",
+            "wrong_subject",
+            "third_party_speech",
+            "merchant_controlled_string",
+            "wrong_unit_subject"
+          ],
+          "description": "The near-miss classes from SCHEMA.md section 2, plus `adjacent_vocabulary` — a DIFFERENT domain vocabulary that legitimately uses the same words. Coffee forced that one: `Process: Washed` names the post-harvest treatment and a decaffeination check keyed on `process` reads a drying method as a solvent disclosure."
+        },
+        "why_not": { "type": "string", "minLength": 20 },
+        "expected_outcome": {
+          "type": "string",
+          "enum": ["not_proven", "contradicted", "passes_known_gap"],
+          "description": "The EXACT outcome the validator requires, defaulting to `not_proven`. Asserting an exact outcome rather than merely `does not pass` is deliberate and was forced by a measured defect: a probe can be reported as CONTRADICTING, which prints `Your public copy states the opposite of this requirement` beside the merchant's own sentence — strictly worse for a compliant store than a missed pass, and invisible to a rule that only checks for a pass. `contradicted` is the correct expectation for a negation-class probe where the page really does state the contrary. `passes_known_gap` means the honest answer is that it must not pass and the engine cannot yet refuse it, so the validator requires it to PASS and fails if it ever stops — the adversarial corpus's `actual` vs `correct` mechanism (test/adversarialCorpus.test.ts) ported to vocabularies. A probe pinned that way is a debt with a receipt, never an accepted behaviour."
+        },
+        "gap_note": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Required when expected_outcome is `passes_known_gap`: what makes it uncloseable, and what would close it."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "expected_outcome": { "const": "passes_known_gap" } },
+            "required": ["expected_outcome"]
+          },
+          "then": { "required": ["gap_note"] }
+        }
+      ]
+    },
+    "vocabularyChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_type", "detail", "rationale"],
+      "properties": {
+        "change_type": {
+          "type": "string",
+          "enum": [
+            "vocabulary_added",
+            "supporting_term_added",
+            "supporting_term_removed",
+            "violating_term_added",
+            "violating_term_removed",
+            "insufficient_probe_added",
+            "insufficient_probe_removed",
+            "example_added",
+            "editorial",
+            "clarified",
+            "withdrawn"
+          ],
+          "description": "THE NEVER-WEAKEN RULE, EXTENDED TO TERMS. Three of these weaken: `supporting_term_added` (copy that failed now passes), `violating_term_removed` (copy reported as contradicting no longer is), `insufficient_probe_removed` (a form the standard refused is no longer refused). Each requires a weakening_attestation. Their opposites — removing a supporting term, adding a violating term, adding an insufficient probe — are STRENGTHENING and always safe to ship."
+        },
+        "detail": { "type": "string", "minLength": 3, "description": "The term or probe form affected." },
+        "rationale": { "type": "string", "minLength": 25 },
+        "weakening_attestation": { "$ref": "#/$defs/weakeningAttestation" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "change_type": {
+                "enum": ["supporting_term_added", "violating_term_removed", "insufficient_probe_removed"]
+              }
+            },
+            "required": ["change_type"]
+          },
+          "then": { "required": ["weakening_attestation"] }
+        }
+      ]
+    },
+    "vocabularyRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "date", "summary", "changes"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "summary": { "type": "string", "minLength": 20 },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyChange" }
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A VOCABULARY: the term list behind one claim key, published WITH a versioned standard and reviewed AS a standard. The alternative considered and rejected was a `claimVocabulary` override in RunOptions, which would let a term list reach a merchant without any of the review below. See VOCABULARY.md.",
+      "required": [
+        "vocabulary_grammar_version",
+        "standard_id",
+        "standard_version",
+        "claim_key",
+        "title",
+        "status",
+        "scope",
+        "serves",
+        "accepted_surfaces",
+        "matching",
+        "supporting_terms",
+        "violating_terms",
+        "insufficient_evidence",
+        "limits",
+        "review",
+        "changelog",
+        "vocabulary_hash"
+      ],
+      "properties": {
+        "vocabulary_grammar_version": { "const": "1.0" },
+        "standard_id": { "type": "string", "pattern": "^ALS-[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$" },
+        "standard_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "claim_key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "The engine claim key this vocabulary defines. MUST NOT collide with a built-in CLAIM_TERMS key — a registry that can shadow a reviewed built-in list is the (a)-option hazard reintroduced through the back door. Checked by standards/vocabulary.ts."
+        },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "title": { "type": "string", "minLength": 8 },
+        "status": { "type": "string", "enum": ["draft", "published", "withdrawn"] },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["establishes", "does_not_establish"],
+          "description": "The pass_means of a vocabulary. A term list can establish that a page CLAIMED something; it can never establish that the claim is true. A trademark register resolves ownership of a mark and says nothing about licensees, so even a perfectly matched process name is a claim of fact, not a fact.",
+          "properties": {
+            "establishes": { "type": "string", "minLength": 25 },
+            "does_not_establish": { "type": "string", "minLength": 25 }
+          }
+        },
+        "serves": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The standard entries this vocabulary is built for, and HONESTLY how far it takes each one. `narrows` is the common and important case: a claim key answers `is a term present`, so an entry whose operator is equals_one_of is not fully unblocked by a vocabulary alone.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entry_id", "effect", "note"],
+            "properties": {
+              "entry_id": { "type": "string", "pattern": "^ALS-[A-Z][A-Z0-9]*-[0-9]+\\.[0-9]+-[A-Z][A-Z0-9-]*-[0-9]{3}$" },
+              "effect": {
+                "type": "string",
+                "enum": ["unblocks", "narrows", "supports_refusal_only"],
+                "description": "`unblocks` = the entry as written becomes executable. `narrows` = a WEAKER sibling assertion becomes executable and the entry as written stays blocked. `supports_refusal_only` = the vocabulary enforces the entry's insufficient set by exclusion without making its positive assertion executable."
+              },
+              "note": { "type": "string", "minLength": 20 },
+              "still_blocked_by": { "type": "array", "items": { "type": "string", "pattern": "^G-[0-9]{2}$" } }
+            }
+          }
+        },
+        "accepted_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceSurface" },
+          "description": "The surfaces on which a match should be accepted. DECLARED, NOT ENFORCED: the engine's claim branch matches on all six public surfaces including product_title and product_options, both merchant-controlled, and offers no way to restrict them. Measured in VOCABULARY_MECHANISM.md section 6. The gap is filed as part of G-06 rather than papered over."
+        },
+        "matching": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["whole_word", "case_sensitive", "engine_call_site"],
+          "properties": {
+            "whole_word": {
+              "const": true,
+              "description": "NOT a default with an opt-out. The engine hardcodes `{ wholeWord: true }` at the claim call site, so a vocabulary requesting anything else would be describing behaviour the engine cannot produce. The task brief specified a justification field for turning this off; there is nothing to turn off."
+            },
+            "case_sensitive": { "const": false },
+            "engine_call_site": { "type": "string", "minLength": 10 }
+          }
+        },
+        "supporting_terms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/supportingTerm" }
+        },
+        "violating_terms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/violatingTerm" },
+          "description": "MAY be empty, and empty is often correct: for most `is a method stated` questions there is no sentence that states the contrary, and absence is not a contradiction. An empty list requires `violating_terms_empty_rationale`, so emptiness is a decision on the record rather than an omission — the same discipline as registry.resolvable being a finding."
+        },
+        "violating_terms_empty_rationale": { "type": "string", "minLength": 40 },
+        "insufficient_evidence": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/insufficientProbe" }
+        },
+        "limits": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The false-fail and false-pass channels this vocabulary knows it has and cannot close from the standard side. Honest residual risk beats a claim of immunity.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["limit", "direction", "cause"],
+            "properties": {
+              "limit": { "type": "string", "minLength": 15 },
+              "direction": { "type": "string", "enum": ["false_pass", "false_fail"] },
+              "cause": { "type": "string", "minLength": 15 },
+              "example": { "type": "string" }
+            }
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "attacker", "refuter", "adversarial_findings"],
+          "description": "The review gate from VOCABULARY_REVIEW.md, recorded in the artifact. `state` is a completion state, not a boolean: `incomplete` BLOCKS publication rather than reading as clean, per src/measure/completion.ts.",
+          "properties": {
+            "state": { "type": "string", "enum": ["verified_clean", "defects_found_and_resolved", "incomplete"] },
+            "attacker": { "type": "string", "minLength": 3 },
+            "refuter": { "type": "string", "minLength": 3 },
+            "adversarial_findings": {
+              "type": "array",
+              "description": "What the attack on THIS vocabulary found. An empty array is permitted only with state `incomplete` — a vocabulary whose attacker found nothing had an attacker who was not trying.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attack", "outcome", "resolution"],
+                "properties": {
+                  "attack": { "type": "string", "minLength": 20 },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "term_removed",
+                      "term_narrowed",
+                      "term_added_as_variant",
+                      "moved_to_insufficient",
+                      "limit_recorded",
+                      "survived_unchanged"
+                    ]
+                  },
+                  "resolution": { "type": "string", "minLength": 15 },
+                  "residual_risk": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "changelog": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyRelease" }
+        },
+        "vocabulary_hash": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "canonicalisation", "value"],
+          "properties": {
+            "algorithm": { "const": "sha256" },
+            "canonicalisation": { "const": "json-sorted-keys-no-hash-field" },
+            "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
     "weakeningAttestation": {
       "type": "object",
       "additionalProperties": false,
