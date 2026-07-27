@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { evaluate, contractVersion, type Requirement } from "../../src/server/productTest.js";
+import { evaluate, contractVersion, isKnownClaim, isKnownAttribute, type Requirement } from "../../src/server/productTest.js";
 import {
   compileStandard, bindingToRequirement, duplicateLabels, renderCompileReport,
   CompileError, ENGINE_CLAIM_KEYS, ENGINE_ATTRIBUTE_KEYS,
@@ -12,10 +12,16 @@ import { loadJson, probeSatisfying, probeEmpty } from "./support.js";
 // EXECUTABILITY — proven by EXECUTING, not by asserting.
 //
 // "A standard that has not been compiled is a wish." Compiling is necessary and
-// not sufficient: an unknown claim key type-checks fine and then throws inside
-// `evaluate` (src/server/productTest.ts:1088 uses a non-null assertion), so the
-// only real proof is running the engine's own evaluator against every compiled
-// Requirement.
+// not sufficient: an unknown claim key type-checks fine and the engine cannot
+// adjudicate it, so the only real proof is running the engine's own evaluator
+// against every compiled Requirement.
+//
+// ⚠️ Until v3.1 CP1 an unknown key THREW, and several assertions in this file were
+// written around that. It no longer throws — a merchant's pinned contract must not
+// be able to crash their re-run over one row — so "did not throw" now proves
+// nothing about dictionary drift and the checks below assert MEMBERSHIP and STATUS
+// instead. A test whose signal was deleted by a fix elsewhere is the quiet way a
+// suite stops measuring anything.
 //
 // Two probes per requirement, because either one alone is uninformative:
 //   • SATISFIABILITY — copy from the entry's own `accepted_evidence.example`
@@ -215,37 +221,44 @@ test("[compiler] accepts every engine kind it claims to support", () => {
     { req_kind: "identifiers", label: "h", passing_states: ["pass_evidenced"] },
   ];
   const reqs: Requirement[] = good.map((b, i) => bindingToRequirement(`ALS-TEST-1.0-X-${String(i).padStart(3, "0")}`, b));
-  assert.equal(reqs.length, 8, "the engine has eight requirement kinds and all eight must compile");
+  assert.equal(reqs.length, 8, "eight of the engine's requirement kinds are bindable by a standard and all eight must compile (the ninth, `unsupported`, is engine-internal and compile.ts refuses it)");
   // And every one of them must survive the real evaluator.
   for (const r of reqs) assert.doesNotThrow(() => evaluate(probeEmpty(r), r), `${r.kind} threw`);
 });
 
 test("[compiler] the mirrored engine dictionaries match reality", () => {
   // ENGINE_CLAIM_KEYS and ENGINE_ATTRIBUTE_KEYS mirror non-exported engine
-  // constants and can drift. This executes the real evaluator against every
-  // mirrored key: a key the engine no longer has throws, and a key the engine
-  // has that we omitted is caught by the standard failing to compile.
+  // constants and can drift.
+  //
+  // ⚠️ THIS TEST USED TO DETECT DRIFT BY WHETHER `evaluate` THREW, and v3.1 CP1
+  // deliberately made it stop throwing: an unknown key on a merchant's pinned
+  // contract took down their entire re-run, so it now returns an honest unchecked
+  // row instead. That change silently made the old `doesNotThrow` assertions
+  // VACUOUS — they would have passed for a key the engine had dropped, which is
+  // precisely the drift they exist to catch. This is the gate the standards wiring
+  // was added for, and it fired within one commit of the engine change.
+  //
+  // The replacement asks the engine directly, which is both stronger and immune to
+  // how failure is signalled.
   for (const k of ENGINE_CLAIM_KEYS) {
+    assert.ok(isKnownClaim(k), `ENGINE_CLAIM_KEYS lists '${k}' but the engine's CLAIM_TERMS no longer has it — compile.ts has drifted`);
     const req: Requirement = { id: "t", kind: "claim", claim: k, label: `claim:${k}` };
-    assert.doesNotThrow(
-      () => evaluate(probeEmpty(req), req),
-      `ENGINE_CLAIM_KEYS lists '${k}' but the engine's CLAIM_TERMS no longer has it — compile.ts has drifted`,
-    );
+    assert.notEqual(evaluate(probeEmpty(req), req).status, "requires_store_access",
+      `'${k}' evaluates to the unchecked fallback on an empty product — it is not really adjudicable`);
   }
   for (const k of ENGINE_ATTRIBUTE_KEYS) {
+    assert.ok(isKnownAttribute(k), `ENGINE_ATTRIBUTE_KEYS lists '${k}' but the engine's ATTRIBUTE_SPECS no longer has it — compile.ts has drifted`);
     const req: Requirement = { id: "t", kind: "attribute", attribute: k, label: `attr:${k}` };
-    assert.doesNotThrow(
-      () => evaluate(probeEmpty(req), req),
-      `ENGINE_ATTRIBUTE_KEYS lists '${k}' but the engine's ATTRIBUTE_SPECS no longer has it — compile.ts has drifted`,
-    );
+    assert.notEqual(evaluate(probeEmpty(req), req).status, "requires_store_access",
+      `'${k}' evaluates to the unchecked fallback on an empty product — it is not really adjudicable`);
   }
   // The inverse direction, for the two keys whose removal is load-bearing history.
   for (const gone of ["origin", "warranty"]) {
+    assert.ok(!isKnownAttribute(gone),
+      `'${gone}' is back in ATTRIBUTE_SPECS, and this standard's reasoning about provenance ` +
+      `(ENGINE_GAPS G-01) needs revisiting`);
+    // And it must degrade to the honest unchecked row rather than adjudicating.
     const req: Requirement = { id: "t", kind: "attribute", attribute: gone, label: `attr:${gone}` };
-    assert.throws(
-      () => evaluate(probeEmpty(req), req),
-      `'${gone}' evaluates without throwing — it has come BACK into ATTRIBUTE_SPECS, and this standard's ` +
-      `reasoning about provenance (ENGINE_GAPS G-01) needs revisiting`,
-    );
+    assert.equal(evaluate(probeEmpty(req), req).status, "requires_store_access");
   }
 });

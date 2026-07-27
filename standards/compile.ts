@@ -153,6 +153,12 @@ export function bindingToRequirement(entryId: string, b: StandardBinding): Requi
     case "delivery":
     case "identifiers":
       return { ...base };
+    case "unsupported":
+      // The engine gained this kind in v3.1 CP1 for a row it could not RECONSTRUCT
+      // from a rendered label. It is an engine-internal outcome, never something a
+      // standard may declare: an entry that compiled to it would be a published
+      // assertion guaranteed to return "unchecked" for every product forever.
+      throw new CompileError(entryId, "req_kind 'unsupported' is an engine-internal outcome and cannot be bound by a standard entry");
     default: {
       // Exhaustiveness. If the engine gains a ninth ReqKind this line stops
       // compiling, which is the notification a standard author needs.

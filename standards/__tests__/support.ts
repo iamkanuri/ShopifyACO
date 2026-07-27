@@ -133,6 +133,12 @@ export function probeSatisfying(req: Requirement, textExample: string | null): P
     case "no_subscription":
       // Absence-based: an EMPTY product is the satisfying case, by design.
       return mkProduct({ description: "A bag of coffee." });
+    case "unsupported":
+      // Unreachable by construction — `compileStandard` refuses to emit this kind.
+      // Throwing rather than returning a product keeps that guarantee testable: if
+      // one ever reaches here, the probe fails loudly instead of silently measuring
+      // a row that can only ever answer "unchecked".
+      throw new Error("probeSatisfying: 'unsupported' is engine-internal and cannot come from a compiled standard");
   }
 }
 
