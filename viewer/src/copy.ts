@@ -103,7 +103,8 @@ export const STANDARD_SECTION = {
   pull: "We publish what we cannot test, and why.",
   after: [
     "Ten of forty-two is the honest ratio. A standard that listed only its own strengths would be marketing, and the second number is the one a merchant needs in order to know what a passing result did not cover.",
-    "A category standard is fitness-measured on its own category before we publish an error rate for it, because a general sample averages copy that no individual merchant writes. Coffee Standard v1.0 has been run against real coffee storefronts; its category measurement has not landed, so this page carries no category number rather than a convenient one.",
+    "A category standard is fitness-measured on its own category before we publish an error rate for it, because a general sample averages copy that no individual merchant writes. Coffee Standard v1.0 has now been run against 100 real coffee products across 77 storefronts, and every one of the 162 requirements it passed was read individually against the store's full page text. Ten of those passes were wrong. The measured upper bound on the error rate a coffee roaster should expect is published on the standard's own page, alongside the method and the four defect classes behind it.",
+    "The same audit corrected a number we had published about ourselves. Our broad, non-category sample had been audited at 507 rows and reported zero errors. Checking one defect class mechanically — a product identifier that is really the store's own internal id — found eighteen in that same sample, which no reader could have caught, because that row shows the merchant no quote to be suspicious of. The broad figure was not an error rate. It was a measurement of what that audit had thought to look for.",
   ],
 } as const;
 

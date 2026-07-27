@@ -21,8 +21,10 @@
 //     executable. Sixteen questions saying "here is exactly what would be required"
 //     is a stronger artifact than ten presented as complete;
 //   • what a pass does NOT license;
-//   • the measured error bound, per sample, with its method and n — and the fact
-//     that the general and category bounds differ by an order of magnitude.
+//   • the measured error bound, per sample, with its method and n — AND the fact
+//     that the two samples are not audited to the same depth, which matters more
+//     than the gap between them. Every comparative sentence is DERIVED from the
+//     numbers; the hand-written one went false the moment they moved.
 //
 // `independently_applied: false` is stated on the front page. We wrote the standard
 // and we run it; no third party has applied it. Saying so is cheap and not saying so
@@ -100,11 +102,22 @@ export interface FitnessSample {
   stores: number; pass_rows_audited: number; confirmed_false_positives: number;
   point_estimate_pct: number; bound_95_naive_pct?: number; bound_95_cluster_icc02_pct: number;
   rows_per_store?: number; deff_icc02?: number; method: string; source?: string;
+  /** Only PART of this sample has been re-checked, so its rate is a lower bound. A
+   *  floor and a complete audit must never be compared as peers. */
+  is_floor?: boolean;
+  supersedes?: string;
+}
+export interface EntryDiscrimination {
+  id: string; asked: number; fail_pct: number; predicted_band?: string; verdict?: string; note?: string;
 }
 export interface FitnessDoc {
   measured_at: string; engine_version?: string;
   samples: FitnessSample[];
   pending?: Record<string, string>;
+  /** Measured fail rate per entry. OVERRIDES the document's predicted band — the
+   *  bands are hypotheses written before the standard had ever run, and rewriting
+   *  them inside standard.json would change its hash and break every citation. */
+  entry_discrimination?: { n_products?: number; bands_held?: number; entries?: EntryDiscrimination[] };
 }
 
 export interface PublishedStandard {
@@ -204,6 +217,34 @@ function renderScalarish(v: unknown): string {
   return p(String(v));
 }
 
+/**
+ * The comparison between samples, DERIVED from them.
+ *
+ * Two things it must never say when they are not true: that the bounds differ by an
+ * order of magnitude, and that the samples were audited to the same depth. `is_floor`
+ * on a sample means only part of it has been re-checked, and comparing a complete
+ * audit against a floor as if they were peers is a bigger error than either number.
+ */
+function renderComparison(samples: FitnessSample[]): string {
+  if (samples.length < 2) return "";
+  const complete = samples.filter((s) => !s.is_floor);
+  const floors = samples.filter((s) => s.is_floor);
+  const hi = [...samples].sort((a, b) => b.bound_95_cluster_icc02_pct - a.bound_95_cluster_icc02_pct)[0]!;
+  const lo = [...samples].sort((a, b) => a.bound_95_cluster_icc02_pct - b.bound_95_cluster_icc02_pct)[0]!;
+  const ratio = lo.bound_95_cluster_icc02_pct > 0 ? hi.bound_95_cluster_icc02_pct / lo.bound_95_cluster_icc02_pct : 0;
+  const size = ratio >= 8 ? "by an order of magnitude" : ratio >= 2 ? `by more than ${Math.floor(ratio)}×` : `by about ${ratio.toFixed(1)}×`;
+
+  const out = [p(`The ${esc(hi.label)} bound is higher than the ${esc(lo.label)} bound ${size}. A general sample estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes — so the number that matters to a merchant is the one measured on their own category.`)];
+
+  if (floors.length && complete.length) {
+    out.push(`<p class="std-limit"><strong>These two are not audited to the same depth, and the difference matters more than the gap between them.</strong> ${
+      esc(complete.map((s) => s.label).join(" and "))} had every passing row read individually. ${
+      esc(floors.map((s) => s.label).join(" and "))} is a FLOOR: one defect class was checked mechanically and found ${
+      floors.reduce((n, s) => n + s.confirmed_false_positives, 0)} errors that a full read of the rendered rows had already missed. Its true rate is at least what is shown and probably higher, so the two columns are not a like-for-like comparison and the gap between them is not a measurement.</p>`);
+  }
+  return out.join("");
+}
+
 /** The scalar rendering of an assertion's `expected`, which is a boolean or a string
  *  on a direct assertion and an object on a DERIVED one. */
 function expectedText(v: unknown): string {
@@ -300,10 +341,14 @@ export function renderFitness(s: PublishedStandard): string {
   const pending = f.pending && Object.keys(f.pending).length
     ? `<div class="std-pending">${Object.entries(f.pending).map(([k, v]) => p(`${k}: ${v}`)).join("")}</div>`
     : "";
-  const twoSamples = f.samples.length >= 2;
-  const shape = twoSamples
-    ? p("These two numbers were produced by the same engine, on the same day, under the same audit discipline, and they differ by an order of magnitude. That is the finding, not a discrepancy to be averaged away: a general sample estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes. The number that matters to a merchant is the one measured on their category.")
-    : "";
+  // ⚠️ THIS PARAGRAPH USED TO BE HAND-WRITTEN, AND IT WENT FALSE THE MOMENT THE
+  // NUMBERS MOVED. It asserted the two bounds "differ by an order of magnitude" and
+  // were produced "under the same audit discipline". After the v3.2 audit neither was
+  // true: the ratio is under 2×, and one sample is a complete row-by-row audit while
+  // the other is a floor from ONE mechanically-checked defect class. A sentence of
+  // interpretation sitting next to generated numbers is the same "site disagrees with
+  // its own JSON" defect one level up, so the comparison is now derived too.
+  const shape = renderComparison(f.samples);
   return `<section class="std-fitness" id="measured-error">
   <h2>Measured error</h2>
   ${p("Every row this standard passed was audited individually against its full evidence. The bound is a 95% upper bound, cluster-adjusted at ICC 0.2 because pass rows are not independent — rows from one store share that store's copy conventions, and the bare rule of three would overstate the precision.")}
@@ -320,6 +365,7 @@ function entryHref(s: PublishedStandard, id: string): string {
 }
 
 export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string): SitePage {
+  const measured = s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id) ?? null;
   const canonical = `${base}${entryHref(s, e.id)}`;
   const a = e.assertion;
   const pd = e.predicted_discrimination;
@@ -343,14 +389,16 @@ export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string
     ? p(e.pass_means)
     : `${e.pass_means?.establishes ? `<p><strong>A pass establishes:</strong> ${esc(e.pass_means.establishes)}</p>` : ""}${e.pass_means?.does_not_establish ? `<p class="std-limit"><strong>A pass does NOT establish:</strong> ${esc(e.pass_means.does_not_establish)}</p>` : ""}`;
 
-  const discrimination = pd
+  // MEASURED beats predicted, and both are shown: a reader should be able to see how
+  // far the hypothesis was off, which is most of what this standard has learned.
+  const discrimination = (pd || measured)
     ? `<section><h2>Discrimination</h2>
-       <p><strong>${pd.measured ? "Measured" : "Predicted"} fail rate:</strong> ${
-      pd.measured && typeof pd.measured_fail_rate_pct === "number"
-        ? `${pd.measured_fail_rate_pct.toFixed(1)}%${typeof pd.measured_n === "number" ? ` <span class="std-eg">(n=${pd.measured_n})</span>` : ""}${pd.measured_verdict ? ` — ${esc(pd.measured_verdict)}` : ""}`
-        : `${esc(pd.predicted_fail_rate_band ?? "not stated")} <span class="std-eg">(predicted, not yet measured)</span>`
-    }</p>
-       ${pd.reasoning ? p(pd.reasoning) : ""}</section>`
+       ${measured
+        ? `<p><strong>Measured fail rate:</strong> ${measured.fail_pct.toFixed(1)}% <span class="std-eg">(n=${measured.asked} products asked)</span></p>`
+          + (measured.predicted_band ? `<p class="std-note">Predicted before this standard had ever run: ${esc(measured.predicted_band)}${measured.verdict === "held" ? " — held." : measured.verdict === "above_band" ? " — the real rate is higher, so the entry discriminates less than predicted." : " — the real rate is lower, so more stores pass than predicted."}</p>` : "")
+          + (measured.note ? p(measured.note) : "")
+        : `<p><strong>Predicted fail rate:</strong> ${esc(pd?.predicted_fail_rate_band ?? "not stated")} <span class="std-eg">(predicted, not yet measured)</span></p>`}
+       ${pd?.reasoning ? p(pd.reasoning) : ""}</section>`
     : "";
 
   const bodyHtml = `<article class="std-entry">

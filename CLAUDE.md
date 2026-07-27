@@ -809,6 +809,75 @@ stated, and the posture paragraph renders verbatim above everything else.
 > converts without throwing. There is now one `renderScalarish` and a test forbidding the
 > string on every page.
 
+## A row that renders NO QUOTE is invisible to a human audit (v3.2 CP3)
+
+**This corrects 0.83%, a number this project has published since v2.9.**
+
+The `identifiers` row renders no quote — it says *"Your structured data publishes MPN."*
+So an auditor reading rendered evidence has nothing to be suspicious of: the row looks
+identical whether the value is a real GS1 barcode or a number the store minted about
+itself. `evaluate` rejects placeholders (`N/A`, `TBD`) and checks GTIN check digits, but
+it accepts **any** non-placeholder `mpn` string.
+
+Checked mechanically against the captured bytes, over both samples:
+
+```
+identifier rows asked      216
+identifier rows passed      53
+  rescued by a valid GTIN   29    honest passes
+  DEFECTS                   21    general 18, coffee 3
+```
+
+The general sample's earlier audit read all 507 rendered rows and confirmed **zero** false
+positives. One mechanical check of one class found **eighteen** in that same sample:
+
+| GENERAL | was | now |
+|---|---|---|
+| confirmed false positives | 0 | **18** (one class — a FLOOR) |
+| cluster-adjusted 95% bound | **0.83%** | **7.80%** |
+
+Verified from raw HTML, never from an agent's prose: on `glowrecipe.com` the published
+`mpn` also appears as `rid`, `source_product_id`, `product.id` and `data-product-id` — it
+is Shopify's internal product id, put in `mpn` by a theme. `www.lacolombe.com` and
+`sightglasscoffee.com` share one JSON-LD emitter byte-for-byte, so this is a **theme
+behaviour, not two unlucky merchants**. `www.stumptowncoffee.com` emits
+`"sku":"100754","mpn":"100754"` adjacent in one object — the store-local SKU the row
+explicitly excludes, because a SKU cannot match a product to an EXTERNAL catalogue, which
+is the row's entire promise.
+
+> ⚠️ **WHAT THIS DOES TO THE INSTRUMENT FINDING.** v3.1's headline was that a category
+> sample and a general sample differ **by an order of magnitude** (13.68% vs 0.83%).
+> Measured properly the coffee bound is **12.78%** on 162 audited rows and the general
+> floor is **7.80%** — **about 1.6×**, and the two are not audited to the same depth, so
+> even that ratio is not a measurement. **The direction survives; the magnitude does not.**
+>
+> The replacement claim is stronger than the one it retires. 0.83% was never an estimate
+> of the error rate — it was an estimate of *what that audit thought to look for*. v2.8:
+> zero across 55 rows was a statement about sample SIZE. v3.0: about sample SHAPE. v3.2:
+> **also about AUDIT METHOD** — a defect class that renders no quote is invisible to every
+> audit that reads rendered evidence, however many rows it reads.
+
+**The coffee bound, on 100 evaluated products** (103 brands, deduped on registrable domain
+BEFORE capture, 3 G-10 exclusions with reasons, 0 replay misses): 162 pass rows audited
+individually against full untruncated evidence, **10 confirmed** — 12.78% cluster-adjusted.
+Four classes: a brewing recipe or caffeine dose read as the product's weight (3), a
+store-local id as `mpn` (3), the soil-science sense of `organic` (2), and **`single-origin`
+inside a sentence describing a BLEND (2) — a class no guard addresses and which v3.1's
+sample did not contain.** Measured discrimination: **bands held 1/10** on n=100 (2/10 on
+n=43); only `WEIGHT-001` (49.0%) and `DELIV-001` (45.0%) carry real information.
+
+⚠️ **Measurements go in `fitness.json`, BESIDE the document, never inside it.** The brief
+asked for them to replace `predicted_discrimination` in `standard.json`; that would change
+`standard_hash` and silently break every citation made against v1.0. Same rule as G-10's
+applicability sidecar. The site renders measured values from the sidecar, overriding the
+band, and shows both.
+
+⚠️ **Every comparative sentence on the published page is DERIVED.** A hand-written
+paragraph asserting the two bounds "differ by an order of magnitude … under the same audit
+discipline" went false the moment the numbers moved, and sat next to generated figures
+contradicting it. Interpretation beside generated numbers is the "site disagrees with its
+own JSON" defect one level up.
+
 ## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
 
 **The three coffee false positives were fixed, measured, and reverted, and the measurement is

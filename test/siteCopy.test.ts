@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lintStrings, lintText } from "../src/server/claimLinter.js";
-import { standardsSitemapPaths } from "../src/server/standardsSite.js";
+import { standardsSitemapPaths, standardsPageFor } from "../src/server/standardsSite.js";
 import {
   COFFEE_STANDARD_URL,
   FAQ,
@@ -162,34 +162,35 @@ test("the counts quoted on the page match standards/coffee/v1.0/standard.json", 
   }
 });
 
-test("no fitness number is quoted on the page while the coffee sample is pending", () => {
-  // standards/coffee/v1.0/fitness.json is explicit: if a sample is absent the
-  // site says so rather than inventing one, and the general-sample bound is NOT
-  // an estimate of what a coffee roaster experiences. So the marketing surface
-  // carries no percentage at all.
+test("the coffee bound is published on the STANDARD page, and no percentage reaches the marketing copy", () => {
+  // ⚠️ THIS TEST WAS INVERTED, AND THAT IS THE POINT OF IT. It previously asserted
+  // that NO coffee sample existed and that the copy said so. The v3.2 audit measured
+  // one, the test failed exactly as designed, and the copy was updated rather than
+  // the assertion deleted. What it enforces now is the invariant that outlives the
+  // pending state: the category number lives on the standard's own page next to its
+  // method and its n, and the marketing surface never carries a bare percentage.
   const fitness = JSON.parse(read("standards/coffee/v1.0/fitness.json")) as {
-    samples: Array<{ name: string }>;
-    pending?: Record<string, string>;
+    samples: Array<{ name: string; bound_95_cluster_icc02_pct: number; pass_rows_audited: number; method: string }>;
   };
-  const hasCoffeeSample = fitness.samples.some((s) => s.name === "coffee");
-  assert.equal(
-    hasCoffeeSample,
-    false,
-    "A coffee fitness sample now exists. The landing copy currently says the " +
-      "category measurement has not landed — update it, and quote the sample's " +
-      "own cluster-adjusted bound rather than the general one.",
-  );
-  const offenders = PUBLIC_MARKETING_STRINGS.filter((s) => /\d+(\.\d+)?\s?%/.test(s));
-  assert.deepEqual(
-    offenders,
-    [],
-    "A percentage reached the public copy. The only percentages this product has " +
-      "are fitness bounds, they are category-specific, and the coffee one has not " +
-      "landed — a general-sample bound printed here would be the wrong instrument.\n  " +
-      offenders.join("\n  "),
-  );
-});
+  const coffee = fitness.samples.find((s) => s.name === "coffee");
+  assert.ok(coffee, "the coffee fitness sample has disappeared — the copy claims it exists");
+  assert.ok(coffee!.method.length > 80, "a published bound must carry its method");
 
+  // The standard page publishes the sample's OWN cluster-adjusted bound, from the file.
+  const page = standardsPageFor("/standards/coffee/1.0", "https://lens.example")!;
+  assert.ok(page.bodyHtml.includes(`${coffee!.bound_95_cluster_icc02_pct.toFixed(2)}%`),
+    "the standard page does not publish the coffee sample's own cluster-adjusted bound");
+  assert.ok(page.bodyHtml.includes(String(coffee!.pass_rows_audited)),
+    "the standard page does not publish the n behind the bound");
+
+  // ⚠️ AND THE MARKETING COPY STILL CARRIES NO BARE PERCENTAGE. A number without its
+  // method and its n is the thing this whole project exists not to publish, and a
+  // landing page is the worst possible place for one.
+  const offenders = PUBLIC_MARKETING_STRINGS.filter((s) => /\d+(\.\d+)?\s?%/.test(s));
+  assert.deepEqual(offenders, [],
+    "A percentage reached the public copy. Bounds are category-specific and only mean " +
+    "anything beside their method and n — link to the standard page instead.");
+});
 test("the tagline constants are byte-identical across server, client fallback and copy.ts", () => {
   const server = read("src/server/index.ts");
   const config = read("viewer/src/config.tsx");
