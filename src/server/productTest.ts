@@ -930,6 +930,58 @@ export function jsonLdProductCategory(html: string): string | null {
   return null;
 }
 
+// ---- v3.2 CP2: the merchant's OWN product_type, from the page --------------
+//
+// THE DEFECT. `fetchPublicProduct` skips the `.json` tier whenever the page's
+// JSON-LD is complete (`pageSufficient`), so `js` is null and `productType` falls
+// back to JSON-LD `Product.category` — which most themes omit, and which on one real
+// store was the breadcrumb root "Home". Measured on the coffee capture: 15 of 44
+// products were unclassifiable from what the engine exposes, so G-10's predicate had
+// only the title to work with and the standard declined to run on a third of stores.
+// The same null flows into `CATEGORY_CLAIMS` and `AttributeSpec.onlyFor`, so category
+// inference in PRODUCTION silently degraded to the title alone at the same rate.
+//
+// ⚠️ THE OBVIOUS FIX IS THE WRONG ONE. Fetching `/products/{handle}.json` anyway
+// would spend the extra request the tier ORDER exists to avoid — the v1.1 smoke run
+// measured `.json` returning 429 while HTML on the same hosts returned 200 — and it
+// would break every existing snapshot, because replay serves only URLs that were
+// actually recorded and on precisely these stores the engine never fetched it. A fix
+// that invalidates the corpus it has to be measured on is not a fix.
+//
+// The value is already in bytes we hold. Shopify's own analytics bootstrap emits the
+// merchant's `product_type` verbatim, and it is present on 43 of the 44 captured
+// coffee pages — measured before this was written, not assumed:
+//     var meta = {"product":{"id":…,"vendor":"…","type":"Coffee","handle":"…",…}};
+//
+// ⚠️ PARSED, NOT REGEXED OUT. `"type"` appears inside `variants[]` and elsewhere in
+// the same blob, so a bare `/"type"\s*:\s*"([^"]*)"/` reads whatever comes first and
+// would silently return a variant's field on a theme that reorders keys. The object
+// is valid JSON, so it is brace-balanced (string-aware, so a `}` inside a value
+// cannot end it early) and `JSON.parse`d, which also handles the `\/` and `&`
+// escapes Shopify emits. Bounded so a pathological page cannot make this expensive.
+const META_SCAN_LIMIT = 400_000;
+export function shopifyMetaProductType(html: string): string | null {
+  const at = html.search(/\bvar\s+meta\s*=\s*\{/);
+  if (at === -1) return null;
+  const open = html.indexOf("{", at);
+  let depth = 0, inStr = false, esc = false, end = -1;
+  const limit = Math.min(html.length, open + META_SCAN_LIMIT);
+  for (let i = open; i < limit; i++) {
+    const c = html[i]!;
+    if (esc) { esc = false; continue; }
+    if (inStr) { if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{") depth++;
+    else if (c === "}") { depth--; if (depth === 0) { end = i + 1; break; } }
+  }
+  if (end === -1) return null;                    // truncated or unbalanced: no guess
+  try {
+    const meta = JSON.parse(html.slice(open, end)) as { product?: { type?: unknown } };
+    const t = meta?.product?.type;
+    return typeof t === "string" && t.trim() ? t.trim() : null;
+  } catch { return null; }
+}
+
 export interface FetchDeps {
   /** `extraContentTypes` is an opt-in, per-call widening (the `.js` endpoint only). */
   fetchUrl?: (url: string, extraContentTypes?: RegExp[]) => Promise<{ status: number; contentType: string | null; body: string; finalUrl?: string }>;
@@ -1056,6 +1108,7 @@ export async function fetchPublicProduct(
   let extracted: ExtractedPage | null = null;
   let ldDescription: string | null = null;
   let ldCategory: string | null = null;
+  let pageProductType: string | null = null;
   let saw404 = false;
   let sawNonJson = false;
 
@@ -1075,6 +1128,9 @@ export async function fetchPublicProduct(
         extracted = extractPage(r.body);
         ldDescription = jsonLdProductDescription(r.body);
         ldCategory = jsonLdProductCategory(r.body);
+        // v3.2 CP2 — the merchant's own `product_type`, which otherwise dies here:
+        // when the page answers, the `.json` tier never runs and this value is lost.
+        pageProductType = shopifyMetaProductType(r.body);
         if (extracted.product?.name || extracted.product?.offer) diagnostics.answeredBy = "page";
       }
     } catch { /* the JSON tier is the fallback */ }
@@ -1174,7 +1230,14 @@ export async function fetchPublicProduct(
   return {
     product: {
       origin: canonicalOrigin, handle, title: js?.title ?? ld?.name ?? extracted?.title ?? null,
-      vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? ldCategory, tags,
+      // PRECEDENCE IS G-10's OWN SIGNAL ORDER: `product_type` is authoritative, then
+      // JSON-LD category, then the breadcrumb (the last two both inside `ldCategory`).
+      // `pageProductType` sits with `js.product_type` rather than below `ldCategory`
+      // because it IS that field — the same value `/products.json` publishes, read
+      // from the merchant's own analytics payload instead of a second request. A
+      // theme-generated `Product.category` is the weaker signal of the two, and on a
+      // real store it was the breadcrumb root "Home".
+      vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? pageProductType ?? ldCategory, tags,
       descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,
       policyStatus: "not_fetched",

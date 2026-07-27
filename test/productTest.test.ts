@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { attachShippingPolicy, buildBuyerTask, contractVersion, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
+import { attachShippingPolicy, buildBuyerTask, contractVersion, evaluate, runProductTest, shopifyMetaProductType, type PublicProduct, type Requirement } from "../src/server/productTest.js";
 import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, passesAboutness } from "../src/server/testEvidence.js";
 import { lintStrings } from "../src/server/claimLinter.js";
 
@@ -1330,4 +1330,48 @@ test("G-09: contractVersion covers the standard, and generated contracts hash un
   // And a standard-pinned contract can never be mistaken for a generated one.
   assert.match(v1, /^c1s-/);
   assert.notEqual(v1, contractVersion(reqs));
+});
+
+// ---- v3.2 CP2: the merchant's own product_type, read from the page ----------
+//
+// `fetchPublicProduct` skips the `.json` tier whenever the page's JSON-LD is
+// complete, so `product_type` was lost on any store that answered from the page.
+// Measured on the coffee capture: 15 of 44 products were unclassifiable, and the
+// same null degrades CATEGORY_CLAIMS and AttributeSpec.onlyFor in production.
+
+const META = (product: string) => `<html><head><script>var meta = {"product":${product},"page":{"pageType":"product"}};
+for (var attr in meta) { window.ShopifyAnalytics.meta[attr] = meta[attr]; }</script></head><body></body></html>`;
+
+test("CP2: product_type is read from the Shopify analytics payload already on the page", () => {
+  const html = META('{"id":1,"gid":"gid:\/\/shopify\/Product\/1","vendor":"Acme","type":"Coffee","handle":"h","variants":[]}');
+  assert.equal(shopifyMetaProductType(html), "Coffee");
+});
+
+test("CP2: the object is PARSED, so a `type` inside variants[] cannot be mistaken for the product's", () => {
+  // ⚠️ THE REASON THIS IS NOT A REGEX. A bare /"type"\s*:\s*"([^"]*)"/ reads whichever
+  // comes first in the bytes. Shopify happens to emit product.type before variants
+  // today; a theme that reorders keys would silently start returning a variant field,
+  // and nothing downstream could tell the difference.
+  const html = META('{"id":1,"variants":[{"id":9,"type":"WRONG-variant-field","public_title":"12oz"}],"type":"Coffee"}');
+  assert.equal(shopifyMetaProductType(html), "Coffee");
+});
+
+test("CP2: a brace inside a string value cannot terminate the object early", () => {
+  const html = META('{"id":1,"vendor":"Acme } Roasters {","type":"Coffee","variants":[]}');
+  assert.equal(shopifyMetaProductType(html), "Coffee");
+});
+
+test("CP2: absent, empty, unbalanced and non-JSON all return null rather than a guess", () => {
+  assert.equal(shopifyMetaProductType("<html><body>nothing here</body></html>"), null);
+  assert.equal(shopifyMetaProductType(META('{"id":1,"type":"   ","variants":[]}')), null, "whitespace is not a type");
+  assert.equal(shopifyMetaProductType(META('{"id":1,"type":"Coffee"')), null, "truncated object must not be guessed at");
+  assert.equal(shopifyMetaProductType("<script>var meta = {not json at all};</script>"), null);
+  assert.equal(shopifyMetaProductType(META('{"id":1,"variants":[]}')), null, "no type field");
+});
+
+test("CP2: escapes Shopify actually emits survive the round trip", () => {
+  // `\/` and `&` are what the real payload contains; a hand-rolled extractor
+  // returns them literally, which then fails an exact category match downstream.
+  const html = META('{"id":1,"type":"Coffee \u0026 Tea","handle":"a\/b","variants":[]}');
+  assert.equal(shopifyMetaProductType(html), "Coffee & Tea");
 });
