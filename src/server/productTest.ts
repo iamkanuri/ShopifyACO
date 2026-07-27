@@ -233,15 +233,28 @@ const USAGE_VERB =
   /\b(steep|brew|dissolve|dilute|mix|stir|apply|ingest|swallow|marinate|infuse)(?:s|ed|ing)?\b/i;
 /** A quantity PER UNIT AREA/LENGTH is a density (GSM, thread count), not an extent. */
 const PER_MEASURE = /\bper\s+(?:square|linear|cubic|running)\s+\w+|\bg\/m2\b|\bgsm\b/i;
-/** Containers that are a SHIPMENT or a multi-unit pack, not the item being bought. */
+/**
+ * Containers that are a SHIPMENT or a multi-unit pack, not the item being bought.
+ * ⚠️ `case` must be QUANTIFIED. A bare word-bounded `case` vetoed "With its case measuring
+ * a classic 39mm" on a real watch store — a watch case, a phone case and a pencil case are
+ * all the product itself. Only a COUNTED case is a shipping unit. Same reason `crate` and
+ * `batch` are absent: a dog crate is a product, and a production run is not a container.
+ * Found by replaying the changed engine against 172 captured real stores, which is the
+ * whole point of building that harness before shipping the guard.
+ */
 const PACK_SUBJECT =
-  /\b(case|cases|pallet|pallets|carton|cartons|shipment|shipments)\b/i;
-/** Non-volumetric senses of `capacity`, which the label-branch reads as a size. */
+  /\b(?:each|per|a|one|full)\s+(?:full\s+)?cases?\b|\bcases?\s+of\s+\d|\bcase\s+pack\b|\b(?:pallet|pallets|carton|cartons|shipment|shipments)\b/i;
+/**
+ * Non-volumetric senses of `capacity`, which the label-branch would otherwise read as a
+ * size. Only the senses with NO product-extent reading: `weight capacity`, `load capacity`
+ * and `seating capacity` are deliberately absent, because for a shelf or a chair those are
+ * real product specs and the row's own missing-detail says "size, capacity, weight or fit".
+ */
 const OTHER_CAPACITY = /\b(battery|memory|data|power)\s+capacity\b/i;
 
 /**
  * Is THIS measurement occurrence a quantity of something other than the product?
- * Judged on a local window, not the sentence, for the reason in the block above.
+ * Judged on a local window, not the whole sentence, for the reason in the block above.
  */
 function nonProductQuantity(sentence: string, index: number, matched: string): boolean {
   // The clause the occurrence sits in — bounded so a second, unrelated statement in the
@@ -255,11 +268,23 @@ function nonProductQuantity(sentence: string, index: number, matched: string): b
   if (PER_SERVING.test(local)) return true;             // "…per serving", "…per load"
   if (PER_MEASURE.test(local)) return true;             // "280 grams per square meter"
   if (DOSE_NOUN.test(clauseBefore)) return true;        // "Recommended dose is 8 oz…"
-  // A nutrient AFTER the measurement is its complement — "11 g of protein". A nutrient
-  // merely somewhere BEFORE it is usually the product itself: "Sea salt body scrub,
-  // 8 oz jar." So the backward look is a tight one, enough for the spec-label form
-  // ("Protein: 12 g") and not enough to swallow a product name like "Sea salt scrub".
-  if (NUTRIENT.test(after) || NUTRIENT.test(clauseBefore.slice(-12))) return true;
+  // A nutrient counts only as this measurement's OWN COMPLEMENT — "11 g of protein",
+  // "8 g of added sugar" — so it must sit within a couple of words of the unit.
+  //
+  // ⚠️ A raw 60-character forward slice was WRONG, and wrong on ordinary copy. It vetoed
+  // "Each 12 oz bag contains 8 g of protein." — the sentence this guard's own comment
+  // names as a must-pass — because `protein` fell inside the window even though it
+  // belongs to the SECOND measurement, not the first. Same for "This 16 oz bottle
+  // contains 25 g of sugar." and "Each 750 ml bottle is 12% ABV.", which are exactly the
+  // "16oz bottle / 12 oz bag" shapes testEvidence.ts documents as how a beverage or
+  // coffee store states its size. Nothing in the suite or the corpus caught it; an
+  // independent refuter did, by moving the nutrient one word at a time until it flipped.
+  //
+  // A nutrient merely somewhere BEFORE the measurement is usually the product itself
+  // ("Sea salt body scrub, 8 oz jar."), so the backward look stays tight — enough for
+  // the spec-label form "Protein: 12 g" and not enough to swallow a product name.
+  const complement = new RegExp(`^\\W*(?:of\\s+)?(?:\\w+\\s+){0,2}${NUTRIENT.source.replace(/^\\b|\\b$/g, "")}`, "i");
+  if (complement.test(after) || NUTRIENT.test(clauseBefore.slice(-12))) return true;
   if (USAGE_VERB.test(clauseBefore)) return true;       // "Steep in 8 oz of hot water"
   if (PACK_SUBJECT.test(clauseBefore)) return true;     // "Each case weighs 24 lbs."
   return false;

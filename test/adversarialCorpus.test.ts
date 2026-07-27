@@ -522,6 +522,38 @@ const V28_FOUND: Case[] = [
       { surface: "shipping_policy", text: "Shipping policy Sennen Tea: Organic Loose Leaf Teas, Tea Bags & Tea Gift Free Shipping over $60." },
     ] as never }),
 
+  // ── v2.9 — the must-pass anchors for the positional quantity guard ─────────
+  // These exist because the guard's FIRST draft broke them while its own comment named
+  // the first one as a sentence that "must still pass". `grep` for it found exactly one
+  // hit — the comment. No test, no corpus entry, and all 157 tests passed. A rule stated
+  // only in a comment is not a rule, so it is stated here instead.
+  //
+  // The mechanism: the forward window was a raw 60-char slice, so a nutrient belonging to
+  // a SECOND measurement vetoed the FIRST one. These are the "16oz bottle / 12 oz bag"
+  // shapes testEvidence.ts documents as how a beverage or coffee store states its size.
+  C("Each 12 oz bag contains 8 g of protein.", attr("dimensions"), "pass_evidenced", "canonical-true",
+    "States a real pack size AND a nutrient. The size is the product's own extent, so the row is " +
+    "true however the nutrient reads — the nutrient veto must attach to ITS OWN measurement only."),
+  C("This 16 oz bottle contains 25 g of sugar.", attr("dimensions"), "pass_evidenced", "canonical-true",
+    "Same shape, and `sugar` is both a nutrient and a product, which is why the veto has to be " +
+    "positional rather than a whole-sentence keyword test."),
+  C("Each 750 ml bottle is 12% ABV.", attr("dimensions"), "pass_evidenced", "canonical-true",
+    "750 ml is the bottle's volume. `abv` sits three tokens away, outside the complement window."),
+
+  // ── v2.9 CP4 — the ONE false positive the 172-store measurement found ──────
+  C("If you follow our easy care instructions, we'll help out if anything goes wrong within three years from your date of purchase.",
+    attr("care"), "not_proven", "marketing-idiom",
+    "The sentence REFERS to care instructions; it does not state any. A buyer asking how to " +
+    "look after this learns nothing, so the row's claim that care instructions are stated is " +
+    "false. Found on a real cookware store in the v2.9 audit of 506 pass rows — the only " +
+    "confirmed false positive in that sample. The mechanism is that `care` has NO valueGuard: " +
+    "`materials` requires a MATERIAL_NOUN and `dimensions` requires a real measurement, but the " +
+    "care terms match their own name, so a warranty sentence mentioning the phrase passes. The " +
+    "fix is a valueGuard demanding an actual instruction (an imperative, a temperature, a cycle), " +
+    "and it is NOT attempted here: a fix without an independent adversarial pass is how the last " +
+    "three sessions each shipped a regression.",
+    "pass_evidenced", { title: "Ceramic Pan", productType: "Cookware" }),
+
   // ── v2.9 CP2 — THE OWED MUTATION ANCHOR, now closed ────────────────────────
   // Removing `origin` in v2.8 deleted the only corpus case that failed when
   // `termMatches`'s longest-match-first sort was reverted, so the mutation proof
@@ -718,7 +750,10 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //            · "A 500 ml refill pouch is included."          (bundled capacity)
   //            · "Formulated with 2 grams of salicylic acid."  (ingredient conc.)
   //                                                                             -> 30
-  const EXPECTED_OPEN_GAPS = 30;
+  // v2.9 CP4 the 172-store measurement found ONE false positive (a warranty sentence
+  //          referring to care instructions rather than stating any). Pinned, not fixed.
+  //                                                                             -> 31
+  const EXPECTED_OPEN_GAPS = 31;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

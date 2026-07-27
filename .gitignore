@@ -73,3 +73,7 @@ experiments/v2-8/*
 !experiments/v2-8/*.md
 # Audit artefacts carry raw third-party store hostnames — never publishable.
 experiments/*/pass_rows.md
+!experiments/v2-9/
+experiments/v2-9/*
+!experiments/v2-9/*.md
+experiments/*/pass_rows.txt
