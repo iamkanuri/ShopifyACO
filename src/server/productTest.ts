@@ -408,7 +408,20 @@ const CARE_INSTRUCTIVE = CARE_TERMS.filter((t) => !CARE_META.has(t));
 const CARE_REFERENCE =
   /\b(see|refer to|consult|read|follow(?:ing)?|enclosed|included|attached|supplied|provided|printed|listed|labell?ed|as per|per the|according to|subject to|failure to|void|voids|refer)\b/i;
 
-/** An actual care ACTION, for the sentences where only the meta term matched.
+/** ⚠️ MEASURED LIMIT, from the v3.0 independent adversarial pass. The inflections
+ *  below (`wash…ing`, `dry(ing)`, `clean…ing`) are exactly the DEVERBAL NOUNS English
+ *  uses to name a topic instead of giving an instruction, so this list can fire on the
+ *  category name it exists to reject: "Washing and care instructions are on the label."
+ *  passes. 46 of 70 hand-written pointer phrasings leak this way.
+ *
+ *  Deliberately NOT narrowed, on the v2.8 `origin` precedent. Dropping the inflections
+ *  closes the class and costs real positives ("Care instructions: we recommend hand
+ *  washing."), and the leaking shape has ZERO occurrences across 8,046 real product
+ *  descriptions plus every body in the 172-store capture. Losing true statements to fix
+ *  something that does not occur is the trade v2.8 measured and refused. Pinned as a
+ *  corpus gap with the full measurement.
+ *
+ *  An actual care ACTION, for the sentences where only the meta term matched.
  *  Deliberately a closed list of care verbs plus the two things a care instruction
  *  states when it names no verb (a temperature and a cycle).
  *

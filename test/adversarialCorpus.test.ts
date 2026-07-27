@@ -376,6 +376,27 @@ const CARE: Case[] = [
   C("Care instructions are printed on the label.", attr("care"), "not_proven", "placeholder",
     "The instructions exist; they are not on any surface we read. Reference-to-elsewhere is the " +
     "CLASS the v2.9 false positive belonged to, not just the one warranty sentence."),
+  // ── THE RESIDUAL CLASS the v3.0 independent pass measured, pinned not fixed ──
+  C("Washing and care instructions are on the label.", attr("care"), "not_proven", "placeholder",
+    "A PURE POINTER that still passes. CARE_REFERENCE carries no frame for `are on the label` " +
+    "(`labell?ed` matches the adjective, not the noun), so control reaches CARE_DIRECTIVE — which " +
+    "fires on the DEVERBAL NOUN `Washing`. The guard's own weak point: the -ing/-s inflections that " +
+    "make a verb list readable are exactly the forms English uses to NAME a topic rather than give " +
+    "an instruction, so the guard can fire on the category name it was built to reject. Measured by " +
+    "an independent attacker: 46 of 70 hand-written pointer phrasings leak this way, 0 of 26 " +
+    "canonical positives lost.\n" +
+    "NOT A REGRESSION — verified mechanically, not argued: this sentence returns pass_evidenced " +
+    "identically on the pre-guard engine (experiments/v3-0/attribute_ab.mjs A/Bs all 53 attacker " +
+    "claims against b8a1fff^ and finds ZERO status changes). The guard closes strictly more than " +
+    "before and closes less than its comment claims.\n" +
+    "NOT FIXED HERE, and the reason is the v2.8 `origin` precedent rather than fatigue. The " +
+    "narrowing that closes it (drop the inflections, match instructive terms whole-word) would cost " +
+    "real positives — \"Care instructions: we recommend hand washing.\" — to close a class with " +
+    "ZERO occurrences across 8,046 real product descriptions plus every body in the 172-store " +
+    "capture (58,237 sentences; 12 contain the meta term). Losing true statements to fix something " +
+    "that does not occur is the exact trade v2.8 measured and refused.",
+    "pass_evidenced", { title: "Merino Crew", productType: "apparel" }),
+
   C("Care instructions are printed on the tag: machine wash cold, tumble dry low.",
     attr("care"), "pass_evidenced", "canonical-true",
     "CONTROL CASE for the whole-sentence instructive read, which the first mutation run reported " +
@@ -805,7 +826,14 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //          "Care instructions: TBD." All three ran through the one term that names
   //          the category without giving a member of it.
   //                                                                             -> 28
-  const EXPECTED_OPEN_GAPS = 28;
+  // v3.0 CP1 the independent adversarial pass (1,145 probes, 53 claims, 53/53
+  //          adjudicated by separate refuters) measured a RESIDUAL class the guard
+  //          claims but does not close: a pointer whose only care word is a deverbal
+  //          noun. Pinned with its natural-frequency measurement and the reason it is
+  //          not narrowed. It is NOT a regression — the A/B against b8a1fff^ found
+  //          zero status changes across all 53 claims.
+  //                                                                             -> 29
+  const EXPECTED_OPEN_GAPS = 29;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
