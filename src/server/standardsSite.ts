@@ -506,6 +506,62 @@ export function standardJsonFor(pathname: string): { json: string; hash: string 
   return s ? { json: s.rawJson, hash: s.hash } : null;
 }
 
+// ---- the standalone document shell ----------------------------------------
+//
+// ⚠️ THESE PAGES ARE NOT SPA ROUTES, AND THE FIRST VERSION SHIPPED THEM AS IF THEY
+// WERE. Injecting the rendered body into the SPA's `<div id="root">` — the mechanism
+// the Index SSR uses — produced the exact inverse of the goal: a crawler saw the full
+// standard and a HUMAN saw "Page not found", because `/standards` matches no route in
+// App.tsx and React wipes #root the moment it mounts. The document even kept the
+// standard's <title> while its body said 404, so the page contradicted itself.
+//
+// A standard is a DOCUMENT. It does not need the app, so it does not load the app:
+// this is a complete HTML file that links the built stylesheet and nothing else. No
+// bundle, no hydration, nothing to wipe it, and it stays readable with JavaScript off
+// by construction rather than by luck.
+const NAV = [
+  ["/", "Home"],
+  ["/standards", "Standards"],
+  ["/methodology", "Methodology"],
+] as const;
+
+export function renderStandaloneDocument(
+  page: SitePage,
+  opts: { cssHref: string | null; brand: string; base: string },
+): string {
+  const nav = NAV.map(([href, label]) => `<a href="${esc(href)}">${esc(label)}</a>`).join(" · ");
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${esc(page.title)}</title>
+<meta name="description" content="${esc(page.description)}" />
+<link rel="canonical" href="${esc(page.canonical)}" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="${esc(opts.brand)}" />
+<meta property="og:title" content="${esc(page.title)}" />
+<meta property="og:description" content="${esc(page.description)}" />
+<meta property="og:url" content="${esc(page.canonical)}" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="${esc(page.title)}" />
+<meta name="twitter:description" content="${esc(page.description)}" />
+${opts.cssHref ? `<link rel="stylesheet" href="${esc(opts.cssHref)}" />` : ""}
+${page.jsonLd}
+</head>
+<body>
+<div class="std-page">
+<nav class="std-crumb">${nav}</nav>
+${page.bodyHtml}
+<footer class="std-note" style="margin-top:56px;border-top:1px solid var(--border);padding-top:18px">
+${esc(opts.brand)} · <a href="${esc(opts.base)}/standards">All standards</a> · <a href="${esc(opts.base)}/llms.txt">llms.txt</a>
+</footer>
+</div>
+</body>
+</html>
+`;
+}
+
 /** Paths a sitemap should carry — every published standard, every entry. */
 export function standardsSitemapPaths(): string[] {
   const out = ["/standards"];

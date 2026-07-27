@@ -93,7 +93,7 @@ import {
   proposeFromTestHandler, testProposalsHandler,
 } from "./buyerTests.js";
 import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
-import { standardsPageFor, standardJsonFor, standardsSitemapPaths, llmsTxt } from "./standardsSite.js";
+import { standardsPageFor, standardJsonFor, standardsSitemapPaths, llmsTxt, renderStandaloneDocument } from "./standardsSite.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
@@ -215,6 +215,32 @@ app.get(/^\/standards\/[a-z0-9-]+\/[0-9.]+\/standard\.json$/, (req, res) => {
 // A plain-text map for a machine reader that arrives without a crawler.
 app.get("/llms.txt", (req, res) => {
   res.type("text/plain").send(llmsTxt(baseUrl(req)));
+});
+
+// The standard's HTML pages, served as STANDALONE DOCUMENTS — see the block above
+// `renderStandaloneDocument`. They deliberately do not load the SPA bundle: these
+// paths are not React routes, so injecting them into the app shell made a crawler
+// see the standard and a human see "Page not found".
+/** The hashed stylesheet Vite emitted, read once from the built index.html. The
+ *  standalone standard pages link it so they inherit the site's tokens without
+ *  loading the app bundle. Null in a tree with no build — the pages still render,
+ *  unstyled, which is the right failure: the CONTENT is the point. */
+let cssHrefCache: string | null | undefined;
+function builtCssHref(): string | null {
+  if (cssHrefCache !== undefined) return cssHrefCache;
+  try {
+    const html = readFileSync(resolve("viewer/dist/index.html"), "utf8");
+    cssHrefCache = (/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/.exec(html)?.[1]) ?? null;
+  } catch { cssHrefCache = null; }
+  return cssHrefCache;
+}
+
+app.get(/^\/standards(\/.*)?$/, (req, res, next) => {
+  const page = standardsPageFor(req.path, baseUrl(req));
+  if (!page) return next();          // unknown standard/entry ⇒ the SPA's 404
+  res.type("html").set("Cache-Control", "public, max-age=300").send(
+    renderStandaloneDocument(page, { cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req) }),
+  );
 });
 
 app.get("/sitemap.xml", async (req, res) => {
@@ -1378,39 +1404,6 @@ async function serveIndex(req: Request, res: Response) {
       }
     } catch {
       /* CSR fallback */
-    }
-  }
-
-  // ---- the published standard (v3.2 CP6/CP7) --------------------------------
-  //
-  // Rendered into the DOCUMENT, not just into <head>. A published standard no
-  // crawler can read defeats the reason to publish it, and until now every route
-  // but /index shipped an empty <div id="root"> to a non-JavaScript fetch — on a
-  // site whose headline is "AI buyers treat your store like an API".
-  //
-  // Same mechanism as the Index SSR above and for the same reason: the snapshot
-  // sits inside #root, React mounts over it and takes the page for interaction, so
-  // the document is complete for a machine and the app is still an app for a person.
-  if (req.path === "/standards" || req.path.startsWith("/standards/")) {
-    try {
-      const page = standardsPageFor(req.path, baseUrl(req));
-      if (page) {
-        const t = escapeHtml(page.title);
-        const d = escapeHtml(page.description);
-        const u = escapeHtml(page.canonical);
-        html = html
-          .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
-          .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
-          .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
-          .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
-          .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`)
-          .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
-          .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
-          .replace("</head>", `<link rel="canonical" href="${u}" />\n    ${page.jsonLd}\n  </head>`)
-          .replace(/<div id="root">\s*<\/div>/, `<div id="root">${page.bodyHtml}</div>`);
-      }
-    } catch {
-      /* CSR fallback — never let a rendering bug 500 the page */
     }
   }
 
