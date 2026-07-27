@@ -711,26 +711,103 @@ break every standard with both gates green. Both now run the standards project; 
 was *proved* by renaming an engine export that root `tsc` accepts and the second half
 catches. **Do not un-wire it.**
 
-> ⚠️ **THE INSTRUMENT FINDING (v3.0 CP5/CP6), which outranks the numbers.** The 172-store
-> general sample now measures **0 confirmed false positives in 506 pass rows,
-> cluster-adjusted 95% bound 0.83%** — meeting the stated exit criterion for the first time.
-> **Hardening still continues**, because in the same session a **25-store COFFEE sample found
-> 2 false positives** that the general sample cannot see: a **ZIP code** satisfying
-> `delivery`'s `requireDigit` on a sentence that says times *vary*, and a **brewing-recipe**
-> water quantity read as the product's own weight (`USAGE_VERB` needs a verb; a bare
-> preposition has none). A broad sample finds defects that fire on *any* copy; a category
-> sample finds defects that fire on *one category's* copy, which breadth dilutes to
-> invisibility. **v2.8 said "zero across 55 rows was a statement about sample size"; the
-> sharper version is that zero across 506 rows of a broad sample is a statement about sample
-> SHAPE.** Both are pinned with minimal pairs. `delivery` is the last digit-bearing
-> requirement with no value guard.
+> ⚠️ **THE INSTRUMENT FINDING, and v3.1 turned it into two numbers that cannot both be
+> right about the same product.** Same engine, same day, same audit discipline:
+>
+> | | general sample | coffee sample |
+> |---|---|---|
+> | stores | 172 | 42 |
+> | pass rows, each audited individually | 507 | 69 |
+> | confirmed false positives | **0** | **3** |
+> | cluster-adjusted 95% bound (ICC 0.2) | **0.83%** | **13.68%** |
+>
+> Two of the three coffee defects fire on vocabulary a coffee page contains and a general
+> DTC page does not — a brewing recipe, a caffeine dose *per serving*, soil described as
+> rich in *organic matter*. **The general-sample bound is not an estimate of the error rate.
+> It estimates the error rate on copy that looks like the average of every category at
+> once, which is copy no individual merchant writes.** v2.8: "zero across 55 rows was a
+> statement about sample size." v3.0: "…about sample SHAPE." v3.1 measures it: the number a
+> coffee roaster experiences is **13.68%**, not 0.83%.
+>
+> **The operational rule: a category standard must be fitness-measured on that category
+> before it is published.** Full record: `experiments/v3-1/STANDARD_RUN_2.md`.
 
-⚠️ **G-10 (applicability gating) is a precondition, not a nicety** — now measured rather than
-predicted. The capture takes each store's FIRST product handle, and for coffee roasters that
-is often a t-shirt or a mug: **11 of 25 captured products were not coffee**, and with no
-applicability gate every entry fired on all of them. 8 of 10 predicted discrimination bands
-missed, 7 of those high; **6 of 10 entries carry ~no information** on real coffee pages.
-Full record: `experiments/v3-0/STANDARD_RUN_1.md`, `experiments/v3-0/FITNESS_3.md`.
+✅ **G-10 (applicability gating) is CLOSED (v3.1 CP3)** — `standards/applicability.ts` plus a
+per-standard sidecar. Signal order is the engine's own and G-10's: **`product_type`
+authoritative → JSON-LD category → breadcrumb → `title` FALLBACK → never tags**, and tags are
+excluded *structurally* (`ClassifiableProduct` has no tags field, so the module cannot read
+them even when handed in). Two properties are non-optional and tested: **every exclusion is
+reported with a reason** (a list that drops entries silently is worse than one that runs them
+all — the reader cannot tell passing from not being asked), and **excluding everything is a
+loud error with `includedCount: null`, never `0`**. `unknown` is its own class: a product with
+no `product_type` and an undecisive title is not the same as one that clearly does not match,
+and neither is the same as one that passed.
+
+The rules live in `standards/<cat>/<ver>/applicability.json` **beside** the document, not
+inside it: `standard_hash` covers `standard.json`'s bytes and a citation resolves through it,
+so encoding the executable reading of prose already there must not invalidate every citation
+made against v1.0.
+
+⚠️ **What its absence cost, measured on run 1's own snapshots: 16 of 25 products should never
+have been asked** (13 out of category — `Merch`, `Home`, `Gifts`, an espresso machine, a
+cocktail shaker, three t-shirts — and 3 unclassifiable). Run 1 reported 11 by hand. On a valid
+44-product sample the bands go to **HELD 2/10 with all 8 misses HIGH**, and **three of run 1's
+ten verdicts were artefacts of n=9**: `WEIGHT-001` (11.1% → 48.8%) and `DELIV-001` (MISSED low
+33.3pp → HELD) were about to be reclassified as carrying no information, and are among the
+standard's best entries.
+
+⚠️ **`fetchPublicProduct` DROPS `product_type` whenever the page tier answers** — it reads
+JSON-LD `Product.category`, which is null on most themes and was the breadcrumb root `"Home"`
+on one store. **15 of 44 products were unclassifiable from what the engine exposes.** The same
+null flows into `CATEGORY_CLAIMS` and `AttributeSpec.onlyFor`, so **category inference in
+PRODUCTION silently degrades to the title alone on roughly a third of stores.** Open.
+
+## Never trust your own fix measurement — the sixth and seventh instances (v3.1)
+
+Two corrections, both to numbers this project had already acted on, both found the same way:
+**execute every claim against the commit serving production and diff.** Neither was findable
+by reading anything.
+
+1. **v3.0's attribution A/B reported `0 regressions, 0 status changes` across 53 attacker
+   sentences.** Re-run from three independently checked-out worktrees: **nine**, every one a
+   real care instruction the guard deleted. Its published counts (`residual 35 /
+   pre-existing 18`) are exactly what you get when the "pre" probe returns the POST answers —
+   a file swap that did not take. The method was sound; the run was not. A whole session's
+   brief was written on that number.
+2. **v3.1's own fixes carried 28 regressions against production**, in four causes, **none of
+   which any probe the author wrote had reached.** The worst was one hour old: an unanchored
+   `free of` frame that suppressed 16 *genuine* violations — "Free from parabens, this
+   antiperspirant contains aluminum chlorohydrate." — which is the commonest thing
+   personal-care copy does.
+
+> ⚠️ **Use full `git worktree` checkouts, never a file swap.** A swap that silently fails to
+> apply is indistinguishable from "no differences". Put a **two-sided liveness canary** in
+> every probe (two inputs with known-different answers) and exit `INCOMPLETE` if it collapses.
+> Compare the **rendered quote** too — a pass with a different quote is a different answer.
+> `experiments/v3-1/{ab_probe_tpl.ts,ab_diff.mjs,reexec.ts,attribute.mjs}`.
+
+**A refuter verdict is a candidate, not a finding, if the tree moved under it.** v3.1 edited
+`src/` while its refuters were running, so all 123 claims were re-executed mechanically
+afterwards and that diff is what the conclusions rest on. **Freeze the tree for the duration
+of an independent pass**, and tell agents given a repo not to run a package manager — one ran
+`npm install` and emptied `node_modules` mid-session.
+
+**Four buckets, and only one of them blocks:** REGRESSION (worse than production — yours),
+CLOSED (production is wrong and you fixed it), RESIDUAL (wrong in both, inside your guard's
+charter — an incomplete fix), PRE-EXISTING (wrong in both, another mechanism owns it). v3.1's
+final split was `regressions 2 · closed 12 · residual 75 · unresolved 8`. **The 75 is the
+honest headline: the branch was not the problem, the engine is.**
+
+> ⚠️ **A guard whose anchor a later fix has SUBSUMED has silently stopped being proved.**
+> v3.1's mutation refresh found three guards reading DECORATIVE and two anchors SKIPping, for
+> five different reasons — a status-asserting corpus cannot see a guard whose damage is in the
+> DETAIL (`"states the opposite"`); a control case can be pre-empted by a *different* guard
+> running first; another was dropped by G-08's lint pre-filter before matching; one anchor
+> drifted in a refactor; and one was written with a `\b` escape through a non-raw string so
+> the file received a real **0x08 BACKSPACE**, which matches only a backspace. That last one
+> made a sweep report **55 of 55 rows** as defects — a broken instrument reads like a
+> catastrophe. Repair with a **script file** (`experiments/v3-1/fix_ctl.mjs`); every layer of
+> `node -e` and `python -c` quoting eats one backslash.
 
 ## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
 
