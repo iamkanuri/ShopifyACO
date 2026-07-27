@@ -679,10 +679,58 @@ store) that no unit test or corpus case detected. **Re-run it after every matche
 > is not refused today, but **the throttle rate this project tracks as an escalation signal is
 > partly a property of our transport, not of the stores.**
 
+> ⚠️ **An independent pass can only be trusted if its ATTRIBUTION is mechanical.** v3.0's
+> pass returned 27 confirmed defects against the new `care` guard, and a regex over the
+> refuters' prose said 1 was guard-caused. Running all 53 attacker sentences through the
+> pre-change commit and diffing said the truth: **0 regressions, 0 status changes at all** —
+> 35 residual and 18 pre-existing, none of them the guard's doing. Never classify "did my
+> change cause this" by reading an agent's reasoning; A/B it against the parent commit.
+> `experiments/v3-0/attribute_ab.mjs`.
+
 > ⚠️ **A rule stated only in a comment is not a rule.** v2.9's quantity guard broke
 > `"Each 12 oz bag contains 8 g of protein."` — the sentence its own comment named as a must-pass.
 > Grepping for it returned exactly one hit: the comment. No test, no corpus entry, 157 tests green.
 > If a comment says "must still pass", it owes a corpus case in the same commit.
+
+## A published standard can now be executed (v3.0) — and a general sample is the wrong instrument
+
+`standards/` holds a versioned, content-hashed **assertion grammar** plus **Coffee Standard
+v1.0** (42 entries, 10 executable) and `standards/compile.ts`, which maps entries to the
+engine's real `Requirement` type. **G-09 is closed**: `RunOptions.requirements` + `standard`
+let a pinned contract run against a PUBLIC url, the result carries `standardId/version/hash`
+so a citation resolves, `MAX_REQUIREMENTS` is a *rendering* cap that supplied contracts
+bypass, the `requires_store_access` collapse is disabled for a conformance list, and
+`contractVersion` gains a `c1s-` tag folding in the standard identity (a generated contract
+still hashes `c1-…`, byte-identical). Pinned runs **bypass the result cache in both
+directions** — it is keyed on URL alone, so otherwise a conformance result would be served to
+the public funnel.
+
+⚠️ **Merging `standards/` protected nothing until it was wired.** `npm test` globbed
+`test/*.test.ts` and `npm run typecheck` included `src/**/*.ts`, so an engine change could
+break every standard with both gates green. Both now run the standards project; the wiring
+was *proved* by renaming an engine export that root `tsc` accepts and the second half
+catches. **Do not un-wire it.**
+
+> ⚠️ **THE INSTRUMENT FINDING (v3.0 CP5/CP6), which outranks the numbers.** The 172-store
+> general sample now measures **0 confirmed false positives in 506 pass rows,
+> cluster-adjusted 95% bound 0.83%** — meeting the stated exit criterion for the first time.
+> **Hardening still continues**, because in the same session a **25-store COFFEE sample found
+> 2 false positives** that the general sample cannot see: a **ZIP code** satisfying
+> `delivery`'s `requireDigit` on a sentence that says times *vary*, and a **brewing-recipe**
+> water quantity read as the product's own weight (`USAGE_VERB` needs a verb; a bare
+> preposition has none). A broad sample finds defects that fire on *any* copy; a category
+> sample finds defects that fire on *one category's* copy, which breadth dilutes to
+> invisibility. **v2.8 said "zero across 55 rows was a statement about sample size"; the
+> sharper version is that zero across 506 rows of a broad sample is a statement about sample
+> SHAPE.** Both are pinned with minimal pairs. `delivery` is the last digit-bearing
+> requirement with no value guard.
+
+⚠️ **G-10 (applicability gating) is a precondition, not a nicety** — now measured rather than
+predicted. The capture takes each store's FIRST product handle, and for coffee roasters that
+is often a t-shirt or a mug: **11 of 25 captured products were not coffee**, and with no
+applicability gate every entry fired on all of them. 8 of 10 predicted discrimination bands
+missed, 7 of those high; **6 of 10 entries carry ~no information** on real coffee pages.
+Full record: `experiments/v3-0/STANDARD_RUN_1.md`, `experiments/v3-0/FITNESS_3.md`.
 
 ## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
 

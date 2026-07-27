@@ -539,9 +539,20 @@ const V25_FOUND: Case[] = [
     "as a stated delivery speed. Removing the comma correctly returns not_proven.",
     "pass_evidenced", { policyStatus: "readable" }),
   C("We do not guarantee the following: delivery in 2 business days.", deliveryReq(), "not_proven", "negation-colon",
-    "`[;:]` is an unconditional boundary, so any colon between the negator and the term resets the " +
-    "clause. This is the ordinary FAQ/spec-label shape — \"What we don't do:\", \"Sizes we no longer " +
-    "carry:\" — and it produces the same false pass.",
+    "⚠️ CLOSED IN v3.0 CP2 BY ACCIDENT, AND THE REASON MATTERS MORE THAN THE FACT. The negation " +
+    "logic is UNCHANGED. This sentence now returns the honest answer only because it contains the " +
+    "word `guarantee`, which the claim linter forbids, so v3.0's new lint pre-filter drops it from " +
+    "delivery's evidence before matching. Nothing about the colon-boundary defect was repaired. The " +
+    "sibling case below carries the identical shape WITHOUT a linter word and still false-passes — " +
+    "keep both, or a future session reads this row as 'negation-colon fixed' and deletes a guard " +
+    "that was never doing this work.",
+    undefined, { policyStatus: "readable" }),
+  C("We do not offer the following: delivery in 2 business days.", deliveryReq(), "not_proven", "negation-colon",
+    "THE REAL CLASS, pinned with a sentence the linter has no opinion about. `[;:]` is an " +
+    "unconditional boundary, so any colon between the negator and the term resets the clause and " +
+    "the denial reads as a stated delivery speed. Executed siblings that also still pass: " +
+    "\"What we don't do: delivery in 2 business days.\" and \"Services we no longer provide: " +
+    "delivery in 2 business days.\" — the ordinary FAQ and spec-label shapes the original case named.",
     "pass_evidenced", { policyStatus: "readable" }),
   C("We don't offer this in blue, or in a 16 oz size.", attr("dimensions"), "not_proven", "negation-coordination",
     "The same coordination reset on the dimensions row. It fires only when the second conjunct " +
@@ -621,6 +632,36 @@ const V28_FOUND: Case[] = [
     "(`follow`). The class, not the instance, is what the guard is designed to: see the four " +
     "sibling cases in the CARE block.",
     undefined, { title: "Ceramic Pan", productType: "Cookware" }),
+
+  // ── v3.0 CP5 — the two false passes found by RUNNING A PUBLISHED STANDARD ──
+  // Both were found by auditing all 43 pass_evidenced rows from Coffee Standard v1.0
+  // executed against 25 real coffee stores. Both are PRE-EXISTING — nothing in v3.0
+  // touches timing matching or quantity aboutness — and neither appeared in the v2.9
+  // audit of 507 rows across 172 general-sample stores. That is the finding behind the
+  // finding: a CATEGORY-SCOPED sample surfaces defects a general sample does not, so
+  // the v2.9 bound is a floor rather than an estimate.
+  C("Shipping times vary depending on your proximity to our Los Angeles origin zip code: 90038.",
+    deliveryReq(), "not_proven", "marketing-idiom",
+    "THE SENTENCE STATES NO WINDOW — it says times VARY. The row claims a dispatch or " +
+    "delivery window is stated, and a shopper reading this learns nothing about when their " +
+    "coffee arrives. MECHANISM, isolated by a minimal pair: `shipping times` is a " +
+    "TIMING_TERMS_NEEDING_DIGIT term, and the only digits in the sentence are a ZIP CODE. " +
+    "Strip them (\"…proximity to our origin.\") and the row correctly returns not_proven, so " +
+    "the postcode alone is carrying the pass. `requireDigit` asks that SOME digit exists — " +
+    "the identical weakness that let \"Available in 3 colors\" satisfy a measurement before " +
+    "`dimensions` got a valueGuard. Delivery has no equivalent guard. Found on a real store.",
+    "pass_evidenced", { policyStatus: "readable" }),
+  C("For 4 ounces water and 4 ounces ice.", attr("dimensions"), "not_proven", "usage-quantity",
+    "A BREWING RECIPE quantity read as the product's own measurement. Found on a real coffee " +
+    "store whose product copy embeds an iced-coffee method; the row quoted the water and ice " +
+    "amounts as proof that the bag's weight is stated. `nonProductQuantity` already vetoes " +
+    "this class through USAGE_VERB — \"Brew with 8 ounces of water.\" and the pinned \"Steep " +
+    "in 8 oz of hot water\" both correctly fail — but the veto needs a VERB, and a bare " +
+    "preposition introduces the same quantity with nothing to match. The gap is the frame, " +
+    "not the concept, which is why it is pinned rather than patched with one more word: a " +
+    "term added to a veto list without an adversarial pass is how v2.9's `case` regression " +
+    "reached a real watch store.",
+    "pass_evidenced"),
 
   // ── v2.9 CP2 — THE OWED MUTATION ANCHOR, now closed ────────────────────────
   // Removing `origin` in v2.8 deleted the only corpus case that failed when
@@ -833,7 +874,12 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //          not narrowed. It is NOT a regression — the A/B against b8a1fff^ found
   //          zero status changes across all 53 claims.
   //                                                                             -> 29
-  const EXPECTED_OPEN_GAPS = 29;
+  // v3.0 CP5 running Coffee Standard v1.0 against 25 real coffee stores and auditing
+  //          all 43 pass rows found TWO false passes, both pre-existing and neither
+  //          seen in the v2.9 general sample: a ZIP CODE satisfying delivery's
+  //          requireDigit, and a brewing-recipe quantity read as the product's weight.
+  //                                                                             -> 31
+  const EXPECTED_OPEN_GAPS = 31;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
