@@ -269,7 +269,7 @@ export function buildIndexListCardSvg(categories: Array<{ label: string; brands:
 export function buildDefaultCardSvg(brandName: string, tagline: string): string {
   const parts: string[] = [];
   parts.push(textEl(MX, 280, 72, INK, xml(brandName), { weight: 700 }));
-  parts.push(textEl(MX, 336, 30, ACCENT, xml("Does AI recommend your store — or your competitors?"), { weight: 700 }));
+  parts.push(textEl(MX, 336, 30, ACCENT, xml("The questions a competent buyer asks, run as tests."), { weight: 700 }));
   const tag = fittedLines(tagline, CW, 26, 19);
   let y = 410;
   for (const l of tag.lines) {
@@ -277,7 +277,7 @@ export function buildDefaultCardSvg(brandName: string, tagline: string): string 
     y += tag.size + 10;
   }
   parts.push(engineFooter());
-  return frame(ACCENT, brandName, "AI SHOPPING VISIBILITY", parts.join("\n  "));
+  return frame(ACCENT, brandName, "PUBLISHED BUYING STANDARDS", parts.join("\n  "));
 }
 
 // ---- rasterization -----------------------------------------------------------
