@@ -218,7 +218,7 @@ function Launch({ launch }: { launch: AdminData["launch"] }) {
               <div className="v">
                 {m.value}<span className="muted" style={{ fontSize: 14 }}> / {m.target}</span>
               </div>
-              <div className="bar"><span style={{ width: `${pct}%`, background: pct >= 100 ? "var(--good)" : "var(--accent)" }} /></div>
+              <div className="bar"><span style={{ width: `${pct}%`, background: pct >= 100 ? "var(--pass)" : "var(--accent)" }} /></div>
             </div>
           );
         })}
@@ -513,7 +513,7 @@ function Errors({ errors }: { errors: AdminData["errors"] }) {
           errors.map((e, i) => (
             <div key={i} className="err-row">
               <span style={{ fontFamily: "monospace", fontSize: 11 }}>{e.runId}</span> · {e.brand} —{" "}
-              <span style={{ color: "var(--bad)" }}>{e.error}</span>
+              <span style={{ color: "var(--attention)" }}>{e.error}</span>
             </div>
           ))
         )}

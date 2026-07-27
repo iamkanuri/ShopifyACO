@@ -679,10 +679,292 @@ store) that no unit test or corpus case detected. **Re-run it after every matche
 > is not refused today, but **the throttle rate this project tracks as an escalation signal is
 > partly a property of our transport, not of the stores.**
 
+> ⚠️ **An independent pass can only be trusted if its ATTRIBUTION is mechanical.** v3.0's
+> pass returned 27 confirmed defects against the new `care` guard, and a regex over the
+> refuters' prose said 1 was guard-caused. Running all 53 attacker sentences through the
+> pre-change commit and diffing said the truth: **0 regressions, 0 status changes at all** —
+> 35 residual and 18 pre-existing, none of them the guard's doing. Never classify "did my
+> change cause this" by reading an agent's reasoning; A/B it against the parent commit.
+> `experiments/v3-0/attribute_ab.mjs`.
+
 > ⚠️ **A rule stated only in a comment is not a rule.** v2.9's quantity guard broke
 > `"Each 12 oz bag contains 8 g of protein."` — the sentence its own comment named as a must-pass.
 > Grepping for it returned exactly one hit: the comment. No test, no corpus entry, 157 tests green.
 > If a comment says "must still pass", it owes a corpus case in the same commit.
+
+## A published standard can now be executed (v3.0) — and a general sample is the wrong instrument
+
+`standards/` holds a versioned, content-hashed **assertion grammar** plus **Coffee Standard
+v1.0** (42 entries, 10 executable) and `standards/compile.ts`, which maps entries to the
+engine's real `Requirement` type. **G-09 is closed**: `RunOptions.requirements` + `standard`
+let a pinned contract run against a PUBLIC url, the result carries `standardId/version/hash`
+so a citation resolves, `MAX_REQUIREMENTS` is a *rendering* cap that supplied contracts
+bypass, the `requires_store_access` collapse is disabled for a conformance list, and
+`contractVersion` gains a `c1s-` tag folding in the standard identity (a generated contract
+still hashes `c1-…`, byte-identical). Pinned runs **bypass the result cache in both
+directions** — it is keyed on URL alone, so otherwise a conformance result would be served to
+the public funnel.
+
+⚠️ **Merging `standards/` protected nothing until it was wired.** `npm test` globbed
+`test/*.test.ts` and `npm run typecheck` included `src/**/*.ts`, so an engine change could
+break every standard with both gates green. Both now run the standards project; the wiring
+was *proved* by renaming an engine export that root `tsc` accepts and the second half
+catches. **Do not un-wire it.**
+
+> ⚠️ **THE INSTRUMENT FINDING, and v3.1 turned it into two numbers that cannot both be
+> right about the same product.** Same engine, same day, same audit discipline:
+>
+> | | general sample | coffee sample |
+> |---|---|---|
+> | stores | 172 | 42 |
+> | pass rows, each audited individually | 507 | 69 |
+> | confirmed false positives | **0** | **3** |
+> | cluster-adjusted 95% bound (ICC 0.2) | **0.83%** | **13.68%** |
+>
+> Two of the three coffee defects fire on vocabulary a coffee page contains and a general
+> DTC page does not — a brewing recipe, a caffeine dose *per serving*, soil described as
+> rich in *organic matter*. **The general-sample bound is not an estimate of the error rate.
+> It estimates the error rate on copy that looks like the average of every category at
+> once, which is copy no individual merchant writes.** v2.8: "zero across 55 rows was a
+> statement about sample size." v3.0: "…about sample SHAPE." v3.1 measures it: the number a
+> coffee roaster experiences is **13.68%**, not 0.83%.
+>
+> **The operational rule: a category standard must be fitness-measured on that category
+> before it is published.** Full record: `experiments/v3-1/STANDARD_RUN_2.md`.
+
+✅ **G-10 (applicability gating) is CLOSED (v3.1 CP3)** — `standards/applicability.ts` plus a
+per-standard sidecar. Signal order is the engine's own and G-10's: **`product_type`
+authoritative → JSON-LD category → breadcrumb → `title` FALLBACK → never tags**, and tags are
+excluded *structurally* (`ClassifiableProduct` has no tags field, so the module cannot read
+them even when handed in). Two properties are non-optional and tested: **every exclusion is
+reported with a reason** (a list that drops entries silently is worse than one that runs them
+all — the reader cannot tell passing from not being asked), and **excluding everything is a
+loud error with `includedCount: null`, never `0`**. `unknown` is its own class: a product with
+no `product_type` and an undecisive title is not the same as one that clearly does not match,
+and neither is the same as one that passed.
+
+The rules live in `standards/<cat>/<ver>/applicability.json` **beside** the document, not
+inside it: `standard_hash` covers `standard.json`'s bytes and a citation resolves through it,
+so encoding the executable reading of prose already there must not invalidate every citation
+made against v1.0.
+
+⚠️ **What its absence cost, measured on run 1's own snapshots: 16 of 25 products should never
+have been asked** (13 out of category — `Merch`, `Home`, `Gifts`, an espresso machine, a
+cocktail shaker, three t-shirts — and 3 unclassifiable). Run 1 reported 11 by hand. On a valid
+44-product sample the bands go to **HELD 2/10 with all 8 misses HIGH**, and **three of run 1's
+ten verdicts were artefacts of n=9**: `WEIGHT-001` (11.1% → 48.8%) and `DELIV-001` (MISSED low
+33.3pp → HELD) were about to be reclassified as carrying no information, and are among the
+standard's best entries.
+
+✅ **RESOLVED (v3.2 CP2): `product_type` now survives the page tier.** It used to be dropped
+whenever the page's JSON-LD was complete — `pageSufficient` skips the `.json` tier, so the
+value fell back to JSON-LD `Product.category`, null on most themes and the breadcrumb root
+`"Home"` on one store. 15 of 44 coffee products were unclassifiable, and the same null flows
+into `CATEGORY_CLAIMS` and `AttributeSpec.onlyFor`, so category inference in PRODUCTION was
+degrading to the title alone at that rate. After the fix: **G-10 skips 15 → 2**.
+
+⚠️ **The obvious fix was the wrong one, and the reason generalises.** Fetching
+`/products/{handle}.json` anyway spends the extra request the tier ORDER exists to avoid (the
+v1.1 smoke run measured `.json` returning 429 while HTML on the same hosts returned 200) —
+and it **breaks every existing snapshot**, because replay serves only URLs that were actually
+recorded and on precisely these stores the engine never fetched it. *A fix that invalidates
+the corpus it must be measured on is not a fix.* The value was already in bytes we hold:
+Shopify's analytics bootstrap (`var meta = {"product":{…,"type":"Coffee",…}}`) carries the
+merchant's own field on 43 of 44 captured pages — measured before the code was written. It is
+**parsed, not regexed**: `"type"` also appears inside `variants[]`, so a bare regex would
+silently return a variant's field on a theme that reorders keys.
+
+## The standard is PUBLISHED, and readable without JavaScript (v3.2 CP6+CP7)
+
+`src/server/standardsSite.ts` + `test/standardsSite.test.ts`. Stable URLs, because these
+are citations — an agency writes *"your product pages fail ALS-COFFEE-1.0-CERT-002"* and it
+has to resolve: `/standards` · `/standards/coffee/1.0` · `/standards/coffee/1.0/standard.json`
+(`application/json`, plus an `X-Standard-Hash` header) · `/standards/coffee/1.0/{ENTRY-ID}`
+for all 42 · `/standards/coffee/1.0/grounding` · `/llms.txt`. All are in `sitemap.xml`.
+
+**Every published number is generated from the artifact.** Structure from `standard.json`,
+error bounds from a new `standards/coffee/v1.0/fitness.json` sidecar — beside the document,
+not inside it, for the same reason `applicability.json` is a sidecar: `standard_hash` covers
+`standard.json`'s bytes and a citation resolves through it, so a measurement taken after
+publication must not invalidate every citation made against v1.0. **When a sample is absent
+the page says so; it never invents a bound.** The test asserts the served JSON is byte-identical
+to the file on disk, because a re-serialised body still parses but hashes differently.
+
+⚠️ **The document's own words are published unedited.** Its `status` is `draft` and its posture
+says it "has never been applied to a real store by anyone" and is "a rubric with a versioned
+changelog, not a standard". Publishing it under a heading calling it finished would make the
+site's first claim about itself a false one. The heading is "Buying standards", the status is
+stated, and the posture paragraph renders verbatim above everything else.
+
+> ⚠️ **A renderer that reads a field which does not exist produces NOTHING, and nothing looks
+> exactly like a section that legitimately has nothing to show.** The grounding renderer read
+> `grounding.sources`; the artifact's key is `grounding.citations`. All 42 entry pages and the
+> whole grounding page rendered empty — with eleven tests green, because they asserted the
+> presence of *other* things. The test now asserts CONTENT: ≥20 grounded entries, every citation
+> URL present on both the entry page and the grounding page, and a byte floor. Grounding went
+> from 309 to 26,652 characters. **A presence-only assertion cannot see an empty section.**
+>
+> Related and equally silent: **`[object Object]` reached published pages three times**
+> (`posture`, `applicability`, a derived assertion's `expected`). Template interpolation
+> converts without throwing. There is now one `renderScalarish` and a test forbidding the
+> string on every page.
+
+## A row that renders NO QUOTE is invisible to a human audit (v3.2 CP3)
+
+**This corrects 0.83%, a number this project has published since v2.9.**
+
+The `identifiers` row renders no quote — it says *"Your structured data publishes MPN."*
+So an auditor reading rendered evidence has nothing to be suspicious of: the row looks
+identical whether the value is a real GS1 barcode or a number the store minted about
+itself. `evaluate` rejects placeholders (`N/A`, `TBD`) and checks GTIN check digits, but
+it accepts **any** non-placeholder `mpn` string.
+
+Checked mechanically against the captured bytes, over both samples:
+
+```
+identifier rows asked      216
+identifier rows passed      53
+  rescued by a valid GTIN   29    honest passes
+  DEFECTS                   21    general 18, coffee 3
+```
+
+The general sample's earlier audit read all 507 rendered rows and confirmed **zero** false
+positives. One mechanical check of one class found **eighteen** in that same sample:
+
+| GENERAL | was | now |
+|---|---|---|
+| confirmed false positives | 0 | **18** (one class — a FLOOR) |
+| cluster-adjusted 95% bound | **0.83%** | **7.80%** |
+
+Verified from raw HTML, never from an agent's prose: on `glowrecipe.com` the published
+`mpn` also appears as `rid`, `source_product_id`, `product.id` and `data-product-id` — it
+is Shopify's internal product id, put in `mpn` by a theme. `www.lacolombe.com` and
+`sightglasscoffee.com` share one JSON-LD emitter byte-for-byte, so this is a **theme
+behaviour, not two unlucky merchants**. `www.stumptowncoffee.com` emits
+`"sku":"100754","mpn":"100754"` adjacent in one object — the store-local SKU the row
+explicitly excludes, because a SKU cannot match a product to an EXTERNAL catalogue, which
+is the row's entire promise.
+
+> ⚠️ **WHAT THIS DOES TO THE INSTRUMENT FINDING.** v3.1's headline was that a category
+> sample and a general sample differ **by an order of magnitude** (13.68% vs 0.83%).
+> Measured properly the coffee bound is **12.78%** on 162 audited rows and the general
+> floor is **7.80%** — **about 1.6×**, and the two are not audited to the same depth, so
+> even that ratio is not a measurement. **The direction survives; the magnitude does not.**
+>
+> The replacement claim is stronger than the one it retires. 0.83% was never an estimate
+> of the error rate — it was an estimate of *what that audit thought to look for*. v2.8:
+> zero across 55 rows was a statement about sample SIZE. v3.0: about sample SHAPE. v3.2:
+> **also about AUDIT METHOD** — a defect class that renders no quote is invisible to every
+> audit that reads rendered evidence, however many rows it reads.
+
+**The coffee bound, on 100 evaluated products** (103 brands, deduped on registrable domain
+BEFORE capture, 3 G-10 exclusions with reasons, 0 replay misses): 162 pass rows audited
+individually against full untruncated evidence, **10 confirmed** — 12.78% cluster-adjusted.
+Four classes: a brewing recipe or caffeine dose read as the product's weight (3), a
+store-local id as `mpn` (3), the soil-science sense of `organic` (2), and **`single-origin`
+inside a sentence describing a BLEND (2) — a class no guard addresses and which v3.1's
+sample did not contain.** Measured discrimination: **bands held 1/10** on n=100 (2/10 on
+n=43); only `WEIGHT-001` (49.0%) and `DELIV-001` (45.0%) carry real information.
+
+⚠️ **Measurements go in `fitness.json`, BESIDE the document, never inside it.** The brief
+asked for them to replace `predicted_discrimination` in `standard.json`; that would change
+`standard_hash` and silently break every citation made against v1.0. Same rule as G-10's
+applicability sidecar. The site renders measured values from the sidecar, overriding the
+band, and shows both.
+
+⚠️ **Every comparative sentence on the published page is DERIVED.** A hand-written
+paragraph asserting the two bounds "differ by an order of magnitude … under the same audit
+discipline" went false the moment the numbers moved, and sat next to generated figures
+contradicting it. Interpretation beside generated numbers is the "site disagrees with its
+own JSON" defect one level up.
+
+## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
+
+**The three coffee false positives were fixed, measured, and reverted, and the measurement is
+worth more than the fix would have been.**
+
+| instrument | verdict on the same four guards |
+|---|---|
+| replay over **216 captured real stores**, 1,669 rows, comparing rendered QUOTES not just statuses | **0 real positives lost** |
+| 2 independent attackers, 661 chosen sentences, every claim re-executed and A/B'd against the parent | **192 regressions** |
+
+Both ran in this repo, on the same commit, the same day. The replay is not broken — it is
+answering a different question. This project already wrote the rule down and then trusted the
+sample anyway: *"Sampling real stores catches artefacts; only executing the matcher against
+deliberately chosen input catches logic."* A 216-store sample cannot find
+`"Our stock pot measures 10 inches across."` because none of those stores sells one.
+
+**The operational rule: a real-store replay is a REGRESSION check, never an acceptance gate
+for a matcher change.** The gate is an adversarial pass by someone who did not write the guard.
+
+Why each guard was unsalvageable rather than merely too wide — all four failure modes are
+general, and all four are worth recognising before writing the next guard:
+- **A closed list used as the PROTECTOR fails open in the damaging direction.** `SERVING_HEAD`
+  vetoed `serving` unless followed by a serveware noun; `pitcher, jug, cup, glass, carafe, mug,
+  crock, tureen, ramekin, basket, vessel, cone` were all missing, and each miss deletes a real
+  product. Same shape as the head-noun rule v2.8 removed from `origin` after four attempts.
+- **A frame that also matches money.** `for\s*\d` is how a recipe introduces water *and* how a
+  page states a price: `"Our 16 oz water bottle sells for 19.99."`
+- **Substance words are product words.** `stock` (pot), `ice` (cream scoop), `cream`, `water`
+  (bottle, -resistant). A hyphen defeats an adjacency lookahead entirely.
+- **Homographs, and the violation path.** `SENSE_SHIFT`'s `reach` is both the EU chemicals
+  regulation (`"BPA-free, REACH compliant"`) and the commonest closing clause in DTC copy
+  (`"reach out with any questions"`); `compounds` is the FDA's own wording for an antiperspirant
+  active, so vetoing it told a store that STATES the violating claim that it stated nothing.
+  **Status-only comparison cannot see that** — both answers are `not_proven`.
+
+And they did not close their own class: `"Pour 6 oz of hot water over the grounds."` still
+passes (`USAGE_VERB` has steep/brew/dissolve; coffee copy says pour, heat, fill, boil, bloom),
+and `"organic plant matter"` / `"organic material"` walk past `SENSE_SHIFT` on one adjective
+and one synonym. **Closing three sentences is not closing a class.** All four are pinned in
+the corpus with the cost of the attempt beside them; `EXPECTED_OPEN_GAPS` 31 → 36.
+
+## Never trust your own fix measurement — the sixth and seventh instances (v3.1)
+
+Two corrections, both to numbers this project had already acted on, both found the same way:
+**execute every claim against the commit serving production and diff.** Neither was findable
+by reading anything.
+
+1. **v3.0's attribution A/B reported `0 regressions, 0 status changes` across 53 attacker
+   sentences.** Re-run from three independently checked-out worktrees: **nine**, every one a
+   real care instruction the guard deleted. Its published counts (`residual 35 /
+   pre-existing 18`) are exactly what you get when the "pre" probe returns the POST answers —
+   a file swap that did not take. The method was sound; the run was not. A whole session's
+   brief was written on that number.
+2. **v3.1's own fixes carried 28 regressions against production**, in four causes, **none of
+   which any probe the author wrote had reached.** The worst was one hour old: an unanchored
+   `free of` frame that suppressed 16 *genuine* violations — "Free from parabens, this
+   antiperspirant contains aluminum chlorohydrate." — which is the commonest thing
+   personal-care copy does.
+
+> ⚠️ **Use full `git worktree` checkouts, never a file swap.** A swap that silently fails to
+> apply is indistinguishable from "no differences". Put a **two-sided liveness canary** in
+> every probe (two inputs with known-different answers) and exit `INCOMPLETE` if it collapses.
+> Compare the **rendered quote** too — a pass with a different quote is a different answer.
+> `experiments/v3-1/{ab_probe_tpl.ts,ab_diff.mjs,reexec.ts,attribute.mjs}`.
+
+**A refuter verdict is a candidate, not a finding, if the tree moved under it.** v3.1 edited
+`src/` while its refuters were running, so all 123 claims were re-executed mechanically
+afterwards and that diff is what the conclusions rest on. **Freeze the tree for the duration
+of an independent pass**, and tell agents given a repo not to run a package manager — one ran
+`npm install` and emptied `node_modules` mid-session.
+
+**Four buckets, and only one of them blocks:** REGRESSION (worse than production — yours),
+CLOSED (production is wrong and you fixed it), RESIDUAL (wrong in both, inside your guard's
+charter — an incomplete fix), PRE-EXISTING (wrong in both, another mechanism owns it). v3.1's
+final split was `regressions 2 · closed 12 · residual 75 · unresolved 8`. **The 75 is the
+honest headline: the branch was not the problem, the engine is.**
+
+> ⚠️ **A guard whose anchor a later fix has SUBSUMED has silently stopped being proved.**
+> v3.1's mutation refresh found three guards reading DECORATIVE and two anchors SKIPping, for
+> five different reasons — a status-asserting corpus cannot see a guard whose damage is in the
+> DETAIL (`"states the opposite"`); a control case can be pre-empted by a *different* guard
+> running first; another was dropped by G-08's lint pre-filter before matching; one anchor
+> drifted in a refactor; and one was written with a `\b` escape through a non-raw string so
+> the file received a real **0x08 BACKSPACE**, which matches only a backspace. That last one
+> made a sweep report **55 of 55 rows** as defects — a broken instrument reads like a
+> catastrophe. Repair with a **script file** (`experiments/v3-1/fix_ctl.mjs`); every layer of
+> `node -e` and `python -c` quoting eats one backslash.
 
 ## The adversarial corpus — the standard for evidence matchers (v2.4 CP1)
 

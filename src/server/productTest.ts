@@ -4,7 +4,7 @@ import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extra
 import { htmlToText, htmlToBlockText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
-  buildEvidence, findSupport, findViolation, findTimingSupport, normalize,
+  buildEvidence, findSupport, findViolation, findTimingSupport, normalize, termMatches,
   SURFACE_LABEL, type EvidenceSentence, type SupportedEvidence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
@@ -364,6 +364,176 @@ function statesProductMeasurement(sentence: string): boolean {
 // separators. Full record: experiments/v2-8/FITNESS.md.
 
 
+// ---- care: STATING an instruction vs POINTING AT one (v3.0 CP1) -------------
+//
+// `care` was the only attribute with NO valueGuard, and the v2.9 measurement over
+// 172 stores found the one false positive it produced: a cookware store was told
+// "Care or use instructions are stated" on
+//     "If you follow our easy care instructions, we'll help out if anything goes
+//      wrong within three years from your date of purchase."
+// The sentence REFERS to care instructions and states none — a buyer asking how to
+// look after the pan learns nothing.
+//
+// THE CLASS IS REFERENCE-TO-ELSEWHERE, not that one sentence. Every other care term
+// IS the instruction ("machine wash", "dishwasher safe", "do not bleach"); exactly
+// one term — `care instructions` — names the category without giving a member of it,
+// and every recorded defect in this row runs through that term: a pointer ("included
+// in the box"), a placeholder ("Care instructions: TBD."), and a condition of a
+// warranty. So the guard is scoped to that term rather than applied to all of them.
+//
+// ⚠️ THE GUARD MUST READ THE WHOLE SENTENCE, NOT `matchedTerm`. `termMatches` sorts
+// longest-first (testEvidence.ts:272), and `care instructions` (17) is longer than
+// `machine wash` (12), `dishwasher safe` (15) and `hand wash only` (14). So in
+// "Care instructions: machine wash cold." the matched term is the META one, and a
+// guard that branched on `matchedTerm` would delete a canonical true positive. That
+// is the shape of the over-tight guard that cost v2.9's first quantity attempt four
+// real positives.
+const CARE_TERMS = [
+  // "how to use" and "instructions for use" were REMOVED: they matched "Learn
+  // how to use our rewards program in 3 steps", which is site chrome, not care.
+  "machine wash", "machine-wash", "hand wash", "hand-wash", "dishwasher safe", "dishwasher-safe",
+  "care instructions", "wipe clean", "tumble dry", "air dry", "spot clean", "do not bleach",
+  "hand wash only", "season before", "dry flat", "do not tumble", "iron on low",
+] as const;
+/** The term(s) that name the category instead of giving a member of it. */
+const CARE_META = new Set<string>(["care instructions"]);
+/** Everything else: a term whose mere presence IS an instruction. Derived from the
+ *  shipped list rather than retyped, so a term added to `CARE_TERMS` is instructive
+ *  by default and cannot silently fall into the narrower meta branch. */
+const CARE_INSTRUCTIVE = CARE_TERMS.filter((t) => !CARE_META.has(t));
+
+/** The instructions exist somewhere we are not reading. A pointer to evidence is
+ *  not evidence — the same distinction `isPlaceholderIdentifier` draws for a field
+ *  the merchant filled with "see description".
+ *
+ *  ⚠️ SCOPED TO ITS OWN CLAUSE (v3.1 CP0). Tested against the WHOLE sentence, this
+ *  frame vetoed nine real care instructions, because the overwhelmingly common way
+ *  a merchant writes one is `<pointer frame>: <the instruction>` — "Care instructions
+ *  are printed on the tag: rinse in cool water and dry immediately." The frame is
+ *  true of the first clause and says nothing about the second, and reading it over
+ *  both deleted the instruction the sentence plainly gives. Measured, not argued:
+ *  see `experiments/v3-1/AB_CARE.md`. */
+const CARE_REFERENCE =
+  /\b(see|refer to|consult|read|follow(?:ing)?|enclosed|included|attached|supplied|provided|printed|listed|labell?ed|as per|per the|according to|subject to|failure to|void|voids|refer)\b/i;
+
+/** ⚠️ MEASURED LIMIT, from the v3.0 independent adversarial pass. The inflections
+ *  below (`wash…ing`, `dry(ing)`, `clean…ing`) are exactly the DEVERBAL NOUNS English
+ *  uses to name a topic instead of giving an instruction, so this list can fire on the
+ *  category name it exists to reject: "Washing and care instructions are on the label."
+ *  passes. 46 of 70 hand-written pointer phrasings leak this way.
+ *
+ *  Deliberately NOT narrowed, on the v2.8 `origin` precedent. Dropping the inflections
+ *  closes the class and costs real positives ("Care instructions: we recommend hand
+ *  washing."), and the leaking shape has ZERO occurrences across 8,046 real product
+ *  descriptions plus every body in the 172-store capture. Losing true statements to fix
+ *  something that does not occur is the trade v2.8 measured and refused. Pinned as a
+ *  corpus gap with the full measurement.
+ *
+ *  An actual care ACTION, for the sentences where only the meta term matched.
+ *  Deliberately a closed list of care verbs plus the two things a care instruction
+ *  states when it names no verb (a temperature and a cycle).
+ *
+ *  `store`/`storing` is DELIBERATELY ABSENT despite "store in a cool dry place"
+ *  being a real instruction: `store` is the merchant noun that appears on nearly
+ *  every page, so it is a collision waiting to happen. The cost is nil, because
+ *  "Care instructions: store in a cool dry place." still passes on `dry`.
+ *
+ *  `condition` was absent for the same reason — `conditions apply` is ordinary terms
+ *  copy — and that cost a real positive: "Care instructions: condition the leather
+ *  twice a year." was answered "no care instructions stated". It is admitted in v3.1
+ *  only in its TRANSITIVE VERB form (`condition the …`, `conditions your …`), which
+ *  `warranty conditions apply` and `terms and conditions` cannot reach. A bare
+ *  `condition` would; that is why this is a frame and not a word.
+ *
+ *  ⚠️ An earlier draft of this comment claimed the BARE sentence "Store in a cool
+ *  dry place away from sunlight." passes. It does not, and never did — it contains
+ *  no CARE_TERMS entry at all, so it is `not_proven` before the guard is reached.
+ *  That claim survived review and was killed by writing its corpus case, which is
+ *  the entire reason a comment saying "must still pass" owes one. */
+const CARE_DIRECTIVE =
+  /\b(wash(es|ed|ing)?|rinse[sd]?|rinsing|clean(s|ed|ing)?|wipe[sd]?|wiping|dry(ing)?|dries|soak(s|ed|ing)?|scrub(s|bed|bing)?|polish(es|ed|ing)?|oil(s|ed|ing)?|season(s|ed|ing)?|launder(s|ed|ing)?|bleach(es|ed|ing)?|iron(s|ed|ing)?|tumble[sd]?|dust(s|ed|ing)?|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing)|hand-?wash|dishwasher|air-?dry|line-?dry|dry-?clean)\b|\bcondition(?:s|ed|ing)?\s+(?:the|your|it|them|this)\b|\d+\s*°|\b(cold|warm|lukewarm|hot) water\b|\b(low|medium|high) heat\b|\b(delicate|gentle|permanent press) cycle\b/i;
+
+/**
+ * The spans the reference frame is allowed to govern.
+ *
+ * DELIBERATELY NOT `CLAUSE_BOUNDARY` (testEvidence.ts). That splitter is already
+ * documented in CLAUDE.md as serving two incompatible jobs for negation scope, and
+ * loading a third onto it would make all three harder to change. This one answers a
+ * narrower question — "is there a span here that gives an instruction without a
+ * pointer frame in it" — so it splits MORE aggressively, including on a bare comma
+ * and a dash. Over-splitting makes this guard more permissive, which is the
+ * direction it is documented to fail in, and never the direction that invents a
+ * finding.
+ */
+// ` and ` is a boundary too: "Read the care instructions and wash separately in cold
+// water before first wear." puts the pointer and the instruction in one comma-less
+// sentence, and an independent pass confirmed the guard deleting it. Adding it cannot
+// reopen the noun-phrase class, because that class fails the IMPERATIVE test either
+// way ("and a washing symbol guide" does not begin with a verb).
+const CARE_CLAUSE_SPLIT = /[.;:!?,]|\s[—–]\s|--|\sand\s/i;
+
+/**
+ * A clause that READS as an instruction: imperative, verb first.
+ *
+ * ⚠️ THE FIRST VERSION OF THIS FIX WAS WRONG, and an independent adversarial pass
+ * confirmed nine sentences of the shape it reopened. Clause-scoping the frame and
+ * then accepting ANY `CARE_DIRECTIVE` match in an unframed clause hands the guard a
+ * NOUN PHRASE:
+ *     "Care instructions are printed on the hangtag, and a washing symbol guide is on our site."
+ *     "Care instructions are included in the box, along with a cleaning cloth."
+ *     "Care instructions are enclosed, and our leather polish is available separately."
+ *     "Care instructions are supplied with your order — washing guidance is on the label."
+ * The pointer sits in the first clause; the second merely CONTAINS a care word —
+ * `washing`, `cleaning`, `polish`, `seasoning`, `dust`. Every one of those passed.
+ *
+ * The distinction that actually separates the two classes is grammatical, not
+ * positional: an instruction is IMPERATIVE and begins with its verb, in BASE FORM.
+ * That is what tells "sanitize the board with diluted vinegar weekly" from "washing
+ * symbols and fabric details at the link below" — the `-ing`/`-s` forms are precisely
+ * the deverbal nouns English uses to NAME a topic rather than give an instruction,
+ * which is the same weak point the residual gap in the corpus records.
+ *
+ * `follow` is deliberately absent: "follow the wash symbols printed on the label" is
+ * imperative and is still a pointer.
+ */
+const CARE_IMPERATIVE_CLAUSE =
+  /^\s*(?:then\s+|please\s+|and\s+then\s+)?(?:wash|rinse|clean|wipe|dry|soak|scrub|polish|oil|season|launder|bleach|iron|tumble|dust|sanitize|sanitise|condition|hand-?wash|air-?dry|line-?dry|dry-?clean)\b/i;
+
+/**
+ * True when the sentence GIVES a care instruction rather than merely mentioning
+ * that care instructions exist.
+ *
+ * Fails OPEN for every instructive term — those are self-evidently instructions and
+ * vetoing them would cost real findings for no measured gain. The narrow branch runs
+ * only when the sole care term present is the meta one.
+ */
+function statesCareInstruction(sentence: string): boolean {
+  const n = normalize(sentence);
+  // An actual instruction anywhere in the sentence settles it.
+  if (termMatches(n, CARE_INSTRUCTIVE, false).length > 0) return true;
+  // Only `care instructions` matched. It counts when SOME clause carries a care
+  // action and is not itself a pointer — "…printed on the tag: rinse in cool water".
+  // A pointer clause ("included in the box", "if you follow…") proves nothing, and a
+  // clause with no action at all closes the bare placeholder "Care instructions: TBD."
+  // No pointer frame anywhere: unchanged, and it FAILS OPEN. Vetoing ordinary
+  // subject-less care copy would gut the row for no measured gain, and the known
+  // deverbal-noun residual ("Washing and care instructions are on the label.") lives
+  // on this branch, pinned in the corpus rather than closed.
+  if (!CARE_REFERENCE.test(sentence)) return CARE_DIRECTIVE.test(sentence);
+  // A pointer frame IS present, so the default is that the instructions are held
+  // somewhere we are not reading. Only a clause that is itself an instruction —
+  // imperative, verb first — overrides it.
+  // ⚠️ NO SECOND REFERENCE TEST ON THE CLAUSE. It looked like cheap extra safety and an
+  // independent pass measured it deleting ordinary instructions, because the objects a
+  // care verb takes are exactly the frame's vocabulary:
+  //     "Care instructions: polish with the INCLUDED beeswax balm."
+  //     "Care instructions: season the pan with the PROVIDED oil before first use."
+  // A verb-initial clause IS an instruction; what it acts on does not change that.
+  // `follow` is kept out of CARE_IMPERATIVE_CLAUSE precisely so that the one imperative
+  // that IS a pointer — "follow the wash symbols printed on the label" — still fails.
+  return sentence.split(CARE_CLAUSE_SPLIT).some((clause) => CARE_IMPERATIVE_CLAUSE.test(clause));
+}
+
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
   materials: {
     label: "Materials are stated",
@@ -420,13 +590,12 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
   care: {
     label: "Care or use instructions are stated",
     missingDetail: "no care or use instructions an AI buyer could read",
-    terms: [
-      // "how to use" and "instructions for use" were REMOVED: they matched "Learn
-      // how to use our rewards program in 3 steps", which is site chrome, not care.
-      "machine wash", "machine-wash", "hand wash", "hand-wash", "dishwasher safe", "dishwasher-safe",
-      "care instructions", "wipe clean", "tumble dry", "air dry", "spot clean", "do not bleach",
-      "hand wash only", "season before", "dry flat", "do not tumble", "iron on low",
-    ],
+    terms: CARE_TERMS,
+    // A term occurring is not the attribute being stated — the same rule
+    // `materials` and `dimensions` already carry. See the block above CARE_TERMS
+    // for the measured false positive this closes and why it is scoped to the one
+    // term that names the category rather than giving a member of it.
+    valueGuard: (s) => statesCareInstruction(s),
     // Categories where a buyer genuinely constrains on care. A pencil does not.
     // WORD-BOUNDED: without \b, "pan" matched "Company" and "Japanese", "pot" matched
     // "Potato", and "rug" matched "Arugula" and "Rugged" — so every brand named
@@ -487,6 +656,29 @@ function findAttributeSupport(evidence: EvidenceSentence[], spec: AttributeSpec)
 const PLACEHOLDER_TOKEN = "na|tbd|none|null|nil|unknown|unspecified|notapplicable|placeholder|sample|default|test|undefined|false|example|dummy|temp|blank|nomlpn|nompn|nogtin|nosku|yourmpnhere|yourgtinhere";
 /** Token(s), then optional trailing digits, then an optional "see …"/"on request" note. */
 const PLACEHOLDER_CORE = new RegExp(`^(?:${PLACEHOLDER_TOKEN})+\\d*(?:see\\w*|onrequest|tbc|comingsoon)?$`, "i");
+
+/**
+ * True when a raw GTIN string is a real, publishable GTIN.
+ *
+ * Extracted in v3.0 CP3 so the AUTHENTICATED path can pick a variant barcode using
+ * the identical rule the `identifiers` row judges it by. ENGINE_GAPS G-07 is explicit
+ * that these guards must apply to catalog values exactly as they do to JSON-LD ones —
+ * "an Admin API value is no more trustworthy than a JSON-LD one. Reuse, do not
+ * reimplement." A second copy of this arithmetic is how the two paths drift.
+ *
+ * Merchants publish GTINs with the separators printed on the barcode ("0-36000-29145-2",
+ * "400 638 133 3931"). Those are the same number, and rejecting them told stores that DO
+ * publish an identifier that they don't. Normalised HERE rather than in `isValidGtin`,
+ * which is shared with the feed validator — there the spec genuinely requires a
+ * digits-only value, so loosening it would weaken a different, correct check.
+ *
+ * All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the commonest
+ * "I had to put something in the field" value there is.
+ */
+export function isPublishableGtin(raw: string): boolean {
+  const digits = raw.trim().replace(/[\s-]/g, "");
+  return isValidGtin(digits) && !/^0+$/.test(digits);
+}
 
 /** True when this identifier value cannot identify anything. */
 export function isPlaceholderIdentifier(raw: string): boolean {
@@ -660,6 +852,58 @@ export function jsonLdProductCategory(html: string): string | null {
   return null;
 }
 
+// ---- v3.2 CP2: the merchant's OWN product_type, from the page --------------
+//
+// THE DEFECT. `fetchPublicProduct` skips the `.json` tier whenever the page's
+// JSON-LD is complete (`pageSufficient`), so `js` is null and `productType` falls
+// back to JSON-LD `Product.category` — which most themes omit, and which on one real
+// store was the breadcrumb root "Home". Measured on the coffee capture: 15 of 44
+// products were unclassifiable from what the engine exposes, so G-10's predicate had
+// only the title to work with and the standard declined to run on a third of stores.
+// The same null flows into `CATEGORY_CLAIMS` and `AttributeSpec.onlyFor`, so category
+// inference in PRODUCTION silently degraded to the title alone at the same rate.
+//
+// ⚠️ THE OBVIOUS FIX IS THE WRONG ONE. Fetching `/products/{handle}.json` anyway
+// would spend the extra request the tier ORDER exists to avoid — the v1.1 smoke run
+// measured `.json` returning 429 while HTML on the same hosts returned 200 — and it
+// would break every existing snapshot, because replay serves only URLs that were
+// actually recorded and on precisely these stores the engine never fetched it. A fix
+// that invalidates the corpus it has to be measured on is not a fix.
+//
+// The value is already in bytes we hold. Shopify's own analytics bootstrap emits the
+// merchant's `product_type` verbatim, and it is present on 43 of the 44 captured
+// coffee pages — measured before this was written, not assumed:
+//     var meta = {"product":{"id":…,"vendor":"…","type":"Coffee","handle":"…",…}};
+//
+// ⚠️ PARSED, NOT REGEXED OUT. `"type"` appears inside `variants[]` and elsewhere in
+// the same blob, so a bare `/"type"\s*:\s*"([^"]*)"/` reads whatever comes first and
+// would silently return a variant's field on a theme that reorders keys. The object
+// is valid JSON, so it is brace-balanced (string-aware, so a `}` inside a value
+// cannot end it early) and `JSON.parse`d, which also handles the `\/` and `&`
+// escapes Shopify emits. Bounded so a pathological page cannot make this expensive.
+const META_SCAN_LIMIT = 400_000;
+export function shopifyMetaProductType(html: string): string | null {
+  const at = html.search(/\bvar\s+meta\s*=\s*\{/);
+  if (at === -1) return null;
+  const open = html.indexOf("{", at);
+  let depth = 0, inStr = false, esc = false, end = -1;
+  const limit = Math.min(html.length, open + META_SCAN_LIMIT);
+  for (let i = open; i < limit; i++) {
+    const c = html[i]!;
+    if (esc) { esc = false; continue; }
+    if (inStr) { if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{") depth++;
+    else if (c === "}") { depth--; if (depth === 0) { end = i + 1; break; } }
+  }
+  if (end === -1) return null;                    // truncated or unbalanced: no guess
+  try {
+    const meta = JSON.parse(html.slice(open, end)) as { product?: { type?: unknown } };
+    const t = meta?.product?.type;
+    return typeof t === "string" && t.trim() ? t.trim() : null;
+  } catch { return null; }
+}
+
 export interface FetchDeps {
   /** `extraContentTypes` is an opt-in, per-call widening (the `.js` endpoint only). */
   fetchUrl?: (url: string, extraContentTypes?: RegExp[]) => Promise<{ status: number; contentType: string | null; body: string; finalUrl?: string }>;
@@ -786,6 +1030,7 @@ export async function fetchPublicProduct(
   let extracted: ExtractedPage | null = null;
   let ldDescription: string | null = null;
   let ldCategory: string | null = null;
+  let pageProductType: string | null = null;
   let saw404 = false;
   let sawNonJson = false;
 
@@ -805,6 +1050,9 @@ export async function fetchPublicProduct(
         extracted = extractPage(r.body);
         ldDescription = jsonLdProductDescription(r.body);
         ldCategory = jsonLdProductCategory(r.body);
+        // v3.2 CP2 — the merchant's own `product_type`, which otherwise dies here:
+        // when the page answers, the `.json` tier never runs and this value is lost.
+        pageProductType = shopifyMetaProductType(r.body);
         if (extracted.product?.name || extracted.product?.offer) diagnostics.answeredBy = "page";
       }
     } catch { /* the JSON tier is the fallback */ }
@@ -904,7 +1152,14 @@ export async function fetchPublicProduct(
   return {
     product: {
       origin: canonicalOrigin, handle, title: js?.title ?? ld?.name ?? extracted?.title ?? null,
-      vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? ldCategory, tags,
+      // PRECEDENCE IS G-10's OWN SIGNAL ORDER: `product_type` is authoritative, then
+      // JSON-LD category, then the breadcrumb (the last two both inside `ldCategory`).
+      // `pageProductType` sits with `js.product_type` rather than below `ldCategory`
+      // because it IS that field — the same value `/products.json` publishes, read
+      // from the merchant's own analytics payload instead of a second request. A
+      // theme-generated `Product.category` is the weaker signal of the two, and on a
+      // real store it was the breadcrumb root "Home".
+      vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? pageProductType ?? ldCategory, tags,
       descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,
       policyStatus: "not_fetched",
@@ -1068,9 +1323,34 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  *  input). Pure additions that cannot change an existing verdict don't need a bump. */
 export const ENGINE_VERSION = "v2.0.0";
 
+/** Identity of a published standard a run was executed against. Plain data by
+ *  design: the engine must not import anything from `standards/`, or the dependency
+ *  runs backwards and `standards/tsconfig.json` (which follows imports INTO src/)
+ *  becomes circular. The caller supplies id, version and content hash. */
+export interface StandardIdentity {
+  id: string;
+  version: string;
+  /** sha256 of the standard's canonical form — see standards/hash.ts. */
+  hash: string;
+}
+
 /** A stable fingerprint of a buyer task: same requirements ⇒ same version, in any
- *  process, forever. Deliberately covers only the fields that decide a verdict. */
-export function contractVersion(requirements: Requirement[]): string {
+ *  process, forever. Deliberately covers only the fields that decide a verdict.
+ *
+ *  v3.0 CP4 — WIDENED FOR STANDARDS, AND THE PRECEDENT IS RESPECTED. Two runs under
+ *  DIFFERENT versions of the same standard must not compare as though they asked the
+ *  same question, so the standard's identity has to be inside the fingerprint. But the
+ *  existing hash was deliberately built so pre-v2.3 contracts hash unchanged, and
+ *  widening the tuple unconditionally would have re-fingerprinted every stored contract
+ *  at once and made every saved before/after comparison refuse itself as "drifted".
+ *
+ *  So the identity is an OPTIONAL second argument and the tag changes with it:
+ *    - no standard  -> `c1-xxxxxxxx`, byte-identical to what it has always produced.
+ *    - a standard   -> `c1s-xxxxxxxx`, and the id+version+hash are inside the hashed
+ *                      string.
+ *  A standard-pinned contract therefore cannot collide with a generated one even by
+ *  hash accident, and the difference is legible to a human reading a stored row. */
+export function contractVersion(requirements: Requirement[], standard?: StandardIdentity): string {
   const canonical = requirements
     // `attribute` is appended ONLY when present, so every pre-v2.3 requirement
     // hashes to exactly the byte string it always did. Widening the tuple
@@ -1079,14 +1359,19 @@ export function contractVersion(requirements: Requirement[]): string {
     .map((r) => [r.kind, r.claim ?? "", r.capUsd ?? "", r.optionValue ?? "", ...(r.attribute ? [r.attribute] : [])].join(":"))
     .sort()
     .join("|");
+  // Prefixed rather than appended, so a standard's identity can never be confused
+  // with a requirement tuple by a reader of the canonical string.
+  const full = standard
+    ? `std:${standard.id}@${standard.version}#${standard.hash}||${canonical}`
+    : canonical;
   // FNV-1a — short, deterministic, dependency-free. Not a security hash: this
   // detects accidental drift, it does not defend against a forged contract.
   let h = 0x811c9dc5;
-  for (let i = 0; i < canonical.length; i++) {
-    h ^= canonical.charCodeAt(i);
+  for (let i = 0; i < full.length; i++) {
+    h ^= full.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
-  return `c1-${h.toString(16).padStart(8, "0")}`;
+  return `${standard ? "c1s" : "c1"}-${h.toString(16).padStart(8, "0")}`;
 }
 
 function inferClaims(p: PublicProduct): string[] {
@@ -1138,8 +1423,9 @@ function adjudicability(p: PublicProduct, r: Requirement): number {
     case "attribute": return p.evidence.length ? 3 : 0;
     // Structural and binary: readable whenever the page markup was readable.
     case "identifiers": return p.extracted ? 3 : 0;
-    // A row we could not reconstruct decides nothing, so it must not be able to
-    // pull a contract's ordering around either.
+    // Never generated — `unsupported` only ever arrives on a RECONSTRUCTED contract,
+    // which bypasses `buildBuyerTask` entirely. Scored 0 so that if a future path
+    // ever does feed one through generation, it is ranked out rather than shown.
     case "unsupported": return 0;
   }
 }
@@ -1180,7 +1466,16 @@ export function taskSubject(p: PublicProduct): string {
 
 /** Upper bound on rows in the table. v2.2 shipped 4–6; the measured consequence was
  *  a modal store with ONE genuine finding. The target (v2.3 CP2) is 8–12 tested with
- *  2–4 failing, and a failing SET that differs between stores. */
+ *  2–4 failing, and a failing SET that differs between stores.
+ *
+ *  ⚠️ v3.0 CP4 — THIS CAP BELONGS TO GENERATION, NOT TO EVALUATION, and it is scoped
+ *  to `buildBuyerTask` alone (its only reference). A standard has more entries than
+ *  ten and every one of them is a published assertion someone may cite, so truncating
+ *  a conformance run to the first ten would silently drop entries while the result
+ *  still claimed to have tested the standard. Supplied requirements bypass this by
+ *  construction — they never pass through `buildBuyerTask` — which is why no change
+ *  was needed here beyond saying so. Verified by a test that runs an 18-entry pinned
+ *  contract and asserts 18 rows come back. */
 const MAX_REQUIREMENTS = 10;
 
 export function buildBuyerTask(p: PublicProduct): { summary: string; requirements: Requirement[] } {
@@ -1301,9 +1596,11 @@ const accessDetail = (p: PublicProduct, whenReadable: string): string =>
   p.diagnostics?.degraded ? THROTTLED_DETAIL : whenReadable;
 
 /**
- * A row the engine could not re-ask, rendered as UNCHECKED.
+ * The honest row for a requirement this engine cannot ask (v3.1 CP1).
  *
- * `requires_store_access` is the right status and the wrong words on its own, so the
+ * `requires_store_access` is the right STATUS and the wrong WORDS: it is the engine's
+ * existing "we did not adjudicate this" bucket, it counts as neither pass nor fail,
+ * and `PASSING` excludes it — but its usual copy blames the store's visibility. This
  * detail deliberately blames US instead. The distinction the whole engine turns on is
  * finding vs accusation, and "we could not re-ask this question" must never be
  * rendered as "your store does not state this".
@@ -1322,7 +1619,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
   switch (req.kind) {
     // A row whose question could not be reconstructed. Reported, never silently
     // dropped: a contract that quietly loses a row the merchant already saw is the
-    // same class of dishonesty as a conformance list that drops entries.
+    // same class of dishonesty as a conformance list that drops entries (CP3).
     case "unsupported":
       return unsupportedRow(p, req, req.unsupportedReason ?? "no reason recorded");
     case "claim": {
@@ -1332,7 +1629,8 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // thrown inside an unguarded `.map()` in `runAuthenticatedTest`, which took
       // down the merchant's entire re-run over one row. Reconstruction is fixed in
       // `requirementFromLabel`; this branch stays defensive anyway, because a pinned
-      // contract is DATA that has been sitting in a database since before the fix.
+      // contract is DATA that has been sitting in a database since before the fix,
+      // and a compiled standard can name a claim key this build does not have.
       const fx = CLAIM_TERMS[req.claim!];
       if (!fx) return unsupportedRow(p, req, `unknown claim key '${req.claim}'`);
       const checked = textSurfaces(p);
@@ -1453,7 +1751,12 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const checked = textSurfaces(p);
       // Same PRODUCT-surface + lint filter as the claim and attribute rows. This row
       // searched `p.evidence` raw — no surface filter and not even the lint pre-filter —
-      // which was undocumented and unintentional. Two consequences: a subscription
+      // which was undocumented and unintentional.
+      //
+      // ✅ G-08 names `no_subscription` alongside `delivery` as reading `p.evidence`
+      // raw. That half was ALREADY CLOSED here by v2.9's policy-surface work, before
+      // the gap was written up; only `delivery` was still exposed at v3.0. Recorded so
+      // a future session reading ENGINE_GAPS.md does not go looking for a second fix. Two consequences: a subscription
       // sentence in the SHIPPING POLICY ("Subscribe & save on every delivery") is a
       // statement about the store's ordering options, not about whether THIS product can
       // be bought once; and an unlintable policy sentence could refuse the whole report.
@@ -1549,16 +1852,10 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const gtinRaw = (info?.gtin ?? "").trim();
       const mpnRaw = (info?.mpn ?? "").trim();
       const realMpn = !isPlaceholderIdentifier(mpnRaw);
-      // Merchants publish GTINs with the separators printed on the barcode
-      // ("0-36000-29145-2", "400 638 133 3931"). Those are the same number, and
-      // rejecting them told stores that DO publish an identifier that they don't.
-      // Normalised HERE rather than in `isValidGtin`, which is shared with the feed
-      // validator — there the spec genuinely requires a digits-only value, so
-      // loosening it would weaken a different, correct check.
-      const gtinDigits = gtinRaw.replace(/[\s-]/g, "");
-      // All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the
-      // commonest "I had to put something in the field" value there is.
-      const realGtin = isValidGtin(gtinDigits) && !/^0+$/.test(gtinDigits);
+      // Separator normalisation, check digit and the all-zeros rejection all live in
+      // `isPublishableGtin` so the authenticated path can select a variant barcode by
+      // the SAME rule this row judges it by (v3.0 CP3 / G-07).
+      const realGtin = isPublishableGtin(gtinRaw);
       const have = [realGtin ? "GTIN" : null, realMpn ? "MPN" : null].filter(Boolean) as string[];
       if (have.length) {
         return {
@@ -1575,7 +1872,25 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     }
     case "delivery": {
       const checked = textSurfaces(p);
-      const hit = findTimingSupport(p.evidence);
+      // G-08 — DROP ANY SENTENCE WE COULD NOT LEGALLY SHOW, exactly as the claim and
+      // attribute rows do. The claim linter runs over `evidenceQuote` as a final gate
+      // and BLOCKS THE WHOLE RESULT when it trips, returning errorKind "unreachable"
+      // for a store we read perfectly well. This row read `p.evidence` raw, so a
+      // shipping policy saying "Delivery guaranteed within 3 business days" refused
+      // the merchant's entire report — a flatly false statement about their store,
+      // reproduced as a fixture before this line existed (10 rows -> 0).
+      //
+      // This is the identical failure class the `warranty` requirement was DROPPED
+      // for in v2.3. The rule was already written in the attribute branch's comment
+      // and simply was not applied here: fail closed per ROW, never fail the report.
+      //
+      // ⚠️ NO SURFACE FILTER, and that asymmetry is deliberate rather than an
+      // oversight. Claim and attribute rows also exclude `shipping_policy` because a
+      // statement about ORDERS is not a statement about the PRODUCT. Delivery is the
+      // one requirement whose subject genuinely IS the shipping policy, so excluding
+      // it would delete the row's best evidence. Only the lint filter applies.
+      const quotable = p.evidence.filter((e) => lintStrings([e.text]).ok);
+      const hit = findTimingSupport(quotable);
       if (hit) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
@@ -1715,6 +2030,13 @@ export interface ProductTestResult {
   /** V2 CP2 — the token that carries THIS result through install, so the first
    *  authenticated screen is the merchant's own test continued. */
   testToken?: string;
+  /** v3.0 CP4 — which published standard this result was tested against, when one was
+   *  supplied. Absent on a generated task, which is the honest signal that the questions
+   *  came from the engine's heuristic rather than from a citable public text. */
+  standard?: StandardIdentity;
+  /** The contract fingerprint. Only set on a standard-pinned run; a generated public run
+   *  has never carried one and gaining one would change nothing but the payload. */
+  contractVersion?: string;
 }
 
 export interface RunOptions extends FetchDeps {
@@ -1722,6 +2044,23 @@ export interface RunOptions extends FetchDeps {
   force?: boolean;
   /** Injectable semantic-tier transport (tests never hit the network). */
   semantic?: SemanticDeps;
+  /**
+   * G-09 (v3.0 CP4) — A PINNED CONTRACT FOR THE PUBLIC PATH.
+   *
+   * Without this there is no way to ask a public URL a fixed set of questions: the
+   * requirements were generated per product by `buildBuyerTask`, which is exactly the
+   * vendor's private rubric a published standard exists to replace. `runAuthenticatedTest`
+   * has accepted a pinned contract since v2 CP2, so a standard could be executed against a
+   * CONNECTED store and not against a public URL — an asymmetry, not a design.
+   *
+   * The pure evaluator is shared, so this is plumbing. `buildBuyerTask` still runs: its
+   * `summary` is a linted, merchant-visible string and must stay.
+   */
+  requirements?: Requirement[];
+  /** Identity of the published standard `requirements` were compiled from. Without it a
+   *  conformance result cannot say WHICH text it was tested against, and the whole
+   *  standards position is decorative. Folded into `contractVersion`. */
+  standard?: StandardIdentity;
 }
 
 export async function runProductTest(url: string, deps: RunOptions = {}): Promise<ProductTestResult> {
@@ -1732,7 +2071,15 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
   };
 
   // Serve from cache first — the cheapest request is the one we never make.
-  const cacheKey = normalizeProductUrl(url);
+  //
+  // ⚠️ A PINNED RUN NEVER TOUCHES THE CACHE, in either direction. The cache is keyed
+  // on the normalised URL alone, so without this a standard-pinned result would be
+  // served to the public funnel for the same product — a merchant would be shown a
+  // conformance table against a standard they never asked about — and, in reverse, a
+  // conformance run would silently return a generated 10-row task. The key predates
+  // any notion of a contract; scoping the cache by contract fingerprint would be the
+  // richer fix and is not needed while pinned runs are measurement runs.
+  const cacheKey = deps.requirements?.length ? null : normalizeProductUrl(url);
   if (cacheKey) {
     const cached = getCachedResult(cacheKey, deps);
     if (cached) return cached;
@@ -1752,9 +2099,20 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     };
   }
 
-  const { summary, requirements } = buildBuyerTask(fetched);
+  // `buildBuyerTask` ALWAYS runs, even when a standard supplies the requirements: its
+  // `summary` is the first line the merchant reads, it is claim-linted, and a standard
+  // has no equivalent. Only the requirement LIST is replaced.
+  const generated = buildBuyerTask(fetched);
+  const pinned = deps.requirements?.length ? deps.requirements : null;
+  const requirements = pinned ?? generated.requirements;
+  const summary = generated.summary;
 
   // ONE extra fetch, only when the task actually needs delivery timing (§3.2).
+  //
+  // ⚠️ CONFIRMED, NOT ASSUMED (the gaps doc asked for exactly this): the trigger reads
+  // the EFFECTIVE requirement list, so a standard carrying a `delivery` entry still
+  // fetches the policy. Pinned by a test — had this kept reading `generated`, every
+  // standard's delivery row would have silently answered from product copy alone.
   let product = fetched;
   if (ctx && requirements.some((r) => r.kind === "delivery")) {
     product = await attachShippingPolicy(fetched, ctx);
@@ -1769,16 +2127,27 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
 
   // §4.2 — at most ONE "requires store access" row in the table. The rest move
   // below it, where they read as the install argument rather than a blind spot.
+  //
+  // ⚠️ v3.0 CP4 — THIS COLLAPSE IS DISABLED FOR A STANDARD-PINNED RUN, deliberately.
+  // It is a RENDERING rule, and it is the right one for a generated 10-row task: a
+  // column of blind spots reads as an accusation and buries the findings. A
+  // conformance result is a different artifact. A reader checking a page against
+  // ALS-COFFEE-1.0 wants every assertion the standard makes, each with its own
+  // verdict — a result that silently moves eight of ten entries "below the table" is
+  // not a conformance list, and a citation like "fails ALS-COFFEE-1.0-IDENT-001"
+  // cannot resolve against a row that was collapsed away. Nothing is hidden and
+  // `deferred` stays empty; the honest per-row states do all the work.
   const kindOf = (a: Assertion) => requirements.find((r) => r.label === a.label)?.kind;
   const deferred: Assertion[] = [];
-  let accessShown = 0;
-  const tableAssertions = assertions.filter((a) => {
-    if (a.status !== "requires_store_access") return true;
-    if (accessShown === 0) { accessShown++; return true; }
-    deferred.push(a);
-    return false;
-  });
-  assertions = tableAssertions;
+  if (!pinned) {
+    let accessShown = 0;
+    assertions = assertions.filter((a) => {
+      if (a.status !== "requires_store_access") return true;
+      if (accessShown === 0) { accessShown++; return true; }
+      deferred.push(a);
+      return false;
+    });
+  }
   const count = (s: AssertionStatus) => assertions.filter((a) => a.status === s).length;
 
   // FLOOR (v2.3 CP3): below a minimum of actually-read data, say so plainly.
@@ -1885,6 +2254,10 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     robotsStatus: product.diagnostics.robots,
     throttleSource: product.diagnostics.throttleSource,
     policyStatus: product.policyStatus,
+    // v3.0 CP4 — a conformance result must be able to name the exact text it was
+    // tested against, or a citation cannot resolve. Set only on a pinned run.
+    ...(pinned ? { contractVersion: contractVersion(requirements, deps.standard) } : {}),
+    ...(deps.standard ? { standard: deps.standard } : {}),
   };
   // A degraded result is deliberately NOT cached: it is missing surfaces we would
   // normally read, and pinning it for 7 days would turn a transient upstream block

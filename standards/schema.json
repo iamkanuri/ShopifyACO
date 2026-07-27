@@ -1,0 +1,997 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aislelens.example/standards/schema.json",
+  "title": "AisleLens Standard Grammar v1.0",
+  "description": "The grammar for an AisleLens category standard: a published, versioned, executable set of assertions about what a product page claims, with defined evidence rules. Validated by standards/validate.ts, which implements the subset of JSON Schema used here. Governance rules that a schema cannot express (the never-weaken rule's window semantics, hash canonicalisation) are enforced by standards/__tests__ and stated in SCHEMA.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grammar_version",
+    "standard_id",
+    "version",
+    "title",
+    "status",
+    "posture",
+    "applicability_envelope",
+    "out_of_scope",
+    "engine_contract",
+    "changelog",
+    "standard_hash",
+    "entries"
+  ],
+  "properties": {
+    "grammar_version": {
+      "const": "1.0",
+      "description": "The version of THIS grammar the standard is authored against. A standard is only readable against a stated grammar version."
+    },
+    "standard_id": {
+      "type": "string",
+      "pattern": "^ALS-[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$",
+      "description": "Stable family identifier, e.g. ALS-COFFEE. Never reused for a different category."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "MAJOR.MINOR. A MAJOR bump means a conformance result under the old version is not comparable to one under the new."
+    },
+    "title": { "type": "string", "minLength": 8 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "withdrawn"],
+      "description": "draft = authored, never applied to a real store by anyone. published = released for third-party application. withdrawn = must no longer be cited."
+    },
+    "posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["independently_applied", "statement"],
+      "properties": {
+        "independently_applied": {
+          "type": "boolean",
+          "description": "TRUE only once a second party has applied this standard without the authoring party's involvement. While FALSE, this document is a rubric with a versioned changelog, not a standard, and the statement below must say so in the published artifact."
+        },
+        "statement": { "type": "string", "minLength": 80 }
+      }
+    },
+    "applicability_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["covers", "excludes", "category_signals"],
+      "properties": {
+        "covers": { "type": "string", "minLength": 40 },
+        "excludes": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "category_signals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authoritative", "fallback", "never"],
+          "description": "Which product fields decide whether this standard applies. Mirrors the engine's own inference order, which is deliberate: a standard that classifies products differently from the engine that runs it will fire on the wrong products.",
+          "properties": {
+            "authoritative": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "fallback": { "type": "array", "items": { "type": "string" } },
+            "never": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "out_of_scope": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "why_not"],
+        "properties": {
+          "subject": { "type": "string", "minLength": 4 },
+          "why_not": { "type": "string", "minLength": 30 }
+        }
+      },
+      "description": "An explicit statement of what the standard does NOT attempt to adjudicate. Required and non-empty: a standard that does not bound itself will be read as bounding nothing."
+    },
+    "engine_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine_version", "contract_document", "requirement_kinds_used", "verified_against_commit"],
+      "properties": {
+        "engine_version": { "type": "string", "minLength": 3 },
+        "contract_document": { "type": "string", "minLength": 5 },
+        "requirement_kinds_used": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reqKind" },
+          "description": "Every engine requirement kind this standard binds to. Must be a subset of the kinds the engine exports."
+        },
+        "verified_against_commit": { "type": "string", "minLength": 7 }
+      }
+    },
+    "changelog": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/changelogRelease" }
+    },
+    "standard_hash": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "canonicalisation", "value"],
+      "description": "A content hash so a citation resolves to a specific text. Computed over the canonical form of the standard with this object removed — see SCHEMA.md and standards/hash.ts.",
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "canonicalisation": { "const": "json-sorted-keys-no-hash-field" },
+        "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "reqKind": {
+      "type": "string",
+      "enum": [
+        "claim",
+        "attribute",
+        "variant_option",
+        "price_under",
+        "in_stock",
+        "no_subscription",
+        "delivery",
+        "identifiers"
+      ],
+      "description": "The engine's complete ReqKind union (src/server/productTest.ts). There is no ninth kind."
+    },
+    "evidenceSurface": {
+      "type": "string",
+      "enum": [
+        "product_description",
+        "structured_data",
+        "product_faq",
+        "product_title",
+        "product_options",
+        "meta_description",
+        "shipping_policy",
+        "product_metafield",
+        "seo_description",
+        "variant_price",
+        "variant_availability",
+        "structured_identifier",
+        "external_register"
+      ],
+      "description": "The engine's nine QuotableSurface values, plus the three non-text structural surfaces it also reads (variant price, variant availability, JSON-LD identifier), plus external_register which the engine cannot read at all and which therefore forces tier=blocked."
+    },
+    "nonPublicSurface": {
+      "type": "string",
+      "enum": ["product_metafield", "seo_description", "external_register"],
+      "description": "Surfaces a free public test cannot reach. Named here so the constraint is data rather than prose."
+    },
+    "operator": {
+      "type": "string",
+      "enum": [
+        "is_stated",
+        "option_available",
+        "is_present",
+        "is_purchasable",
+        "no_blocking_condition",
+        "less_than",
+        "equals_one_of",
+        "matches_format",
+        "derived_from",
+        "resolves_against_register",
+        "includes_buyer_parameter"
+      ],
+      "description": "Closed operator vocabulary. A new operator is a grammar change (MAJOR), not an authoring choice. `includes_buyer_parameter` was ADDED in the course of authoring the device-accessory draft: every other operator compares page evidence against a value authored into the standard, while a compatibility assertion compares a merchant-published LIST against a value the BUYER supplies at test time. Entries using it must carry `buyer_parameter`."
+    },
+    "assertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "operator", "expected"],
+      "description": "The machine form of the question: attribute, operator, expected value.",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "minLength": 3,
+          "description": "The product property under assertion, in snake_case. Not an engine key — the engine binding lives in `binding`."
+        },
+        "operator": { "$ref": "#/$defs/operator" },
+        "expected": {
+          "description": "The expected value. `true` for presence operators; a string or array for value operators; an object for derived ones.",
+          "anyOf": [
+            { "type": "boolean" },
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "array", "items": { "type": "string" } },
+            { "type": "object" }
+          ]
+        },
+        "unit": { "type": "string", "description": "Where the expected value carries a unit." }
+      }
+    },
+    "registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolvable"],
+      "description": "Where the claim could resolve against an external register. Present on every entry; `resolvable: false` is a finding, not an omission.",
+      "properties": {
+        "resolvable": { "type": "boolean" },
+        "register_name": { "type": ["string", "null"] },
+        "operator": { "type": ["string", "null"], "description": "Who runs the register." },
+        "lookup_key": {
+          "type": ["string", "null"],
+          "description": "The key a lookup needs. If a product page does not carry this key, the register cannot verify the page's claim however public it is."
+        },
+        "lookup_method": { "type": ["string", "null"] },
+        "resolves_to_level": {
+          "type": ["string", "null"],
+          "enum": ["product", "facility", "operation", "company", "farm_or_group", "process_licensee", null],
+          "description": "The level the register resolves to. A company-level record cannot verify a specific bag's claim, and conflating the two is the most likely way a registry assertion overclaims."
+        },
+        "public_free": { "type": ["boolean", "null"] },
+        "machine_queryable": { "type": ["boolean", "null"] },
+        "engine_can_perform": {
+          "type": "boolean",
+          "description": "Whether the AisleLens engine can perform this lookup today. Always false in grammar v1.0 — there is no register client. A true value here without an engine change is a false statement."
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "grounding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["demand_basis", "citations"],
+      "description": "Why this question is in the standard. MANDATORY. No question enters because it sounds plausible.",
+      "properties": {
+        "demand_basis": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "regulatory_requirement",
+              "certification_body_material",
+              "trade_body_definition",
+              "buyer_community_evidence",
+              "consumer_buying_guide",
+              "retailer_faq_pattern",
+              "comparison_guide_convention",
+              "documented_complaint_pattern",
+              "trade_convention_only"
+            ]
+          },
+          "description": "`trade_convention_only` is a WARNING label: it marks a question the trade cares about and shoppers may not, and it must never be the sole basis for an executable entry."
+        },
+        "citations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "kind", "establishes"],
+            "properties": {
+              "source": { "type": "string", "minLength": 4 },
+              "url": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "regulator",
+                  "legal_instrument",
+                  "certification_body",
+                  "trade_body",
+                  "buyer_community",
+                  "consumer_guide",
+                  "trade_press",
+                  "academic",
+                  "retailer_help_centre",
+                  "internal_measurement"
+                ]
+              },
+              "establishes": { "type": "string", "minLength": 15 }
+            }
+          }
+        },
+        "refutation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["challenged", "verdict"],
+          "description": "What the independent refuting pass said. Recorded in the published artifact so a reader can see the grounding was attacked, not just asserted.",
+          "properties": {
+            "challenged": { "type": "string", "minLength": 20 },
+            "verdict": {
+              "type": "string",
+              "enum": ["survived", "narrowed", "demoted", "dropped"]
+            },
+            "resolution": { "type": "string" }
+          }
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["req_kind", "label", "passing_states"],
+      "description": "The engine Requirement this entry compiles to. Required for tier=executable and forbidden otherwise — an unbound `executable` claim is unverifiable, and a bound `advisory` one is a lie about what gets run.",
+      "properties": {
+        "req_kind": { "$ref": "#/$defs/reqKind" },
+        "claim": { "type": "string", "description": "Engine CLAIM_TERMS key. Required when req_kind=claim." },
+        "attribute": { "type": "string", "description": "Engine ATTRIBUTE_SPECS key. Required when req_kind=attribute." },
+        "option_value": { "type": "string", "description": "Required when req_kind=variant_option." },
+        "cap_usd": { "type": "number", "description": "Required when req_kind=price_under." },
+        "label": {
+          "type": "string",
+          "minLength": 4,
+          "description": "The string the engine renders. LINTED by src/server/claimLinter.ts, and a violation returns the merchant's ENTIRE report as unreachable. See SCHEMA.md §6."
+        },
+        "passing_states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["pass_evidenced", "pass_no_blocking"]
+          },
+          "description": "Which engine states count as conformant FOR THIS ENTRY. `pass_no_blocking` is an absence-based inference and is only correct for req_kind=no_subscription; listing it anywhere else claims proof the engine did not produce."
+        }
+      }
+    },
+    "predictedDiscrimination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["predicted_fail_rate_band", "reasoning", "measured"],
+      "description": "A HYPOTHESIS about how well the assertion discriminates, never a fact. Target band 15-85%: a requirement that fails for everyone and one that fails for no one carry the same information, which is none.",
+      "properties": {
+        "predicted_fail_rate_band": {
+          "type": "string",
+          "pattern": "^[0-9]{1,3}-[0-9]{1,3}%$"
+        },
+        "in_target_band": { "type": "boolean" },
+        "reasoning": { "type": "string", "minLength": 40 },
+        "measured": {
+          "const": false,
+          "description": "Always false in v1.0. This standard has never been run against a sample of real stores. A true value requires a recorded measurement and a changelog entry."
+        }
+      }
+    },
+    "adversarial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attack", "outcome"],
+      "description": "The result of attacking THIS entry: store copy that satisfies the letter and violates the spirit. Required for tier=executable. An assertion that has not been attacked is an assertion that has not been tested.",
+      "properties": {
+        "attack": {
+          "type": "string",
+          "minLength": 25,
+          "description": "Verbatim copy that would pass the assertion while misleading a buyer."
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "tightened_accepted_evidence",
+            "enriched_insufficient_evidence",
+            "demoted_to_advisory",
+            "survived_unchanged",
+            "narrowed_applicability"
+          ]
+        },
+        "resolution": { "type": "string" },
+        "residual_risk": {
+          "type": "string",
+          "description": "What the attack can still achieve after the fix. Honest residual risk beats a claim of immunity."
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "question",
+        "assertion",
+        "tier",
+        "applicability",
+        "accepted_evidence",
+        "insufficient_evidence",
+        "conflict_rules",
+        "public_inspectable",
+        "evidence_surfaces",
+        "registry",
+        "predicted_discrimination",
+        "consumer_note",
+        "merchant_remediation",
+        "grounding"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ALS-[A-Z][A-Z0-9]*-[0-9]+\\.[0-9]+-[A-Z][A-Z0-9-]*-[0-9]{3}$",
+          "description": "Stable, citable, versioned: ALS-{CATEGORY}-{VERSION}-{CLASS}-{NNN}. An agency must be able to write 'your PDPs fail ALS-COFFEE-1.0-DECAF-002' in a client report and have it resolve."
+        },
+        "question": {
+          "type": "string",
+          "minLength": 12,
+          "description": "Plain language, as a shopper would ask it. This is the consumer-facing half of the document and it is not optional for blocked or advisory entries."
+        },
+        "assertion": { "$ref": "#/$defs/assertion" },
+        "buyer_parameter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "description"],
+          "description": "A value the BUYER supplies at test time rather than one authored into the standard. Required when the operator is `includes_buyer_parameter` and forbidden otherwise. This field exists because the grammar's original assumption — that an assertion's expected value is fixed when the standard is written — is false for any compatibility claim, where the question is whether the buyer's own model appears in the seller's list.",
+          "properties": {
+            "name": { "type": "string", "minLength": 3 },
+            "description": { "type": "string", "minLength": 20 },
+            "example": { "type": "string" }
+          }
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["executable", "advisory", "blocked", "not_discriminating"],
+          "description": "executable = the engine runs it today. advisory = a real buyer question public data cannot adjudicate; published, never tested. blocked = should be executable, the engine cannot yet; cross-referenced to ENGINE_GAPS.md. not_discriminating = the engine COULD run it and deliberately does not, because the predicted failure rate is outside the 15-85% band and the row would carry no information; published so a reader can see it was considered."
+        },
+        "applicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["applies_when"],
+          "description": "When the entry applies. A decaf-method assertion must not fire on caffeinated coffee — an entry asked of the wrong product is the cruelty-free failure with a version number on it.",
+          "properties": {
+            "applies_when": { "type": "string", "minLength": 15 },
+            "does_not_apply_when": { "type": "array", "items": { "type": "string" } },
+            "signal": {
+              "type": "string",
+              "description": "How applicability is decided from readable data. `undecidable_from_public_data` is an honest value and forces the entry out of tier=executable unless the engine gates it."
+            }
+          }
+        },
+        "accepted_evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["surface", "form"],
+            "properties": {
+              "surface": { "$ref": "#/$defs/evidenceSurface" },
+              "form": { "type": "string", "minLength": 10 },
+              "example": { "type": "string" }
+            }
+          }
+        },
+        "insufficient_evidence": {
+          "type": "array",
+          "minItems": 1,
+          "description": "What explicitly does NOT count. THE DIFFERENTIATOR FIELD. This is where the standard states that 'chemical-free' does not establish Swiss Water process. Never empty — the schema forbids it and the test suite re-checks it.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["form", "why_not"],
+            "properties": {
+              "form": { "type": "string", "minLength": 3 },
+              "why_not": { "type": "string", "minLength": 20 }
+            }
+          }
+        },
+        "conflict_rules": {
+          "type": "array",
+          "minItems": 1,
+          "description": "What to do when two surfaces disagree. At minimum one rule, because two surfaces disagreeing is the normal case, not the exception.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["when", "resolution"],
+            "properties": {
+              "when": { "type": "string", "minLength": 10 },
+              "resolution": { "type": "string", "minLength": 10 },
+              "precedence": { "type": "array", "items": { "$ref": "#/$defs/evidenceSurface" } }
+            }
+          }
+        },
+        "public_inspectable": {
+          "type": "boolean",
+          "description": "Whether a free public test can adjudicate it. TRUE requires that no accepted_evidence surface is in nonPublicSurface — enforced by the test suite, not by the schema."
+        },
+        "evidence_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceSurface" },
+          "description": "Denormalised surface list, so surface constraints are checkable without walking accepted_evidence. Must equal the set of surfaces in accepted_evidence."
+        },
+        "registry": { "$ref": "#/$defs/registry" },
+        "predicted_discrimination": { "$ref": "#/$defs/predictedDiscrimination" },
+        "consumer_note": {
+          "type": "string",
+          "minLength": 40,
+          "description": "Why this matters to a buyer and how they could check it manually. The half of the document a shopper reads."
+        },
+        "merchant_remediation": {
+          "type": "string",
+          "minLength": 40,
+          "description": "Where truthful evidence should be exposed, in the merchant's own store. Must be a placement instruction, never an instruction to state something that may not be true."
+        },
+        "grounding": { "$ref": "#/$defs/grounding" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "blocked_by": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^G-[0-9]{2}$" },
+          "description": "ENGINE_GAPS.md identifiers. Required and non-empty when tier=blocked."
+        },
+        "adversarial": { "$ref": "#/$defs/adversarial" },
+        "known_gaps": {
+          "type": "array",
+          "description": "Pinned adversarial-corpus defects whose shape this entry collides with. An entry that collides with a pinned gap is knowingly unreliable and says so in the published document.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["corpus_case", "effect"],
+            "properties": {
+              "corpus_case": { "type": "string", "minLength": 5 },
+              "effect": { "type": "string", "enum": ["false_pass", "false_fail"] },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "pass_means": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["establishes", "does_not_establish"],
+          "description": "What a conformant result licenses a reader to conclude, and what it does not. Required for tier=executable. This is the field that stops 'verified against ALS-COFFEE-1.0-CERT-ORG-001' being read as 'certified organic'.",
+          "properties": {
+            "establishes": { "type": "string", "minLength": 25 },
+            "does_not_establish": { "type": "string", "minLength": 25 }
+          }
+        },
+        "notes": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "tier": { "const": "executable" } }, "required": ["tier"] },
+          "then": { "required": ["binding", "adversarial", "pass_means"] }
+        },
+        {
+          "if": { "properties": { "tier": { "const": "blocked" } }, "required": ["tier"] },
+          "then": { "required": ["blocked_by"] }
+        },
+        {
+          "if": { "properties": { "tier": { "const": "advisory" } }, "required": ["tier"] },
+          "then": { "not": { "required": ["binding"] } }
+        },
+        {
+          "if": { "properties": { "tier": { "const": "not_discriminating" } }, "required": ["tier"] },
+          "then": { "not": { "required": ["binding"] } }
+        },
+        {
+          "if": {
+            "properties": { "assertion": { "properties": { "operator": { "const": "includes_buyer_parameter" } }, "required": ["operator"] } },
+            "required": ["assertion"]
+          },
+          "then": { "required": ["buyer_parameter"] }
+        }
+      ]
+    },
+    "changelogRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "date", "summary", "changes"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "summary": { "type": "string", "minLength": 20 },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/change" }
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_id", "change_type", "rationale"],
+      "properties": {
+        "entry_id": { "type": "string", "minLength": 3 },
+        "change_type": {
+          "type": "string",
+          "enum": [
+            "added",
+            "editorial",
+            "clarified",
+            "strengthened",
+            "weakened",
+            "demoted",
+            "withdrawn"
+          ],
+          "description": "`weakened` = the same store copy that failed before now passes. `demoted` = executable -> advisory/blocked, which has the same effect on a merchant who failed it. `strengthened` = copy that passed before now fails, which is always safe to ship."
+        },
+        "rationale": { "type": "string", "minLength": 25 },
+        "weakening_attestation": {
+          "$ref": "#/$defs/weakeningAttestation",
+          "description": "REQUIRED for change_type weakened or demoted. See the never-weaken rule in SCHEMA.md."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "change_type": { "enum": ["weakened", "demoted"] } },
+            "required": ["change_type"]
+          },
+          "then": { "required": ["weakening_attestation"] }
+        }
+      ]
+    },
+    "vocabularyCitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "kind", "establishes"],
+      "description": "Grounding for a TERM. Deliberately a separate definition from `#/$defs/grounding`'s citation, because the question is different: an entry's grounding asks whether a SHOPPER asks this question, while a term's grounding asks whether a STORE writes this string. A term invented because it sounds like something a store would write is how a vocabulary becomes plausible and wrong.",
+      "properties": {
+        "source": { "type": "string", "minLength": 4 },
+        "url": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "regulator",
+            "legal_instrument",
+            "certification_body",
+            "trade_body",
+            "buyer_community",
+            "consumer_guide",
+            "trade_press",
+            "academic",
+            "retailer_help_centre",
+            "process_licensor",
+            "search_result_snippet",
+            "internal_measurement"
+          ],
+          "description": "`process_licensor` and `search_result_snippet` exist only here. A licensor's own page is the authority on how it permits its mark to be written and is NOT independent evidence that the process was used. A search-result snippet is how store copy is observed without fetching a store."
+        },
+        "establishes": { "type": "string", "minLength": 15 }
+      }
+    },
+    "supportingTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "grounding", "positive_examples"],
+      "description": "One string whose presence, on an accepted surface, in a sentence that clears the engine's aboutness gates, is accepted as the claim being stated.",
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Must already be in engine-normalised form: lower case, single spaces, no leading or trailing whitespace, ASCII hyphens. Enforced behaviourally by standards/vocabulary.ts rule V6, which runs the engine's own `normalize` over it — a term that normalises to something else can never match and would be a silent no-op."
+        },
+        "orthography": {
+          "type": "string",
+          "enum": ["canonical", "symbol_variant", "abbreviation", "hyphen_variant", "spelling_variant"],
+          "description": "Why this term exists alongside another. `symbol_variant` is the (R)/(TM) case: the engine's `normalize` does NOT strip trademark symbols, so `swiss water process` cannot match `Swiss Water(R) Process` — and a registered mark is exactly what a licensed seller writes. See VOCABULARY_MECHANISM.md section 3."
+        },
+        "grounding": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyCitation" }
+        },
+        "positive_examples": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Sentences a store might really write that MUST produce a pass. Executed by the validator: a term whose own examples do not pass is a term that does not work. This is also what forces symbol variants to be enumerated, because an example written with a registered-mark symbol fails until a term matches it.",
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "violatingTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "grounding", "contradicting_examples", "must_not_contradict_examples"],
+      "description": "One string whose presence means the page states the CONTRARY. Checked BEFORE support and winning outright (src/server/productTest.ts:1105), so a wrong violating term does not merely lose a pass — it prints `Your public copy states the opposite of this requirement` beside the merchant's own compliant sentence.",
+      "properties": {
+        "term": { "type": "string", "minLength": 2 },
+        "grounding": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyCitation" }
+        },
+        "contradicting_examples": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Sentences that MUST be reported as contradicting. Executed by the validator.",
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "must_not_contradict_examples": {
+          "type": "array",
+          "minItems": 1,
+          "description": "THE VIOLATION ATTACK, MADE A REQUIRED FIELD. Sentences in which a COMPLIANT store mentions this substance or method — the free-from constructions, the denials, the scoped negatives — and which must therefore NOT be reported as contradicting. Executed by rule V13.\n\nThis field exists because of a measured defect. A bare violating term `methylene chloride` flags the store that writes `Methylene chloride free decaf.`: the term matches, no supporting term overlaps it, and `free` is not in the engine's closed negator list. The fix is to FRAME the violating term — `decaffeinated with methylene chloride` rather than the bare substance — which is the same lesson the engine already learned for attributes, where `materials` uses composition frames because the bare noun `aluminum` would have matched `aluminum-free`. The lesson was never carried across to claims.\n\nAuthored rather than auto-generated, so a vocabulary is not failed by a construction no seller would ever write — the precedent being the origin-attribute removal, where a narrowing justified by invented copy cost 17 true statements per 0 false passes gained.",
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "insufficientProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "example", "hazard_class", "why_not"],
+      "description": "THE NEGATIVE TEST SUITE, AND THE POINT OF THE FORMAT. Built first, executed by the validator: every example must fail to produce a pass. A vocabulary whose insufficient set does not fail against its own terms is INVALID, not merely under-documented.",
+      "properties": {
+        "form": { "type": "string", "minLength": 3 },
+        "example": {
+          "type": "string",
+          "minLength": 10,
+          "description": "A whole sentence a real store might write. Not a fragment: the engine matches sentence-scoped, so a fragment tests nothing the engine would ever see."
+        },
+        "hazard_class": {
+          "type": "string",
+          "enum": [
+            "misleading_synonym",
+            "adjacent_vocabulary",
+            "aspiration",
+            "placeholder",
+            "negation",
+            "wrong_subject",
+            "third_party_speech",
+            "merchant_controlled_string",
+            "wrong_unit_subject"
+          ],
+          "description": "The near-miss classes from SCHEMA.md section 2, plus `adjacent_vocabulary` — a DIFFERENT domain vocabulary that legitimately uses the same words. Coffee forced that one: `Process: Washed` names the post-harvest treatment and a decaffeination check keyed on `process` reads a drying method as a solvent disclosure."
+        },
+        "why_not": { "type": "string", "minLength": 20 },
+        "expected_outcome": {
+          "type": "string",
+          "enum": ["not_proven", "contradicted", "passes_known_gap"],
+          "description": "The EXACT outcome the validator requires, defaulting to `not_proven`. Asserting an exact outcome rather than merely `does not pass` is deliberate and was forced by a measured defect: a probe can be reported as CONTRADICTING, which prints `Your public copy states the opposite of this requirement` beside the merchant's own sentence — strictly worse for a compliant store than a missed pass, and invisible to a rule that only checks for a pass. `contradicted` is the correct expectation for a negation-class probe where the page really does state the contrary. `passes_known_gap` means the honest answer is that it must not pass and the engine cannot yet refuse it, so the validator requires it to PASS and fails if it ever stops — the adversarial corpus's `actual` vs `correct` mechanism (test/adversarialCorpus.test.ts) ported to vocabularies. A probe pinned that way is a debt with a receipt, never an accepted behaviour."
+        },
+        "gap_note": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Required when expected_outcome is `passes_known_gap`: what makes it uncloseable, and what would close it."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "expected_outcome": { "const": "passes_known_gap" } },
+            "required": ["expected_outcome"]
+          },
+          "then": { "required": ["gap_note"] }
+        }
+      ]
+    },
+    "vocabularyChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_type", "detail", "rationale"],
+      "properties": {
+        "change_type": {
+          "type": "string",
+          "enum": [
+            "vocabulary_added",
+            "supporting_term_added",
+            "supporting_term_removed",
+            "violating_term_added",
+            "violating_term_removed",
+            "insufficient_probe_added",
+            "insufficient_probe_removed",
+            "example_added",
+            "editorial",
+            "clarified",
+            "withdrawn"
+          ],
+          "description": "THE NEVER-WEAKEN RULE, EXTENDED TO TERMS. Three of these weaken: `supporting_term_added` (copy that failed now passes), `violating_term_removed` (copy reported as contradicting no longer is), `insufficient_probe_removed` (a form the standard refused is no longer refused). Each requires a weakening_attestation. Their opposites — removing a supporting term, adding a violating term, adding an insufficient probe — are STRENGTHENING and always safe to ship."
+        },
+        "detail": { "type": "string", "minLength": 3, "description": "The term or probe form affected." },
+        "rationale": { "type": "string", "minLength": 25 },
+        "weakening_attestation": { "$ref": "#/$defs/weakeningAttestation" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "change_type": {
+                "enum": ["supporting_term_added", "violating_term_removed", "insufficient_probe_removed"]
+              }
+            },
+            "required": ["change_type"]
+          },
+          "then": { "required": ["weakening_attestation"] }
+        }
+      ]
+    },
+    "vocabularyRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "date", "summary", "changes"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "summary": { "type": "string", "minLength": 20 },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyChange" }
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A VOCABULARY: the term list behind one claim key, published WITH a versioned standard and reviewed AS a standard. The alternative considered and rejected was a `claimVocabulary` override in RunOptions, which would let a term list reach a merchant without any of the review below. See VOCABULARY.md.",
+      "required": [
+        "vocabulary_grammar_version",
+        "standard_id",
+        "standard_version",
+        "claim_key",
+        "title",
+        "status",
+        "scope",
+        "serves",
+        "accepted_surfaces",
+        "matching",
+        "supporting_terms",
+        "violating_terms",
+        "insufficient_evidence",
+        "limits",
+        "review",
+        "changelog",
+        "vocabulary_hash"
+      ],
+      "properties": {
+        "vocabulary_grammar_version": { "const": "1.0" },
+        "standard_id": { "type": "string", "pattern": "^ALS-[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$" },
+        "standard_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "claim_key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "The engine claim key this vocabulary defines. MUST NOT collide with a built-in CLAIM_TERMS key — a registry that can shadow a reviewed built-in list is the (a)-option hazard reintroduced through the back door. Checked by standards/vocabulary.ts."
+        },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "title": { "type": "string", "minLength": 8 },
+        "status": { "type": "string", "enum": ["draft", "published", "withdrawn"] },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["establishes", "does_not_establish"],
+          "description": "The pass_means of a vocabulary. A term list can establish that a page CLAIMED something; it can never establish that the claim is true. A trademark register resolves ownership of a mark and says nothing about licensees, so even a perfectly matched process name is a claim of fact, not a fact.",
+          "properties": {
+            "establishes": { "type": "string", "minLength": 25 },
+            "does_not_establish": { "type": "string", "minLength": 25 }
+          }
+        },
+        "serves": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The standard entries this vocabulary is built for, and HONESTLY how far it takes each one. `narrows` is the common and important case: a claim key answers `is a term present`, so an entry whose operator is equals_one_of is not fully unblocked by a vocabulary alone.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entry_id", "effect", "note"],
+            "properties": {
+              "entry_id": { "type": "string", "pattern": "^ALS-[A-Z][A-Z0-9]*-[0-9]+\\.[0-9]+-[A-Z][A-Z0-9-]*-[0-9]{3}$" },
+              "effect": {
+                "type": "string",
+                "enum": ["unblocks", "narrows", "supports_refusal_only"],
+                "description": "`unblocks` = the entry as written becomes executable. `narrows` = a WEAKER sibling assertion becomes executable and the entry as written stays blocked. `supports_refusal_only` = the vocabulary enforces the entry's insufficient set by exclusion without making its positive assertion executable."
+              },
+              "note": { "type": "string", "minLength": 20 },
+              "still_blocked_by": { "type": "array", "items": { "type": "string", "pattern": "^G-[0-9]{2}$" } }
+            }
+          }
+        },
+        "accepted_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceSurface" },
+          "description": "The surfaces on which a match should be accepted. DECLARED, NOT ENFORCED: the engine's claim branch matches on all six public surfaces including product_title and product_options, both merchant-controlled, and offers no way to restrict them. Measured in VOCABULARY_MECHANISM.md section 6. The gap is filed as part of G-06 rather than papered over."
+        },
+        "matching": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["whole_word", "case_sensitive", "engine_call_site"],
+          "properties": {
+            "whole_word": {
+              "const": true,
+              "description": "NOT a default with an opt-out. The engine hardcodes `{ wholeWord: true }` at the claim call site, so a vocabulary requesting anything else would be describing behaviour the engine cannot produce. The task brief specified a justification field for turning this off; there is nothing to turn off."
+            },
+            "case_sensitive": { "const": false },
+            "engine_call_site": { "type": "string", "minLength": 10 }
+          }
+        },
+        "supporting_terms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/supportingTerm" }
+        },
+        "violating_terms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/violatingTerm" },
+          "description": "MAY be empty, and empty is often correct: for most `is a method stated` questions there is no sentence that states the contrary, and absence is not a contradiction. An empty list requires `violating_terms_empty_rationale`, so emptiness is a decision on the record rather than an omission — the same discipline as registry.resolvable being a finding."
+        },
+        "violating_terms_empty_rationale": { "type": "string", "minLength": 40 },
+        "insufficient_evidence": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/insufficientProbe" }
+        },
+        "limits": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The false-fail and false-pass channels this vocabulary knows it has and cannot close from the standard side. Honest residual risk beats a claim of immunity.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["limit", "direction", "cause"],
+            "properties": {
+              "limit": { "type": "string", "minLength": 15 },
+              "direction": { "type": "string", "enum": ["false_pass", "false_fail"] },
+              "cause": { "type": "string", "minLength": 15 },
+              "example": { "type": "string" }
+            }
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "attacker", "refuter", "adversarial_findings"],
+          "description": "The review gate from VOCABULARY_REVIEW.md, recorded in the artifact. `state` is a completion state, not a boolean: `incomplete` BLOCKS publication rather than reading as clean, per src/measure/completion.ts.",
+          "properties": {
+            "state": { "type": "string", "enum": ["verified_clean", "defects_found_and_resolved", "incomplete"] },
+            "attacker": { "type": "string", "minLength": 3 },
+            "refuter": { "type": "string", "minLength": 3 },
+            "adversarial_findings": {
+              "type": "array",
+              "description": "What the attack on THIS vocabulary found. An empty array is permitted only with state `incomplete` — a vocabulary whose attacker found nothing had an attacker who was not trying.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attack", "outcome", "resolution"],
+                "properties": {
+                  "attack": { "type": "string", "minLength": 20 },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "term_removed",
+                      "term_narrowed",
+                      "term_added_as_variant",
+                      "moved_to_insufficient",
+                      "limit_recorded",
+                      "survived_unchanged"
+                    ]
+                  },
+                  "resolution": { "type": "string", "minLength": 15 },
+                  "residual_risk": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "changelog": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/vocabularyRelease" }
+        },
+        "vocabulary_hash": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "canonicalisation", "value"],
+          "properties": {
+            "algorithm": { "const": "sha256" },
+            "canonicalisation": { "const": "json-sorted-keys-no-hash-field" },
+            "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "weakeningAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior_failures_exist", "remediation", "attested_by", "attested_date"],
+      "description": "THE ONE GOVERNANCE RULE HONOURED FOREVER. The changelog may never show an assertion being weakened in the same window a merchant failed it: that single event retroactively poisons every result the standard ever produced. If failures exist under the prior form, the weakening cannot ship as a silent revision — the affected results must be reissued or invalidated.",
+      "properties": {
+        "prior_failures_exist": {
+          "type": "boolean",
+          "description": "Were any conformance results issued under the prior form that recorded a failure of this entry?"
+        },
+        "remediation": {
+          "type": "string",
+          "enum": ["not_applicable_no_failures", "results_reissued", "results_invalidated"],
+          "description": "`not_applicable_no_failures` is ONLY valid when prior_failures_exist is false. Enforced by standards/__tests__ because JSON Schema cannot express the cross-field dependency cleanly."
+        },
+        "affected_result_count": { "type": ["number", "null"] },
+        "attested_by": { "type": "string", "minLength": 2 },
+        "attested_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

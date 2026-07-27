@@ -1,0 +1,5 @@
+{
+  "//": "Typecheck scoped to standards/ ONLY. The root tsconfig's `include` is [\"src/**/*.ts\"], so it never sees this directory on its own — it follows imports into src/, which is how a contract mismatch with the engine becomes a type error here. WIRED IN v3.0 CP0: `npm run typecheck` now runs this project as its second half, and `npm test` globs standards/__tests__/*.test.ts, because the merge on its own protected nothing. Before that wiring an engine change could break every standard and both gates stayed green — the coupling was the whole point of merging and it did not exist. Do not un-wire it.",
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"]
+}

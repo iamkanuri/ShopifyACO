@@ -330,15 +330,192 @@ const CARE: Case[] = [
     "Care for a bundled accessory, quoted as care for the product. Nothing in the pipeline reads " +
     "the subject `The included tote bag`."),
   C("Care instructions: TBD.", attr("care"), "not_proven", "placeholder",
-    "A placeholder. The term `care instructions` matches and nothing checks for an actual instruction.",
-    "pass_evidenced"),
+    "A placeholder. CLOSED in v3.0 CP1 — and this is the MUTATION ANCHOR for the " +
+    "CARE_DIRECTIVE half of `statesCareInstruction`: no reference frame fires here, so " +
+    "only the requirement that a meta-term sentence carry an actual care ACTION closes it. " +
+    "Delete that half and this case passes again."),
   C("Full care instructions are included in the box.", attr("care"), "not_proven", "placeholder",
-    "A POINTER to instructions is not instructions an AI buyer can read — which is the whole claim.",
-    "pass_evidenced"),
+    "A POINTER to instructions is not instructions an AI buyer can read — which is the whole " +
+    "claim. CLOSED in v3.0 CP1 by CARE_REFERENCE (`included`)."),
   C("Do not machine wash.", attr("care"), "pass_evidenced", "negation",
     "A prohibition IS a care instruction. The negation guard, correct elsewhere, is wrong here — " +
-    "`do not tumble` and `do not bleach` are already in the term list for this reason.",
+    "`do not tumble` and `do not bleach` are already in the term list for this reason. " +
+    "NOT the valueGuard's doing: `statesCareInstruction` returns true here (an instructive term " +
+    "is present) and the veto happens earlier, in `findSupport`'s cross-term negation rule. " +
+    "Verified against the pre-v3.0 engine, which fails it identically.",
     "not_proven"),
+
+  // ── v3.0 CP1 — the `care` valueGuard ───────────────────────────────────────
+  // Every sentence a comment in productTest.ts names as a must-pass owes a case
+  // here, in the same commit. This is that debt paid.
+  C("Care instructions: machine wash cold.", attr("care"), "pass_evidenced", "canonical-true",
+    "THE LONGEST-MATCH TRAP, and the reason `statesCareInstruction` reads the whole sentence " +
+    "instead of `matchedTerm`. `termMatches` sorts longest-first, so the term handed to the " +
+    "valueGuard here is the META one (`care instructions`, 17) and not `machine wash` (12). A " +
+    "guard that branched on the matched term would delete this real instruction — the over-tight " +
+    "shape that cost v2.9's first quantity guard four real positives."),
+  C("Care instructions: store in a cool dry place.", attr("care"), "pass_evidenced", "canonical-true",
+    "`store` is deliberately ABSENT from CARE_DIRECTIVE — it is the merchant noun on nearly " +
+    "every page. (`condition` was absent too, on the `conditions apply` argument, until v3.1 " +
+    "measured that it cost a real positive; it is now admitted only as a transitive verb.) The " +
+    "comment claims the cost is nil because this still passes on `dry`. This is that claim, " +
+    "executed — and writing it corrected the comment, which had asserted the BARE sentence " +
+    "\"Store in a cool dry place away from sunlight.\" passes. It does not and never did: it " +
+    "carries no CARE_TERMS entry, so it is not_proven before the guard is ever reached."),
+  C("Store in a cool dry place away from sunlight.", attr("care"), "not_proven", "canonical-true",
+    "The counterpart to the case above, pinned so the correction cannot rot back into the " +
+    "comment. No care TERM occurs, so no valueGuard runs. This is a term-list limit, not a " +
+    "guard defect — recorded rather than fixed, because widening CARE_TERMS to bare `store` " +
+    "is the collision the directive list already refuses."),
+  C("Failure to follow the care instructions when washing will void this warranty.",
+    attr("care"), "not_proven", "marketing-idiom",
+    "MUTATION ANCHOR for CARE_REFERENCE. This sentence DOES carry a care action (`washing`), so " +
+    "the CARE_DIRECTIVE half alone would pass it — only the reference frame (`follow`, `failure " +
+    "to`, `void`) closes it. Without this case the reference veto reads as decorative in the " +
+    "mutation proof, which is a corpus hole rather than a useless guard.",
+    undefined, { title: "Ceramic Pan", productType: "Cookware" }),
+  C("Care instructions are printed on the label.", attr("care"), "not_proven", "placeholder",
+    "The instructions exist; they are not on any surface we read. Reference-to-elsewhere is the " +
+    "CLASS the v2.9 false positive belonged to, not just the one warranty sentence."),
+  // ── THE RESIDUAL CLASS the v3.0 independent pass measured, pinned not fixed ──
+  C("Washing and care instructions are on the label.", attr("care"), "not_proven", "placeholder",
+    "A PURE POINTER that still passes. CARE_REFERENCE carries no frame for `are on the label` " +
+    "(`labell?ed` matches the adjective, not the noun), so control reaches CARE_DIRECTIVE — which " +
+    "fires on the DEVERBAL NOUN `Washing`. The guard's own weak point: the -ing/-s inflections that " +
+    "make a verb list readable are exactly the forms English uses to NAME a topic rather than give " +
+    "an instruction, so the guard can fire on the category name it was built to reject. Measured by " +
+    "an independent attacker: 46 of 70 hand-written pointer phrasings leak this way, 0 of 26 " +
+    "canonical positives lost.\n" +
+    "NOT A REGRESSION — verified mechanically, not argued: this sentence returns pass_evidenced " +
+    "identically on the pre-guard engine.\n" +
+    "⚠️ THE SENTENCE AFTER THAT ONE USED TO BE FALSE, and correcting it is why v3.1 exists. It " +
+    "claimed the A/B found ZERO status changes across all 53 attacker claims. Re-run from two " +
+    "independently built worktrees, the same A/B finds NINE — every one a real care instruction " +
+    "the guard deleted, because CARE_REFERENCE was tested against the whole sentence and the " +
+    "commonest way to write an instruction is `<pointer frame>: <the instruction>`. The claim was " +
+    "not a judgement call that aged badly; it was an instrument returning the flattering answer, " +
+    "which is the failure mode src/measure/completion.ts exists for. Closed in v3.1 CP0 by " +
+    "scoping the frame to its own clause. Record: experiments/v3-1/AB_CARE.md.\n" +
+    "NOT FIXED HERE, and the reason is the v2.8 `origin` precedent rather than fatigue. The " +
+    "narrowing that closes it (drop the inflections, match instructive terms whole-word) would cost " +
+    "real positives — \"Care instructions: we recommend hand washing.\" — to close a class with " +
+    "ZERO occurrences across 8,046 real product descriptions plus every body in the 172-store " +
+    "capture (58,237 sentences; 12 contain the meta term). Losing true statements to fix something " +
+    "that does not occur is the exact trade v2.8 measured and refused.",
+    "pass_evidenced", { title: "Merino Crew", productType: "apparel" }),
+
+  C("Care instructions are printed on the tag: machine wash cold, tumble dry low.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "CONTROL CASE for the whole-sentence instructive read, which the first mutation run reported " +
+    "DECORATIVE — every case written for it also passed through CARE_DIRECTIVE, so removing it " +
+    "changed nothing. That is a corpus coverage hole, not a useless guard (same finding shape as " +
+    "v2.4, where 4 of 12 guards read decorative for exactly this reason). Here the sentence " +
+    "carries BOTH a reference frame (`printed`) and a real instruction. Without the instructive " +
+    "read, CARE_REFERENCE fires first and deletes a merchant's genuine care instructions — a " +
+    "false FAIL on ordinary hangtag copy."),
+
+  // ── v3.1 CP0 — the nine true statements the whole-sentence frame deleted ────
+  // The case above only survived because `machine wash` is an INSTRUCTIVE term, so
+  // it never reached the narrow branch. Once the instruction after the colon is
+  // phrased with ordinary verbs, the pre-v3.1 guard read the pointer frame in the
+  // FIRST clause and answered "no care instructions stated" — about copy that
+  // states them in the second. Nine of these were confirmed by A/B against the
+  // pre-guard commit; the shapes below are one per splitting rule, so a future
+  // narrowing of CARE_CLAUSE_SPLIT fails here instead of on a merchant.
+  C("Follow the machine wash symbol on the label.", attr("care"), "pass_evidenced", "canonical-true",
+    "MUTATION ANCHOR for the instructive-term shortcut, RE-ANCHORED in v3.1. Its old case " +
+    "(\"Care instructions: machine wash cold.\") stopped discriminating the moment the reference " +
+    "frame became clause-scoped — the clause after the colon carries a bare directive, so the " +
+    "sentence passes with or without the shortcut, and the mutation proof read the guard as " +
+    "decorative. Here the instructive term and the pointer frame share ONE clause, which is the " +
+    "only shape where the shortcut decides anything. A guard whose anchor a later fix has " +
+    "subsumed is a guard that has silently stopped being proved.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are printed on the tag: rinse in cool water and dry immediately.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "COLON. The frame (`printed`) is true of the first clause and says nothing about the second. " +
+    "This is the commonest hangtag shape there is, and it returned not_proven before v3.1."),
+  C("Per the care instructions, sanitize the board with diluted vinegar weekly.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "COMMA. `per the` is a frame; the instruction follows it in the same sentence. A splitter that " +
+    "only cut on terminal punctuation could not reach this, which is why CARE_CLAUSE_SPLIT cuts on " +
+    "a bare comma — over-splitting makes this guard MORE permissive, the direction it is documented " +
+    "to fail in.",
+    undefined, { title: "Oak Board", productType: "Cutting Boards" }),
+  C("Our care instructions are void of jargon — rinse, dry, done.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "EM DASH. `void` is in CARE_REFERENCE because of the warranty sentence in the v2.9 sample; here " +
+    "it is an idiom meaning `free of`, and the instruction is on the other side of the dash."),
+  C("Care instructions: condition the leather twice a year.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "The measured cost of keeping `condition` out of CARE_DIRECTIVE. Admitted in v3.1 only as a " +
+    "TRANSITIVE verb (`condition the …`), which is what the two cases below hold the line on.",
+    undefined, { title: "Leather Belt", productType: "Accessories" }),
+  C("Care instructions and warranty conditions apply.", attr("care"), "not_proven", "marketing-idiom",
+    "THE COLLISION the `condition` exclusion was written to avoid, kept closed by requiring an " +
+    "object after the verb. `conditions apply` has none. Without this case the transitive frame " +
+    "reads as decorative and a later session widens it back to a bare word."),
+  // -- v3.1, found by the INDEPENDENT pass, against the fix itself ------------
+  C("Care instructions are printed on the hangtag, and a washing symbol guide is on our site.",
+    attr("care"), "not_proven", "placeholder",
+    "THE CLASS THE FIRST VERSION OF THE v3.1 FIX REOPENED, and the reason the rule is now " +
+    "grammatical rather than positional. Clause-scoping the pointer frame and then accepting any " +
+    "CARE_DIRECTIVE match in an unframed clause hands the guard a NOUN PHRASE: the pointer sits " +
+    "before the comma and `washing symbol guide` sits after it. Four independent attackers found " +
+    "nine sentences of this shape and a separate refuter re-executed every one. Closed by " +
+    "requiring a framed sentence to carry an IMPERATIVE clause — verb first, base form — which " +
+    "`washing`/`cleaning`/`seasoning` cannot satisfy because those are the deverbal nouns that " +
+    "name a topic instead of giving an instruction.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are supplied with your order — washing guidance is on the label.",
+    attr("care"), "not_proven", "placeholder",
+    "Same class across a DASH rather than a comma, which is why the imperative rule is applied to " +
+    "every boundary and not just the one the attackers happened to use. Without it, narrowing the " +
+    "comma alone would have left this open and looked like a complete fix.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are included in the box, along with a cleaning cloth.",
+    attr("care"), "not_proven", "bundled-item",
+    "The bundled-accessory variant: the only care word belongs to a DIFFERENT ITEM in the box. " +
+    "MUTATION ANCHOR for CARE_IMPERATIVE_CLAUSE — restore the plain CARE_DIRECTIVE test here and " +
+    "this passes.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Per the care instructions, sanitize the board with diluted vinegar weekly.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "THE RECALL ANCHOR for the same rule, and the reason a comma is still a boundary at all. This " +
+    "is a real instruction introduced by a pointer frame, and it is the ONE shape of the nine " +
+    "restored in CP0 that needs the comma. It is duplicated deliberately from the CP0 block: a " +
+    "future tightening of the comma rule must fail here, next to the case that motivated it.",
+    undefined, { title: "Oak Board", productType: "Cutting Boards" }),
+  C("Care instructions: polish with the included beeswax balm.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "MUTATION ANCHOR for NOT re-testing CARE_REFERENCE inside an imperative clause. That extra " +
+    "test looked like cheap safety and an independent pass measured it deleting ordinary " +
+    "instructions, because the objects a care verb takes are exactly the frame's vocabulary — " +
+    "`the INCLUDED balm`, `the PROVIDED oil`. A verb-initial clause is an instruction; what it " +
+    "acts on does not change that.",
+    undefined, { title: "10in Skillet", productType: "cookware" }),
+  C("Read the care instructions and wash separately in cold water before first wear.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "MUTATION ANCHOR for ` and ` as a clause boundary. The pointer and the instruction share one " +
+    "comma-less sentence, which no punctuation-only splitter can separate. Adding the conjunction " +
+    "cannot reopen the noun-phrase class, because `and a washing symbol guide` fails the " +
+    "imperative test either way — which is the property that makes this safe rather than lucky.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are below. Rinse in cool water and dry immediately.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "KNOWN GAP, and the measured price of having a `care` value guard AT ALL. The pointer and the " +
+    "instruction are in DIFFERENT SENTENCES, and evidence is sentence-scoped by construction, so " +
+    "no formulation of this guard can see both. The v3.0 guard fails it identically. It is " +
+    "recorded rather than fixed because the alternative is no guard: the guard closes one measured " +
+    "false positive on a real store plus twelve independently-confirmed pointer false passes, and " +
+    "costs this one shape. Closing it needs cross-sentence scope, which is a different piece of " +
+    "work and would touch every row, not just this one.",
+    "not_proven", { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions: follow the wash symbols printed on the label.",
+    attr("care"), "not_proven", "placeholder",
+    "CLAUSE SCOPING IS NOT THE SAME AS DELETING THE FRAME. Here the pointer (`follow`, `printed`) " +
+    "and the care word (`wash`) are in the SAME clause, so the frame still governs and the row " +
+    "correctly fails. If this ever passes, the fix has become a removal."),
 ];
 
 // ---------------------------------------------------------------------------
@@ -363,6 +540,39 @@ const CLAIMS: Case[] = [
   C("Made with inorganic mineral pigments.", claimReq("organic"), "not_proven", "substring-single-word-term",
     "`organic` is matched WITHOUT wholeWord (only attributes set that flag), so it matches inside " +
     "`inorganic` — a word that asserts the opposite."),
+  // --- v3.2 CP1c: the term is a DIFFERENT SENSE of the word ---
+  C("The farm's volcanic soils are described as rich in organic matter, while narrow canyons channel warm winds through the surrounding landscape.",
+    claimReq("organic"), "not_proven", "different-sense-compound",
+    "A SOIL-SCIENCE SENTENCE RENDERED AS A CERTIFICATION CLAIM. Measured on a real coffee store " +
+    "(hydrangea.coffee, CERT-001). `organic` is matched whole-word, which is what stops " +
+    "`inorganic` — and nothing stopped `organic matter`.\n" +
+    "This is a THIRD veto shape, which is why SENSE_SHIFT is its own list rather than more nouns " +
+    "in MODIFIED_SUBJECT. There the term keeps its meaning and attaches to the wrong thing " +
+    "(\"aluminum-free PACKAGING\" is a true claim about the box). Here the compound changes what " +
+    "the word MEANS: organic matter is not a weaker organic claim, it is not an organic claim.\n" +
+    "⚠️ SENSE_SHIFT closed this and was REVERTED — 98 measured regressions, the worst of any guard " +
+    "this session. `reach` is a homograph of the EU chemicals regulation (\"BPA-free, REACH " +
+    "compliant\") and of the commonest closing clause in DTC copy (\"reach out with any " +
+    "questions\"); `growth` is a product BENEFIT (\"certified organic growth serum\"); `chemistry` " +
+    "is ordinary beauty copy; `compounds` is the FDA's own wording for an antiperspirant active, " +
+    "so it broke the VIOLATION path — a store that states the violating claim was reported silent, " +
+    "and status-only comparison cannot see that because both answers are not_proven. It did not " +
+    "close the class either: one adjective (\"organic plant matter\") or one synonym (\"organic " +
+    "material\") walks past it. Adjacency is not headship.",
+    "pass_evidenced"),
+  C("The soil is high in organic compounds.", claimReq("organic"), "not_proven", "different-sense-compound",
+    "Same sense shift, chemistry rather than soil science. Kept as a separate gap because the fix " +
+    "for it is exactly what broke \"Contains aluminum compounds for all-day protection.\" — the " +
+    "FDA's own wording for an antiperspirant active, on the VIOLATION side.",
+    "pass_evidenced"),
+  C("Made from organic beans.", claimReq("organic"), "pass_evidenced", "different-sense-control",
+    "THE CONTROL THE MUTATION PROOF NEEDS. A guard whose removal breaks nothing reads as " +
+    "decorative; this is the case SENSE_SHIFT must NOT touch. `beans` is not in the list and must " +
+    "never be — an over-wide sense list deletes the commonest true organic claim a roaster makes."),
+  C("Made from organic materials.", claimReq("organic"), "pass_evidenced", "different-sense-control",
+    "⚠️ `material(s)` IS DELIBERATELY ABSENT from SENSE_SHIFT and this case is why. It is the " +
+    "nearest miss to `matter` in the whole English list and it is a REAL product claim. Nothing " +
+    "enters that list that has a second reading on a product page."),
   C("Is this vegan? See our FAQ for the full ingredient list.", claimReq("vegan"), "not_proven", "question",
     "A QUESTION is not a statement. splitSentences breaks on `?`, so the question stands alone and " +
     "is rendered as the proof."),
@@ -380,6 +590,54 @@ const CLAIMS: Case[] = [
     "violating list is checked FIRST — so a store stating the claim is told it states the opposite."),
   C("No added fragrance, ever.", claimReq("fragrance_free"), "pass_evidenced", "contrary",
     "`added fragrance` is a violating term and matches inside the support phrase `no added fragrance`."),
+
+  // ── v3.1 CP2a — the gluten_free damage class, still live in a shipped built-in ──
+  C("Tested on animals: never.", claimReq("cruelty_free"), "not_proven", "negation",
+    "THE WORST CLASS OF FALSE PASS: a compliant store told its own copy states the OPPOSITE, with " +
+    "that compliant sentence quoted as the proof. `tested on animals` is cruelty_free's only " +
+    "violating term; `clauseBefore` sees nothing before it and POST_TERM_DENIAL wants a copular " +
+    "predicate (`is not available`), so a bare post-term `never` reached neither. Closed by " +
+    "LABEL_DENIAL — the term used as a LABEL whose value is a flat denial. The separator is " +
+    "REQUIRED, which is what keeps it narrow."),
+  C("Free of added fragrance.", claimReq("fragrance_free"), "not_proven", "negation",
+    "The same defect on a second built-in, found by sweeping all nine claim keys that carry a " +
+    "violating list rather than fixing the one that was reported. `free of` is an absence frame " +
+    "the NEGATOR list never had."),
+  C("This product is tested on animals.", claimReq("cruelty_free"), "not_proven", "canonical-true",
+    "THE RECALL ANCHOR, and the reason CP2a is one-directional. A genuine violation must still be " +
+    "reported as contrary — if this ever returns anything else, the denial forms have stopped " +
+    "discriminating and the row has become unable to fail."),
+  C("This oil is free of parabens and is 100% organic.", claimReq("organic"), "pass_evidenced", "canonical-true",
+    "WHY `free of` IS NOT IN THE SHARED NEGATOR LIST. `isNegated` serves findSupport as well as " +
+    "findViolation, and ` and ` without a comma is not a CLAUSE_BOUNDARY — so a shared frame would " +
+    "reach `organic` and delete a real claim on ordinary copy. The frame is opted into by " +
+    "findViolation alone, where an absence frame can only ever mean denial."),
+  C("Cruelty-free — tested on animals: never.", claimReq("cruelty_free"), "pass_evidenced", "contrary",
+    "MUTATION ANCHOR for the absence frames, and the reason the two cases above could not be one. " +
+    "The damage this guard prevents lives in the DETAIL and the QUOTE (\"your copy states the " +
+    "opposite\", quoting the compliant sentence), and the row's STATUS is not_proven either way — " +
+    "so the corpus, which asserts status, could not see the guard working and the mutation proof " +
+    "read it as decorative. Here the store ALSO states the claim, so suppressing the false " +
+    "contradiction lets findSupport reach `cruelty-free` and the status genuinely flips. Same " +
+    "corpus-hole shape v2.4 found in 4 of 12 guards: write the control case, keep the guard."),
+  C("Free of parabens, this cream is cruelty-free but is tested on animals in China.",
+    claimReq("cruelty_free"), "not_proven", "contrary",
+    "MUTATION ANCHOR for anchoring ABSENCE_FRAME to the term, and a REGRESSION an independent pass " +
+    "caught in the CP2a fix itself. `clauseBefore` is bounded by CLAUSE_BOUNDARY, which cuts on " +
+    "neither a bare comma nor ` and `, so an unanchored `free of` reached a DIFFERENT substance " +
+    "later in the sentence and suppressed a genuine violation. Sixteen sentences of this shape were " +
+    "confirmed, and they are the commonest thing personal-care copy does: deny one ingredient, " +
+    "admit another. The status flips because the sentence ALSO states the claim — suppress the " +
+    "violation and findSupport passes it on `cruelty-free`, telling a store that tests on animals " +
+    "that it is cruelty-free."),
+  C("Our cruelty-free line is tested on animals: never by us, always by our EU distributor.",
+    claimReq("cruelty_free"), "not_proven", "contrary",
+    "MUTATION ANCHOR for LABEL_DENIAL's terminator. `X: never` is a denial only when nothing " +
+    "follows it; here the denial is immediately qualified away and the sentence ADMITS the testing. " +
+    "Without the terminator the violation is suppressed and the row passes on `cruelty-free`."),
+  C("Gluten-free: never any wheat.", claimReq("gluten_free"), "pass_evidenced", "canonical-true",
+    "The same asymmetry for the post-term form. Here `never` scopes over `wheat`, not over the " +
+    "claim it follows, so applying LABEL_DENIAL on the support side would cost this pass."),
 ];
 
 // ---------------------------------------------------------------------------
@@ -431,6 +689,78 @@ const DELIVERY: Case[] = [
     "rule stands between this purchase widget and a rendered delivery proof. This is the case that " +
     "proves that rule still fires.",
     undefined, { policyStatus: "readable" }),
+
+  // ── v3.1 CP2b — word boundaries on the timing matcher ─────────────────────
+  C("Ships internationally to 40 countries.", deliveryReq(), "not_proven", "substring-single-word-term",
+    "`findTimingSupport` never set `wholeWord`, so the term `ships in` matched inside `Ships " +
+    "internationally` and the country count satisfied `requireDigit` — a delivery window rendered " +
+    "from a sentence about geography. Every sibling matcher word-bounds its terms; this one, on the " +
+    "engine's best-discriminating row, did not. Each term was checked for a legitimate substring " +
+    "need before the change: only `shipping time` had one (the plural), which is now its own entry.",
+    undefined, { policyStatus: "readable" }),
+  C("Ships internationally, and the beans stay fresh for 6 months after roasting.",
+    deliveryReq(), "not_proven", "substring-single-word-term",
+    "MUTATION ANCHOR for the timing wholeWord flag, and it took THREE attempts. Each failure is " +
+    "worth recording, because each is a way a control case can look right and prove nothing. " +
+    "(1) \"Ships internationally to 40 countries.\" is the defect exactly as reported, and it is " +
+    "useless here: the CP2c value guard rejects it first (a country count is not a duration), so " +
+    "removing the boundary changes nothing. " +
+    "(2) \"...our 6 month guarantee starts on delivery.\" clears the value guard but is dropped by " +
+    "G-08's lint pre-filter before any matching happens, because `guarantee` is an unrenderable " +
+    "word. The row returned not_proven for a reason with nothing to do with this guard. " +
+    "(3) This one. `ships in` matches only inside `Ships internationally`; `6 months` is a real " +
+    "duration, so the value guard passes; and the sentence is lint-clean. With the boundary " +
+    "removed the row renders a SHELF-LIFE statement as proof of a delivery window; with it, the " +
+    "row correctly finds nothing.",
+    undefined, { policyStatus: "readable" }),
+  C("Ships in (3-5) business days.", deliveryReq(), "pass_evidenced", "canonical-true",
+    "RECALL ANCHOR for the CP2c value guard's number-to-unit gap, which the first version got " +
+    "wrong. It required whitespace, and an independent pass confirmed SEVEN real windows deleted " +
+    "over punctuation the merchant chose: `3-Business Days`, `10+ business days`, `1-2 wks.`, " +
+    "`3 workdays`, `(3-5) business days`, `3-5 *business days*`, `7 to 10 days`. What refuses a " +
+    "postcode is the absence of a TIME UNIT, never the spacing — conflating the two cost recall " +
+    "on the row the engine can least afford to lose it on.",
+    undefined, { policyStatus: "readable" }),
+  C("Ships in 1-2 wks.", deliveryReq(), "pass_evidenced", "canonical-true",
+    "The abbreviation half of the same finding. `wks`, `mos` and `workdays` were absent from the " +
+    "unit list, so an abbreviated window read as no window at all.",
+    undefined, { policyStatus: "readable" }),
+  C("Delivery information: allow 7 to 10 days for your order to arrive.",
+    deliveryReq(), "pass_evidenced", "surface-scoping",
+    "KNOWN GAP, and an honest cost of CP2b rather than a defect it introduced. Production passes " +
+    "this by matching the term `delivery in` INSIDE the word `Delivery information` — the same " +
+    "substring accident that let `ships in` match inside `Ships internationally` and render a " +
+    "geography sentence as a delivery window. The boundary cannot be added for one and not the " +
+    "other. No listed term matches `7 to 10 days`, and the obvious repairs are worse: a bare " +
+    "`days` term would pass `30 days to return`, and `delivery information` is a HEADING that " +
+    "would pass `30 day returns` sitting under it. A missed finding is recoverable; a false " +
+    "statement about a store is not.",
+    "not_proven", { policyStatus: "readable" }),
+  C("Shipping times: 3-5 business days.", deliveryReq(), "pass_evidenced", "canonical-true",
+    "THE RECALL ANCHOR for the boundary change. `shipping times` is the commoner merchant spelling " +
+    "and stopped matching inside itself once terms were bounded; without its own list entry this " +
+    "class of finding silently disappears.",
+    undefined, { policyStatus: "readable" }),
+
+  // ── v3.1 CP2c — a digit is not a duration ─────────────────────────────────
+  C("Our shipping times are listed on page 12 of the catalogue.", deliveryReq(), "not_proven", "placeholder",
+    "A POINTER, with a page number carrying the digit requirement. Same shape as the ZIP code found " +
+    "on a real store, and pinned separately because the postcode case could be dismissed as one " +
+    "unlucky sentence — the class is `any digit at all, anywhere`.",
+    undefined, { policyStatus: "readable" }),
+  C("Most orders received after 2:00pm PST will ship the next business day.",
+    deliveryReq(), "pass_evidenced", "canonical-true",
+    "THE CASE THAT SHAPED THE GUARD. This states a real window IN WORDS, and the digit satisfying " +
+    "`requireDigit` is a CLOCK TIME. A guard that demanded a number bound to a time unit — the " +
+    "obvious design — would have deleted this and one other of the 55 passing delivery rows in the " +
+    "172-store capture. Hence the worded arm. It is here so a future tightening has to fail a test " +
+    "rather than a merchant.",
+    undefined, { policyStatus: "readable" }),
+  C("In stock items dispatch within 6-7 working days after payment has cleared.",
+    deliveryReq(), "pass_evidenced", "canonical-true",
+    "The intervening-modifier shape (`working`, `business`, `calendar`) that real policies write " +
+    "between the number and the unit. Anchors the {0,2} word window in DURATION_NUMBER.",
+    undefined, { policyStatus: "readable" }),
 ];
 
 // ---------------------------------------------------------------------------
@@ -472,9 +802,20 @@ const V25_FOUND: Case[] = [
     "as a stated delivery speed. Removing the comma correctly returns not_proven.",
     "pass_evidenced", { policyStatus: "readable" }),
   C("We do not guarantee the following: delivery in 2 business days.", deliveryReq(), "not_proven", "negation-colon",
-    "`[;:]` is an unconditional boundary, so any colon between the negator and the term resets the " +
-    "clause. This is the ordinary FAQ/spec-label shape — \"What we don't do:\", \"Sizes we no longer " +
-    "carry:\" — and it produces the same false pass.",
+    "⚠️ CLOSED IN v3.0 CP2 BY ACCIDENT, AND THE REASON MATTERS MORE THAN THE FACT. The negation " +
+    "logic is UNCHANGED. This sentence now returns the honest answer only because it contains the " +
+    "word `guarantee`, which the claim linter forbids, so v3.0's new lint pre-filter drops it from " +
+    "delivery's evidence before matching. Nothing about the colon-boundary defect was repaired. The " +
+    "sibling case below carries the identical shape WITHOUT a linter word and still false-passes — " +
+    "keep both, or a future session reads this row as 'negation-colon fixed' and deletes a guard " +
+    "that was never doing this work.",
+    undefined, { policyStatus: "readable" }),
+  C("We do not offer the following: delivery in 2 business days.", deliveryReq(), "not_proven", "negation-colon",
+    "THE REAL CLASS, pinned with a sentence the linter has no opinion about. `[;:]` is an " +
+    "unconditional boundary, so any colon between the negator and the term resets the clause and " +
+    "the denial reads as a stated delivery speed. Executed siblings that also still pass: " +
+    "\"What we don't do: delivery in 2 business days.\" and \"Services we no longer provide: " +
+    "delivery in 2 business days.\" — the ordinary FAQ and spec-label shapes the original case named.",
     "pass_evidenced", { policyStatus: "readable" }),
   C("We don't offer this in blue, or in a 16 oz size.", attr("dimensions"), "not_proven", "negation-coordination",
     "The same coordination reset on the dimensions row. It fires only when the second conjunct " +
@@ -546,13 +887,119 @@ const V28_FOUND: Case[] = [
     "The sentence REFERS to care instructions; it does not state any. A buyer asking how to " +
     "look after this learns nothing, so the row's claim that care instructions are stated is " +
     "false. Found on a real cookware store in the v2.9 audit of 506 pass rows — the only " +
-    "confirmed false positive in that sample. The mechanism is that `care` has NO valueGuard: " +
+    "confirmed false positive in that sample. The mechanism was that `care` had NO valueGuard: " +
     "`materials` requires a MATERIAL_NOUN and `dimensions` requires a real measurement, but the " +
-    "care terms match their own name, so a warranty sentence mentioning the phrase passes. The " +
-    "fix is a valueGuard demanding an actual instruction (an imperative, a temperature, a cycle), " +
-    "and it is NOT attempted here: a fix without an independent adversarial pass is how the last " +
-    "three sessions each shipped a regression.",
-    "pass_evidenced", { title: "Ceramic Pan", productType: "Cookware" }),
+    "care terms match their own name, so a warranty sentence mentioning the phrase passed. " +
+    "CLOSED in v3.0 CP1 by `statesCareInstruction` — the sentence carries no care ACTION at all, " +
+    "so it is closed by the CARE_DIRECTIVE half and would also be closed by CARE_REFERENCE " +
+    "(`follow`). The class, not the instance, is what the guard is designed to: see the four " +
+    "sibling cases in the CARE block.",
+    undefined, { title: "Ceramic Pan", productType: "Cookware" }),
+
+  // ── v3.0 CP5 — the two false passes found by RUNNING A PUBLISHED STANDARD ──
+  // Both were found by auditing all 43 pass_evidenced rows from Coffee Standard v1.0
+  // executed against 25 real coffee stores. Both are PRE-EXISTING — nothing in v3.0
+  // touches timing matching or quantity aboutness — and neither appeared in the v2.9
+  // audit of 507 rows across 172 general-sample stores. That is the finding behind the
+  // finding: a CATEGORY-SCOPED sample surfaces defects a general sample does not, so
+  // the v2.9 bound is a floor rather than an estimate.
+  C("Shipping times vary depending on your proximity to our Los Angeles origin zip code: 90038.",
+    deliveryReq(), "not_proven", "marketing-idiom",
+    "THE SENTENCE STATES NO WINDOW — it says times VARY. The row claims a dispatch or " +
+    "delivery window is stated, and a shopper reading this learns nothing about when their " +
+    "coffee arrives. MECHANISM, isolated by a minimal pair: `shipping times` is a " +
+    "TIMING_TERMS_NEEDING_DIGIT term, and the only digits in the sentence are a ZIP CODE. " +
+    "Strip them (\"…proximity to our origin.\") and the row correctly returns not_proven, so " +
+    "the postcode alone is carrying the pass. `requireDigit` asks that SOME digit exists — " +
+    "the identical weakness that let \"Available in 3 colors\" satisfy a measurement before " +
+    "`dimensions` got a valueGuard. Found on a real store.\n" +
+    "CLOSED in v3.1 CP2c by `statesDeliveryWindow`: the number must be bound to a time unit, " +
+    "or the sentence must state a worded window (\"the next business day\"). The worded arm is " +
+    "not decoration — 2 of the 55 passing delivery rows in the 172-store capture state their " +
+    "window in words and satisfy `requireDigit` only by accident, on a CLOCK TIME (\"after " +
+    "2:00pm PST\"). A digit-only guard would have deleted both. The guard was written against " +
+    "all 55 real quotes rather than in the abstract, and the replay confirms it costs none.",
+    undefined, { policyStatus: "readable" }),
+  C("For 4 ounces water and 4 ounces ice.", attr("dimensions"), "not_proven", "usage-quantity",
+    "A BREWING RECIPE quantity read as the product's own measurement. Found on a real coffee " +
+    "store whose product copy embeds an iced-coffee method; the row quoted the water and ice " +
+    "amounts as proof that the bag's weight is stated. `nonProductQuantity` already vetoes " +
+    "this class through USAGE_VERB — \"Brew with 8 ounces of water.\" and the pinned \"Steep " +
+    "in 8 oz of hot water\" both correctly fail — but the veto needs a VERB, and a bare " +
+    "preposition introduces the same quantity with nothing to match. The gap is the frame, " +
+    "not the concept, which is why it is pinned rather than patched with one more word: a " +
+    "term added to a veto list without an adversarial pass is how v2.9's `case` regression " +
+    "reached a real watch store.\n" +
+    "⚠️ v3.2 ATTEMPTED THIS AND REVERTED IT, and the attempt is the most useful thing anyone " +
+    "has learned about this gap. RECIPE_FRAME + RECIPE_SUBSTANCE closed this sentence and the " +
+    "second brewing sentence on the same store. A 216-store replay then reported ZERO real " +
+    "positives lost — and two independent attackers, re-executed mechanically against the " +
+    "parent commit, found 192. The frame reaches any price near a substance " +
+    "(\"Our 16 oz water bottle sells for 19.99.\"); the substance reaches every stock pot, " +
+    "milk frother, ice cream scoop and water-resistant shell. It also does not close the " +
+    "CLASS: \"Pour 6 oz of hot water over the grounds.\" still passes, because USAGE_VERB " +
+    "lists steep/brew/dissolve and coffee copy says pour, heat, fill, boil, bloom.\n" +
+    "The gap is the FRAME, and a frame is not a word list. Do not attempt a fourth veto term.",
+    "pass_evidenced"),
+  // --- v3.2 CP1b: the minimal pairs that force the guard to stay conjoined ---
+  C("Rated for 300 lbs.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "THE FRAME ALONE IS NOT ENOUGH, and this is the case that proves it. `for <number>` is " +
+    "also how a product states a weight capacity. If RECIPE_FRAME ever fires without the " +
+    "substance complement, this real positive dies."),
+  C("The pitcher holds 12 oz milk.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "THE SUBSTANCE ALONE IS NOT ENOUGH. A vessel's capacity is stated in terms of what it " +
+    "holds, so a consumable complement is ordinary product copy on any drinkware store."),
+  C("A 32 oz water bottle for everyday carry.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "The hardest of the three: it contains the substance AND the word `for`. It survives only " +
+    "because `for` is not followed by a digit. A looser frame deletes a product name."),
+  C("One ounce of water by volume weighs 1 ounce, so it's easy to weigh the ice and then measure the water by volume.",
+    attr("dimensions"), "not_proven", "usage-quantity",
+    "THE SECOND BREWING SENTENCE ON THE SAME REAL STORE, and it is here because of HOW it was " +
+    "found. Closing the bare-preposition frame moved groundsforchange.com's pass from one " +
+    "brewing sentence to ANOTHER in the same copy — the row still passed, on a different quote. " +
+    "A status-only diff called that closed. Only comparing the RENDERED QUOTE showed it was not.\n" +
+    "SUBSTANCE_WEIGHED closed it and was REVERTED: mechanically re-executed against the parent " +
+    "commit it carried 45 regressions of its own, because `stock`, `ice`, `cream` and `water` " +
+    "are product words. \"Our stock pot measures 10 inches across.\" is the commonest cookware " +
+    "SKU there is, and \"Water-resistant shell measures 28 inches\" loses to a hyphen the vessel " +
+    "lookahead cannot see. Kept as a measured gap.",
+    "pass_evidenced"),
+  C("Our water bottle weighs 12 oz.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "THE CONTROL FOR SUBSTANCE_WEIGHED, and the reason it carries a negative lookahead. A brew " +
+    "substance sits within a few words of `weighs` here too — but it MODIFIES a container that " +
+    "is the product. Only an unmodified substance counts."),
+  C("The kettle measures 8 inches across.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "Same shape, `measures` rather than `weighs`, and the substance word is absent entirely — " +
+    "pinned so a future widening of the verb list has something to break."),
+  // --- v3.2 CP1a: a serving size read as the product's own weight ---
+  C("Based on a standard 6oz serving.", attr("dimensions"), "not_proven", "serving-size-quantity",
+    "A SERVING SIZE READ AS THE PRODUCT'S WEIGHT. Found on a real coffee store (WEIGHT-001) " +
+    "in the form \"…contain approximately 210mg of caffeine … based on a standard 6oz serving " +
+    "when brewed following package instructions.\"\n" +
+    "⚠️ THE PUBLISHED DIAGNOSIS WAS WRONG. The v3.1 writeup and the v3.2 brief both say this " +
+    "survives because \"NUTRIENT does not carry caffeine\". It does, since d730ea2 — before " +
+    "the commit serving production — and \"Contains 6oz of caffeine.\" already failed. " +
+    "Executing the sentence rather than reading the source found the real cause: the nutrient " +
+    "is sought in the measurement's own complement, and here it is 45 characters away on a " +
+    "different quantity.\n" +
+    "⚠️ SERVING_HEAD closed this and was REVERTED — 23 measured regressions. Its protection was " +
+    "a closed list of serveware nouns (bowl, board, platter, tray…) and such a list can never be " +
+    "complete: pitcher, jug, cup, glass, carafe, mug, crock, tureen, ramekin, basket, vessel and " +
+    "cone all died, as did every `dose bottle` and `portion container`. Same shape as the " +
+    "head-noun rule v2.8 removed from `origin` after four attempts — a closed list used as the " +
+    "PROTECTOR fails open in the damaging direction.",
+    "pass_evidenced"),
+  C("Acacia serving board, 18 inches long.", attr("dimensions"), "pass_evidenced", "serving-size-control",
+    "`serving` IS A PRODUCT WORD on any kitchen store. This is why SERVING_HEAD requires the " +
+    "noun to be THIS measurement's complement rather than adding \"a\" to PER_SERVING's " +
+    "quantifier list — here the measurement is `18 inches` and `serving` is nowhere near it."),
+  C("Stoneware serving bowl, 9 inches across.", attr("dimensions"), "pass_evidenced", "serving-size-control",
+    "Same class, different vessel. Pinned separately because `bowl` and `board` reach different " +
+    "arms of the negative lookahead."),
+  C("A 12 oz serving bowl in matte glaze.", attr("dimensions"), "pass_evidenced", "serving-size-control",
+    "THE ONE SHAPE WHERE THE CONSUMPTION NOUN IS GENUINELY ADJACENT to the measurement — " +
+    "because it modifies a vessel, which is the thing being sold. The negative lookahead in " +
+    "SERVING_HEAD exists for this sentence and nothing else."),
 
   // ── v2.9 CP2 — THE OWED MUTATION ANCHOR, now closed ────────────────────────
   // Removing `origin` in v2.8 deleted the only corpus case that failed when
@@ -753,7 +1200,30 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // v2.9 CP4 the 172-store measurement found ONE false positive (a warranty sentence
   //          referring to care instructions rather than stating any). Pinned, not fixed.
   //                                                                             -> 31
-  const EXPECTED_OPEN_GAPS = 31;
+  // v3.0 CP1 the `care` valueGuard CLOSED three: that warranty sentence, the pointer
+  //          "Full care instructions are included in the box.", and the placeholder
+  //          "Care instructions: TBD." All three ran through the one term that names
+  //          the category without giving a member of it.
+  //                                                                             -> 28
+  // v3.0 CP1 the independent adversarial pass (1,145 probes, 53 claims, 53/53
+  //          adjudicated by separate refuters) measured a RESIDUAL class the guard
+  //          claims but does not close: a pointer whose only care word is a deverbal
+  //          noun. Pinned with its natural-frequency measurement and the reason it is
+  //          not narrowed. It is NOT a regression — the A/B against b8a1fff^ found
+  //          zero status changes across all 53 claims.
+  //                                                                             -> 29
+  // v3.0 CP5 running Coffee Standard v1.0 against 25 real coffee stores and auditing
+  //          all 43 pass rows found TWO false passes, both pre-existing and neither
+  //          seen in the v2.9 general sample: a ZIP CODE satisfying delivery's
+  //          requireDigit, and a brewing-recipe quantity read as the product's weight.
+  //                                                                             -> 31
+  // 31 -> 30: v3.1 CP2c closed the ZIP-code delivery false pass. A gap count that
+  // only ever rises is a backlog; this is the second direction the corpus asserts in.
+  // 30 -> 32: and then it rose, which is the honest record of a trade rather than a
+  // clean win. Both new gaps are FALSE FAILS accepted to close FALSE PASSES, and both
+  // are named at their case: a care instruction in the sentence AFTER its pointer, and
+  // a delivery window whose only match in production was a substring accident.
+  const EXPECTED_OPEN_GAPS = 36;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

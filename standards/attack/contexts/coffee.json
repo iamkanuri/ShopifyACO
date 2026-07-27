@@ -1,0 +1,121 @@
+{
+  "//": "COFFEE CONTEXT. Read `attack/README.md` §4 before adding to `adjacentDomains`. The sentences in that field are NOT generated — they are human work, transcribed verbatim from the decaf review's measured findings (standards/coffee/v1.0/vocabulary/decaf-method.json, review.adversarial_findings + insufficient_evidence). The generator replays them; it did not and could not derive them. Anything the generator replays is coverage the HUMAN supplied, and the coverage report must not be read as though the machine found it.",
+
+  "id": "coffee",
+  "productNoun": "decaf",
+  "productPlural": "decafs",
+  "unitNoun": "lot",
+  "siblingDescriptor": "Ethiopian",
+  "competitor": "Northbank Coffee",
+  "bundleNoun": "gift set",
+  "packagingNoun": "pouch",
+  "facilityNoun": "roastery",
+  "specLabels": ["Process", "Method"],
+
+  "adjacentDomains": [
+    {
+      "domain": "post-harvest processing at the mill",
+      "why": "On virtually every specialty coffee page `Process` names the post-harvest treatment — washed, natural, honey — and says nothing about decaffeination. A check keyed on that word reads a drying method as a solvent disclosure, which the decaf review recorded as the most dangerous near-miss in the whole standard.",
+      "collidesWith": [
+        "swiss water process",
+        "mountain water process",
+        "royal select water process",
+        "swiss water processed",
+        "swiss water-processed",
+        "sugarcane process decaf"
+      ],
+      "sentences": [
+        "Process: Washed, 1750 masl, Caturra and Castillo.",
+        "A natural process Ethiopian with big fruit and a syrupy body."
+      ]
+    },
+    {
+      "domain": "carbonic maceration, a post-harvest fermentation style",
+      "why": "Carbonic maceration natural is a widespread post-harvest technique that shares its name with a registered CO2 decaffeination mark. Two unrelated processes, one string — the decaf review's strongest single finding.",
+      "collidesWith": ["carbonic natural decaf", "carbonic natural® decaf"],
+      "sentences": [
+        "Ethiopia Guji, carbonic natural, 48-hour anaerobic fermentation.",
+        "Process: Carbonic Natural, 2100 masl, Heirloom."
+      ]
+    },
+    {
+      "domain": "cupping and sensory defect vocabulary",
+      "why": "Ethyl acetate is a named sensory defect on the trade's own cupping form as well as a decaffeination solvent. The same compound, and the opposite claim about the coffee.",
+      "collidesWith": [
+        "decaffeinated with ethyl acetate",
+        "decaffeinated using ethyl acetate",
+        "ethyl acetate decaf"
+      ],
+      "sentences": [
+        "Overripe fruit and ethyl acetate notes indicate over-fermentation.",
+        "Clean cup, balanced acidity, syrupy body and a long finish."
+      ]
+    },
+    {
+      "domain": "sustainability and emissions reporting",
+      "why": "Emissions copy is near-universal on coffee product pages and has nothing to do with caffeine removal. This is why `carbon dioxide process` could not be a term and was replaced by `carbon dioxide decaffeination`.",
+      "collidesWith": ["carbon dioxide decaffeination"],
+      "sentences": [
+        "We have cut our carbon dioxide process emissions by 40% since 2020."
+      ]
+    },
+    {
+      "domain": "beverage dispense and packaging gas",
+      "why": "Nitro and sparkling coffee are mainstream roaster lines, and liquid carbon dioxide is ordinary dispense and modified-atmosphere vocabulary there.",
+      "collidesWith": [
+        "decaffeinated with liquid co2",
+        "decaffeinated using liquid co2",
+        "liquid co2 decaf",
+        "co2 decaf",
+        "co₂ decaf"
+      ],
+      "sentences": [
+        "Nitro cold brew is charged with liquid CO2 and nitrogen for texture.",
+        "Each bag is flushed with liquid CO2 before sealing."
+      ]
+    },
+    {
+      "domain": "botanical and flavour extraction",
+      "why": "Supercritical carbon dioxide is the dominant extraction method for hops, hemp and flavour extracts, so a roaster with a syrup or extract line writes it about a different product.",
+      "collidesWith": [
+        "decaffeinated with supercritical co2",
+        "decaffeinated using supercritical co2",
+        "supercritical co2 decaf"
+      ],
+      "sentences": [
+        "Our botanical extracts are made with supercritical CO2 extraction.",
+        "The lion's mane extract in this blend is produced with supercritical CO2."
+      ]
+    },
+    {
+      "domain": "cane-sugar co-fermentation at the mill",
+      "why": "Cane-sugar co-fermentation is a current and fast-growing Colombian post-harvest technique written in exactly this form, and it happens at the mill rather than at a decaffeination plant.",
+      "collidesWith": ["sugarcane process decaf", "sugarcane decaf", "sugarcane ea"],
+      "sentences": [
+        "The sugarcane process at the mill adds cane molasses during fermentation."
+      ]
+    },
+    {
+      "domain": "flavour descriptors",
+      "why": "Sugarcane is one of the commonest flavour descriptors in coffee copy as well as the name of an ethyl-acetate process. The bare word is a flavour claim far more often than a process claim.",
+      "collidesWith": ["sugarcane decaf", "sugarcane ea"],
+      "sentences": [
+        "Notes of sugarcane, cocoa nib and toasted almond."
+      ]
+    },
+    {
+      "domain": "a rival trade name that contains the same substring",
+      "why": "A CO2 extraction is marketed under a water-sounding trade name, so any matcher treating the literal substring `water process` as evidence of a water method classifies a carbon-dioxide process as a water one. This is the measured reason `water process` can never be a supporting term.",
+      "collidesWith": [
+        "swiss water process",
+        "mountain water process",
+        "royal select water process",
+        "royal select water® process"
+      ],
+      "sentences": [
+        "Decaffeinated by the Sparkling Water Process for a sweeter cup.",
+        "Swiss water is the softest water in Europe."
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { attachShippingPolicy, buildBuyerTask, contractVersion, evaluate, runProductTest, type PublicProduct, type Requirement } from "../src/server/productTest.js";
+import { attachShippingPolicy, buildBuyerTask, contractVersion, evaluate, runProductTest, shopifyMetaProductType, type PublicProduct, type Requirement } from "../src/server/productTest.js";
 import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, passesAboutness } from "../src/server/testEvidence.js";
 import { lintStrings } from "../src/server/claimLinter.js";
 
@@ -1160,4 +1160,218 @@ test("v2.3 CP4: a measurement row's label never claims more than its quote suppo
   assert.ok(!/\bsize\b|\bweight\b/i.test(a.label),
     `the label must not claim size or weight specifically; got "${a.label}"`);
   assert.match(a.label, /measurements/i);
+});
+
+// ---- G-08 (v3.0 CP2): one unquotable sentence must never destroy a report ----
+
+test("G-08: a 'delivery guaranteed' shipping policy no longer refuses the whole report", async () => {
+  // THE DEFECT, reproduced as a fixture before it was fixed. The claim linter forbids
+  // `guarantee` in any merchant-visible string and it runs over `evidenceQuote`, so a
+  // single sentence in the merchant's own shipping policy returned the ENTIRE result
+  // as errorKind "unreachable" — a flatly false statement about a store we read
+  // perfectly well. `claim` and `attribute` rows pre-filter their evidence with
+  // `lintStrings`; `delivery` read `p.evidence` raw. Same class that got the
+  // `warranty` requirement dropped in v2.3, still reachable through this door.
+  //
+  // Coffee makes it likely rather than exotic: "delivery guaranteed" and "guaranteed
+  // fresh" are ordinary phrasings in the category.
+  const policy = (body: string) =>
+    `<html><body><main><h1>Shipping Policy</h1><p>${body}</p></main></body></html>`;
+  const coffee = JSON.stringify({ product: {
+    title: "Ethiopia Guji 12 oz", vendor: "Acme Roasters", product_type: "Coffee", tags: "",
+    body_html: "<p>A washed Ethiopian coffee.</p>",
+    options: [{ name: "Grind", values: ["Whole Bean"] }],
+    variants: [{ title: "Whole Bean", price: "19.00", option1: "Whole Bean" }],
+  } });
+  const run = async (policyBody: string) => {
+    const { __resetCaches } = await import("../src/server/productTestCache.js");
+    __resetCaches();
+    return runProductTest("https://g08.example/products/ethiopia-guji", {
+      semantic: { disabled: true },
+      loadRobots: async () => ({ rules: [], fetched: false }),
+      sleep: async () => {},
+      fetchUrl: async (u: string) =>
+        /\.json$/.test(u) ? { status: 200, contentType: "application/json", body: coffee }
+        : /shipping|policies/.test(u) ? { status: 200, contentType: "text/html", body: policy(policyBody) }
+        : { status: 200, contentType: "text/html", body: "<html><body><p>A washed Ethiopian coffee.</p></body></html>" },
+    });
+  };
+
+  // CONTROL: a lintable window still passes and still quotes.
+  const clean = await run("Most orders arrive within 3 business days for US addresses.");
+  assert.equal(clean.ok, true);
+  const cleanRow = clean.assertions.find((a) => /delivery/i.test(a.label));
+  assert.equal(cleanRow?.status, "pass_evidenced");
+  assert.match(String(cleanRow?.evidenceQuote), /within 3 business days/);
+
+  // THE FIX: the report survives, and the row is HONEST rather than silently passing.
+  const hostile = await run("We are a small roaster. Delivery guaranteed within 3 business days.");
+  assert.equal(hostile.ok, true, "the merchant's own wording must never refuse their report");
+  assert.notEqual(hostile.errorKind, "unreachable");
+  assert.equal(hostile.assertions.length, clean.assertions.length, "the full table survives");
+  const row = hostile.assertions.find((a) => /delivery/i.test(a.label));
+  // FAIL CLOSED PER ROW: the only timing sentence was unquotable, so the row must not
+  // pass on evidence it cannot show. `not_proven` because the policy WAS readable —
+  // an unreadable policy is the separate `requires_store_access` branch (§3.2).
+  assert.equal(row?.status, "not_proven", "an unquotable sentence must not silently pass");
+  assert.equal(row?.evidenceQuote, undefined, "no quote is rendered for a row that found none");
+});
+
+// ---- G-09 (v3.0 CP4): a standard can be executed against a public URL --------
+
+test("G-09: a pinned contract replaces the generated questions on the PUBLIC path", async () => {
+  // Before this, `runProductTest` called `buildBuyerTask` unconditionally and
+  // `RunOptions` carried only `force` and `semantic`. `runAuthenticatedTest` had
+  // accepted `requirements?: Requirement[]` since v2 CP2 — so a standard could be run
+  // against a CONNECTED store and not against a public URL. An asymmetry, not a design.
+  const coffee = JSON.stringify({ product: {
+    title: "Ethiopia Guji 12 oz", vendor: "Acme Roasters", product_type: "Coffee", tags: "",
+    // NO timing sentence in the product copy, deliberately: the delivery row must be
+    // decided by the POLICY, which is what proves the extra fetch actually contributed
+    // rather than merely happening.
+    body_html: "<p>A washed Ethiopian coffee. Certified organic.</p>",
+    options: [{ name: "Grind", values: ["Whole Bean", "Espresso"] }],
+    variants: [
+      { title: "Whole Bean", price: "19.00", option1: "Whole Bean" },
+      { title: "Espresso", price: "19.00", option1: "Espresso" },
+    ],
+  } });
+  const policy = "<html><body><main><p>Orders arrive within 3 business days.</p></main></body></html>";
+  let policyFetched = false;
+  const run = async (extra: Record<string, unknown>) => {
+    const { __resetCaches } = await import("../src/server/productTestCache.js");
+    __resetCaches();
+    policyFetched = false;
+    return runProductTest("https://g09.example/products/ethiopia-guji", {
+      semantic: { disabled: true },
+      loadRobots: async () => ({ rules: [], fetched: false }),
+      sleep: async () => {},
+      fetchUrl: async (u: string) => {
+        if (/\.json$/.test(u)) return { status: 200, contentType: "application/json", body: coffee };
+        if (/shipping|policies/.test(u)) { policyFetched = true; return { status: 200, contentType: "text/html", body: policy }; }
+        return { status: 200, contentType: "text/html", body: "<html><body><p>A washed Ethiopian coffee.</p></body></html>" };
+      },
+      ...extra,
+    });
+  };
+
+  // A pinned contract of 18 entries — deliberately more than MAX_REQUIREMENTS (10),
+  // because that cap belongs to GENERATION and a standard has more entries than a
+  // generated task. Truncating a conformance run would drop published assertions
+  // while still claiming the standard had been tested.
+  const pinned: Requirement[] = [
+    { id: "ALS-COFFEE-1.0-FORMAT-001", kind: "variant_option", optionValue: "Whole Bean", label: "Whole Bean option available" },
+    { id: "ALS-COFFEE-1.0-FORMAT-002", kind: "variant_option", optionValue: "Ground", label: "Ground option available" },
+    { id: "ALS-COFFEE-1.0-GRIND-001", kind: "variant_option", optionValue: "Espresso", label: "Espresso option available" },
+    { id: "ALS-COFFEE-1.0-DELIV-001", kind: "delivery", label: "Delivery timing is stated" },
+    { id: "ALS-COFFEE-1.0-IDENT-001", kind: "identifiers", label: "Product identifier (GTIN or MPN) is published" },
+    { id: "ALS-COFFEE-1.0-CERT-001", kind: "claim", claim: "organic", label: "Organic is stated" },
+    ...Array.from({ length: 12 }, (_, i) => ({
+      id: `ALS-COFFEE-1.0-FILL-${i}`, kind: "variant_option" as const,
+      optionValue: `Nope${i}`, label: `Nope${i} option available`,
+    })),
+  ];
+  assert.equal(pinned.length, 18);
+
+  const std = { id: "ALS-COFFEE", version: "1.0", hash: "a".repeat(64) };
+  const res = await run({ requirements: pinned, standard: std });
+
+  assert.equal(res.ok, true);
+  // 1. THE CAP IS A RENDERING CAP. All 18 entries are evaluated and rendered.
+  assert.equal(res.total, 18, "a standard must not be truncated to MAX_REQUIREMENTS");
+  assert.equal(res.assertions.length, 18);
+  // The questions are the STANDARD's, not the heuristic's.
+  assert.ok(res.assertions.some((a) => a.label === "Whole Bean option available"));
+  assert.ok(!res.assertions.some((a) => /^Price under/.test(a.label)), "no generated price row");
+
+  // 2. THE DELIVERY FETCH TRIGGERS OFF THE EFFECTIVE LIST — confirmed, not assumed.
+  assert.equal(policyFetched, true, "a standard's delivery entry must still fetch the policy");
+  const deliv = res.assertions.find((a) => a.label === "Delivery timing is stated");
+  assert.equal(deliv?.status, "pass_evidenced");
+  assert.match(String(deliv?.evidenceQuote), /within 3 business days/);
+
+  // 3. STANDARD IDENTITY IS ON THE RESULT, so a citation resolves to a specific text.
+  assert.deepEqual(res.standard, std);
+  assert.match(String(res.contractVersion), /^c1s-[0-9a-f]{8}$/);
+
+  // 4. NO requires_store_access COLLAPSE on a pinned run: every entry keeps its row.
+  assert.equal(res.deferred.length, 0, "a conformance list must not move entries below the table");
+
+  // The summary still comes from buildBuyerTask — it is linted and merchant-visible.
+  assert.ok(res.task.length > 0);
+
+  // A GENERATED run is completely unaffected: still capped, still collapses.
+  const gen = await run({});
+  assert.ok(gen.total <= 10, "the generated task keeps its 10-row cap");
+  assert.equal(gen.standard, undefined, "a generated run claims no standard");
+  assert.equal(gen.contractVersion, undefined);
+});
+
+test("G-09: contractVersion covers the standard, and generated contracts hash unchanged", () => {
+  const reqs: Requirement[] = [
+    { id: "a", kind: "claim", claim: "organic", label: "Organic is stated" },
+    { id: "b", kind: "delivery", label: "Delivery timing is stated" },
+  ];
+  // The pre-v3.0 fingerprint is byte-for-byte preserved when no standard is supplied.
+  // This matters: widening it unconditionally would have re-fingerprinted every stored
+  // contract at once and made every saved before/after comparison refuse itself.
+  assert.match(contractVersion(reqs), /^c1-[0-9a-f]{8}$/);
+  assert.equal(contractVersion(reqs), contractVersion(reqs, undefined));
+
+  // Two runs under DIFFERENT versions of the same standard must NOT compare as though
+  // they asked the same question.
+  const v1 = contractVersion(reqs, { id: "ALS-COFFEE", version: "1.0", hash: "a".repeat(64) });
+  const v2 = contractVersion(reqs, { id: "ALS-COFFEE", version: "1.1", hash: "a".repeat(64) });
+  const h2 = contractVersion(reqs, { id: "ALS-COFFEE", version: "1.0", hash: "b".repeat(64) });
+  const other = contractVersion(reqs, { id: "ALS-TEA", version: "1.0", hash: "a".repeat(64) });
+  assert.notEqual(v1, v2, "a version bump must change the fingerprint");
+  assert.notEqual(v1, h2, "an edited text (same version) must change the fingerprint");
+  assert.notEqual(v1, other, "a different standard must change the fingerprint");
+  // And a standard-pinned contract can never be mistaken for a generated one.
+  assert.match(v1, /^c1s-/);
+  assert.notEqual(v1, contractVersion(reqs));
+});
+
+// ---- v3.2 CP2: the merchant's own product_type, read from the page ----------
+//
+// `fetchPublicProduct` skips the `.json` tier whenever the page's JSON-LD is
+// complete, so `product_type` was lost on any store that answered from the page.
+// Measured on the coffee capture: 15 of 44 products were unclassifiable, and the
+// same null degrades CATEGORY_CLAIMS and AttributeSpec.onlyFor in production.
+
+const META = (product: string) => `<html><head><script>var meta = {"product":${product},"page":{"pageType":"product"}};
+for (var attr in meta) { window.ShopifyAnalytics.meta[attr] = meta[attr]; }</script></head><body></body></html>`;
+
+test("CP2: product_type is read from the Shopify analytics payload already on the page", () => {
+  const html = META('{"id":1,"gid":"gid:\/\/shopify\/Product\/1","vendor":"Acme","type":"Coffee","handle":"h","variants":[]}');
+  assert.equal(shopifyMetaProductType(html), "Coffee");
+});
+
+test("CP2: the object is PARSED, so a `type` inside variants[] cannot be mistaken for the product's", () => {
+  // ⚠️ THE REASON THIS IS NOT A REGEX. A bare /"type"\s*:\s*"([^"]*)"/ reads whichever
+  // comes first in the bytes. Shopify happens to emit product.type before variants
+  // today; a theme that reorders keys would silently start returning a variant field,
+  // and nothing downstream could tell the difference.
+  const html = META('{"id":1,"variants":[{"id":9,"type":"WRONG-variant-field","public_title":"12oz"}],"type":"Coffee"}');
+  assert.equal(shopifyMetaProductType(html), "Coffee");
+});
+
+test("CP2: a brace inside a string value cannot terminate the object early", () => {
+  const html = META('{"id":1,"vendor":"Acme } Roasters {","type":"Coffee","variants":[]}');
+  assert.equal(shopifyMetaProductType(html), "Coffee");
+});
+
+test("CP2: absent, empty, unbalanced and non-JSON all return null rather than a guess", () => {
+  assert.equal(shopifyMetaProductType("<html><body>nothing here</body></html>"), null);
+  assert.equal(shopifyMetaProductType(META('{"id":1,"type":"   ","variants":[]}')), null, "whitespace is not a type");
+  assert.equal(shopifyMetaProductType(META('{"id":1,"type":"Coffee"')), null, "truncated object must not be guessed at");
+  assert.equal(shopifyMetaProductType("<script>var meta = {not json at all};</script>"), null);
+  assert.equal(shopifyMetaProductType(META('{"id":1,"variants":[]}')), null, "no type field");
+});
+
+test("CP2: escapes Shopify actually emits survive the round trip", () => {
+  // `\/` and `&` are what the real payload contains; a hand-rolled extractor
+  // returns them literally, which then fails an exact category match downstream.
+  const html = META('{"id":1,"type":"Coffee \u0026 Tea","handle":"a\/b","variants":[]}');
+  assert.equal(shopifyMetaProductType(html), "Coffee & Tea");
 });

@@ -1,0 +1,136 @@
+{
+  "suite_id": "subject-tense",
+  "suite_version": "1.0",
+  "title": "Subject attribution, tense and modality — the acceptance target for a future engine session",
+
+  "what_this_measures": "Whether the engine can tell a statement ABOUT THIS PRODUCT, NOW, from a statement about a sibling product, the packaging, the shipment, a bundled item, a competitor, the industry, a reviewer, the whole range, or about this product at a different time or in a different mood. It is stated as EXPECTED outcomes, not measured ones: this suite is a target, not a description of today's engine.",
+
+  "what_this_does_not_measure": "VALUE. Not one of these sentences has been measured against real merchant copy. See `frequency_caveat` — it is the most important field in this file and it is deliberately not in a footnote.",
+
+  "frequency_caveat": {
+    "statement": "THIS SUITE MEASURES CAPABILITY, NOT VALUE. A fix that passes every case here has been shown to be POSSIBLE, not shown to be WORTH SHIPPING. Before shipping, a natural-frequency read against real merchant copy is required, in both directions: how often does each hostile shape actually occur, and how many TRUE statements does the fix cost?",
+    "precedent": "The `origin` tombstone. A narrowing that closed every false pass in hand-built sets was measured against 5,322 real product descriptions and found to cost 17 true statements for 0 false passes gained; the class it closed had ZERO instances across all 5,322 products. The term was removed. A hand-built set could not have arbitrated that, and this is a hand-built set.",
+    "second_precedent": "v2.6 built a full negation-scope rewrite and measured 16/16 denials and 12/12 truths on ITS OWN set. An independent pass then measured it as a NET REGRESSION: 7 false passes v2.5 caught and it did not, plus 46 false fails. Passing your own suite is evidence about the suite.",
+    "consequence": "A green run here is a licence to MEASURE, never a licence to ship."
+  },
+
+  "terms": {
+    "note": "PINNED DELIBERATELY. Subject and tense handling is a property of the ENGINE, not of any vocabulary, so this suite carries its own term list rather than loading one. If it loaded `decaf-method.json` then a future narrowing of that vocabulary would silently change what this suite measures, and a fix could appear to pass because a term moved. Seven terms, chosen to cover all four term shapes the attack templatizer distinguishes.",
+    "derived_from": "standards/coffee/v1.0/vocabulary/decaf-method.json",
+    "derived_from_hash": "96f2c724a6aee74abc56e1306d317b927595d4cd898971100c172aaa99188922",
+    "drift_tripwire": "`acceptance.test.ts` asserts every pinned term is still a supporting term in the source vocabulary. If that assertion fails, the vocabulary was narrowed and this suite must be RE-DERIVED — it is not a licence to edit the assertion.",
+    "support": [
+      "swiss water process",
+      "swiss water decaf",
+      "mountain water process",
+      "mountain water decaf",
+      "royal select water process",
+      "sugarcane ea",
+      "decaffeinated with methylene chloride"
+    ],
+    "violating": []
+  },
+
+  "strata": {
+    "sibling_product": "the property is stated of ANOTHER product the seller stocks",
+    "packaging": "the property is stated of the packaging",
+    "shipment": "the property is stated of the delivery, not the thing delivered",
+    "bundled_item": "the property is stated of one item inside a multi-item listing",
+    "competitor": "the property is stated of a named other company",
+    "industry_generic": "the property is stated of the category at large, usually as a warning",
+    "review_quote": "the property is stated by a buyer, not by the seller",
+    "site_wide": "the property is stated of the whole range, not this unit",
+    "subscription": "the property appears in purchase-widget copy",
+    "cross_sell": "the property is stated of a product being cross-sold",
+    "comparative": "the property is stated of a comparison class this product is measured against",
+    "past_tense": "the property held in the past and the sentence says so",
+    "future_conditional": "the property is an intention or a conditional offer",
+    "modal": "the property is a possibility or an option on request",
+    "enquiry_evaluation": "the seller asked about or is trialling the property",
+    "plain_present": "MUST NOT REGRESS — the ordinary present-tense claim",
+    "spec_block": "MUST NOT REGRESS — the specification-row form",
+    "first_person": "MUST NOT REGRESS — the seller's own voice",
+    "trade_form": "MUST NOT REGRESS — the listing conventions the trade actually uses",
+    "temporal_but_current": "MUST NOT REGRESS — a present claim carrying temporal words. The shape a tense fix is most likely to break",
+    "already_refused": "MUST NOT REGRESS — hostile shapes the engine refuses TODAY. A fix that closes the new classes while unwiring these is the v2.6 result exactly"
+  },
+
+  "cases": [
+    { "id": "sib-01", "stratum": "sibling_product", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our Ethiopian decaf uses the Swiss Water Process.", "why": "One line of ordinary copy about a different coffee, on a page for this one. The subject is `Our Ethiopian decaf`, and it is not this product." },
+    { "id": "sib-02", "stratum": "sibling_product", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our house decaf is a Swiss Water Decaf; this Kenya is full caffeine.", "why": "A sibling named and this product EXPLICITLY excluded. The semicolon is a clause boundary, so the exclusion is never read." },
+    { "id": "sib-03", "stratum": "sibling_product", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our Colombian lot is a Mountain Water Decaf.", "why": "A named sibling with no contrastive marker at all — the hardest form, because nothing in the sentence signals that another product is meant." },
+    { "id": "sib-04", "stratum": "sibling_product", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our other decaf uses the Royal Select Water Process.", "why": "`other` is the only word distinguishing this from a true claim, and it is not the matched term." },
+
+    { "id": "pkg-01", "stratum": "packaging", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our packaging is made from Swiss Water Process kraft board.", "why": "The subject is the packaging. Nonsense on its face, which is what makes it a fair test of whether the guard reads the subject rather than the keyword." },
+    { "id": "pkg-02", "stratum": "packaging", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our Swiss Water Process decaf pouch is lined with recycled foil.", "why": "The packaging class in the word order a merchant ACTUALLY writes, rather than the contrived form an adjacency test happens to catch." },
+    { "id": "pkg-03", "stratum": "packaging", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Every Mountain Water Decaf carton is printed with soy ink.", "why": "The same with the container noun after the term rather than before it." },
+
+    { "id": "shp-01", "stratum": "shipment", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Your shipment of Swiss Water Process decaf leaves the roastery within 24 hours.", "why": "A sentence about getting the thing to the buyer is not a statement about the thing." },
+    { "id": "shp-02", "stratum": "shipment", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Orders of our Mountain Water Decaf are dispatched the same day.", "why": "The subject is the order. Logistics copy is on essentially every product page." },
+
+    { "id": "bnd-01", "stratum": "bundled_item", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "The holiday hamper contains a Swiss Water Process decaf and two mugs.", "why": "The property is named for one item inside a hamper and the row credits it to the hamper." },
+    { "id": "bnd-02", "stratum": "bundled_item", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "The gift set that goes with this bag contains a Swiss Water Decaf.", "why": "`goes with` is outside the related-product veto's closed phrase list." },
+    { "id": "bnd-03", "stratum": "bundled_item", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "This starter kit includes a Mountain Water Decaf and a grinder.", "why": "`kit includes` IS in the related-product veto, so this shape is expected to be refused today. Kept in the hostile set on purpose: a stratum with no already-closed member cannot show a fix UNWIRING one." },
+
+    { "id": "cmp-01", "stratum": "competitor", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Northbank Coffee uses the Swiss Water Process for their decaf; we do things differently.", "why": "Competitor attribution credits another company's process to this product. The name is fictional deliberately — a committed test file should not manufacture claims about a real business." },
+    { "id": "cmp-02", "stratum": "competitor", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Northbank Coffee's decaf is decaffeinated with methylene chloride.", "why": "The same class rewritten INTO the shipped frame. The decaf review's refuter measured this rewrite passing 13 of 13, which is what turned a class recorded as closed into a class recorded as open." },
+
+    { "id": "ind-01", "stratum": "industry_generic", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Most supermarket coffee is decaffeinated with methylene chloride.", "why": "A roaster disparaging the industry, recorded as disclosing its own method. The most reputationally damaging false pass available in this category." },
+    { "id": "ind-02", "stratum": "industry_generic", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "The cheapest decafs on the market are decaffeinated with methylene chloride.", "why": "The same with a superlative subject rather than a quantifier." },
+
+    { "id": "rev-01", "stratum": "review_quote", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "\"The best Swiss Water Process decaf I have ever tried.\" — Sarah M.", "why": "An attributed pull-quote carrying none of the review vocabulary the keyword veto is keyed on." },
+    { "id": "rev-02", "stratum": "review_quote", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "\"We switched to their Mountain Water Decaf and never looked back.\" — J. Okafor", "why": "The same, and the buyer's voice is signalled only by the quotation marks and the attribution dash." },
+
+    { "id": "sit-01", "stratum": "site_wide", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "All of our decafs use the Swiss Water Process.", "why": "Roasters stock more than one decaf origin processed at more than one facility, so a statement about the range does not establish a fact about this lot." },
+    { "id": "sit-02", "stratum": "site_wide", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Every decaf we stock is a Mountain Water Decaf.", "why": "The universal quantifier form. Arguably the weakest hostile case in the suite, since it entails the claim if true — which is exactly why an adjudicator should see it and decide." },
+
+    { "id": "sub-01", "stratum": "subscription", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Choose a monthly subscription of our Swiss Water Process decaf.", "why": "Purchase-widget copy avoiding every cadence phrase the subscription veto is keyed on." },
+    { "id": "sub-02", "stratum": "subscription", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Our subscribers get the Mountain Water Decaf in month three.", "why": "A rotation schedule, which says this product is what arrives in a DIFFERENT month." },
+
+    { "id": "xsl-01", "stratum": "cross_sell", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We also stock a Swiss Water Process decaf from Colombia.", "why": "`also stock` is outside the related-product veto's closed phrase list, which covers `also available` and `also try`." },
+    { "id": "xsl-02", "stratum": "cross_sell", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We keep a Mountain Water Decaf on the shelf too.", "why": "A cross-sell with no cross-sell verb at all." },
+
+    { "id": "cpr-01", "stratum": "comparative", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Sweeter than a typical Sugarcane EA lot.", "why": "A comparison to a class is not a claim of membership in it. The comparative veto catches `unlike` and not `sweeter than`." },
+    { "id": "cpr-02", "stratum": "comparative", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Cleaner in the cup than most Swiss Water Process decafs.", "why": "The same shape with the comparison class in the plural." },
+
+    { "id": "pst-01", "stratum": "past_tense", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Until 2024 we used the Swiss Water Process for this lot.", "why": "Past tense says the process is no longer in use, and the row would report it as the method for what is on sale today." },
+    { "id": "pst-02", "stratum": "past_tense", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "This coffee was a Mountain Water Decaf before we changed suppliers.", "why": "A past copula plus an explicit change event. Nothing in the engine reads either." },
+    { "id": "pst-03", "stratum": "past_tense", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We used the Royal Select Water Process on last year's harvest.", "why": "Past tense scoped to a different harvest — the subject and the tense both point away from this lot." },
+
+    { "id": "fut-01", "stratum": "future_conditional", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We hope to move this coffee to the Swiss Water Process next season.", "why": "An explicit future intention says the coffee is NOT currently processed this way." },
+    { "id": "fut-02", "stratum": "future_conditional", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "If you prefer a Swiss Water Process decaf, our sourcing team can find one.", "why": "The plain meaning is that this coffee is not processed that way; the sentence offers to find one that is." },
+    { "id": "fut-03", "stratum": "future_conditional", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We are switching to the Mountain Water Process later this year.", "why": "A transition in progress says the CURRENT state is the other one." },
+
+    { "id": "mod-01", "stratum": "modal", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We may use the Swiss Water Process for future lots.", "why": "A modal states a possibility, not a fact." },
+    { "id": "mod-02", "stratum": "modal", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "This lot could be a Mountain Water Decaf next season.", "why": "A conditional possibility scoped to a future season." },
+    { "id": "mod-03", "stratum": "modal", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "Swiss Water Process decaf is available on request.", "why": "Availability on request says the DEFAULT product is not this." },
+
+    { "id": "enq-01", "stratum": "enquiry_evaluation", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We asked our importer about the Royal Select Water Process.", "why": "The sentence records that a question was asked. It states nothing about how this coffee was decaffeinated." },
+    { "id": "enq-02", "stratum": "enquiry_evaluation", "direction": "hostile", "expected": "not_proven", "surface": "product_description", "text": "We are evaluating the Mountain Water Process for a future release.", "why": "Evaluating a process is not using it, and the sentence says so plainly." },
+
+    { "id": "pln-01", "stratum": "plain_present", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Decaffeinated with the Swiss Water Process at a dedicated facility.", "why": "The canonical true positive. If this stops passing, the fix has broken the ordinary case and is a net regression whatever it closed." },
+    { "id": "pln-02", "stratum": "plain_present", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "This lot went through the Swiss Water Process before roasting.", "why": "A past-tense VERB describing a completed step in making THIS product. The single most dangerous case in the suite for a naive tense rule: `went` is past, and the claim is current." },
+    { "id": "pln-03", "stratum": "plain_present", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Our Swiss Water Decaf comes from a single farm in Huila.", "why": "A first-person possessive that is NOT a sibling reference — `Our X` is the commonest honest phrasing and the commonest sibling phrasing, and only the wider page distinguishes them." },
+    { "id": "pln-04", "stratum": "plain_present", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "This lot is decaffeinated with methylene chloride, as disclosed by our importer.", "why": "The honest disclosure of the unflattering answer. A fix that suppresses this suppresses exactly the transparency the standard exists to reward." },
+
+    { "id": "spc-01", "stratum": "spec_block", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Process: Swiss Water Process.", "why": "The spec-row form. It has no finite verb and no subject at all, so any rule that requires a readable subject must fail OPEN here or it guts every specification-heavy category." },
+    { "id": "spc-02", "stratum": "spec_block", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Method: Mountain Water Process.", "why": "The same shape under a different label, because a subject rule keyed on a specific spec-row word would pass `Process:` and fail `Method:` while looking like it had generalised." },
+    { "id": "spc-03", "stratum": "spec_block", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Decaffeination: Royal Select Water Process.", "why": "The same where the label is the claim topic itself." },
+
+    { "id": "fps-01", "stratum": "first_person", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "We use the Swiss Water Process for every lot we sell.", "why": "The seller's own voice with a universal quantifier — nearly identical in form to `sit-01`, which must NOT pass. If a fix cannot separate these two it has not solved the problem, it has moved it." },
+    { "id": "fps-02", "stratum": "first_person", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "We decaffeinate this coffee with the Mountain Water Process.", "why": "First person with an explicit `this coffee` object." },
+    { "id": "fps-03", "stratum": "first_person", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Every bag we sell is a Swiss Water Decaf.", "why": "A universal over the seller's own units. The honest twin of `sit-02`." },
+
+    { "id": "trd-01", "stratum": "trade_form", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "A Swiss Water Process decaf from Huila, roasted last week.", "why": "The verbless listing form the specialty trade actually writes." },
+    { "id": "trd-02", "stratum": "trade_form", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Colombia Sugarcane EA decaf, washed at the mill.", "why": "An origin-first listing line with no verb and no subject." },
+    { "id": "trd-03", "stratum": "trade_form", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "Decaffeinated by the Mountain Water Process in Veracruz.", "why": "A passive with the agent named and no surface subject." },
+
+    { "id": "tmp-01", "stratum": "temporal_but_current", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "This decaf still uses the Swiss Water Process, as it always has.", "why": "Carries `still` and `always has` — temporal vocabulary in a sentence whose claim is emphatically CURRENT. The shape a keyword-based tense rule breaks first." },
+    { "id": "tmp-02", "stratum": "temporal_but_current", "direction": "must_not_regress", "expected": "pass", "surface": "product_description", "text": "We have used the Swiss Water Process since 2019.", "why": "Present perfect with a date. A rule keyed on `used` plus a year would refuse this and refuse `pst-01` and be unable to tell them apart." },
+
+    { "id": "arf-01", "stratum": "already_refused", "direction": "must_not_regress", "expected": "not_proven", "surface": "product_description", "text": "We do not offer a Swiss Water Process decaf in this range.", "why": "The negation guard closes this TODAY. A fix that rewrites clause scope and unwires it has traded a new class for an old one — which is the v2.6 result exactly." },
+    { "id": "arf-02", "stratum": "already_refused", "direction": "must_not_regress", "expected": "not_proven", "surface": "product_description", "text": "One verified buyer said the Swiss Water Process version is the best decaf they have had.", "why": "The review veto closes this today, keyed on `verified buyer`." },
+    { "id": "arf-03", "stratum": "already_refused", "direction": "must_not_regress", "expected": "not_proven", "surface": "product_description", "text": "We no longer offer a Swiss Water Process decaf.", "why": "`no longer` is in the negator list, so the ONE tense-adjacent shape the engine already closes. A tense fix must keep it closed." },
+    { "id": "arf-04", "stratum": "already_refused", "direction": "must_not_regress", "expected": "not_proven", "surface": "product_description", "text": "Is the Swiss Water Process used for this coffee?", "why": "An interrogative. `findSupport` drops questions, so this is closed today; it is here because an FAQ rewrite is a plausible side effect of a subject rule." }
+  ]
+}

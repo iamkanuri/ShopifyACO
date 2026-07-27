@@ -30,7 +30,8 @@ const DEFAULTS: AppConfig = {
   brandName: "AisleLens",
   baseUrl: "",
   contactEmail: "",
-  tagline: "Executable shopping tests for your Shopify store — the exact buyer requirement that failed, with evidence.",
+  // ⚠️ Kept byte-identical to TAGLINE_SHORT in ./copy.ts (test/siteCopy.test.ts asserts the pair).
+  tagline: "Versioned buying standards, executed against your real product pages — every requirement proven, not proven, or requires store access, with the evidence.",
   // MERGE NOTE (v2.1): tagline is v2's (reposition); demoNote is main's — it carries the
   // third-party trademark attribution for the brands the Sennen demo actually renders. Same
   // reasoning as DEMO_NOTE in src/server/index.ts; the two are the client/server pair.

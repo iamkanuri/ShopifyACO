@@ -1,10 +1,12 @@
 import type { VisibilityScore } from "../types";
 
+// A number is never a failed requirement, so a number never gets the failure
+// colour. Only a strong result is tinted (--pass); everything weaker is plain
+// ink and lets the figure, the components and the `n=` do the talking. See the
+// palette header in theme.css.
 function scoreColor(score: number | null): string {
   if (score == null) return "var(--ink-3)";
-  if (score >= 70) return "var(--good)";
-  if (score >= 40) return "var(--warn)";
-  return "var(--bad)";
+  return score >= 70 ? "var(--pass)" : "var(--ink)";
 }
 
 export function ScorePanel({ score }: { score: VisibilityScore }) {

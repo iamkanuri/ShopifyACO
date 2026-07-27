@@ -1,5 +1,6 @@
 import { Link } from "../router";
 import { useConfig } from "../config";
+import { FOOTER } from "../copy";
 
 export function Footer() {
   const { brandName, contactEmail } = useConfig();
@@ -10,19 +11,17 @@ export function Footer() {
           © {new Date().getFullYear()} {brandName}
         </span>
         <nav className="foot-links">
-          <Link to="/demo">Example test</Link>
-          <Link to="/methodology">Methodology</Link>
-          <Link to="/privacy">Privacy</Link>
-          <Link to="/terms">Terms</Link>
-          <Link to="/support">Support</Link>
-          {contactEmail && <a href={`mailto:${contactEmail}`}>Contact</a>}
+          {/* Plain <a>: /standards is server-rendered, so the SPA router must not swallow it. */}
+          {FOOTER.externalLinks.map(([href, label]) => (
+            <a key={href} href={href}>{label}</a>
+          ))}
+          {FOOTER.links.map(([to, label]) => (
+            <Link key={to} to={to}>{label}</Link>
+          ))}
+          {contactEmail && <a href={`mailto:${contactEmail}`}>{FOOTER.contact}</a>}
         </nav>
       </div>
-      <p className="foot-fine">
-        AI systems vary by model, prompt, time, and location. AisleLens reports what it tested and
-        what it could verify from your store's own data — it does not predict or guarantee the
-        behavior of any external AI system. Not affiliated with any AI provider.
-      </p>
+      <p className="foot-fine">{FOOTER.fine}</p>
     </footer>
   );
 }

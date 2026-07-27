@@ -1,0 +1,67 @@
+{
+  "_comment": "MEASURED FITNESS, kept BESIDE the standard rather than inside it. `standard_hash` covers standard.json's bytes and a citation resolves through it, so a measurement taken after publication must not invalidate every citation made against v1.0 — the same reason applicability.json is a sidecar (G-10, v3.1 CP3). The brief asked for these numbers to be written into the document's `predicted_discrimination` blocks; doing that would have changed the hash from 334389c4… and silently broken every citation already made. The site renders MEASURED values from here, overriding the document's predicted band. No number on the published page is hand-copied.",
+  "measured_at": "2026-07-27",
+  "engine_version": "v2.0.0",
+  "engine_commit": "feat/v3-2-category",
+  "samples": [
+    {
+      "name": "coffee",
+      "label": "Coffee category sample",
+      "description": "103 coffee brands captured with the raw transport, deduplicated on registrable domain before capture; 3 excluded by the G-10 applicability predicate with reasons; 100 evaluated.",
+      "stores": 77,
+      "products_evaluated": 100,
+      "pass_rows_audited": 162,
+      "confirmed_false_positives": 10,
+      "borderline_counted_as_passes": 7,
+      "point_estimate_pct": 6.17,
+      "bound_95_naive_pct": 10.47,
+      "bound_95_cluster_icc02_pct": 12.78,
+      "per_store_pct": 12.99,
+      "rows_per_store": 2.1,
+      "deff_icc02": 1.22,
+      "method": "Every pass_evidenced row audited individually against its FULL untruncated evidence, not the 180-character rendered quote. 162 of 162 adjudicated; the merge step refuses to produce a number if any row is unadjudicated. The 95% upper bound is a Poisson upper limit inflated by a design effect for clustering within store (ICC 0.2), because pass rows are not independent — rows from one store share that store's copy conventions.",
+      "defect_classes": [
+        "a brewing recipe or caffeine dose read as the product's own weight (3)",
+        "a store-local Shopify product id or SKU published as `mpn` (3)",
+        "the soil-science sense of `organic` read as an organic claim (2)",
+        "`single-origin` inside a sentence describing a BLEND of several origins (2)"
+      ],
+      "source": "experiments/v3-2/CATEGORY_BOUND.md"
+    },
+    {
+      "name": "general",
+      "label": "General DTC sample",
+      "description": "172 stores captured without regard to category — the shape a broad fitness sweep produces.",
+      "stores": 169,
+      "products_evaluated": 172,
+      "pass_rows_audited": 509,
+      "confirmed_false_positives": 18,
+      "point_estimate_pct": 3.54,
+      "bound_95_naive_pct": 5.56,
+      "bound_95_cluster_icc02_pct": 7.8,
+      "rows_per_store": 3.01,
+      "deff_icc02": 1.4,
+      "is_floor": true,
+      "method": "⚠️ THIS IS A FLOOR, NOT A COMPLETED AUDIT, AND IT CORRECTS A PREVIOUSLY PUBLISHED NUMBER. An earlier audit read all 507 rendered rows and confirmed ZERO false positives, which is where the 0.83% figure came from. A mechanical check of ONE defect class — `identifiers` rows passing on an `mpn` that is the store's own Shopify product id or a byte-copy of its SKU — found 18 in that same sample. The earlier audit could not have seen them: an identifier row renders NO QUOTE, so it looks identical whether the value is a real GS1 barcode or a number the store minted about itself. Only that one class has been re-checked, so the true figure is at least this and the two samples are NOT audited to the same depth.",
+      "supersedes": "0.83% (x=0), published before the identifier class was checked",
+      "source": "experiments/v3-2/CATEGORY_BOUND.md"
+    }
+  ],
+  "entry_discrimination": {
+    "_comment": "Measured fail rate per executable entry, over the products the entry was ASKED — never over ten. A product G-10 excluded contributes nothing, and dividing by the full entry count would convert 'not asked' into 'failed'. These override the document's `predicted_discrimination` bands, which were hypotheses written before the standard had ever run.",
+    "n_products": 100,
+    "bands_held": 1,
+    "entries": [
+      { "id": "ALS-COFFEE-1.0-FORMAT-001", "asked": 99, "fail_pct": 73.7, "predicted_band": "30-60%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-FORMAT-002", "asked": 99, "fail_pct": 92.9, "predicted_band": "35-70%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-GRIND-001", "asked": 99, "fail_pct": 84.8, "predicted_band": "55-85%", "verdict": "held" },
+      { "id": "ALS-COFFEE-1.0-GRIND-002", "asked": 99, "fail_pct": 92.9, "predicted_band": "60-85%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-WEIGHT-001", "asked": 100, "fail_pct": 49.0, "predicted_band": "15-40%", "verdict": "above_band", "note": "Above its band, but 49% is the most informative split in the standard — the band was wrong, the entry is the best one here. Measured 48.8% on 43 brands and 49.0% on 100: the most stable figure in the document." },
+      { "id": "ALS-COFFEE-1.0-CERT-001", "asked": 100, "fail_pct": 92.0, "predicted_band": "30-70%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-CERT-002", "asked": 100, "fail_pct": 96.0, "predicted_band": "40-75%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-SOURCE-001", "asked": 100, "fail_pct": 89.0, "predicted_band": "40-75%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-IDENT-001", "asked": 76, "fail_pct": 94.7, "predicted_band": "55-85%", "verdict": "above_band" },
+      { "id": "ALS-COFFEE-1.0-DELIV-001", "asked": 100, "fail_pct": 45.0, "predicted_band": "50-80%", "verdict": "below_band" }
+    ]
+  }
+}

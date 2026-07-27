@@ -39,7 +39,7 @@ export function PaidArtifacts({ bundle, demo = false }: { bundle: ArtifactBundle
           )}
         </p>
         {totalSourced === 0 && demo && (
-          <p className="muted" style={{ borderLeft: "3px solid var(--accent, #5b8def)", paddingLeft: 10 }}>
+          <p className="muted" style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 10 }}>
             <b>These are demo scaffolds.</b> They show the exact structure and value you'd get — with{" "}
             <code>[placeholders]</code> in place of invented facts. In <b>your</b> paid report, every placeholder{" "}
             <b>auto-fills from your real store data</b> — prices, ratings, and product details read straight from
@@ -47,7 +47,7 @@ export function PaidArtifacts({ bundle, demo = false }: { bundle: ArtifactBundle
           </p>
         )}
         {totalSourced === 0 && !demo && (
-          <p className="muted" style={{ borderLeft: "3px solid var(--warn, #c90)", paddingLeft: 10 }}>
+          <p className="muted" style={{ borderLeft: "3px solid var(--advisory)", paddingLeft: 10 }}>
             These are <b>fill-in templates</b> — we couldn't pull sourced facts from your live store. If you
             didn't give us your store URL, add it and run a fresh scan to auto-fill your real prices, ratings,
             and product details.

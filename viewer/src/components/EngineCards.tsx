@@ -21,7 +21,8 @@ export function EngineCards({ engines, brand }: { engines: EngineWeakness[]; bra
           </h3>
           <div className="row">
             <span className="lab">Recommends {brand}</span>
-            <span className="val" style={{ color: e.recommendation.rate > 0 ? "var(--good)" : "var(--bad)" }}>
+            {/* A zero rate is a measurement, not a failed requirement — neutral ink, never the failure colour. */}
+            <span className="val" style={{ color: e.recommendation.rate > 0 ? "var(--pass)" : "var(--ink-2)" }}>
               {fmtRateN(e.recommendation)}
             </span>
           </div>

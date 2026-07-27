@@ -93,6 +93,8 @@ import {
   proposeFromTestHandler, testProposalsHandler,
 } from "./buyerTests.js";
 import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
+import { standardsPageFor, standardJsonFor, standardsSitemapPaths, llmsTxt, renderStandaloneDocument } from "./standardsSite.js";
+import { publicSsrFor } from "./publicSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
@@ -103,8 +105,10 @@ import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 const MINI_PROMPTS = 5;
 const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
 const SUGGEST_COST_CAP_USD = 0.02;
+// ⚠️ Kept byte-identical to TAGLINE in viewer/src/copy.ts (test/siteCopy.test.ts
+// asserts the pair, and lints this string with the real claim linter).
 const TAGLINE =
-  "AisleLens runs executable shopping tests against your Shopify store — showing the exact buyer requirement that failed, the evidence your store exposed, and proof the identical test passes after the fix.";
+  "AisleLens publishes versioned buying standards — the questions a competent buyer asks in a category, written as executable tests — and runs them against your real product pages, reporting every requirement as proven, not proven, or requires store access, with the evidence.";
 // MERGE NOTE (v2.1): the DESCRIPTION is v2's (the QA repositioning). The DEMO_NOTE is main's,
 // deliberately: v2's shorter note dropped the third-party trademark attribution that main added
 // for the Sennen demo. The demo still renders those real brands, so the attribution is a legal
@@ -193,13 +197,62 @@ app.get("/robots.txt", (req, res) => {
     // case page names a real third-party store, so it should never be indexed.
     .send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nDisallow: /c/\nAllow: /\n\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
 });
+// ---- the published standard (v3.2 CP7) -------------------------------------
+//
+// Registered BEFORE `express.static` and the SPA catch-all so these paths resolve to
+// the artifact rather than to index.html. The point of a stable entry id is an agency
+// writing "your product pages fail ALS-COFFEE-1.0-CERT-002" and having it resolve, so
+// these URLs are a contract: they must keep working, and the JSON must keep being JSON.
+app.get(/^\/standards\/[a-z0-9-]+\/[0-9.]+\/standard\.json$/, (req, res) => {
+  const found = standardJsonFor(req.path);
+  if (!found) return res.status(404).type("application/json").send(`{"error":"no such standard"}`);
+  // The content hash is served as a header too, so a machine can check the artifact it
+  // just fetched against a citation without parsing the body first.
+  res.set("X-Standard-Hash", found.hash);
+  res.set("Cache-Control", "public, max-age=3600");
+  res.type("application/json").send(found.json);
+});
+
+// A plain-text map for a machine reader that arrives without a crawler.
+app.get("/llms.txt", (req, res) => {
+  res.type("text/plain").send(llmsTxt(baseUrl(req)));
+});
+
+// The standard's HTML pages, served as STANDALONE DOCUMENTS — see the block above
+// `renderStandaloneDocument`. They deliberately do not load the SPA bundle: these
+// paths are not React routes, so injecting them into the app shell made a crawler
+// see the standard and a human see "Page not found".
+/** The hashed stylesheet Vite emitted, read once from the built index.html. The
+ *  standalone standard pages link it so they inherit the site's tokens without
+ *  loading the app bundle. Null in a tree with no build — the pages still render,
+ *  unstyled, which is the right failure: the CONTENT is the point. */
+let cssHrefCache: string | null | undefined;
+function builtCssHref(): string | null {
+  if (cssHrefCache !== undefined) return cssHrefCache;
+  try {
+    const html = readFileSync(resolve("viewer/dist/index.html"), "utf8");
+    cssHrefCache = (/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/.exec(html)?.[1]) ?? null;
+  } catch { cssHrefCache = null; }
+  return cssHrefCache;
+}
+
+app.get(/^\/standards(\/.*)?$/, (req, res, next) => {
+  const page = standardsPageFor(req.path, baseUrl(req));
+  if (!page) return next();          // unknown standard/entry ⇒ the SPA's 404
+  res.type("html").set("Cache-Control", "public, max-age=300").send(
+    renderStandaloneDocument(page, { cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req) }),
+  );
+});
+
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
   // Repositioning: Index is retired from the public identity (nav/footer) but its
   // routes stay crawlable for now (existing shared links + prior distribution work).
-  const urls = ["/", "/demo", "/methodology", "/scan", "/privacy", "/terms", "/support", "/index"].map(
-    (p) => `  <url><loc>${base}${p}</loc></url>`,
-  );
+  const urls = ["/", "/demo", "/methodology", "/scan", "/privacy", "/terms", "/support", "/index"]
+    // Every published standard and every ENTRY. A citation that resolves is the whole
+    // reason the ids are stable, so each one is a first-class indexable page.
+    .concat(standardsSitemapPaths())
+    .map((p) => `  <url><loc>${base}${p}</loc></url>`);
   try {
     for (const idx of await listCategoryIndexes()) {
       const lastmod = idx.updated_at ? `<lastmod>${new Date(idx.updated_at).toISOString().slice(0, 10)}</lastmod>` : "";
@@ -1353,6 +1406,17 @@ async function serveIndex(req: Request, res: Response) {
     } catch {
       /* CSR fallback */
     }
+  }
+
+  // ---- the public marketing routes (v3.2 CP6) -------------------------------
+  // Rendered into #root for a reader with no JavaScript; React mounts over it and
+  // takes the page. These ARE React routes, which is why the injection is correct
+  // here and was wrong for /standards — see the header of publicSsr.ts.
+  try {
+    const snapshot = publicSsrFor(req.path);
+    if (snapshot) html = html.replace(/<div id="root">\s*<\/div>/, `<div id="root">${snapshot}</div>`);
+  } catch {
+    /* CSR fallback — a rendering bug must never 500 the landing page */
   }
 
   // Utility pages: correct the per-page og:url (the template default says "/", which

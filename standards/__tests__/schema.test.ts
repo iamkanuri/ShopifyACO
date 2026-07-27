@@ -1,0 +1,113 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { validate, unsupportedKeywords, renderResult, SUPPORTED_KEYWORDS } from "../validate.js";
+import { MINIMAL_VALID, MUTATIONS, deepClone } from "./fixtures.js";
+import { loadJson } from "./support.js";
+
+// ===========================================================================
+// GROUP 1 — THE VALIDATOR IS REAL.
+//
+// `standards/validate.ts` is hand-written, so before it can certify anything it
+// has to be shown to reject things. "0 errors" and "the validator did nothing"
+// render identically otherwise — the failure `src/measure/completion.ts` exists
+// to prevent.
+// ===========================================================================
+
+const schema = loadJson<Record<string, unknown>>("schema.json");
+
+test("[validator] schema.json uses no keyword the validator silently ignores", () => {
+  const unsupported = unsupportedKeywords(schema);
+  assert.deepEqual(
+    unsupported, [],
+    `schema.json uses ${unsupported.length} keyword(s) validate.ts does not implement: ${unsupported.join(", ")}.\n` +
+    `An unimplemented keyword is a silent no-op — the schema would look stricter than it is.\n` +
+    `Either implement it in validate.ts or remove it from schema.json.\n` +
+    `Implemented: ${[...SUPPORTED_KEYWORDS].sort().join(", ")}`,
+  );
+});
+
+test("[validator] the minimal fixture standard validates", () => {
+  const r = validate(MINIMAL_VALID, schema);
+  assert.ok(r.ok, `the baseline fixture must be valid, else every mutation is vacuous.\n${renderResult(r)}`);
+  // A validator that ran two checks has not validated a document of this shape.
+  assert.ok(r.checksRun > 100, `only ${r.checksRun} subschema checks ran — too few to have inspected the document`);
+});
+
+test("[validator] every keyword schema.json uses actually rejects something", () => {
+  // The mutation proof. One mutation per keyword with validation behaviour; each
+  // MUST produce an error with the right keyword at the right path. A mutation
+  // that still validates means the keyword is not implemented, and the schema is
+  // weaker than it reads.
+  const failures: string[] = [];
+  for (const m of MUTATIONS) {
+    const mutated = deepClone(MINIMAL_VALID);
+    m.mutate(mutated);
+    const r = validate(mutated, schema);
+    if (r.ok) {
+      failures.push(`${m.name} — STILL VALID. Keyword \`${m.keyword}\` is not enforced.`);
+      continue;
+    }
+    const hit = r.errors.find(
+      (e) => e.keyword === m.keyword && (m.pathContains === "" || e.path.includes(m.pathContains)),
+    );
+    if (!hit) {
+      failures.push(
+        `${m.name} — rejected, but not for the expected reason. ` +
+        `Expected keyword=${m.keyword} path~=${m.pathContains || "<any>"}; got: ` +
+        r.errors.map((e) => `${e.keyword}@${e.path || "<root>"}`).join(", "),
+      );
+    }
+  }
+  assert.deepEqual(failures, [], `${failures.length} of ${MUTATIONS.length} mutations did not fire:\n${failures.join("\n")}`);
+});
+
+test("[validator] the mutation set is not vacuous", () => {
+  // Guards the guard: if MUTATIONS were emptied, the test above would pass
+  // trivially. Every keyword with validation behaviour that appears in
+  // schema.json must be covered by at least one mutation.
+  const annotationOnly = new Set(["$schema", "$id", "title", "description", "$defs", "examples", "default"]);
+  const used = new Set<string>();
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) return void node.forEach(walk);
+    if (!node || typeof node !== "object") return;
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (!annotationOnly.has(k)) used.add(k);
+      if (k === "properties" || k === "$defs") {
+        for (const sub of Object.values(v as Record<string, unknown>)) walk(sub);
+      } else walk(v);
+    }
+  };
+  walk(schema);
+  // `$ref`, `allOf`, `if`, `then`, `properties`, `items` are exercised indirectly:
+  // a mutation deep inside a $ref'd subschema proves $ref; the entry conditionals
+  // live in `allOf` so the tier mutations prove allOf/if/then; `properties` and
+  // `items` are how every nested mutation is reached at all.
+  const indirect = new Set(["$ref", "allOf", "if", "then", "properties", "items"]);
+  const covered = new Set(MUTATIONS.map((m) => m.keyword));
+  const uncovered = [...used].filter((k) => !covered.has(k) && !indirect.has(k)).sort();
+  assert.deepEqual(
+    uncovered, [],
+    `these keywords appear in schema.json with no mutation proving they fire: ${uncovered.join(", ")}`,
+  );
+  assert.ok(MUTATIONS.length >= 15, `only ${MUTATIONS.length} mutations — too few to cover the grammar`);
+});
+
+// ===========================================================================
+// GROUP 2 — THE PUBLISHED STANDARDS VALIDATE.
+// ===========================================================================
+
+// Every standard artifact in the repo must validate. Explicit rather than
+// globbed: a glob that matches nothing would silently validate nothing.
+const STANDARD_FILES = [
+  "coffee/v1.0/standard.json",
+  "accessory/v0.1-draft/standard.json",
+];
+
+for (const rel of STANDARD_FILES) {
+  test(`[schema] ${rel} validates against the grammar`, () => {
+    const std = loadJson<Record<string, unknown>>(rel);
+    const r = validate(std, schema);
+    assert.ok(r.ok, renderResult(r));
+    assert.ok(r.checksRun > 500, `only ${r.checksRun} checks ran over ${rel} — suspiciously few for a real standard`);
+  });
+}
