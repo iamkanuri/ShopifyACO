@@ -83,3 +83,11 @@ experiments/v3-0/*
 !experiments/v3-1/
 experiments/v3-1/*
 !experiments/v3-1/*.md
+# Throwaway worktrees created for mechanical A/B against an earlier commit.
+# `git worktree add` into the repo is how a pre-change tree gets node_modules
+# resolution for free; every one of these is disposable.
+.ab-*/
+.cp[0-9]-pre*/
+.refute*/
+.r[0-9]*-*/
+.v3[0-9]-pre*/
