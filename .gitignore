@@ -91,3 +91,6 @@ experiments/v3-1/*
 .refute*/
 .r[0-9]*-*/
 .v3[0-9]-pre*/
+!experiments/v3-2/
+experiments/v3-2/*
+!experiments/v3-2/*.md

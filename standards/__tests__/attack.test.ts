@@ -392,17 +392,34 @@ const mk = (surface: QuotableSurface, text: string, productType = "Thing"): Publ
 const CLAIM: Requirement = { kind: "claim", label: "organic claim", claim: "organic" } as Requirement;
 const ORGANIC = "This product is certified organic.";
 
-test("[attack] a claim reaches all NINE evidence surfaces, not the six the gate document says", () => {
+test("[attack] a claim reaches EIGHT evidence surfaces — every one but the shipping policy", () => {
   // Executed, because the count is the whole basis of the merchant-controlled
-  // class. The claim branch filters `p.evidence` on the LINTER alone and
-  // restricts no surface, so every surface in the index is reachable — and three
-  // of the nine were unprobed by anyone until the decaf review's refuting pass.
-  const ALL: QuotableSurface[] = [
+  // class. Three of these were unprobed by anyone until the decaf review's
+  // refuting pass.
+  //
+  // ⚠️ THIS TEST SAID **NINE** AND WAS WRITTEN AGAINST A DIFFERENT ENGINE. It was
+  // authored on `feat/standards-v1`, where the claim branch filtered `p.evidence`
+  // on the LINTER alone and restricted no surface. `feat/v3-0-bridge` then closed
+  // the policy-chrome false pass: a claim about THIS PRODUCT must not be provable
+  // from a document about ORDERS, because the shipping policy's SEO chrome carried
+  // an organic phrase on a real tea store and proved a product claim with it.
+  // `productTest.ts` now filters `e.surface !== "shipping_policy"` on claim rows.
+  //
+  // The merge is where the two met, and the tripwire fired exactly as designed —
+  // its own message asked for the attack class to be re-derived, so that is what
+  // this is, not a silenced assertion. `shipping_policy` moves to the NEGATIVE
+  // control below: it must stay unreachable, and this fails if it ever passes again.
+  const REACHABLE: QuotableSurface[] = [
     "product_description", "structured_data", "product_faq", "product_title", "product_options",
-    "meta_description", "shipping_policy", "product_metafield", "seo_description",
+    "meta_description", "product_metafield", "seo_description",
   ];
-  const reached = ALL.filter((s) => evaluate(mk(s, ORGANIC), CLAIM).status === "pass_evidenced");
-  assert.deepEqual(reached, ALL, "a surface stopped accepting a claim — the merchant-controlled attack class must be re-derived");
+  const reached = REACHABLE.filter((s) => evaluate(mk(s, ORGANIC), CLAIM).status === "pass_evidenced");
+  assert.deepEqual(reached, REACHABLE, "a surface stopped accepting a claim — the merchant-controlled attack class must be re-derived");
+
+  // The negative control. A claim proven from the shipping policy is the measured
+  // false pass v3.0 CP1 closed; if this flips, that fix has been lost.
+  assert.equal(evaluate(mk("shipping_policy", ORGANIC), CLAIM).status, "not_proven",
+    "the shipping policy proved a product claim again — the v3.0 CP1 policy-chrome fix has regressed");
 
   // Every one of those surfaces is generated for.
   const set = gen(vocab);
