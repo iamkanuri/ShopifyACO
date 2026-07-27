@@ -6,7 +6,7 @@
   "version": "1.0",
   "title": "Decaffeination method is named on the product page",
   "status": "draft",
-  "notes": "AUTHORED INSUFFICIENT-SET-FIRST, which is the point of the exercise: in this category the misleading phrasings outnumber the honest ones, and a term list written positive-first would have been a list of phrases the author hoped stores write. The refusals were written and executed before any supporting term was chosen, and the supporting list is what survived them. NOT SERVED: ALS-COFFEE-1.0-DECAF-003 (residual caffeine) is a quantity-with-a-basis question and needs the format work in G-03; a term list does nothing for it. Both the session brief and ENGINE_GAPS.md G-06 name -DECAF-003 as the `chemical-free` entry; that entry is -DECAF-002.\n\nVERDICT AFTER THE ADVERSARIAL PASS, AND IT IS NEGATIVE. Four independent attackers produced 40 hostile sentences. Narrowing and framing closed 21 of them at a cost of ZERO true positives, and closed EVERY class a term list is capable of closing: adjacent vocabulary 7 of 7, denial 5 of 5, industry and competitor attribution 5 of 5, education 3 of 3. The 19 that remain open are ALL subject attribution or tense, and not one is a property of the term list. THIS VOCABULARY IS THEREFORE NOT A PUBLICATION CANDIDATE and must not be bound to an executable entry: a merchant who mentions a sibling decaf, a gift set, a subscription rotation, or a process they used to use would be reported as having disclosed this product's method. By the standard this project already applied when it removed the `origin` attribute, losing one row of depth costs less than one false statement about a real store, so the row does not ship. The measured conclusion for ENGINE_GAPS.md G-06 is that closing the claim dictionary is NECESSARY AND NOT SUFFICIENT: the binding constraint on this assertion is the engine's subject and tense handling, not the size of a dictionary.",
+  "notes": "AUTHORED INSUFFICIENT-SET-FIRST, which is the point of the exercise: in this category the misleading phrasings outnumber the honest ones, and a term list written positive-first would have been a list of phrases the author hoped stores write. The refusals were written and executed before any supporting term was chosen, and the supporting list is what survived them. NOT SERVED: ALS-COFFEE-1.0-DECAF-003 (residual caffeine) is a quantity-with-a-basis question and needs the format work in G-03; a term list does nothing for it. Both the session brief and ENGINE_GAPS.md G-06 name -DECAF-003 as the `chemical-free` entry; that entry is -DECAF-002.\n\nVERDICT AFTER THE ADVERSARIAL PASS AND THE REFUTATION, AND IT IS NEGATIVE. Four independent attackers produced 40 hostile sentences; narrowing and framing stopped 21 of those specific sentences at zero cost to true positives. THE REFUTING PASS THEN SHOWED THAT SENTENCE COUNT IS THE WRONG MEASURE. Rewritten into the shipped frames, the industry and competitor class passes 13 of 13, so the only classes genuinely closed are the ones about the TERM — adjacent vocabulary (7/7) and denial (5/5). Everything about the SUBJECT is open: attribution, tense, modality, sibling products, bundles, subscriptions, cross-sells. An earlier version of this file recorded the industry class as closed; that was a false statement about a measurement, produced by generalising from four sentences, and it is corrected in adversarial_findings rather than deleted. THIS VOCABULARY IS NOT A PUBLICATION CANDIDATE and must not be bound to an executable entry. And no narrowing here has been measured against real merchant copy: the natural-frequency read the origin tombstone requires was not performed, because this session was barred from fetching stores. The conclusion for ENGINE_GAPS.md G-06 is unchanged and strengthened: closing the claim dictionary is NECESSARY AND NOT SUFFICIENT, and the binding constraint is the engine's subject and tense handling, not the size of a dictionary.",
   "scope": {
     "establishes": "that the product page states, in a sentence we can quote from an accepted surface, a named commercial decaffeination process for this product",
     "does_not_establish": "that the named process was actually used. No register anywhere records decaffeination licensees — trademark registers record ownership and assignments, not licences — and there is no third-party certification scheme for decaffeination process, so no public artifact exists that a buyer or this engine could resolve. A pass means the page made a checkable claim, not that the claim is true. It also does not establish residual caffeine, solvent residue, or that the process was applied to this particular lot."
@@ -772,10 +772,187 @@
         "This is a Carbonic Natural decaf produced in Bremen."
       ],
       "notes": "NARROWED, and this was the worst finding of the adversarial pass. Bare `carbonic natural` collides head-on with CARBONIC MACERATION NATURAL, a widespread post-harvest fermentation technique: \"Ethiopia Guji, carbonic natural, 48-hour anaerobic fermentation.\" and the spec row \"Process: Carbonic Natural, 2100 masl, Heirloom.\" were both credited as decaffeination disclosures. A trademark and a fermentation style share a name."
+    },
+    {
+      "term": "sugarcane process decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the specialty trade names the ethyl-acetate process this way in listings"
+        }
+      ],
+      "positive_examples": [
+        "Sugarcane process decaf from Huila."
+      ],
+      "notes": "RESTORED by the refuting pass. The author had REMOVED `sugarcane process` entirely over a co-fermentation collision, which repeats the `origin` error rather than applying it: the removal shut a false-pass class at the cost of most honest forms. Measured with the qualified form restored: the co-fermentation, panela and syrup sentences all stay not_proven, and 0 probes regress."
+    },
+    {
+      "term": "decaffeinated using dichloromethane",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "National Geographic, reporting the Clean Label Project campaign",
+          "kind": "trade_press",
+          "establishes": "that dichloromethane is methylene chloride under its systematic name, used in regulatory and technical copy",
+          "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated using dichloromethane at our supplier's plant."
+      ],
+      "notes": "Enumeration asymmetry caught by the refuting pass: methylene chloride carried three framed forms and its systematic-name twin carried one, so the seller using the regulatory name failed."
+    },
+    {
+      "term": "dichloromethane decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "National Geographic, reporting the Clean Label Project campaign",
+          "kind": "trade_press",
+          "establishes": "that the attributive short form is used where the systematic name is preferred",
+          "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride"
+        }
+      ],
+      "positive_examples": [
+        "A dichloromethane decaf, disclosed because we think you should know."
+      ]
+    },
+    {
+      "term": "decaffeinated using supercritical co2",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Coffee trade and process literature observed in search results",
+          "kind": "trade_press",
+          "establishes": "that the `using` frame is as common as the `with` frame in process disclosures"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated using supercritical CO2 at a plant in Bremen."
+      ]
+    },
+    {
+      "term": "decaffeinated using liquid co2",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "CR3-Kaffeeveredelung process description",
+          "kind": "process_licensor",
+          "establishes": "that liquid or subcritical CO2 is operated as a distinct process"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated using liquid CO2 in Bremen."
+      ]
+    },
+    {
+      "term": "mountain water™ process",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Descafeinadores Mexicanos S.A. de C.V. (Descamex)",
+          "kind": "process_licensor",
+          "establishes": "that the operator's mark is written with a symbol and sellers copy it, using TM and R interchangeably"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated by the Mountain Water™ Process in Veracruz."
+      ],
+      "notes": "Added by the independent refuting pass, which observed that the file justified `swiss water™ process` on the term-INDEPENDENT ground that sellers use TM and R interchangeably and incorrectly, and then applied that reason to one mark only. Measured: 0 regressions across the negative suite."
+    },
+    {
+      "term": "royal select water® process",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the importer-branded mark is carried in catalogues with the registered symbol"
+        }
+      ],
+      "positive_examples": [
+        "This lot is Royal Select Water® Process decaf from Brazil."
+      ],
+      "notes": "Added by the independent refuting pass, which observed that the file justified `swiss water™ process` on the term-INDEPENDENT ground that sellers use TM and R interchangeably and incorrectly, and then applied that reason to one mark only. Measured: 0 regressions across the negative suite."
+    },
+    {
+      "term": "carbonic natural® decaf",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "EU trademark register",
+          "kind": "regulator",
+          "establishes": "that Carbonic Natural is a registered EU mark, so a licensee writes it with the symbol"
+        }
+      ],
+      "positive_examples": [
+        "Carbonic Natural® decaf produced in Bremen."
+      ],
+      "notes": "Added by the independent refuting pass, which observed that the file justified `swiss water™ process` on the term-INDEPENDENT ground that sellers use TM and R interchangeably and incorrectly, and then applied that reason to one mark only. Measured: 0 regressions across the negative suite."
+    },
+    {
+      "term": "swiss water decafs",
+      "orthography": "spelling_variant",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that roasters write the plural when describing more than one lot"
+        }
+      ],
+      "positive_examples": [
+        "Our Swiss Water decafs come from Huila and Nariño."
+      ],
+      "notes": "Plurals were swept by nobody until the refuting pass. Whole-word matching means the singular term cannot reach the plural: the trailing `s` is an ASCII letter and blocks the boundary."
+    },
+    {
+      "term": "mountain water decafs",
+      "orthography": "spelling_variant",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the plural is written in lineup and subscription copy"
+        }
+      ],
+      "positive_examples": [
+        "Two Mountain Water decafs are in the lineup."
+      ]
+    },
+    {
+      "term": "swiss water® decaf",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Swiss Water Decaffeinated Coffee Inc.",
+          "kind": "process_licensor",
+          "establishes": "that the mark carries its symbol in the attributive short form as well as the long one",
+          "url": "https://www.swisswater.com/"
+        }
+      ],
+      "positive_examples": [
+        "Swiss Water® Decaf from Colombia."
+      ]
+    },
+    {
+      "term": "mountain water® decaf",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Descamex",
+          "kind": "process_licensor",
+          "establishes": "that the attributive short form also carries the symbol"
+        }
+      ],
+      "positive_examples": [
+        "Mountain Water® Decaf from Chiapas."
+      ]
     }
   ],
   "violating_terms": [],
-  "violating_terms_empty_rationale": "There is no sentence a store can write that states the CONTRARY of `a decaffeination method is named`. Absence of a method is not a contradiction, it is absence — and the engine's contrary branch prints `Your public copy states the opposite of this requirement` beside the merchant's own sentence, which would be a false statement about the store for every phrasing considered. The nearest candidates were tested and all belong in the insufficient set instead: a scoped negative (`no methylene chloride`) names what was not used rather than contradicting that something was named, and a denial (`we do not offer a Swiss Water decaf`) is already handled by the engine's negation guard. A separate vocabulary, decaf-solvent-disclosure, carries the genuine violating terms for the different question of whether a chemical solvent was disclosed.",
+  "violating_terms_empty_rationale": "The list is empty, and the reason is measured rather than definitional. An earlier draft of this field claimed there is no sentence a store can write that states the contrary; execution falsified that — with a narrow violating list, four genuine contrary sentences such as \"We do not disclose our decaffeination method.\" are correctly reported as contradicting. The decision stands for a different and stronger reason: every term that captures the contrary is a bare topic word the engine cannot bind to decaffeination, so the list that catches the one genuine contrary sentence also falsely contradicts ordinary copy — the narrow list was measured producing four false contradictions against this vocabulary's own canonical positive examples. Because violating_terms is empty, `findViolation` is short-circuited entirely and the `states the opposite` outcome is UNREACHABLE for this vocabulary, which is the strongest available guarantee against the gluten_free damage class. A separate vocabulary, decaf-solvent-disclosure, carries genuine violating terms for the different question of whether a chemical solvent was disclosed.",
   "limits": [
     {
       "limit": "a merchant-chosen product title carrying a process name passes without the page stating anything",
@@ -842,12 +1019,30 @@
       "direction": "false_pass",
       "cause": "CONTEXT_VETO is a closed phrase list covering neither `also stock` nor `goes with` nor the bare word `subscription`",
       "example": "The gift set that goes with this bag contains a Swiss Water decaf."
+    },
+    {
+      "limit": "industry, competitor and warning copy naming a solvent passes, in every frame the vocabulary ships",
+      "direction": "false_pass",
+      "cause": "attribution is a subject problem and no term list closes it; framing closed only the specific unframed sentences an attacker happened to write",
+      "example": "Blue Bottle's decaf is decaffeinated with methylene chloride."
+    },
+    {
+      "limit": "an adjective between the frame verb and the compound defeats the term",
+      "direction": "false_fail",
+      "cause": "framing the chemical names was necessary to close the denial class, and a literal term list cannot admit an arbitrary modifier inside the frame",
+      "example": "Decaffeinated with natural ethyl acetate from sugarcane."
+    },
+    {
+      "limit": "three further evidence surfaces are reachable and were never probed until the refuting pass",
+      "direction": "false_pass",
+      "cause": "QuotableSurface defines nine surfaces, not the six the public path indexes; shipping_policy, product_metafield and seo_description all accept a match",
+      "example": "All Swiss Water Process decaf ships free over $40."
     }
   ],
   "review": {
     "state": "incomplete",
     "attacker": "four independent adversarial agents, none of which authored the vocabulary, across the six attack classes in VOCABULARY_REVIEW.md section 2; 40 hostile sentences, every finding re-executed by the author against the real engine matcher before any term was changed",
-    "refuter": "COMMISSIONED AND NOT RETURNED at the time this artifact was written. The independent refuting pass that would judge whether each narrowing costs more than it saves — the origin-removal test — had not completed, so this review is INCOMPLETE by the gate's own rule and the vocabulary may not be bound to an entry. The author re-executed every attacker finding personally and measured 21 of 40 attacks closed at zero cost to true positives, but an author's self-attack is evidence about the author.",
+    "refuter": "an independent refuting agent that did not author the vocabulary and did not run the attacks. It re-executed every attacker finding (24 reproduced, 2 overstated, 1 misfiled, 1 invented copy), REFUSED every further narrowing the attackers proposed as repeating the origin error, restored a term the author had wrongly removed, found six enumeration asymmetries, and caught a FALSE STATEMENT in this review record. Its central finding is that the author re-attacked the narrowed list personally rather than independently, which is the self-attack the gate forbids.",
     "adversarial_findings": [
       {
         "attack": "\"Ethiopia Guji, carbonic natural, 48-hour anaerobic fermentation.\" and the spec row \"Process: Carbonic Natural, 2100 masl, Heirloom.\" Carbonic maceration natural is a widespread post-harvest fermentation technique sharing its name with a registered CO2 decaffeination mark.",
@@ -859,7 +1054,7 @@
         "attack": "Six measured denial forms in which a bare chemical name was credited as NAMING the method used: \"Free of methylene chloride.\", \"We avoid methylene chloride entirely.\", \"Methylene chloride: never.\", \"Methylene chloride is banned at the plant we use.\"",
         "outcome": "term_narrowed",
         "resolution": "Every bare chemical name was framed, e.g. `decaffeinated with methylene chloride`. The engine's negator list contains neither `free of` nor `avoid`, and POST_TERM_DENIAL does not cover `is banned`, so the term had to carry the frame. Same fix the engine's `materials` attribute already applies with composition frames.",
-        "residual_risk": "An unframed disclosure in a spec row such as `Solvent: methylene chloride` is no longer matched."
+        "residual_risk": "An unframed spec-row disclosure such as `Solvent: methylene chloride` is no longer matched — AND the narrowing created a false-fail class nobody probed until the refuting pass: an adjective between the frame verb and the compound defeats the term. Measured, all not_proven: \"Decaffeinated with natural ethyl acetate from sugarcane.\", \"Decaffeinated using sugarcane-derived ethyl acetate.\", \"Decaffeinated with food-grade ethyl acetate.\", \"Decaffeinated with liquid carbon dioxide.\" The first of those is the specialty trade's standard EA disclosure, so the framing fix costs real recall on the commonest honest phrasing in the category."
       },
       {
         "attack": "\"Overripe fruit and ethyl acetate notes indicate over-fermentation.\" Ethyl acetate is a named sensory defect in the trade's own cupping vocabulary as well as a decaffeination solvent.",
@@ -881,9 +1076,9 @@
       },
       {
         "attack": "\"Most cheap decafs are made with methylene chloride.\" and \"Blue Bottle uses methylene chloride for their decaf; we do things differently.\" A roaster disparaging the industry recorded as disclosing its own method.",
-        "outcome": "term_narrowed",
-        "resolution": "Closed by the same framing. This was the most reputationally damaging false pass available in the category.",
-        "residual_risk": "None measured for these forms."
+        "outcome": "limit_recorded",
+        "resolution": "CORRECTED BY THE REFUTING PASS, AND THIS ENTRY PREVIOUSLY SAID SOMETHING FALSE. It read `closed by the same framing` with residual_risk `None measured for these forms`. Framing closed the FOUR attacker sentences, which happened to carry no frame verb, and the author generalised from four sentences to a class without measuring the class. Re-attacked: the same class rewritten INTO the shipped frames passes 13 of 13 — \"Blue Bottle's decaf is decaffeinated with methylene chloride.\", \"Most supermarket coffee is decaffeinated with methylene chloride.\", \"Avoid any methylene chloride decaf.\" The class is OPEN. Industry and competitor attribution is a SUBJECT problem wearing a term's clothes, and no term list closes it.",
+        "residual_risk": "The whole class. A roaster who explains why its decaf is better than the supermarket's is reported as having disclosed that its own coffee uses the solvent it is warning about."
       },
       {
         "attack": "Tense and modality: \"Until 2024 we used the Swiss Water Process for this lot.\", \"We hope to move this coffee to the Swiss Water Process next season.\", \"We asked our importer about the Royal Select Water Process.\"",
@@ -902,6 +1097,30 @@
         "outcome": "survived_unchanged",
         "resolution": "The empty list stands, and its rationale is now measured rather than argued: the violating list that would catch the one genuine contrary sentence tells compliant stores they state the opposite.",
         "residual_risk": "A page explicitly refusing to disclose its method returns not_proven, which understates what the page actually said."
+      },
+      {
+        "attack": "The refuting pass attacked the REVIEW RECORD rather than the terms, and found that no attacker had re-attacked the NARROWED list. All four attackers ran against the pre-narrowing vocabulary; the author then applied the narrowings and re-executed only the attackers' own sentences.",
+        "outcome": "limit_recorded",
+        "resolution": "That is the self-attack the gate forbids, one level up, and it is what produced the false finding corrected above. The narrowed list has now been independently re-attacked once. It has NOT been attacked by an agent that did not see the narrowing rationale.",
+        "residual_risk": "Any class the refuting pass did not think to rewrite into the shipped frames is unmeasured."
+      },
+      {
+        "attack": "Adjective insertion inside a frame: \"Decaffeinated with natural ethyl acetate from sugarcane.\" and five sibling forms, all created as false FAILS by the author's own framing fix.",
+        "outcome": "limit_recorded",
+        "resolution": "Not fixable by enumeration without reopening the denial class the framing closed. A literal term list cannot allow an arbitrary modifier between the verb and the compound. Declared as a limit.",
+        "residual_risk": "The trade's commonest honest EA disclosure returns not_proven."
+      },
+      {
+        "attack": "Three evidence surfaces nobody probed. VOCABULARY_REVIEW section 2 and this artifact both speak of six quotable surfaces; QuotableSurface defines NINE. shipping_policy, product_metafield and seo_description were never tested.",
+        "outcome": "limit_recorded",
+        "resolution": "Measured: a process name on any of the three passes. Six is the count of surfaces the PUBLIC path indexes; the type carries nine, and the authenticated path reaches metafields and the SEO description, both merchant-controlled.",
+        "residual_risk": "Surface scoping as asked for in G-06 must cover nine surfaces, not six."
+      },
+      {
+        "attack": "The origin precedent's own requirement was never met by anyone: there is no natural-frequency read behind any of these narrowings.",
+        "outcome": "limit_recorded",
+        "resolution": "Every narrowing here was decided on hand-written adversarial sets, which is exactly the configuration the origin tombstone records as unarbitrable — the same matcher scored differently by different set authors. The session was barred from fetching stores, so the read could not be performed.",
+        "residual_risk": "The narrowings are principled and UNMEASURED against real merchant copy. Until that read exists, none of them should be treated as settled."
       }
     ]
   },
@@ -922,6 +1141,6 @@
   "vocabulary_hash": {
     "algorithm": "sha256",
     "canonicalisation": "json-sorted-keys-no-hash-field",
-    "value": "baa3ff0d87b716be687a81cda15d46c08f9fe10156437546eacab181302da26a"
+    "value": "96f2c724a6aee74abc56e1306d317b927595d4cd898971100c172aaa99188922"
   }
 }

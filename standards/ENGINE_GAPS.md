@@ -522,23 +522,32 @@ This is the most important output of the vocabulary session and it is uncomforta
 before the risk section rather than after it.
 
 The worked vocabulary (`standards/coffee/v1.0/vocabulary/decaf-method.json`) was attacked by **four
-independent agents that did not author it**, producing **40 hostile sentences**. Narrowing and
-framing the terms closed **21 of them at a cost of zero true positives**. The results stratify almost
-perfectly:
+independent agents that did not author it**, producing **40 hostile sentences**, and then a **fifth
+independent agent refuted the attackers**. Narrowing and framing stopped 21 of those specific
+sentences at zero cost to true positives.
 
-| attack class | closed by fixing the terms |
+> ⚠️ **The refutation showed that sentence count is the wrong measure, and it caught a false claim in
+> the first version of this section.** The attackers' industry/competitor sentences happened to carry
+> no frame verb, so framing stopped them — and this table originally generalised from four sentences
+> to a class. Rewritten *into the shipped frames*, the class passes **13 of 13**:
+> `"Blue Bottle's decaf is decaffeinated with methylene chloride."`,
+> `"Avoid any methylene chloride decaf."` **Attribution is a subject problem wearing a term's
+> clothes.** The error is corrected here rather than deleted, because it is the exact shape the
+> completion-state rule exists to prevent and it was made by the author re-attacking their own fix.
+
+Corrected stratification — by **class**, not by sentence:
+
+| attack class | genuinely closed by fixing the terms? |
 |---|---|
-| adjacent vocabulary (fermentation, sustainability, nitro dispense, packaging gas, botanical extraction, cupping defect, co-fermentation) | **7 / 7** |
-| denial (`free of X`, `we avoid X`, `X: never`, `X is banned`) | **5 / 5** |
-| industry and competitor attribution | **5 / 5** |
-| education and regulatory copy | **3 / 3** |
-| **subject attribution** (sibling product, gift set, subscription rotation, cross-sell, shipment, packaging, review pull-quote) | **0 / 12** |
-| **tense and modality** (used-to, hope-to, evaluating, asked-about, conditional) | **0 / 6** |
-| comparative (`sweeter than a typical …`) | **0 / 1** |
+| adjacent vocabulary (fermentation, sustainability, nitro dispense, packaging gas, botanical extraction, cupping defect, co-fermentation) | **YES — 7 / 7** |
+| denial (`free of X`, `we avoid X`, `X: never`, `X is banned`) | **YES — 5 / 5** |
+| industry, competitor and warning copy | **NO — 0 / 13 when rewritten into the shipped frames** |
+| **subject attribution** (sibling product, gift set, subscription rotation, cross-sell, shipment, packaging, review pull-quote) | **NO — 0 / 12** |
+| **tense and modality** (used-to, hope-to, evaluating, asked-about, conditional) | **NO — 0 / 6** |
+| comparative (`sweeter than a typical …`) | **NO — 0 / 1** |
 
-**Everything a term list can fix, fixing the term list fixed. Everything left is the engine's
-aboutness handling, and not one of the 19 is a property of the dictionary.** These all still return
-`pass_evidenced` on ordinary roaster copy:
+**Only the classes about the TERM closed. Every class about the SUBJECT is open, and not one of them
+is a property of the dictionary.** These all still return `pass_evidenced` on ordinary roaster copy:
 
 ```
 "Our Ethiopian decaf uses the Swiss Water Process."             (a sibling product)
@@ -569,6 +578,22 @@ Two supporting notes, both measured. `CONTEXT_VETO` is a **closed phrase list**,
 `deliver every 2 weeks` but not the bare word `subscription`. And the subject rule **fails open on an
 unrecognised subject by design** — correctly, since vetoing on "unknown" would gut depth — which
 means every unlisted subject is a pass.
+
+Three further findings from the refutation, all of which change the ask:
+
+- **Surface scoping must cover NINE surfaces, not six.** Six is the count the *public* path indexes;
+  `QuotableSurface` defines nine, and `shipping_policy`, `product_metafield` and `seo_description`
+  were never probed by anyone. Measured: a process name on any of the three passes, and two of them
+  are merchant-controlled.
+- **Framing a term buys the denial class and sells recall.** An adjective between the frame verb and
+  the compound defeats the term: `"Decaffeinated with natural ethyl acetate from sugarcane."` →
+  `not_proven`, and that is the specialty trade's *standard* EA disclosure. A literal term list
+  cannot admit an arbitrary modifier inside a frame. If the registry ever grows a matching feature,
+  this is the one worth having.
+- **No narrowing here has been measured against real merchant copy.** The natural-frequency read the
+  `origin` tombstone requires was not performed — this session was barred from fetching stores — so
+  every narrowing was decided on hand-written adversarial sets, which is precisely the configuration
+  the tombstone records as unarbitrable. **Treat none of them as settled.**
 
 ### Risk of building it
 
