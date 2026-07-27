@@ -47,8 +47,10 @@ the reasoning in `standard.test.ts`.
 | [`METHOD.md`](METHOD.md) | How a standard gets authored, so category three is a process. | **Complete.** Includes the category-selection rule. |
 | [`coffee/v1.0/`](coffee/v1.0/) | The first standard: 42 entries, 10 executable. | **Complete, validated, adversarially reviewed. Never measured.** |
 | [`accessory/v0.1-draft/`](accessory/v0.1-draft/) | A **partial draft** on a structurally different category. | **Deliberately incomplete.** Authored only as a generalisation test. |
+| [`attack/`](attack/README.md) | **The attack templatizer.** Generates the review gate's hostile sentences from any vocabulary, deterministically, with a coverage report. | **Complete.** Covers 6 of 8 classes; §4 states exactly which 2 it cannot and why. |
+| [`acceptance/subject-tense/`](acceptance/subject-tense/README.md) | **The acceptance target** for the engine's subject and tense handling — the 37 hostile shapes no term list can close, plus 19 that must not regress. | **Complete as a target.** `hostile 4/37` at `e9ec942`, an observation, not an expectation. |
 | [`compile.ts`](compile.ts) · [`validate.ts`](validate.ts) · [`hash.ts`](hash.ts) · [`rehash.ts`](rehash.ts) | Compiler to engine requirements, schema validator, content hashing. | **Complete.** No new dependencies. |
-| [`__tests__/`](__tests__/) | 59 pure tests. | **Green.** |
+| [`__tests__/`](__tests__/) | 121 pure tests. | **Green.** |
 
 ---
 
@@ -122,7 +124,7 @@ both versions would catch it. The `standard_hash` at least makes any content cha
 node --import tsx --test standards/__tests__/*.test.ts
 ```
 
-59 tests, **pure** — no database, no network, no server, no model calls. They prove:
+121 tests, **pure** — no database, no network, no server, no model calls. They prove:
 
 - the standards validate against the JSON Schema — and **the hand-written validator is itself proven**
   by 20 mutation fixtures, one per keyword the schema uses, each of which must fail for the right
@@ -142,7 +144,16 @@ node --import tsx --test standards/__tests__/*.test.ts
 - every entry has non-empty `insufficient_evidence` and real `grounding`;
 - the never-weaken attestation is internally consistent, **with a negative fixture that must fail**,
   because a governance check nobody has watched fail is a check nobody has tested;
-- `standard_hash` matches content.
+- `standard_hash` matches content;
+- the **attack templatizer** is deterministic under a fixed seed, comparable under a new one,
+  produces every class for every applicable term or names the omission, rejects a malformed
+  vocabulary as `incomplete` rather than silently producing nothing, reports what its per-cell cap
+  dropped, and **imports nothing that evaluates a sentence** — generation and adjudication are kept
+  apart by a test, not by convention;
+- the **subject/tense acceptance suite** parses, stratifies per class, and its must-not-regress half
+  is non-empty and **currently green**, so it is a live regression guard rather than only a target.
+  Its most dangerous mutation — deleting the term list, which would score the hostile half 37/37 —
+  is caught before the runner produces a number.
 
 Typecheck (the root config scopes to `src/`, so this directory needs its own):
 
@@ -154,6 +165,18 @@ Recompute hashes after editing a standard:
 
 ```bash
 node --import tsx standards/rehash.ts --write
+```
+
+Generate the review gate's attack set for a vocabulary:
+
+```bash
+node --import tsx standards/attack/cli.ts standards/coffee/v1.0/vocabulary/decaf-method.json --context coffee
+```
+
+Run the subject/tense acceptance target:
+
+```bash
+node --import tsx standards/acceptance/subject-tense/run.ts
 ```
 
 ---
@@ -168,12 +191,18 @@ node --import tsx standards/rehash.ts --write
    with `n=`. Every band in the standard is a prediction flagged `measured: false`, and the plan is in
    `GROUNDING.md` §6. Audit the passes by hand: this project's own history is that audits of 37 and 18
    rows reported zero false positives and an audit of 100 rows then found two.
-3. **G-02, roast date** — the highest-value new assertion shape and the cheapest safe one, reusing two
+3. **Close the subject and tense gap**, against
+   [`acceptance/subject-tense/`](acceptance/subject-tense/README.md) — `hostile 4/37` today. This is
+   the binding constraint on every vocabulary in every category, not a coffee problem: narrowing a
+   term list closed every class a term list can close and **zero** of these. Judge any fix on both
+   directions (the suite's 19 must-not-regress cases are green today) and do the natural-frequency
+   read before shipping it.
+4. **G-02, roast date** — the highest-value new assertion shape and the cheapest safe one, reusing two
    hooks the engine already has.
-4. **G-04, registry resolution** — the genuinely empty market ground. Build the adapter seam and the
+5. **G-04, registry resolution** — the genuinely empty market ground. Build the adapter seam and the
    result model *before* any specific register, and ship the first adapter in a mode that only ever
    confirms and never contradicts.
-5. **Get a second party to apply the coffee standard without us.** Until then the flag stays `false`
+6. **Get a second party to apply the coffee standard without us.** Until then the flag stays `false`
    and this is a rubric.
 
 ---
