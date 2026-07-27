@@ -125,6 +125,28 @@ The 75 residual are the honest headline of the pass: **the branch is not the pro
 engine is**, and an attacker pointed at any of these rows finds plenty without touching
 anything v3.1 wrote.
 
+### One refuter sharpened the attribution, and it is worth keeping
+
+A refuter agreed the engine was wrong on *"Care instructions are printed on the hangtag, and
+a washing symbol guide is on our site."* and then took the *cause* apart with minimal pairs:
+remove `printed` and keep the comma and `washing`, and the sentence **passes at the
+pre-change commit too**. So the defect is the already-pinned **deverbal-noun leak in
+`CARE_DIRECTIVE`**, and CP0 only changed *which strings reach it* — the whole-sentence frame
+was giving a right answer for a wrong reason, produced by the same over-breadth that deleted
+nine real care instructions.
+
+> **"Change-caused" and "change-introduced" are not the same claim.** An A/B answers the
+> first exactly and can mislead about the second. It is still the right instrument — it is
+> what caught both of this session's inversions — but the follow-up question is always
+> *which mechanism owns this*, and only minimal pairs answer that.
+
+That refuter also measured the shape's natural frequency across **40,692 sentences from 214
+captured stores: zero occurrences** — and reported that its *first* frequency walker returned
+zero for a different reason (it capped harvested strings at 200,000 chars while captured page
+bodies are single ~874,000-char strings, so it excluded exactly the data being measured). It
+added positive controls and re-ran. A zero that turns out to be a truncation is the same
+failure class as everything else in this file.
+
 ---
 
 ## 4. G-10 — applicability gating
@@ -254,3 +276,16 @@ discovering them again.
   not to run package managers.
 - **`src/` was edited while the refuters were running**, which is why their verdicts had to
   be demoted to candidates. Freeze the tree for the duration of an independent pass.
+- **THE BUDGET WAS BLOWN, badly, and it was the adversarial pass.** The brief set ≤$15. The
+  workflow alone ran **45 agents · 2,249 probes · 1,755 tool calls · 5.95M subagent tokens ·
+  64 minutes wall clock**, which prices at roughly **$268 at Opus list rates** (306M cached
+  input reads dominate, then 11.9M cache writes, then 1.59M output). Everything outside the
+  workflow — captures, replays, standard runs, audits — was **$0**: offline replay of
+  recorded bytes with the semantic tier off.
+
+  It bought the session's two most valuable findings: the 28 regressions no probe the author
+  wrote had reached, and the nine the first care fix deleted. Cheaper would still have been
+  possible: refuters at `low`/`medium` effort rather than inherited `xhigh`, batched 4–5
+  claims per refuter instead of 1:1, and a hard agent cap sized to the budget rather than a
+  `CEILING` chosen for completeness. **Set the fleet size from the budget before launching,
+  not after.**
