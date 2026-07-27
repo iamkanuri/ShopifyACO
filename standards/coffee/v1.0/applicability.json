@@ -1,0 +1,63 @@
+{
+  "standard_id": "ALS-COFFEE",
+  "version": "1.0",
+  "_note": "The EXECUTABLE READING of each executable entry's prose `applicability` block. It sits beside standard.json rather than inside it because `standard_hash` covers standard.json's canonical bytes, and a published citation resolves through that hash — adding predicates to the document would invalidate every citation already made against v1.0 to encode something the standard does not ASSERT. Where this file and the prose disagree, the prose is the standard and this file is the bug. `from` quotes the prose each rule reads, so the two can be checked against each other without opening both.",
+  "category": {
+    "_from": "applicability_envelope.covers — 'Retail product pages selling roasted coffee to consumers as whole bean, ground, pods or capsules'",
+    "in_category": "\\b(coffee|espresso|roast(ed|ery)?|whole[- ]bean|single[- ]origin|decaf(feinated)?|cold[- ]brew|arabica|robusta)\\b",
+    "_from_excludes": "applicability_envelope.excludes — green coffee, instant/extract/chicory, RTD beverages, equipment and accessories, and coffee-FLAVOURED goods that are not coffee. Checked FIRST, because every one of these strings also contains the positive term: 'Coffee Grinder', 'Coffee Mug', 'Coffee Scented Candle'.",
+    "out_of_category": "\\b(grinder|brewer|kettle|scale|scales|dripper|filters?|press|machine|maker|portafilter|tamper|mug|cup|tumbler|carafe|server|pitcher|apparel|t-?shirt|tee|hoodie|hat|cap|tote|sticker|poster|book|gift ?card|subscription box|equipment|accessor(y|ies)|merch(andise)?|shaker|syrup|candle|soap|scented|green coffee|unroasted|instant|extract|chicory|ready[- ]to[- ]drink|canned|bottled)\\b"
+  },
+  "rules": [
+    {
+      "entry": "ALS-COFFEE-1.0-FORMAT-001",
+      "requires": ["in_category", "not_preportioned"],
+      "from": "applies_when: the product is roasted coffee sold by mass rather than in pods or capsules; does_not_apply_when: the product is a pod, capsule or pre-dosed sachet, where the state is inherent to the format"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-FORMAT-002",
+      "requires": ["in_category", "not_preportioned"],
+      "from": "applies_when: the product is roasted coffee sold by mass rather than in pods or capsules; does_not_apply_when: pods, capsules and pre-dosed sachets, where the coffee is ground by definition"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-GRIND-001",
+      "requires": ["in_category", "not_preportioned"],
+      "from": "applies_when: the product is roasted coffee sold by mass and the seller offers any grind choice; does_not_apply_when: pods and capsules, where dose and grind are fixed by the format"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-GRIND-002",
+      "requires": ["in_category", "not_preportioned"],
+      "from": "applies_when: the product is roasted coffee sold by mass and the seller offers any grind choice; does_not_apply_when: pods and capsules"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-WEIGHT-001",
+      "requires": ["in_category"],
+      "from": "applies_when: the product is coffee sold by mass, INCLUDING pod packs that also declare a net weight — so this one deliberately does NOT take not_preportioned"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-CERT-001",
+      "requires": ["in_category"],
+      "from": "applies_when: the product is roasted coffee offered to consumers in any format"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-CERT-002",
+      "requires": ["in_category"],
+      "from": "applies_when: the product is roasted coffee offered to consumers in any format"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-SOURCE-001",
+      "requires": ["in_category"],
+      "from": "applies_when: the product is roasted coffee offered to consumers in any format"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-IDENT-001",
+      "requires": ["in_category", "product_schema_present"],
+      "from": "applies_when: the product page publishes readable Product structured data; does_not_apply_when: the page markup could not be read, which the engine reports as requiring store access rather than as an absence"
+    },
+    {
+      "entry": "ALS-COFFEE-1.0-DELIV-001",
+      "requires": ["in_category", "physical_good"],
+      "from": "applies_when: the product is physically shipped to the buyer; signal: any purchasable physical coffee product"
+    }
+  ]
+}
