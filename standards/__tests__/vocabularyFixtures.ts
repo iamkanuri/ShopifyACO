@@ -220,12 +220,21 @@ export const VOCAB_MUTATIONS: VocabMutation[] = [
     mutate: (v) => { v.violating_terms[0]!.contradicting_examples = ["This mug is lovely and well made."]; },
   },
   {
-    // The bare-substance defect: `free of X` is not a negator the engine knows, so
-    // the compliant sentence is flagged as stating the opposite.
-    name: "V13 — a violating term that flags a compliant free-from sentence",
+    // The bare-substance defect: a compliant sentence that mentions the substance is
+    // flagged as stating the opposite, because nothing in it is a negator.
+    //
+    // ⚠️ THIS FIXTURE USED `free of` UNTIL v3.1 CP2a, and it is a real record of why
+    // the mutation proof exists. That checkpoint taught `findViolation` the absence
+    // frames `free of` / `free from`, which rescued the old sentence — so V13 stopped
+    // firing and this test failed within the same commit, exactly as designed. A rule
+    // whose fixture the engine has learned to rescue is a rule that has silently
+    // stopped being proved. The replacement uses a REPLACEMENT frame, which states
+    // the same compliant fact and contains no negator of any kind, so V13's own job
+    // (bare violating terms need a frame) stays provable.
+    name: "V13 — a violating term that flags a compliant sentence",
     rule: "V13",
     mutate: (v) => {
-      v.violating_terms[0]!.must_not_contradict_examples = ["Our stoneware is free of air-dried components entirely."];
+      v.violating_terms[0]!.must_not_contradict_examples = ["We replaced our air-dried process with a kiln in 2019."];
     },
   },
   {

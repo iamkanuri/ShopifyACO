@@ -150,14 +150,56 @@ function deniedAfter(haystack: string, index: number, termLength: number): boole
   return POST_TERM_DENIAL.test(haystack.slice(index + termLength));
 }
 
-/** True when EVERY occurrence of `term` in `sentence` sits in a negated clause. */
-export function isNegated(sentence: string, term: string): boolean {
+// ---- v3.1 CP2a: two denial forms, on the VIOLATION side only ----------------
+//
+// THE DEFECT. `cruelty_free`'s violating list is ["tested on animals"], and
+//     "Tested on animals: never."
+// was returned as PROOF that the store states the violating claim — the compliant
+// sentence quoted back as evidence of the opposite. Same class as the `gluten_free`
+// / `contains gluten-free` overlap, still live in a shipped built-in.
+//
+// ⚠️ BOTH FORMS ARE DELIBERATELY ONE-DIRECTIONAL, and that is the whole design.
+// `isNegated` serves BOTH `findSupport` and `findViolation`, so widening the shared
+// NEGATOR would have suppressed genuine claims:
+//   • `free of` — "This oil is free of parabens and is 100% organic." No clause
+//     boundary sits between them (` and ` without a comma is not one), so the frame
+//     would reach `organic` and delete a real claim.
+//   • post-term `never` — "Gluten-free: never any wheat." The `never` scopes over
+//     `wheat`, not over the claim it follows.
+// On the violation side neither ambiguity exists: an absence frame or a flat denial
+// attached to a VIOLATING term can only ever mean the store is denying it. v2.6
+// built a general negation-scope rewrite, measured it as a net regression against
+// the code it replaced, and reverted. This is a vocabulary gap in one direction.
+
+/** "free of parabens", "free from animal testing" — frames that only ever deny. */
+const ABSENCE_FRAME = /(^|[^a-z])free\s+(of|from)([^a-z]|$)/i;
+
+/**
+ * The violating term used as a LABEL whose value is a flat denial:
+ * "Tested on animals: never." / "Animal testing — none."
+ *
+ * The separator is REQUIRED, which is what keeps this narrow. `no` and `zero` are
+ * deliberately excluded even here: "Contains gluten: no wheat flour" is a sentence
+ * whose `no` governs the noun after it rather than the label before it, and the
+ * separator alone cannot tell those apart.
+ */
+const LABEL_DENIAL = /^\s*[:–—-]\s*(never|none|nope)\b/i;
+
+/** True when EVERY occurrence of `term` in `sentence` sits in a negated clause.
+ *
+ *  `absenceFrames` opts into the two violation-only forms above. Callers on the
+ *  support side must not set it — see the block above for the measured reason. */
+export function isNegated(sentence: string, term: string, opts: { absenceFrames?: boolean } = {}): boolean {
   const n = normalize(sentence);
   const t = normalize(term);
   let i = n.indexOf(t);
   if (i === -1) return true; // absent ⇒ certainly not supporting
   while (i !== -1) {
-    const negated = NEGATOR.test(clauseBefore(n, i)) || deniedAfter(n, i, t.length);
+    const before = clauseBefore(n, i);
+    const after = n.slice(i + t.length);
+    const negated = NEGATOR.test(before)
+      || deniedAfter(n, i, t.length)
+      || (opts.absenceFrames === true && (ABSENCE_FRAME.test(before) || LABEL_DENIAL.test(after)));
     if (!negated) return false; // a non-negated occurrence exists
     i = n.indexOf(t, i + 1);
   }
@@ -283,11 +325,18 @@ const isInterrogative = (s: string): boolean => /\?\s*$/.test(s.trim());
 export function findSupport(
   evidence: EvidenceSentence[],
   terms: readonly string[],
-  opts: { allowLogisticsSubject?: boolean; allowContainerSubject?: boolean; requireDigit?: boolean; wholeWord?: boolean } = {},
+  opts: {
+    allowLogisticsSubject?: boolean; allowContainerSubject?: boolean; requireDigit?: boolean; wholeWord?: boolean;
+    /** A term occurring is not the thing being stated. Same contract as the
+     *  attribute rows' `valueGuard`: it reads the ORIGINAL sentence, case intact,
+     *  and a rejected sentence skips to the next one rather than failing the row. */
+    valueGuard?: (sentence: string) => boolean;
+  } = {},
 ): SupportedEvidence | null {
   for (const ev of evidence) {
     if (isInterrogative(ev.text)) continue;
     if (opts.requireDigit && !/\d/.test(ev.text)) continue; // timing needs a number
+    if (opts.valueGuard && !opts.valueGuard(ev.text)) continue;
     const n = normalize(ev.text);
     const matches = termMatches(n, terms, opts.wholeWord === true);
     if (!matches.length) continue;
@@ -352,7 +401,9 @@ export function findViolation(
       // its product is NON-vegan had the violation dropped and then passed on the
       // `vegan` fragment. Found by the fresh adversarial pass over this very fix.
       if (support.some((s) => v.index < s.end && s.index < v.end && s.end > v.end)) continue;
-      if (isNegated(ev.text, v.term)) continue;           // "does not contain gluten"
+      // `absenceFrames` is set HERE and nowhere else — the violation side is the one
+      // place "free of X" and "X: never" are unambiguous denials (v3.1 CP2a).
+      if (isNegated(ev.text, v.term, { absenceFrames: true })) continue; // "does not contain gluten"
       if (!passesAboutness(ev.text, v.term, opts).ok) continue;
       return { surface: ev.surface, sentence: ev.text, term: v.term, quote: presentableQuote(ev.text) };
     }
@@ -363,10 +414,18 @@ export function findViolation(
 // ---- logistics / timing vocabulary ------------------------------------------
 
 /** Timing terms that are open-ended and only state a deadline WITH a number
- *  ("ships within 2 business days"). A digit is required in the same sentence. */
+ *  ("ships within 2 business days"). A digit is required in the same sentence.
+ *
+ *  ⚠️ `shipping times` is listed EXPLICITLY (v3.1 CP2b). These terms are now matched
+ *  whole-word, and the plural is by far the commoner merchant spelling — without its
+ *  own entry, `shipping time` stops matching inside `shipping times` and the row
+ *  loses a real class of finding. Every other term either has no inflection that
+ *  occurs in real copy or already carries both forms (`business day` / `business
+ *  days`). Checked term by term before the boundary change, not after. */
 export const TIMING_TERMS_NEEDING_DIGIT = [
   "ships within", "ships in", "business days", "business day", "delivery in", "arrives in",
-  "arrive within", "delivered within", "delivered in", "shipping time", "ships out in", "dispatch within",
+  "arrive within", "delivered within", "delivered in", "shipping time", "shipping times",
+  "ships out in", "dispatch within",
 ] as const;
 
 /** Timing terms that are self-contained deadlines — no digit needed. */
@@ -378,9 +437,49 @@ export const TIMING_TERMS_SELF_CONTAINED = [
 /** NOTE: "free shipping" is deliberately NOT a timing term — it states price, not
  *  speed. Crediting it was the live false positive this module exists to prevent. */
 
+// ---- v3.1 CP2c: a DIGIT is not a DURATION ------------------------------------
+//
+// `requireDigit` asked only that the sentence contain some digit, so a POSTCODE
+// satisfied it:
+//     "Shipping times vary depending on your proximity to our Los Angeles origin
+//      zip code: 90038."
+// was returned as a stated delivery window, on a sentence whose actual content is
+// that delivery times VARY. Strip the digits and it correctly fails — which is the
+// same weakness `dimensions` had ("Available in 3 colors with a relaxed length")
+// and closed with a UNIT-BOUND number. `delivery` was the last digit-bearing
+// requirement without one, and it is the highest-discrimination row in the engine,
+// so recall matters more here than anywhere else.
+//
+// WRITTEN AGAINST THE 55 PASSING DELIVERY ROWS in the 172-store capture, not in the
+// abstract — v2.9's first quantity guard cost four real positives for exactly that
+// reason. Two shapes cover all 55, and both are needed:
+//   • a NUMBER bound to a time unit, tolerating the modifiers merchants actually
+//     write between them ("5 business days", "6-7 working days", "1–10 business
+//     days", "5-7 Business Days", "1 to 4 business days");
+//   • a WORDED window with no digit at all ("will ship the next business day"),
+//     which is 2 of the 55 and passes today only by accident — the digit that
+//     satisfied `requireDigit` in both was a CLOCK TIME ("after 2:00pm PST",
+//     "after 9 AM"). A digit-only guard would delete them.
+const DURATION_NUMBER =
+  /\b\d[\d.,]*\s*(?:\w+[\s-]+){0,2}(?:business\s+|working\s+|calendar\s+)?(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?)\b/i;
+const DURATION_WORDED =
+  /\b(?:same|next|following)\s+(?:business\s+|working\s+)?day\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|a|an)\s+(?:\w+\s+){0,2}(?:business\s+|working\s+)?(?:days?|weeks?|hours?)\b/i;
+
+/** True when the sentence states a duration, not merely a number. */
+export function statesDeliveryWindow(sentence: string): boolean {
+  return DURATION_NUMBER.test(sentence) || DURATION_WORDED.test(sentence);
+}
+
 export function findTimingSupport(evidence: EvidenceSentence[]): SupportedEvidence | null {
   return (
-    findSupport(evidence, TIMING_TERMS_SELF_CONTAINED, { allowLogisticsSubject: true }) ??
-    findSupport(evidence, TIMING_TERMS_NEEDING_DIGIT, { allowLogisticsSubject: true, requireDigit: true })
+    // ⚠️ `wholeWord` (v3.1 CP2b). Without it `ships in` matched inside "Ships
+    // internationally to 40 countries." and reported a delivery window nobody
+    // stated — with the country count satisfying `requireDigit`. Every sibling
+    // matcher bounds its terms; this one never did.
+    findSupport(evidence, TIMING_TERMS_SELF_CONTAINED, { allowLogisticsSubject: true, wholeWord: true }) ??
+    findSupport(evidence, TIMING_TERMS_NEEDING_DIGIT, {
+      allowLogisticsSubject: true, requireDigit: true, wholeWord: true,
+      valueGuard: statesDeliveryWindow,
+    })
   );
 }

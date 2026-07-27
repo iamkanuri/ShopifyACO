@@ -422,6 +422,15 @@ const CARE: Case[] = [
   // states them in the second. Nine of these were confirmed by A/B against the
   // pre-guard commit; the shapes below are one per splitting rule, so a future
   // narrowing of CARE_CLAUSE_SPLIT fails here instead of on a merchant.
+  C("Follow the machine wash symbol on the label.", attr("care"), "pass_evidenced", "canonical-true",
+    "MUTATION ANCHOR for the instructive-term shortcut, RE-ANCHORED in v3.1. Its old case " +
+    "(\"Care instructions: machine wash cold.\") stopped discriminating the moment the reference " +
+    "frame became clause-scoped — the clause after the colon carries a bare directive, so the " +
+    "sentence passes with or without the shortcut, and the mutation proof read the guard as " +
+    "decorative. Here the instructive term and the pointer frame share ONE clause, which is the " +
+    "only shape where the shortcut decides anything. A guard whose anchor a later fix has " +
+    "subsumed is a guard that has silently stopped being proved.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
   C("Care instructions are printed on the tag: rinse in cool water and dry immediately.",
     attr("care"), "pass_evidenced", "canonical-true",
     "COLON. The frame (`printed`) is true of the first clause and says nothing about the second. " +
@@ -492,6 +501,39 @@ const CLAIMS: Case[] = [
     "violating list is checked FIRST — so a store stating the claim is told it states the opposite."),
   C("No added fragrance, ever.", claimReq("fragrance_free"), "pass_evidenced", "contrary",
     "`added fragrance` is a violating term and matches inside the support phrase `no added fragrance`."),
+
+  // ── v3.1 CP2a — the gluten_free damage class, still live in a shipped built-in ──
+  C("Tested on animals: never.", claimReq("cruelty_free"), "not_proven", "negation",
+    "THE WORST CLASS OF FALSE PASS: a compliant store told its own copy states the OPPOSITE, with " +
+    "that compliant sentence quoted as the proof. `tested on animals` is cruelty_free's only " +
+    "violating term; `clauseBefore` sees nothing before it and POST_TERM_DENIAL wants a copular " +
+    "predicate (`is not available`), so a bare post-term `never` reached neither. Closed by " +
+    "LABEL_DENIAL — the term used as a LABEL whose value is a flat denial. The separator is " +
+    "REQUIRED, which is what keeps it narrow."),
+  C("Free of added fragrance.", claimReq("fragrance_free"), "not_proven", "negation",
+    "The same defect on a second built-in, found by sweeping all nine claim keys that carry a " +
+    "violating list rather than fixing the one that was reported. `free of` is an absence frame " +
+    "the NEGATOR list never had."),
+  C("This product is tested on animals.", claimReq("cruelty_free"), "not_proven", "canonical-true",
+    "THE RECALL ANCHOR, and the reason CP2a is one-directional. A genuine violation must still be " +
+    "reported as contrary — if this ever returns anything else, the denial forms have stopped " +
+    "discriminating and the row has become unable to fail."),
+  C("This oil is free of parabens and is 100% organic.", claimReq("organic"), "pass_evidenced", "canonical-true",
+    "WHY `free of` IS NOT IN THE SHARED NEGATOR LIST. `isNegated` serves findSupport as well as " +
+    "findViolation, and ` and ` without a comma is not a CLAUSE_BOUNDARY — so a shared frame would " +
+    "reach `organic` and delete a real claim on ordinary copy. The frame is opted into by " +
+    "findViolation alone, where an absence frame can only ever mean denial."),
+  C("Cruelty-free — tested on animals: never.", claimReq("cruelty_free"), "pass_evidenced", "contrary",
+    "MUTATION ANCHOR for the absence frames, and the reason the two cases above could not be one. " +
+    "The damage this guard prevents lives in the DETAIL and the QUOTE (\"your copy states the " +
+    "opposite\", quoting the compliant sentence), and the row's STATUS is not_proven either way — " +
+    "so the corpus, which asserts status, could not see the guard working and the mutation proof " +
+    "read it as decorative. Here the store ALSO states the claim, so suppressing the false " +
+    "contradiction lets findSupport reach `cruelty-free` and the status genuinely flips. Same " +
+    "corpus-hole shape v2.4 found in 4 of 12 guards: write the control case, keep the guard."),
+  C("Gluten-free: never any wheat.", claimReq("gluten_free"), "pass_evidenced", "canonical-true",
+    "The same asymmetry for the post-term form. Here `never` scopes over `wheat`, not over the " +
+    "claim it follows, so applying LABEL_DENIAL on the support side would cost this pass."),
 ];
 
 // ---------------------------------------------------------------------------
@@ -542,6 +584,55 @@ const DELIVERY: Case[] = [
     "`ships within` matches and requireDigit is satisfied, so only CONTEXT_VETO's subscription-widget " +
     "rule stands between this purchase widget and a rendered delivery proof. This is the case that " +
     "proves that rule still fires.",
+    undefined, { policyStatus: "readable" }),
+
+  // ── v3.1 CP2b — word boundaries on the timing matcher ─────────────────────
+  C("Ships internationally to 40 countries.", deliveryReq(), "not_proven", "substring-single-word-term",
+    "`findTimingSupport` never set `wholeWord`, so the term `ships in` matched inside `Ships " +
+    "internationally` and the country count satisfied `requireDigit` — a delivery window rendered " +
+    "from a sentence about geography. Every sibling matcher word-bounds its terms; this one, on the " +
+    "engine's best-discriminating row, did not. Each term was checked for a legitimate substring " +
+    "need before the change: only `shipping time` had one (the plural), which is now its own entry.",
+    undefined, { policyStatus: "readable" }),
+  C("Ships internationally, and the beans stay fresh for 6 months after roasting.",
+    deliveryReq(), "not_proven", "substring-single-word-term",
+    "MUTATION ANCHOR for the timing wholeWord flag, and it took THREE attempts. Each failure is " +
+    "worth recording, because each is a way a control case can look right and prove nothing. " +
+    "(1) \"Ships internationally to 40 countries.\" is the defect exactly as reported, and it is " +
+    "useless here: the CP2c value guard rejects it first (a country count is not a duration), so " +
+    "removing the boundary changes nothing. " +
+    "(2) \"...our 6 month guarantee starts on delivery.\" clears the value guard but is dropped by " +
+    "G-08's lint pre-filter before any matching happens, because `guarantee` is an unrenderable " +
+    "word. The row returned not_proven for a reason with nothing to do with this guard. " +
+    "(3) This one. `ships in` matches only inside `Ships internationally`; `6 months` is a real " +
+    "duration, so the value guard passes; and the sentence is lint-clean. With the boundary " +
+    "removed the row renders a SHELF-LIFE statement as proof of a delivery window; with it, the " +
+    "row correctly finds nothing.",
+    undefined, { policyStatus: "readable" }),
+  C("Shipping times: 3-5 business days.", deliveryReq(), "pass_evidenced", "canonical-true",
+    "THE RECALL ANCHOR for the boundary change. `shipping times` is the commoner merchant spelling " +
+    "and stopped matching inside itself once terms were bounded; without its own list entry this " +
+    "class of finding silently disappears.",
+    undefined, { policyStatus: "readable" }),
+
+  // ── v3.1 CP2c — a digit is not a duration ─────────────────────────────────
+  C("Our shipping times are listed on page 12 of the catalogue.", deliveryReq(), "not_proven", "placeholder",
+    "A POINTER, with a page number carrying the digit requirement. Same shape as the ZIP code found " +
+    "on a real store, and pinned separately because the postcode case could be dismissed as one " +
+    "unlucky sentence — the class is `any digit at all, anywhere`.",
+    undefined, { policyStatus: "readable" }),
+  C("Most orders received after 2:00pm PST will ship the next business day.",
+    deliveryReq(), "pass_evidenced", "canonical-true",
+    "THE CASE THAT SHAPED THE GUARD. This states a real window IN WORDS, and the digit satisfying " +
+    "`requireDigit` is a CLOCK TIME. A guard that demanded a number bound to a time unit — the " +
+    "obvious design — would have deleted this and one other of the 55 passing delivery rows in the " +
+    "172-store capture. Hence the worded arm. It is here so a future tightening has to fail a test " +
+    "rather than a merchant.",
+    undefined, { policyStatus: "readable" }),
+  C("In stock items dispatch within 6-7 working days after payment has cleared.",
+    deliveryReq(), "pass_evidenced", "canonical-true",
+    "The intervening-modifier shape (`working`, `business`, `calendar`) that real policies write " +
+    "between the number and the unit. Anchors the {0,2} word window in DURATION_NUMBER.",
     undefined, { policyStatus: "readable" }),
 ];
 
@@ -694,8 +785,14 @@ const V28_FOUND: Case[] = [
     "Strip them (\"…proximity to our origin.\") and the row correctly returns not_proven, so " +
     "the postcode alone is carrying the pass. `requireDigit` asks that SOME digit exists — " +
     "the identical weakness that let \"Available in 3 colors\" satisfy a measurement before " +
-    "`dimensions` got a valueGuard. Delivery has no equivalent guard. Found on a real store.",
-    "pass_evidenced", { policyStatus: "readable" }),
+    "`dimensions` got a valueGuard. Found on a real store.\n" +
+    "CLOSED in v3.1 CP2c by `statesDeliveryWindow`: the number must be bound to a time unit, " +
+    "or the sentence must state a worded window (\"the next business day\"). The worded arm is " +
+    "not decoration — 2 of the 55 passing delivery rows in the 172-store capture state their " +
+    "window in words and satisfy `requireDigit` only by accident, on a CLOCK TIME (\"after " +
+    "2:00pm PST\"). A digit-only guard would have deleted both. The guard was written against " +
+    "all 55 real quotes rather than in the abstract, and the replay confirms it costs none.",
+    undefined, { policyStatus: "readable" }),
   C("For 4 ounces water and 4 ounces ice.", attr("dimensions"), "not_proven", "usage-quantity",
     "A BREWING RECIPE quantity read as the product's own measurement. Found on a real coffee " +
     "store whose product copy embeds an iced-coffee method; the row quoted the water and ice " +
@@ -924,7 +1021,9 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //          seen in the v2.9 general sample: a ZIP CODE satisfying delivery's
   //          requireDigit, and a brewing-recipe quantity read as the product's weight.
   //                                                                             -> 31
-  const EXPECTED_OPEN_GAPS = 31;
+  // 31 -> 30: v3.1 CP2c closed the ZIP-code delivery false pass. A gap count that
+  // only ever rises is a backlog; this is the second direction the corpus asserts in.
+  const EXPECTED_OPEN_GAPS = 30;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
