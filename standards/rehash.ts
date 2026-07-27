@@ -12,11 +12,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { standardHash } from "./hash.js";
+import { vocabularyHash } from "./vocabulary.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FILES = [
   "coffee/v1.0/standard.json",
   "accessory/v0.1-draft/standard.json",
+  // Vocabularies hash the same way, omitting their own hash field instead.
+  "coffee/v1.0/vocabulary/decaf-method.json",
+  "coffee/v1.0/vocabulary/decaf-solvent-disclosure.json",
 ];
 
 const write = process.argv.includes("--write");
@@ -31,9 +35,10 @@ for (const rel of FILES) {
     console.log(`SKIP  ${rel} — not present`);
     continue;
   }
-  const std = JSON.parse(raw) as { standard_hash?: { value?: string } };
-  const stored = std.standard_hash?.value ?? null;
-  const computed = standardHash(std);
+  const doc = JSON.parse(raw) as { standard_hash?: { value?: string }; vocabulary_hash?: { value?: string } };
+  const isVocabulary = "vocabulary_hash" in doc;
+  const stored = (isVocabulary ? doc.vocabulary_hash?.value : doc.standard_hash?.value) ?? null;
+  const computed = isVocabulary ? vocabularyHash(doc) : standardHash(doc);
   if (stored === computed) {
     console.log(`OK    ${rel}  ${computed}`);
     continue;

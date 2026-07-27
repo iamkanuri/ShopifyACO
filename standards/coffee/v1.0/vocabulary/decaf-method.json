@@ -1,0 +1,927 @@
+{
+  "vocabulary_grammar_version": "1.0",
+  "standard_id": "ALS-COFFEE",
+  "standard_version": "1.0",
+  "claim_key": "decaf_method_named",
+  "version": "1.0",
+  "title": "Decaffeination method is named on the product page",
+  "status": "draft",
+  "notes": "AUTHORED INSUFFICIENT-SET-FIRST, which is the point of the exercise: in this category the misleading phrasings outnumber the honest ones, and a term list written positive-first would have been a list of phrases the author hoped stores write. The refusals were written and executed before any supporting term was chosen, and the supporting list is what survived them. NOT SERVED: ALS-COFFEE-1.0-DECAF-003 (residual caffeine) is a quantity-with-a-basis question and needs the format work in G-03; a term list does nothing for it. Both the session brief and ENGINE_GAPS.md G-06 name -DECAF-003 as the `chemical-free` entry; that entry is -DECAF-002.\n\nVERDICT AFTER THE ADVERSARIAL PASS, AND IT IS NEGATIVE. Four independent attackers produced 40 hostile sentences. Narrowing and framing closed 21 of them at a cost of ZERO true positives, and closed EVERY class a term list is capable of closing: adjacent vocabulary 7 of 7, denial 5 of 5, industry and competitor attribution 5 of 5, education 3 of 3. The 19 that remain open are ALL subject attribution or tense, and not one is a property of the term list. THIS VOCABULARY IS THEREFORE NOT A PUBLICATION CANDIDATE and must not be bound to an executable entry: a merchant who mentions a sibling decaf, a gift set, a subscription rotation, or a process they used to use would be reported as having disclosed this product's method. By the standard this project already applied when it removed the `origin` attribute, losing one row of depth costs less than one false statement about a real store, so the row does not ship. The measured conclusion for ENGINE_GAPS.md G-06 is that closing the claim dictionary is NECESSARY AND NOT SUFFICIENT: the binding constraint on this assertion is the engine's subject and tense handling, not the size of a dictionary.",
+  "scope": {
+    "establishes": "that the product page states, in a sentence we can quote from an accepted surface, a named commercial decaffeination process for this product",
+    "does_not_establish": "that the named process was actually used. No register anywhere records decaffeination licensees — trademark registers record ownership and assignments, not licences — and there is no third-party certification scheme for decaffeination process, so no public artifact exists that a buyer or this engine could resolve. A pass means the page made a checkable claim, not that the claim is true. It also does not establish residual caffeine, solvent residue, or that the process was applied to this particular lot."
+  },
+  "serves": [
+    {
+      "entry_id": "ALS-COFFEE-1.0-DECAF-001",
+      "effect": "narrows",
+      "note": "The entry asks equals_one_of — WHICH named process is stated — and additionally requires the matched member to be reported back so the standard can say what was found. A claim key answers only `is a term present`, so this vocabulary makes the weaker sibling assertion executable: a method is named at all. That is a real and discriminating question, and it is not the entry as written.",
+      "still_blocked_by": [
+        "G-03"
+      ]
+    },
+    {
+      "entry_id": "ALS-COFFEE-1.0-DECAF-002",
+      "effect": "supports_refusal_only",
+      "note": "Every phrase the entry names as insufficient — chemical-free, naturally decaffeinated, solvent-free, unqualified water process — is absent from the supporting list by construction and is pinned as an executed negative probe here, so a page carrying only those phrases returns not_proven rather than passing. That is the entry's refusal rule made executable. Its positive half, distinguishing named_non_solvent_method_present from unsubstantiated, still needs an operator that reports which member matched.",
+      "still_blocked_by": [
+        "G-03"
+      ]
+    }
+  ],
+  "accepted_surfaces": [
+    "product_description",
+    "structured_data"
+  ],
+  "matching": {
+    "whole_word": true,
+    "case_sensitive": false,
+    "engine_call_site": "src/server/productTest.ts claim branch — findSupport(quotable, support, { wholeWord: true }); findViolation reaches wholeWord true through its own default"
+  },
+  "insufficient_evidence": [
+    {
+      "form": "\"chemical-free\"",
+      "example": "Our decaf is 100% chemical free, so you can drink it with confidence.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "It names no process and is compatible with at least five of them — Swiss Water, Mountain Water, Royal Select Water, CO2 and, on a self-serving reading, sugarcane ethyl acetate. It is also literally false of every one, since water and carbon dioxide are chemicals. The phrase is used by the process licensor itself, so its presence is not even evidence that the seller is unsophisticated."
+    },
+    {
+      "form": "\"naturally decaffeinated\" / \"natural decaf\"",
+      "example": "This coffee is naturally decaffeinated to preserve its origin character.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "The worst offender in the category. It is a documented consumer-facing label for mutually exclusive processes, and the trade uses it for ethyl acetate on the grounds that the ester occurs in fruit while the compound actually used is typically manufactured — so it is compatible with the solvent process a buyer using the phrase is trying to avoid."
+    },
+    {
+      "form": "\"solvent-free\"",
+      "example": "A gentle, solvent free decaffeination that keeps the sweetness intact.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "It names no process and is technically false of two of the methods it is used to praise: water is the solvent in a water process, and supercritical CO2 extraction is solvent extraction with CO2 as the solvent. The honest narrower claim is that no chemical solvent was added, which is a different statement."
+    },
+    {
+      "form": "an unqualified \"water process\"",
+      "example": "A water process decaf with a rounded body and low acidity.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "At least four distinct, non-interchangeable water processes are in commercial use — Swiss Water in British Columbia, Mountain Water at Descamex in Veracruz, Royal Select Water, and unbranded plant processes. The phrase says a water-based method was used and cannot say which, which is precisely the question."
+    },
+    {
+      "form": "\"Sparkling Water Process\", which contains the substring \"water process\" and is a CO2 method",
+      "example": "Decaffeinated by the Sparkling Water Process for a sweeter cup.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "This is the measured reason `water process` can never be a supporting term. A CO2 extraction is marketed under a water-sounding trade name, so any matcher treating the literal substring `water process` as evidence of a water method classifies a carbon-dioxide process as a water one."
+    },
+    {
+      "form": "a specification row labelled only \"Process\"",
+      "example": "Process: Washed, 1750 masl, Caturra and Castillo.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "On virtually every specialty coffee page `Process` names the post-harvest treatment at the mill — washed, natural, honey — and says nothing about decaffeination. A check keyed on that word reads a drying method as a solvent disclosure, which is the most dangerous near-miss in the whole standard."
+    },
+    {
+      "form": "\"natural process\", the dry post-harvest method",
+      "example": "A natural process Ethiopian with big fruit and a syrupy body.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "`Natural` in coffee normally names fruit-drying at origin, which is about fermentation and has nothing to do with caffeine removal. The same word is separately the trade euphemism for ethyl acetate, so a single sentence can carry both meanings and a term list cannot tell them apart."
+    },
+    {
+      "form": "sugarcane as a tasting note",
+      "example": "Notes of sugarcane, cocoa nib and toasted almond.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Sugarcane is one of the commonest flavour descriptors in coffee copy as well as the name of an ethyl-acetate process. The bare word is a flavour claim far more often than a process claim, which is why only the qualified forms are supporting terms."
+    },
+    {
+      "form": "\"clean\", which is a scored cupping attribute",
+      "example": "Clean cup, balanced acidity, syrupy body and a long finish.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "`Clean Cup` is a scored box on the trade's own cupping form, as well as a wellness marketing word and an implied purity claim. Three meanings, none of them a process."
+    },
+    {
+      "form": "the mechanism paragraph with no process named",
+      "example": "Green coffee extract is saturated so that only the caffeine can leave the bean.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "This describes the osmosis mechanism shared by every water process, and the marketing of at least two of them uses it almost word for word. It places the coffee in a family and cannot name the member."
+    },
+    {
+      "form": "\"WP\", which looks like an abbreviation and is the generic",
+      "example": "This is a WP decaf from Huila, roasted for filter.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "Roasters shorten SWP, MWP and RSWP to WP. It sits where a specific abbreviation would sit and carries two capitals, so it reads as specific while establishing only that some water-based method was used."
+    },
+    {
+      "form": "\"gently decaffeinated\"",
+      "example": "Gently decaffeinated so the origin character survives the process.",
+      "hazard_class": "aspiration",
+      "why_not": "A manner adverb with no operational referent, observed applied to water, CO2 and ethyl-acetate processes alike. It names nothing that could be checked against anything."
+    },
+    {
+      "form": "a caffeine-removal percentage",
+      "example": "We remove 99.9% of the caffeine before the beans are roasted.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "A removal level is correlated with process and does not name one; several processes claim 97 to 99.9 per cent. Reading 99.9% as Swiss Water is inferring rather than reading, and inference is exactly what an evidence-availability test must not do."
+    },
+    {
+      "form": "\"certified\" applied to a decaffeination process",
+      "example": "Certified decaf you can trust, from a family roaster.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "There is no third-party certification scheme for decaffeination method anywhere, so there is no register, no certificate number and nothing to resolve. The certifications the decaffeination plants genuinely hold certify other things entirely, such as organic status."
+    },
+    {
+      "form": "\"decaffeinated at origin\"",
+      "example": "Decaffeinated at origin in Colombia before shipping to us.",
+      "hazard_class": "misleading_synonym",
+      "why_not": "This names a geography rather than a process. Colombian origin decaf is overwhelmingly ethyl acetate, but the phrase does not say so, and a standard that filled the gap by inference would be asserting something the page did not state."
+    },
+    {
+      "form": "a denial that the process is offered",
+      "example": "We do not offer a Swiss Water Process decaf in this range.",
+      "hazard_class": "negation",
+      "why_not": "A denial is the opposite of a statement that this coffee was processed that way, and crediting it would be the worst class of false pass: reporting that the store said what it explicitly said it did not."
+    },
+    {
+      "form": "a scoped negative naming what was NOT used",
+      "example": "Decaffeinated without methylene chloride or any other chlorinated solvent.",
+      "hazard_class": "negation",
+      "why_not": "A scoped negative is honest and checkable and still does not answer the question asked, which is how the caffeine WAS removed. This is the refusal that makes ALS-COFFEE-1.0-DECAF-002 executable by exclusion."
+    },
+    {
+      "form": "an unfilled specification row",
+      "example": "Decaffeination method: TBD, ask us for details.",
+      "hazard_class": "placeholder",
+      "why_not": "A merchant filling a required field with a placeholder is the normal case rather than the exception, and the label being present is not the value being present."
+    },
+    {
+      "form": "the process named by a customer rather than by the seller",
+      "example": "One verified buyer said the Swiss Water Process version is the best decaf they have had.",
+      "hazard_class": "third_party_speech",
+      "why_not": "A buyer's words are not the seller's statement. The engine already refuses review context as evidence, and this probe pins that it keeps doing so for this vocabulary."
+    },
+    {
+      "form": "the process claimed for the packaging rather than the coffee",
+      "example": "Our packaging is made from Swiss Water Process kraft board.",
+      "hazard_class": "wrong_subject",
+      "why_not": "A statement whose subject is the packaging is not a statement about the coffee inside it. The sentence is nonsense on its face, which is exactly why it is a fair test of whether the guard reads the subject rather than the keyword."
+    },
+    {
+      "form": "the process in the merchant's own product title",
+      "example": "Swiss Water Process Decaf Colombia Huila 12oz",
+      "hazard_class": "merchant_controlled_string",
+      "why_not": "A title is a name the merchant chose, not a statement of fact about the coffee, and naming is not evidence. This matters more here than in most categories: process-in-title is the normal convention in specialty and green-coffee listings, so this is a high-frequency channel rather than a corner case.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "product_title is one of the six quotable evidence surfaces and a claim requirement cannot restrict which surfaces it accepts, so accepted_surfaces is declared and unenforced. Closing it needs the surface-scoping asked for in ENGINE_GAPS.md G-06. Pinned bidirectionally: if the engine ever refuses titles this probe fails and the debt is closed."
+    },
+    {
+      "form": "a site-level statement about the roaster's decafs generally",
+      "example": "All of our decafs are made with the Swiss Water Process.",
+      "hazard_class": "wrong_subject",
+      "why_not": "Roasters commonly stock more than one decaf origin processed at more than one facility, so a statement about the range does not establish a fact about this lot. The standard's own entry names this form as insufficient.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "Sentence-scoped matching cannot distinguish `all of our decafs` from `this decaf`, and the subject rule fails open on an unrecognised subject by design, so this passes today. Closing it needs subject-number and referent analysis well beyond a term list, and it is recorded as a limit rather than pretended away."
+    },
+    {
+      "form": "\"carbonic natural\" as a post-harvest fermentation style",
+      "example": "Ethiopia Guji, carbonic natural, 48-hour anaerobic fermentation.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Carbonic maceration natural is a widespread post-harvest technique that shares its name with a registered CO2 decaffeination mark. Two unrelated processes, one string."
+    },
+    {
+      "form": "the same collision in a specification row",
+      "example": "Process: Carbonic Natural, 2100 masl, Heirloom.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "The spec-row shape is where a checker is most likely to trust a value, and here the row names fermentation rather than decaffeination."
+    },
+    {
+      "form": "carbon dioxide in sustainability copy",
+      "example": "We have cut our carbon dioxide process emissions by 40% since 2020.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Emissions copy is near-universal on coffee product pages and has nothing to do with caffeine removal."
+    },
+    {
+      "form": "liquid CO2 in beverage-dispense copy",
+      "example": "Nitro cold brew is charged with liquid CO2 and nitrogen for texture.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Nitro and sparkling coffee are mainstream roaster lines, and liquid carbon dioxide is ordinary dispense vocabulary there."
+    },
+    {
+      "form": "supercritical CO2 in botanical extraction copy",
+      "example": "Our botanical extracts are made with supercritical CO2 extraction.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Supercritical carbon dioxide is the dominant extraction method for hops, hemp and flavour extracts, so a roaster with a syrup line writes it about a different product."
+    },
+    {
+      "form": "ethyl acetate as a cupping defect descriptor",
+      "example": "Overripe fruit and ethyl acetate notes indicate over-fermentation.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Ethyl acetate is a named sensory defect in the trade's own cupping vocabulary as well as a decaffeination solvent. The same compound, and the opposite claim about the coffee."
+    },
+    {
+      "form": "sugarcane in post-harvest co-fermentation copy",
+      "example": "The sugarcane process at the mill adds cane molasses during fermentation.",
+      "hazard_class": "adjacent_vocabulary",
+      "why_not": "Cane-sugar co-fermentation is a current and fast-growing Colombian post-harvest technique written in exactly this form, and it happens at the mill rather than at a decaffeination plant."
+    },
+    {
+      "form": "a free-of denial naming the solvent avoided",
+      "example": "Our decaf is free of methylene chloride.",
+      "hazard_class": "negation",
+      "why_not": "Naming the solvent a roaster avoided is not naming the method used. The engine's negator list contains neither `free of` nor `free from`, so this is the exact sentence a bare chemical term credits as a disclosure."
+    },
+    {
+      "form": "a verb-based denial outside the negator list",
+      "example": "We avoid methylene chloride entirely.",
+      "hazard_class": "negation",
+      "why_not": "The negator vocabulary is a closed word list, so `avoid`, `reject` and `banned` read as assertions while `never` and `without` read as denials. The term must be framed rather than the list extended."
+    },
+    {
+      "form": "a specification row denial",
+      "example": "Methylene chloride: never.",
+      "hazard_class": "negation",
+      "why_not": "A colon is a clause boundary, so the trailing denial cannot reach back to the term. This is the shape that still misreports a compliant store under the shipped cruelty_free vocabulary."
+    },
+    {
+      "form": "the industry's method, not this roaster's",
+      "example": "Most cheap decafs are made with methylene chloride.",
+      "hazard_class": "wrong_subject",
+      "why_not": "A roaster disparaging the industry would be recorded as having disclosed that its own coffee uses the solvent, which is the most reputationally damaging false pass available in this category."
+    },
+    {
+      "form": "a named competitor's method",
+      "example": "Blue Bottle uses methylene chloride for their decaf; we do things differently.",
+      "hazard_class": "wrong_subject",
+      "why_not": "Competitor attribution credits another company's process to this product."
+    },
+    {
+      "form": "the process named for the packaging, in the ordinary word order",
+      "example": "Our Swiss Water Process decaf pouches are lined with recycled foil.",
+      "hazard_class": "wrong_subject",
+      "why_not": "The subject is the pouch. This is the packaging class in the form a merchant actually writes it, rather than the contrived form that the adjacency guard happens to catch.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "The engine's subject rule fails OPEN on an unrecognised subject by design, and MODIFIED_SUBJECT is an adjacency test (at most three non-word characters between the term and the container noun), so neither reaches this shape. Not closeable from the standard side and not closeable by surface scoping either."
+    },
+    {
+      "form": "an attributed review quote with no review keyword",
+      "example": "\"The best Swiss Water Process decaf I have ever tried.\" — Sarah M.",
+      "hazard_class": "third_party_speech",
+      "why_not": "A buyer's words are not the seller's statement. The engine's review veto is keyed on words such as `review` and `verified buyer`, none of which appear in an ordinary pull-quote.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "CONTEXT_VETO's review regex is a keyword list, and a pull-quote attributed with a name and a dash carries none of its keywords."
+    },
+    {
+      "form": "the shipment rather than the coffee",
+      "example": "Your shipment of Swiss Water Process decaf leaves the roastery within 24 hours.",
+      "hazard_class": "wrong_subject",
+      "why_not": "A sentence about getting the thing to the buyer is not a statement about the thing.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "The engine's subject rule fails OPEN on an unrecognised subject by design, and MODIFIED_SUBJECT is an adjacency test (at most three non-word characters between the term and the container noun), so neither reaches this shape. Not closeable from the standard side and not closeable by surface scoping either."
+    },
+    {
+      "form": "a bundled item inside a multi-product listing",
+      "example": "The holiday hamper contains a Swiss Water Process decaf and two mugs.",
+      "hazard_class": "wrong_subject",
+      "why_not": "The process is named for one item inside a hamper, and the row credits it to the hamper.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "The engine's subject rule fails OPEN on an unrecognised subject by design, and MODIFIED_SUBJECT is an adjacency test (at most three non-word characters between the term and the container noun), so neither reaches this shape. Not closeable from the standard side and not closeable by surface scoping either."
+    },
+    {
+      "form": "a subscription widget",
+      "example": "Choose a monthly subscription of our Swiss Water Process decaf.",
+      "hazard_class": "wrong_subject",
+      "why_not": "Purchase-widget copy is not a product statement, and the subscription veto is keyed on cadence phrases this wording avoids.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "CONTEXT_VETO's subscription regex matches cadence phrases such as `deliver every 2 weeks` and `subscribe and save`, not the bare word `subscription`."
+    },
+    {
+      "form": "a cross-sell to a different product in the range",
+      "example": "We also stock a Swiss Water Process decaf from Colombia.",
+      "hazard_class": "wrong_subject",
+      "why_not": "The sentence names a different product the roaster sells. The related-product veto covers `also available` and `also try` but not `also stock`.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "CONTEXT_VETO's related-product regex is a closed phrase list and does not cover every cross-sell verb."
+    },
+    {
+      "form": "a process the roaster USED TO use",
+      "example": "Until 2024 we used the Swiss Water Process for this lot.",
+      "hazard_class": "wrong_subject",
+      "why_not": "Past tense says the process is no longer in use, and the row would report it as the method for what is on sale today.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "Nothing in the engine reads tense or modality. A term list cannot distinguish `we use X` from `we used X`, `we hope to use X` or `we asked about X`, because the distinguishing word is not the term and is in no guard."
+    },
+    {
+      "form": "a process the roaster HOPES to use",
+      "example": "We hope to move this coffee to the Swiss Water Process next season.",
+      "hazard_class": "aspiration",
+      "why_not": "An explicit future intention says the coffee is NOT currently processed this way. This is the aspiration class SCHEMA.md names, and it is wide open.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "Nothing in the engine reads tense or modality. A term list cannot distinguish `we use X` from `we used X`, `we hope to use X` or `we asked about X`, because the distinguishing word is not the term and is in no guard."
+    },
+    {
+      "form": "a process under evaluation",
+      "example": "We are evaluating the Mountain Water Process for a future release.",
+      "hazard_class": "aspiration",
+      "why_not": "Evaluating a process is not using it, and the sentence says so plainly.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "Nothing in the engine reads tense or modality. A term list cannot distinguish `we use X` from `we used X`, `we hope to use X` or `we asked about X`, because the distinguishing word is not the term and is in no guard."
+    },
+    {
+      "form": "an enquiry rather than a claim",
+      "example": "We asked our importer about the Royal Select Water Process.",
+      "hazard_class": "aspiration",
+      "why_not": "The sentence records that a question was asked. It states nothing about how this coffee was decaffeinated.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "Nothing in the engine reads tense or modality. A term list cannot distinguish `we use X` from `we used X`, `we hope to use X` or `we asked about X`, because the distinguishing word is not the term and is in no guard."
+    },
+    {
+      "form": "a named sibling product on the same page",
+      "example": "Our Ethiopian decaf uses the Swiss Water Process.",
+      "hazard_class": "wrong_subject",
+      "why_not": "One line of ordinary roaster copy on a page for a different coffee produces a decaffeination disclosure for the wrong product.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "The engine's subject rule fails OPEN on an unrecognised subject by design, and MODIFIED_SUBJECT is an adjacency test rather than a window, so neither reaches this shape. Not closeable from the standard side, and not closeable by surface scoping either: it needs subject attribution, which no term list can supply."
+    },
+    {
+      "form": "a sibling named and this product explicitly excluded",
+      "example": "Our house decaf is a Swiss Water Process coffee; this Kenya is full caffeine.",
+      "hazard_class": "wrong_subject",
+      "why_not": "The sentence names a different product and then explicitly excludes this one. The semicolon is a clause boundary, so the exclusion is never read.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "The engine's subject rule fails OPEN on an unrecognised subject by design, and MODIFIED_SUBJECT is an adjacency test rather than a window, so neither reaches this shape. Not closeable from the standard side, and not closeable by surface scoping either: it needs subject attribution, which no term list can supply."
+    },
+    {
+      "form": "a conditional offer to source such a coffee",
+      "example": "If you prefer a Swiss Water-processed coffee, our sourcing team can find one.",
+      "hazard_class": "wrong_subject",
+      "why_not": "The plain meaning is that this coffee is NOT processed that way; the sentence offers to find one that is.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "Nothing in the engine reads tense or modality. A term list cannot distinguish `we use X` from `we used X`, `we hope to use X` or `we asked about X`, because the distinguishing word is not the term and is in no guard."
+    },
+    {
+      "form": "a comparative against the process",
+      "example": "Sweeter than a typical sugarcane EA lot.",
+      "hazard_class": "wrong_subject",
+      "why_not": "A comparison to a class of coffee is not a claim of membership in it. The comparative veto catches `unlike` and not `sweeter than`.",
+      "expected_outcome": "passes_known_gap",
+      "gap_note": "The engine's subject rule fails OPEN on an unrecognised subject by design, and MODIFIED_SUBJECT is an adjacency test rather than a window, so neither reaches this shape. Not closeable from the standard side, and not closeable by surface scoping either: it needs subject attribution, which no term list can supply."
+    }
+  ],
+  "supporting_terms": [
+    {
+      "term": "swiss water process",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "USPTO trademark register",
+          "url": "https://tsdr.uspto.gov/",
+          "kind": "regulator",
+          "establishes": "that SWISS WATER is a live registered mark (Reg. 2106264, Class 030) owned by Swiss Water Decaffeinated Coffee Inc., so the phrase names one specific commercial process with a single operator rather than a generic method"
+        },
+        {
+          "source": "Swiss Water Decaffeinated Coffee Inc.",
+          "url": "https://www.swisswater.com/",
+          "kind": "process_licensor",
+          "establishes": "the licensor's own description of the process and the wording it expects on licensed product, which is how the phrase is written in commerce"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with the Swiss Water Process at a dedicated facility.",
+        "This lot went through the Swiss Water Process before roasting."
+      ],
+      "notes": "The operator is in British Columbia, not Switzerland; the term names a process, not a place."
+    },
+    {
+      "term": "swiss water® process",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Swiss Water Decaffeinated Coffee Inc. brand usage",
+          "url": "https://www.swisswater.com/",
+          "kind": "process_licensor",
+          "establishes": "that the licensor's own materials carry the registered-mark symbol inside the phrase, which is the form a careful licensee copies"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with the Swiss Water® Process, as required by our licence."
+      ],
+      "notes": "MEASURED NECESSITY, not defensive padding: the engine's `normalize` does not strip ® or ™, so `swiss water process` cannot match `Swiss Water® Process`. Without this variant the vocabulary would fail exactly the sellers most likely to be telling the truth."
+    },
+    {
+      "term": "swiss water™ process",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Swiss Water Decaffeinated Coffee Inc. brand usage",
+          "url": "https://www.swisswater.com/",
+          "kind": "process_licensor",
+          "establishes": "that the trademark symbol appears inside the phrase in commercial copy; sellers use TM and R interchangeably and incorrectly, and both must be reachable"
+        }
+      ],
+      "positive_examples": [
+        "Our decaf uses the Swiss Water™ Process and nothing else."
+      ]
+    },
+    {
+      "term": "swiss water decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Specialty roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the attributive short form is how the process is most often written in body copy, without the word `process`"
+        }
+      ],
+      "positive_examples": [
+        "Our Swiss Water decaf comes from a single farm in Huila."
+      ]
+    },
+    {
+      "term": "swiss water processed",
+      "orthography": "spelling_variant",
+      "grounding": [
+        {
+          "source": "Green-coffee importer catalogue conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the participial form is a common listing spelling"
+        }
+      ],
+      "positive_examples": [
+        "A Swiss Water processed Colombian, sweet and low in acidity."
+      ],
+      "notes": "A separate term because whole-word matching stops `swiss water process` matching inside `processed` — the trailing `e` is a letter, so the boundary test blocks it."
+    },
+    {
+      "term": "swiss water-processed",
+      "orthography": "hyphen_variant",
+      "grounding": [
+        {
+          "source": "Specialty roaster copy conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the hyphenated compound-adjective form occurs in ordinary product copy"
+        }
+      ],
+      "positive_examples": [
+        "A Swiss Water-processed lot with plenty of body."
+      ]
+    },
+    {
+      "term": "mountain water process",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Descafeinadores Mexicanos S.A. de C.V. (Descamex)",
+          "kind": "process_licensor",
+          "establishes": "that Mountain Water Process names the water-based process operated at Descamex in Cordoba, Veracruz, and resolves to a single plant"
+        },
+        {
+          "source": "USPTO trademark register",
+          "url": "https://tsdr.uspto.gov/",
+          "kind": "regulator",
+          "establishes": "that the US registration MOUNTAIN WATER PROCESS DECAFFEINATED COFFEE (Reg. 3062375, owner Descafeinadores Mexicanos) is DEAD for failure to file continued use — so a US-facing page carrying the symbol is not supportable, while the phrase still identifies the plant"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated by the Mountain Water Process in Veracruz."
+      ],
+      "notes": "Widely repeated online as `not trademarked`, which is false against the register — it was registered and the US registration lapsed. Recorded because a vocabulary built from ambient web text would inherit the error."
+    },
+    {
+      "term": "mountain water® process",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Descamex brand usage",
+          "kind": "process_licensor",
+          "establishes": "that the operator writes the phrase with the registered-mark symbol, and sellers copy it"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated by the Mountain Water® Process in Veracruz."
+      ]
+    },
+    {
+      "term": "mountain water decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Roaster listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the attributive short form is used in body copy"
+        }
+      ],
+      "positive_examples": [
+        "A Mountain Water decaf from Chiapas, roasted last week."
+      ]
+    },
+    {
+      "term": "royal select water process",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Royal Coffee green-coffee catalogue listings observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that Royal Select Water Process is an importer-branded water process listed separately from Swiss Water Process by the same importer, which is direct evidence that at least four named water processes coexist"
+        }
+      ],
+      "positive_examples": [
+        "This lot is Royal Select Water Process decaf from Brazil."
+      ]
+    },
+    {
+      "term": "sugarcane decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Specialty trade usage observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that `sugarcane decaf` is the specialty-trade name for the ethyl-acetate process where the ester is fermented from sugarcane molasses"
+        }
+      ],
+      "positive_examples": [
+        "A sugarcane decaf from Manizales with plenty of sweetness."
+      ],
+      "notes": "Only the qualified forms are terms. Bare `sugarcane` is a tasting note far more often than a process and is pinned as an insufficient probe."
+    },
+    {
+      "term": "sugarcane ea",
+      "orthography": "abbreviation",
+      "grounding": [
+        {
+          "source": "Specialty trade usage observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that EA is the trade abbreviation for ethyl acetate and is written adjacent to `sugarcane` in listings"
+        }
+      ],
+      "positive_examples": [
+        "Colombia sugarcane EA decaf, washed at the mill."
+      ],
+      "notes": "Bare `ea` is deliberately absent: two letters with word boundaries would match an initialism or a stray token, and the qualified form carries the same information."
+    },
+    {
+      "term": "co2 decaf",
+      "orthography": "abbreviation",
+      "grounding": [
+        {
+          "source": "Roaster listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the short attributive form is how the carbon-dioxide family is usually named in product copy"
+        }
+      ],
+      "positive_examples": [
+        "A CO2 decaf that keeps the chocolate notes intact."
+      ]
+    },
+    {
+      "term": "co₂ decaf",
+      "orthography": "symbol_variant",
+      "grounding": [
+        {
+          "source": "Roaster listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the typographic subscript form appears in commercial copy"
+        }
+      ],
+      "positive_examples": [
+        "A CO₂ decaf that keeps the chocolate notes intact."
+      ],
+      "notes": "MEASURED NECESSITY: `normalize` does not fold the subscript, so `co2` cannot match `CO₂`."
+    },
+    {
+      "term": "decaffeinated with methylene chloride",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "National Geographic, reporting the Clean Label Project campaign",
+          "kind": "trade_press",
+          "establishes": "that methylene chloride is the dominant mass-market decaffeination solvent and that campaigners seek on-label disclosure of it, so an affirmative naming is a real disclosure",
+          "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with methylene chloride at a facility in Germany."
+      ],
+      "notes": "FRAMED after the adversarial pass. The bare chemical name was credited as NAMING the method on six measured denial and third-party forms — \"Free of methylene chloride.\", \"We avoid methylene chloride entirely.\", \"Methylene chloride: never.\", \"Methylene chloride is banned at the plant we use.\", \"Most cheap decafs are made with methylene chloride.\" — because `free of` and `avoid` are not in the engine's closed negator list and POST_TERM_DENIAL does not cover `is banned`. Framing closed all six and lost neither true positive. Same lesson the engine's `materials` attribute already applies with composition frames."
+    },
+    {
+      "term": "decaffeinated using methylene chloride",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "National Geographic, reporting the Clean Label Project campaign",
+          "kind": "trade_press",
+          "establishes": "that this is the disclosure wording campaigners are asking for, so it is the form an honest seller would use",
+          "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride"
+        }
+      ],
+      "positive_examples": [
+        "This lot is decaffeinated using methylene chloride, as disclosed by our importer."
+      ]
+    },
+    {
+      "term": "methylene chloride decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the attributive short form is used in trade listings for the direct solvent method"
+        }
+      ],
+      "positive_examples": [
+        "A methylene chloride decaf, disclosed because we think you should know."
+      ]
+    },
+    {
+      "term": "decaffeinated with dichloromethane",
+      "orthography": "spelling_variant",
+      "grounding": [
+        {
+          "source": "National Geographic, reporting the Clean Label Project campaign",
+          "kind": "trade_press",
+          "establishes": "that dichloromethane is the same substance under its systematic name, used in regulatory and technical copy",
+          "url": "https://www.nationalgeographic.com/science/article/decaf-coffee-methods-methylene-chloride"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with dichloromethane at our supplier's plant."
+      ]
+    },
+    {
+      "term": "decaffeinated with ethyl acetate",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Consumer Reports",
+          "kind": "consumer_guide",
+          "establishes": "that ethyl acetate is a named decaffeination solvent and that `naturally decaffeinated` is the trade's usual wording for it, which makes the explicit chemical name the honest disclosure",
+          "url": "https://www.consumerreports.org/coffee/is-decaffeinated-coffee-bad-for-you/"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with ethyl acetate derived from fermented sugarcane."
+      ],
+      "notes": "FRAMED after the adversarial pass. Bare `ethyl acetate` is also a named CUPPING DEFECT descriptor — the fermenty solvent note — so \"Overripe fruit and ethyl acetate notes indicate over-fermentation.\" was credited as a process disclosure. Same compound, opposite claim."
+    },
+    {
+      "term": "decaffeinated using ethyl acetate",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Consumer Reports",
+          "kind": "consumer_guide",
+          "establishes": "that the ester method is named this way in consumer and technical writing",
+          "url": "https://www.consumerreports.org/coffee/is-decaffeinated-coffee-bad-for-you/"
+        }
+      ],
+      "positive_examples": [
+        "This coffee is decaffeinated using ethyl acetate at origin."
+      ]
+    },
+    {
+      "term": "ethyl acetate decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the attributive short form is used in specialty listings alongside the sugarcane description"
+        }
+      ],
+      "positive_examples": [
+        "An ethyl acetate decaf from Manizales, sweet and heavy."
+      ]
+    },
+    {
+      "term": "decaffeinated with supercritical co2",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Coffee trade and process literature observed in search results",
+          "kind": "trade_press",
+          "establishes": "that supercritical carbon dioxide extraction is a distinct named decaffeination family"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with supercritical CO2 rather than a chemical solvent."
+      ],
+      "notes": "NARROWED after the adversarial pass: bare `supercritical co2` is the dominant extraction method for hops, hemp and botanicals, so a roaster with a syrup or extract line writes it about something else."
+    },
+    {
+      "term": "supercritical co2 decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the attributive form appears in roaster copy"
+        }
+      ],
+      "positive_examples": [
+        "A supercritical CO2 decaf with a clean, sweet finish."
+      ]
+    },
+    {
+      "term": "decaffeinated with liquid co2",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "CR3-Kaffeeveredelung process description",
+          "kind": "process_licensor",
+          "establishes": "that liquid or subcritical CO2 is operated as a process distinct from the supercritical form"
+        }
+      ],
+      "positive_examples": [
+        "Decaffeinated with liquid CO2 at a plant in Bremen."
+      ],
+      "notes": "NARROWED: bare `liquid co2` is standard beverage-dispense and carbonation vocabulary, and nitro coffee is a mainstream roaster product line."
+    },
+    {
+      "term": "liquid co2 decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Roaster and green-coffee listing conventions observed in search results",
+          "kind": "search_result_snippet",
+          "establishes": "that the attributive form appears in roaster copy"
+        }
+      ],
+      "positive_examples": [
+        "A liquid CO2 decaf produced in Bremen."
+      ]
+    },
+    {
+      "term": "carbon dioxide decaffeination",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "Coffee trade and process literature observed in search results",
+          "kind": "trade_press",
+          "establishes": "that the unabbreviated form names the same extraction family"
+        }
+      ],
+      "positive_examples": [
+        "Carbon dioxide decaffeination removes the caffeine without an added solvent."
+      ],
+      "notes": "REPLACES `carbon dioxide process`, which was credited on near-universal sustainability copy (\"We have cut our carbon dioxide process emissions by 40% since 2020.\") and on carbonation-equipment copy."
+    },
+    {
+      "term": "carbonic natural decaf",
+      "orthography": "canonical",
+      "grounding": [
+        {
+          "source": "EU trademark register",
+          "kind": "regulator",
+          "establishes": "that Carbonic Natural is a registered EU mark (application 019016050, owner CR3-Kaffeeveredelung M. Hermsen GmbH, Bremen), naming one operator's CO2 process"
+        }
+      ],
+      "positive_examples": [
+        "This is a Carbonic Natural decaf produced in Bremen."
+      ],
+      "notes": "NARROWED, and this was the worst finding of the adversarial pass. Bare `carbonic natural` collides head-on with CARBONIC MACERATION NATURAL, a widespread post-harvest fermentation technique: \"Ethiopia Guji, carbonic natural, 48-hour anaerobic fermentation.\" and the spec row \"Process: Carbonic Natural, 2100 masl, Heirloom.\" were both credited as decaffeination disclosures. A trademark and a fermentation style share a name."
+    }
+  ],
+  "violating_terms": [],
+  "violating_terms_empty_rationale": "There is no sentence a store can write that states the CONTRARY of `a decaffeination method is named`. Absence of a method is not a contradiction, it is absence — and the engine's contrary branch prints `Your public copy states the opposite of this requirement` beside the merchant's own sentence, which would be a false statement about the store for every phrasing considered. The nearest candidates were tested and all belong in the insufficient set instead: a scoped negative (`no methylene chloride`) names what was not used rather than contradicting that something was named, and a denial (`we do not offer a Swiss Water decaf`) is already handled by the engine's negation guard. A separate vocabulary, decaf-solvent-disclosure, carries the genuine violating terms for the different question of whether a chemical solvent was disclosed.",
+  "limits": [
+    {
+      "limit": "a merchant-chosen product title carrying a process name passes without the page stating anything",
+      "direction": "false_pass",
+      "cause": "product_title is a quotable evidence surface and accepted_surfaces is declared but unenforced; process-in-title is the normal convention in specialty and green-coffee listings, so this is high-frequency here",
+      "example": "Swiss Water Process Decaf Colombia Huila 12oz"
+    },
+    {
+      "limit": "a statement about the roaster's decafs in general is credited to this lot",
+      "direction": "false_pass",
+      "cause": "matching is sentence-scoped and the subject rule fails open on an unrecognised subject, so `all of our decafs` cannot be distinguished from `this decaf`",
+      "example": "All of our decafs are made with the Swiss Water Process."
+    },
+    {
+      "limit": "a page that states the process in the same sentence as a delivery cadence or a cross-sell loses the pass",
+      "direction": "false_fail",
+      "cause": "the claim branch inherits CONTEXT_VETO's subscription-widget and related-product regexes, and coffee is sold on subscription and cross-sold constantly",
+      "example": "Swiss Water Process decaf, delivered every 2 weeks."
+    },
+    {
+      "limit": "a page whose process sentence also contains freshness-guarantee language is never matched at all",
+      "direction": "false_fail",
+      "cause": "the claim linter pre-filters evidence before matching, and its `guarantee` rule drops the whole sentence",
+      "example": "Freshness guaranteed, and decaffeinated with the Swiss Water Process."
+    },
+    {
+      "limit": "a process named across two sentences is invisible",
+      "direction": "false_fail",
+      "cause": "matching is sentence-scoped and cross-sentence coreference is a pinned open engine limit",
+      "example": "Our decaf is different. We use only water and green coffee extract."
+    },
+    {
+      "limit": "a process named only inside an abbreviation that the sentence splitter cuts is unreachable",
+      "direction": "false_fail",
+      "cause": "splitSentences breaks after any period followed by whitespace, so `E.A. process` becomes two fragments; the term `e.a. process` is therefore forbidden by rule V6 and only the qualified sugarcane forms are shipped",
+      "example": "Decaffeinated via the E.A. process."
+    },
+    {
+      "limit": "named facilities are not accepted, though the standard's own entry calls a named processor stronger evidence than a method word",
+      "direction": "false_fail",
+      "cause": "a facility name states where, not how; admitting Descamex or Descafecol as method evidence would be an inference rather than a reading, and this vocabulary reports only what the page states",
+      "example": "Decaffeinated at Descafecol in Manizales, Colombia."
+    },
+    {
+      "limit": "`European process` is not accepted although the trade uses it for the direct solvent method",
+      "direction": "false_fail",
+      "cause": "the phrase is archaic and ambiguous enough that the grounding could not establish a single referent, and an ambiguous term is a false pass waiting to happen; excluded deliberately rather than shipped half-supported",
+      "example": "A European process decaf from a German plant."
+    },
+    {
+      "limit": "tense and modality are invisible: used-to, hope-to, evaluating and asked-about all read as stated",
+      "direction": "false_pass",
+      "cause": "no engine guard reads tense or modality, and the distinguishing word is never the matched term",
+      "example": "Until 2024 we used the Swiss Water Process for this lot."
+    },
+    {
+      "limit": "a process named for a SIBLING product on the same page is credited to this one",
+      "direction": "false_pass",
+      "cause": "the subject rule fails open on an unrecognised subject, and roasters routinely mention their other coffees",
+      "example": "Our Ethiopian decaf uses the Swiss Water Process."
+    },
+    {
+      "limit": "bundle, subscription-rotation, shipment and cross-sell subjects all pass",
+      "direction": "false_pass",
+      "cause": "CONTEXT_VETO is a closed phrase list covering neither `also stock` nor `goes with` nor the bare word `subscription`",
+      "example": "The gift set that goes with this bag contains a Swiss Water decaf."
+    }
+  ],
+  "review": {
+    "state": "incomplete",
+    "attacker": "four independent adversarial agents, none of which authored the vocabulary, across the six attack classes in VOCABULARY_REVIEW.md section 2; 40 hostile sentences, every finding re-executed by the author against the real engine matcher before any term was changed",
+    "refuter": "COMMISSIONED AND NOT RETURNED at the time this artifact was written. The independent refuting pass that would judge whether each narrowing costs more than it saves — the origin-removal test — had not completed, so this review is INCOMPLETE by the gate's own rule and the vocabulary may not be bound to an entry. The author re-executed every attacker finding personally and measured 21 of 40 attacks closed at zero cost to true positives, but an author's self-attack is evidence about the author.",
+    "adversarial_findings": [
+      {
+        "attack": "\"Ethiopia Guji, carbonic natural, 48-hour anaerobic fermentation.\" and the spec row \"Process: Carbonic Natural, 2100 masl, Heirloom.\" Carbonic maceration natural is a widespread post-harvest fermentation technique sharing its name with a registered CO2 decaffeination mark.",
+        "outcome": "term_narrowed",
+        "resolution": "`carbonic natural` replaced by `carbonic natural decaf`. The strongest single finding: a trademark and a fermentation style share a string, and the fermentation reading is far commoner in specialty copy.",
+        "residual_risk": "A CR3 licensee writing the bare mark with no `decaf` adjacent is now missed."
+      },
+      {
+        "attack": "Six measured denial forms in which a bare chemical name was credited as NAMING the method used: \"Free of methylene chloride.\", \"We avoid methylene chloride entirely.\", \"Methylene chloride: never.\", \"Methylene chloride is banned at the plant we use.\"",
+        "outcome": "term_narrowed",
+        "resolution": "Every bare chemical name was framed, e.g. `decaffeinated with methylene chloride`. The engine's negator list contains neither `free of` nor `avoid`, and POST_TERM_DENIAL does not cover `is banned`, so the term had to carry the frame. Same fix the engine's `materials` attribute already applies with composition frames.",
+        "residual_risk": "An unframed disclosure in a spec row such as `Solvent: methylene chloride` is no longer matched."
+      },
+      {
+        "attack": "\"Overripe fruit and ethyl acetate notes indicate over-fermentation.\" Ethyl acetate is a named sensory defect in the trade's own cupping vocabulary as well as a decaffeination solvent.",
+        "outcome": "term_narrowed",
+        "resolution": "Framed with the same fix. One compound names a solvent and a defect, and the two make opposite claims about the coffee.",
+        "residual_risk": "None measured; the framed forms carry the disclosure."
+      },
+      {
+        "attack": "Four unrelated domains using the CO2 vocabulary on a coffee page: \"We have cut our carbon dioxide process emissions by 40% since 2020.\", \"Nitro cold brew is charged with liquid CO2 and nitrogen for texture.\", \"Each bag is flushed with liquid CO2 before sealing.\", \"The lion's mane extract in this blend is produced with supercritical CO2.\"",
+        "outcome": "term_narrowed",
+        "resolution": "`carbon dioxide process` replaced by `carbon dioxide decaffeination`; `liquid co2` and `supercritical co2` now require a decaf frame. Sustainability, dispense, packaging-gas and botanical-extraction copy are all ordinary on roaster pages.",
+        "residual_risk": "A bare `supercritical CO2` disclosure with no decaf word adjacent is missed."
+      },
+      {
+        "attack": "\"The sugarcane process at the mill adds cane molasses during fermentation.\" Cane-sugar co-fermentation is a current and growing Colombian post-harvest technique written in exactly this form.",
+        "outcome": "term_removed",
+        "resolution": "`sugarcane process` removed entirely. `sugarcane decaf` and `sugarcane ea` carry the same information without the collision.",
+        "residual_risk": "A page writing only `sugarcane process` about decaffeination is missed."
+      },
+      {
+        "attack": "\"Most cheap decafs are made with methylene chloride.\" and \"Blue Bottle uses methylene chloride for their decaf; we do things differently.\" A roaster disparaging the industry recorded as disclosing its own method.",
+        "outcome": "term_narrowed",
+        "resolution": "Closed by the same framing. This was the most reputationally damaging false pass available in the category.",
+        "residual_risk": "None measured for these forms."
+      },
+      {
+        "attack": "Tense and modality: \"Until 2024 we used the Swiss Water Process for this lot.\", \"We hope to move this coffee to the Swiss Water Process next season.\", \"We asked our importer about the Royal Select Water Process.\"",
+        "outcome": "limit_recorded",
+        "resolution": "NOT closeable by a term list. Nothing in the engine reads tense or modality, and the distinguishing word is never the matched term. Pinned as known gaps and declared as limits.",
+        "residual_risk": "Every one of these still passes. This is a principal reason the vocabulary is not a publication candidate."
+      },
+      {
+        "attack": "Subject attribution: \"Our Ethiopian decaf uses the Swiss Water Process.\", \"The gift set that goes with this bag contains a Swiss Water decaf.\", \"Our subscribers get the Mountain Water decaf in month three.\", \"We also stock a Swiss Water Process decaf from Colombia.\"",
+        "outcome": "limit_recorded",
+        "resolution": "NOT closeable by a term list and not closeable by surface scoping either. The subject rule fails open by design and CONTEXT_VETO is a closed phrase list. Pinned as known gaps and declared as limits.",
+        "residual_risk": "Every one still passes, on copy that is entirely ordinary for a roaster."
+      },
+      {
+        "attack": "The empty violating list was attacked directly. An attacker produced \"We do not disclose our decaffeination method.\" as a genuine contrary sentence, then measured that the narrow violating list needed to catch it produces four false contradictions against the vocabulary's own canonical positive examples.",
+        "outcome": "survived_unchanged",
+        "resolution": "The empty list stands, and its rationale is now measured rather than argued: the violating list that would catch the one genuine contrary sentence tells compliant stores they state the opposite.",
+        "residual_risk": "A page explicitly refusing to disclose its method returns not_proven, which understates what the page actually said."
+      }
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0",
+      "date": "2026-07-26",
+      "summary": "First vocabulary authored against the v1.0 vocabulary grammar, insufficient set first, to unblock the presence half of the coffee standard's decaffeination questions.",
+      "changes": [
+        {
+          "change_type": "vocabulary_added",
+          "detail": "decaf_method_named",
+          "rationale": "The coffee standard's decaffeination entries were blocked solely by the engine's closed claim dictionary, and decaf is the category where misleading phrasings outnumber honest ones, which makes it the right proof of an insufficient-set-first format."
+        }
+      ]
+    }
+  ],
+  "vocabulary_hash": {
+    "algorithm": "sha256",
+    "canonicalisation": "json-sorted-keys-no-hash-field",
+    "value": "baa3ff0d87b716be687a81cda15d46c08f9fe10156437546eacab181302da26a"
+  }
+}
