@@ -17,6 +17,14 @@
 //     kind, this file stops compiling — which is the notification a standard
 //     author needs, because a new kind means new assertions become executable.
 //
+//     ✅ THIS MECHANISM HAS SINCE FIRED, and it is worth recording that it worked
+//     rather than leaving it hypothetical. The engine DID gain a ninth kind at
+//     v3.1 CP1 — `unsupported` — and the answer was NOT "a new assertion becomes
+//     executable": it is an engine-internal outcome for a row that could not be
+//     re-asked, so the `case` below REFUSES it. That is the useful shape of this
+//     guard. It does not decide what a new kind means; it guarantees a human has
+//     to decide, which is the opposite of a new kind arriving silently.
+//
 // Pure: no network, no filesystem, no clock, no engine runtime.
 // ===========================================================================
 
@@ -39,7 +47,13 @@ export interface StandardBinding {
 
 export interface StandardEntry {
   id: string;
-  tier: "executable" | "advisory" | "blocked" | "not_discriminating";
+  /** ⚠️ `unbound` ARRIVED AT GRAMMAR 1.2 and is NOT a flavour of `blocked`. It names the
+   *  one state whose obstacle is ours: the engine has a kind that fits and public data can
+   *  adjudicate it, and this standard has not written the binding or run the adversarial
+   *  pass. Until this member existed, its five entries fell through the skip-reason ternary
+   *  to the `blocked` wording and told a reader the ENGINE could not run them — the exact
+   *  opposite of what the tier means. */
+  tier: "executable" | "unbound" | "advisory" | "blocked" | "not_discriminating";
   binding?: StandardBinding;
   [k: string]: unknown;
 }
@@ -73,20 +87,32 @@ export class CompileError extends Error {
 // Do not "fix" a drift by editing the list alone; the test will still fail, and
 // it is right to.
 
-/** Keys of CLAIM_TERMS at src/server/productTest.ts:47 (commit 96ceacd). */
+// ⚠️ THE COMMIT PIN BELOW IS THE LOAD-BEARING HALF, and it had gone stale across twelve
+// commits. Both comments read `(commit 96ceacd)`, while `src/server/productTest.ts` grew
+// from 1,600 to 2,267 lines in the interval — so ATTRIBUTE_SPECS had moved from line 243
+// to line 537, and a reader following the citation landed in an unrelated tombstone.
+// CLAIM_TERMS at line 47 did not move, which is the trap: one of the two still resolved.
+//
+// A line number without a commit is not a citation, it is a guess with a colon in it.
+// Re-verified by execution at v3.4 CP-2 (experiments/v3-4/verify_contract.mjs), which
+// anchors on the BYTES at the pinned commit rather than on the number. If you move either
+// declaration, re-run it — do not hand-edit the number.
+
+/** Keys of CLAIM_TERMS at src/server/productTest.ts:47 (commit 9843cb6).
+ *  Unchanged since 96ceacd — the one citation in this file that did not drift. */
 export const ENGINE_CLAIM_KEYS = [
   "aluminum_free", "baking_soda_free", "cruelty_free", "vegan", "fragrance_free",
   "paraben_free", "sulfate_free", "single_origin", "organic", "fair_trade",
   "gluten_free", "third_party_tested", "bpa_free",
 ] as const;
 
-/** Keys of ATTRIBUTE_SPECS at src/server/productTest.ts:243 (commit 96ceacd).
- *  `origin` was REMOVED in v2.8 CP2 and `warranty` was dropped before shipping —
- *  neither may be referenced. */
+/** Keys of ATTRIBUTE_SPECS at src/server/productTest.ts:537 (commit 9843cb6; was line
+ *  243 at 96ceacd). `origin` was REMOVED in v2.8 CP2 and `warranty` was dropped before
+ *  shipping — neither may be referenced. */
 export const ENGINE_ATTRIBUTE_KEYS = ["materials", "dimensions", "care"] as const;
 
 /** Kinds that can never reach `pass_evidenced` — the engine returns an
- *  absence-based inference instead (src/server/productTest.ts:1179-1183). */
+ *  absence-based inference instead (src/server/productTest.ts:1772-1776, commit 9843cb6). */
 const ABSENCE_BASED_KINDS: ReadonlySet<ReqKind> = new Set<ReqKind>(["no_subscription"]);
 
 // ---- compile ---------------------------------------------------------------
@@ -125,8 +151,22 @@ export function bindingToRequirement(entryId: string, b: StandardBinding): Requi
     case "claim": {
       if (!b.claim) throw new CompileError(entryId, "req_kind 'claim' requires binding.claim");
       if (!(ENGINE_CLAIM_KEYS as readonly string[]).includes(b.claim)) {
-        // The engine does `CLAIM_TERMS[req.claim!]!` with a non-null assertion, so an
-        // unknown key is a THROWN TypeError at evaluate time, not a failed row.
+        // ⚠️ STALE AS OF 9843cb6, AND THE THROWN MESSAGE BELOW IS STALE WITH IT.
+        // This used to read: the engine does `CLAIM_TERMS[req.claim!]!` with a non-null
+        // assertion, so an unknown key is a THROWN TypeError at evaluate time, not a
+        // failed row. G-06 §2 closed that in d35b26e — `evaluate` now reads
+        // `CLAIM_TERMS[req.claim!]` and returns `unsupportedRow` (productTest.ts:1635),
+        // an honest `requires_store_access` row naming OUR limitation.
+        //
+        // THE COMPILE-TIME REFUSAL IS STILL CORRECT AND MUST STAY. The runtime change
+        // makes a bad key survivable, not acceptable: it costs the merchant one unchecked
+        // row, and a conformance list silently answering "we couldn't check this" for an
+        // entry the standard publishes is exactly the failure G-10 was built to prevent.
+        // Compile time is where an unresolvable key should die.
+        //
+        // The message string one line down still says "evaluate() would throw" and is now
+        // wrong. It is user-visible output, i.e. logic, so it is NOT edited here — it is
+        // filed as a proposal row in ENGINE_GAPS.md under the standing proposal register.
         throw new CompileError(entryId, `unknown engine claim key '${b.claim}' — evaluate() would throw, not fail the row. Known: ${ENGINE_CLAIM_KEYS.join(", ")}`);
       }
       return { ...base, claim: b.claim };
@@ -179,6 +219,46 @@ export interface CompileReport {
   expectedExecutable: number;
 }
 
+/**
+ * Why a non-executable entry was not compiled — ONE SENTENCE PER TIER, and the four
+ * sentences must stay mutually exclusive, because this string is what a reader is told
+ * about why a published question did not run.
+ *
+ * ⚠️ TWO THINGS WERE WRONG HERE BEFORE GRAMMAR 1.2, AND THEY WERE WRONG IN OPPOSITE WAYS.
+ *
+ *   • `not_discriminating` restated a rule that has since been DELETED. It said "the
+ *     PREDICTED failure rate is outside 15-85% so the row would carry no information" —
+ *     a prediction. At 1.2 the tier is a MEASURED verdict: the schema rejects it without
+ *     a `measured_discrimination` behind it whose 95% interval lies wholly outside the
+ *     band. That is the difference between an authoring guess and a run against 100 real
+ *     products, and the authored bands held 1 of 10 against that very sample.
+ *   • `unbound` had no branch at all, so all five of its entries fell to the `blocked`
+ *     wording and were reported as "the engine cannot yet" — the precise opposite of the
+ *     tier's meaning, which is that the engine CAN and this standard has not authored the
+ *     binding. A ternary with no branch for a new enum value does not fail; it lies. The
+ *     switch below is exhaustive over the union so the next tier cannot do this again.
+ */
+export function skipReason(tier: StandardEntry["tier"]): string {
+  switch (tier) {
+    case "advisory":
+      return "advisory — published, never tested; public data cannot adjudicate it";
+    case "unbound":
+      return "unbound — the engine HAS a requirement kind that fits and public data can adjudicate it; this standard has not authored a binding or an adversarial pass for it (see unbound_reason). The obstacle is unwritten work in the document, not the engine";
+    case "not_discriminating":
+      return "not_discriminating — a MEASURED verdict: the entry was run against a recorded sample and the whole 95% interval of its failure rate lies outside the 15-85% target band, so the answer separates almost nobody from anybody (see measured_discrimination)";
+    case "blocked":
+      return "blocked — should be executable, the engine cannot yet (see blocked_by)";
+    case "executable":
+      return "executable — not skipped";
+    default: {
+      // A tier this file has never heard of must not be described by the last branch of
+      // a ternary. Naming it is worse than a guess only in that it is honest.
+      const never: never = tier;
+      return `unrecognised tier '${String(never)}' — compile.ts has no branch for it, so nothing here describes why this entry did not run`;
+    }
+  }
+}
+
 /** Compile every `executable` entry. Collects errors rather than throwing on the
  *  first, so a failing build names every problem in one pass. */
 export function compileStandard(standard: Standard): CompileReport {
@@ -189,15 +269,7 @@ export function compileStandard(standard: Standard): CompileReport {
 
   for (const entry of standard.entries) {
     if (entry.tier !== "executable") {
-      skipped.push({
-        id: entry.id,
-        tier: entry.tier,
-        reason: entry.tier === "advisory"
-          ? "advisory — published, never tested; public data cannot adjudicate it"
-          : entry.tier === "not_discriminating"
-            ? "not_discriminating — the engine could run it; the predicted failure rate is outside 15-85% so the row would carry no information"
-            : "blocked — should be executable, the engine cannot yet (see blocked_by)",
-      });
+      skipped.push({ id: entry.id, tier: entry.tier, reason: skipReason(entry.tier) });
       continue;
     }
     expectedExecutable++;
@@ -215,8 +287,9 @@ export function compileStandard(standard: Standard): CompileReport {
 }
 
 /**
- * The engine keys every lookup off `label`, never `id`
- * (src/server/productTest.ts:1478, :1323; src/server/authenticatedTest.ts:175).
+ * The engine keys every lookup off `label`, never `id` — at commit 9843cb6:
+ * src/server/productTest.ts:2140 (`kindOf`), src/server/productTest.ts:1932 (`byLabel`),
+ * src/server/authenticatedTest.ts:262 (the prior-status map).
  * Two requirements sharing a label therefore collide in `byLabel` maps — the
  * semantic tier would update the wrong row and `kindOf` would resolve to the
  * wrong kind. Uniqueness is a hard requirement, not a style preference.
@@ -237,8 +310,13 @@ export function renderCompileReport(r: CompileReport): string {
     return `FAILED — ${r.requirements.length}/${r.expectedExecutable} executable entries compiled; ` +
       `${r.errors.length} error(s):\n` + r.errors.map((e) => `  ${e.message}`).join("\n");
   }
-  const n = (t: string) => r.skipped.filter((s) => s.tier === t).length;
+  // ⚠️ COUNTED FROM THE SKIPPED ROWS THEMSELVES, not from a fixed list of three tiers.
+  // The old version named advisory/blocked/not_discriminating literally, so grammar 1.2's
+  // five `unbound` entries were in `skipped.length` and in none of the parenthesised
+  // counts — a total that does not add up, which is how a reader discovers a whole tier
+  // is missing only if they do the arithmetic.
+  const tiers = [...new Set(r.skipped.map((s) => s.tier))].sort();
+  const breakdown = tiers.map((t) => `${r.skipped.filter((s) => s.tier === t).length} ${t}`).join(", ");
   return `COMPILED — ${r.requirements.length}/${r.expectedExecutable} executable entries -> engine Requirements; ` +
-    `${r.skipped.length} entries skipped (${n("advisory")} advisory, ${n("blocked")} blocked, ` +
-    `${n("not_discriminating")} not_discriminating).`;
+    `${r.skipped.length} entries skipped (${breakdown}).`;
 }

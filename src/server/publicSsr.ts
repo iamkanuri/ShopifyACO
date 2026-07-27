@@ -114,7 +114,7 @@ export function publicSsrFor(pathname: string): string | null {
   <p>We publish what we cannot test, and why: every standard states its blocked and advisory entries in full, alongside the ones that run — and it publishes the measured rate at which the engine executing it gets a requirement wrong, with the method, the sample, and the defect classes behind it.</p>
   <p>
     <a href="${esc(STANDARDS_INDEX_URL)}">Published standards</a> ·
-    <a href="${esc(COFFEE_STANDARD_URL)}">Coffee Standard v1.1</a> ·
+    <a href="${esc(COFFEE_STANDARD_URL)}">Coffee Standard v${esc(COFFEE_STANDARD_URL.split("/").pop() ?? "")}</a> ·
     <a href="${esc(COFFEE_STANDARD_URL)}/standard.json">The artifact as JSON</a> ·
     <a href="${esc(COFFEE_STANDARD_URL)}#measured-error">The measured error rate</a> ·
     <a href="${esc(EXAMPLE_TEST_URL)}">A real result on a real store</a> ·

@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { validate, unsupportedKeywords, renderResult, SUPPORTED_KEYWORDS } from "../validate.js";
 import { MINIMAL_VALID, MUTATIONS, deepClone } from "./fixtures.js";
-import { loadJson } from "./support.js";
+import { loadJson, STANDARDS_DIR } from "./support.js";
 
 // ===========================================================================
 // GROUP 1 — THE VALIDATOR IS REAL.
@@ -105,6 +107,11 @@ const STANDARD_FILES = [
   // a grammar-1.0 document is untouched — which is the whole reason v1.0's bytes, and
   // therefore its hash, and therefore every citation made against it, still hold.
   "coffee/v1.1/standard.json",
+  // v1.2 is grammar 1.2 — the reconciliation (SCHEMA.md §9). It is the version that
+  // proves the version GATING works: it carries `discrimination_prediction`,
+  // `category_fitness`, the rich measurement shape and an `unbound` tier, every one of
+  // which the same schema FORBIDS at 1.0/1.1, while v1.0 and v1.1 above still pass.
+  "coffee/v1.2/standard.json",
   "accessory/v0.1-draft/standard.json",
 ];
 
@@ -116,3 +123,27 @@ for (const rel of STANDARD_FILES) {
     assert.ok(r.checksRun > 500, `only ${r.checksRun} checks ran over ${rel} — suspiciously few for a real standard`);
   });
 }
+
+// ⚠️ THE LIST IS EXPLICIT SO A GLOB CANNOT SILENTLY MATCH NOTHING — but an explicit
+// list has the mirror-image hole, and it is the more likely one: a NEW standard is
+// added and nobody edits this file, so it is never validated and the suite stays
+// green. That is "not being asked" reading as "passing", which is the failure this
+// repo has now recorded at four different layers. The list stays hand-written; this
+// test makes forgetting it loud.
+test("[schema] every standard.json on disk is IN the explicit list", () => {
+  const root = path.join(STANDARDS_DIR);
+  const found: string[] = [];
+  for (const cat of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!cat.isDirectory() || cat.name.startsWith("_") || cat.name === "__tests__") continue;
+    for (const ver of fs.readdirSync(path.join(root, cat.name), { withFileTypes: true })) {
+      if (!ver.isDirectory()) continue;
+      const rel = `${cat.name}/${ver.name}/standard.json`;
+      if (fs.existsSync(path.join(root, rel))) found.push(rel);
+    }
+  }
+  assert.ok(found.length > 0, "walked the standards tree and found NO standard.json at all — the walker is broken, which is not the same as there being nothing to check");
+  const missing = found.filter((f) => !STANDARD_FILES.includes(f));
+  assert.deepEqual(missing, [], `standard.json files exist on disk but are not in STANDARD_FILES, so nothing validates them:\n  ${missing.join("\n  ")}`);
+  const phantom = STANDARD_FILES.filter((f) => !found.includes(f));
+  assert.deepEqual(phantom, [], `STANDARD_FILES names files that do not exist:\n  ${phantom.join("\n  ")}`);
+});

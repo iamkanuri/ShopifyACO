@@ -57,10 +57,20 @@ export const TAGLINE_SHORT =
 /** The published standards live on a server-rendered surface (src/server/standardsSite.ts),
  *  not on a viewer route — so these are plain hrefs, never the SPA <Link>. */
 export const STANDARDS_INDEX_URL = "/standards";
-/** The CURRENT version. v1.0 keeps serving its original bytes forever — that is what a
- *  content hash promises — but the site's own links point at what it publishes today,
- *  and v1.0's page carries a supersession notice for anyone arriving on a citation. */
-export const COFFEE_STANDARD_URL = "/standards/coffee/1.1";
+/** The CURRENT version. A superseded version keeps serving its original bytes forever —
+ *  that is what a content hash promises — but the site's own links point at what it
+ *  publishes today, and an older page carries a supersession notice for anyone arriving
+ *  on a citation.
+ *
+ *  ⚠️ THIS IS A LITERAL AND IT MUST BE. The viewer bundle imports nothing from `src/`
+ *  (that separation is what keeps server-only secrets out of the client), so it cannot
+ *  read `PUBLISHED` from `src/server/standardsSite.ts` to derive the current version.
+ *  A literal that nothing checks is exactly how a link rots: this one pointed at v1.1
+ *  the day v1.2 was published, and nothing was false — v1.1 renders its supersession
+ *  notice — so no test and no lint could see it. `test/standardsSite.test.ts` now
+ *  asserts this string equals `currentOf("coffee")`, which fails the build on the next
+ *  reissue rather than quietly costing every reader one hop. */
+export const COFFEE_STANDARD_URL = "/standards/coffee/1.2";
 /** The Example test — also server-rendered (src/server/buyerTestDemo.ts), so also a
  *  plain href. It shows a real Coffee Standard v1.0 result on a real coffee product
  *  page, replayed from a frozen capture. */

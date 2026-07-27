@@ -40,7 +40,10 @@ export interface StandardEntry {
   id: string;
   question: string;
   assertion?: { subject?: string; operator?: string; expected?: unknown };
-  tier: "executable" | "not_discriminating" | "blocked" | "advisory" | string;
+  /** ⚠️ `unbound` ARRIVED AT GRAMMAR 1.2 and it is a TIER, not a variant of `blocked`.
+   *  Anywhere this renderer treats the tier list as closed, a new value renders NOTHING —
+   *  see `orderedTiers`, which appends unknown tiers rather than filtering them away. */
+  tier: "executable" | "unbound" | "not_discriminating" | "blocked" | "advisory" | string;
   /** An OBJECT ({applies_when, signal}) in the artifact, not a string. Rendering it
    *  directly produced "[object Object]" — the SECOND field in this file to do so
    *  after `posture`, which is why `renderScalarish` exists rather than a third
@@ -50,6 +53,8 @@ export interface StandardEntry {
   insufficient_evidence?: Array<{ form?: string; why_not?: string }>;
   conflict_rules?: Array<{ when?: string; resolution?: string; precedence?: string[] }>;
   public_inspectable?: unknown;
+  /** GRAMMAR 1.0/1.1 ONLY. Deleted at 1.2: the numeric band held 1 of 10 against this
+   *  category's own sample and every miss was HIGH, so it is not carried forward. */
   predicted_discrimination?: {
     predicted_fail_rate_band?: string;
     in_target_band?: boolean;
@@ -59,6 +64,20 @@ export interface StandardEntry {
     measured_n?: number;
     measured_verdict?: string;
   };
+  /** GRAMMAR 1.2. The band's replacement: a direction, a confidence, and the ORIGINAL
+   *  reasoning preserved verbatim — deliberately no number. `direction` is
+   *  `no_prediction` on all 42 v1.2 entries, because translating a refuted band into a
+   *  direction would inherit the error that condemned it. */
+  discrimination_prediction?: {
+    direction?: string;
+    confidence?: string;
+    reasoning?: string;
+    notes?: string;
+  };
+  /** GRAMMAR 1.2. Why an entry the engine COULD run is not run: this standard has not
+   *  authored a binding or put it through the adversarial pass. Distinct from `blocked`
+   *  (the engine cannot) and from `advisory` (public data cannot adjudicate it). */
+  unbound_reason?: string;
   consumer_note?: string;
   pass_means?: { establishes?: string; does_not_establish?: string } | string;
   known_gaps?: Array<{ corpus_case?: string; effect?: string; note?: string }> | string[];
@@ -102,7 +121,19 @@ export interface FitnessSample {
   stores: number; products_evaluated?: number;
   pass_rows_audited: number; confirmed_false_positives: number; borderline_counted_as_passes?: number;
   point_estimate_pct: number; bound_95_naive_pct?: number; bound_95_cluster_icc02_pct: number;
-  rows_per_store?: number; deff_icc02?: number; method: string; source?: string;
+  /** ⚠️ OPTIONAL SINCE GRAMMAR 1.2, which has no `method` string — it records the audit
+   *  discipline as BOOLEANS (`audit.row_by_row`, `untruncated_evidence`, …) plus a
+   *  `limits` array. `methodOf` composes the sentence from those rather than leaving the
+   *  paragraph blank, because a blank paragraph looks exactly like a method nobody wrote. */
+  rows_per_store?: number; deff_icc02?: number; method?: string; source?: string;
+  /** GRAMMAR 1.2 additions, all read straight off `category_fitness`. `per_store_pct` in
+   *  particular was DROPPED by v1.1's in-document block and restored at 1.2. */
+  icc?: number; per_store_pct?: number;
+  completion_state?: string;
+  audit?: { row_by_row?: boolean; untruncated_evidence?: boolean; borderline_recorded?: boolean; borderline_count?: number };
+  limits?: string[];
+  defects?: CategoryFitnessDefect[];
+  provenance?: CategoryFitnessProvenance;
   /** Grammar 1.1: the classes behind the confirmed errors, each with its count and an
    *  example, and whether ANY mechanism in the engine addresses it. `false` is the
    *  interesting value and the reason this is published at all. */
@@ -112,8 +143,72 @@ export interface FitnessSample {
   is_floor?: boolean;
   supersedes?: string;
 }
+/** One confirmed false pass, from grammar 1.2's `category_fitness.defects`. Individual
+ *  rows rather than 1.1's aggregated `defect_classes`: the counts are DERIVED from this
+ *  list, so a class summary can no longer disagree with the rows behind it. */
+export interface CategoryFitnessDefect {
+  entry_id?: string; evidence?: string; why_wrong?: string;
+  category_specific?: boolean; status?: string;
+}
+/** Grammar 1.2's sample provenance. `stores` here is the AUDIT's store count and is not
+ *  the discrimination sample's — the coffee audit's 162 pass rows come from 77 of the
+ *  run's 100 storefronts, because 23 produced no passing row at all. The artifact says
+ *  so in its own `notes`, which this renderer publishes rather than paraphrases. */
+export interface CategoryFitnessProvenance {
+  sample_id?: string; category_scope?: string; category_standard_id?: string;
+  stores: number; products?: number; selection?: string;
+  deduplicated_by_brand?: boolean; applicability_gate_enforced?: boolean;
+  unclassifiable_refused?: number; excluded_out_of_category?: number;
+  captured_on?: string; notes?: string;
+}
+/** GRAMMAR 1.2's in-document fitness block. Same role as v1.1's `measured_fitness` and
+ *  v1.0's sidecar, DIFFERENT internal shape: the five bounds live under `bounds` rather
+ *  than flat, and the audit discipline is structured instead of prose. `fitnessOf`
+ *  normalises all three into one shape so no renderer has to know which it is looking at. */
+export interface CategoryFitness {
+  sample: CategoryFitnessProvenance;
+  pass_rows_audited: number;
+  audit?: { row_by_row?: boolean; untruncated_evidence?: boolean; borderline_recorded?: boolean; borderline_count?: number };
+  confirmed_false_positives: number;
+  bounds: {
+    point_estimate_pct: number; naive_95_upper_pct: number;
+    cluster_adjusted_95_upper_pct: number; icc: number; per_store_pct: number;
+  };
+  completion_state: string;
+  defects?: CategoryFitnessDefect[];
+  measured_on: string;
+  limits?: string[];
+}
+
+/**
+ * One entry's measured discrimination, NORMALISED across three grammars.
+ *
+ * ⚠️ `kind` IS LOAD-BEARING AND IS NOT COSMETIC. At 1.0/1.1 the verdict answers
+ * "did the authored BAND hold?" (`held` / `above_band` / `below_band`). At 1.2 it
+ * answers "does this entry DISCRIMINATE?" (`discriminating` / `indeterminate` /
+ * `not_discriminating`) and is decided by the 95% interval, not the point estimate.
+ * Those are different questions with different verdict vocabularies, and rendering one
+ * through the other's table produces a page that quietly reports "0 of 10 predictions
+ * held" for a version that carries no predictions at all.
+ */
 export interface EntryDiscrimination {
-  id: string; asked: number; fail_pct: number; predicted_band?: string; verdict?: string; note?: string;
+  id: string;
+  kind: "band_calibration" | "discrimination";
+  /** Rows the entry produced. `adjudicated` is the DENOMINATOR — at 1.2 the two differ
+   *  wherever the engine returned `requires_store_access`, which is neither pass nor
+   *  fail. DELIV-001 is 45/74, not 45/100; publishing the second counts a row the engine
+   *  could not decide as a pass. */
+  asked: number;
+  adjudicated?: number;
+  fail_count?: number;
+  fail_pct: number;
+  interval?: { lower_pct: number; upper_pct: number };
+  target_band?: { lower_pct: number; upper_pct: number };
+  decision_rule?: string;
+  predicted_band?: string;
+  verdict?: string;
+  note?: string;
+  instrument_bias?: Array<{ source?: string; direction?: string; magnitude_pp?: number }>;
 }
 export interface FitnessDoc {
   measured_at: string; engine_version?: string;
@@ -141,32 +236,152 @@ export interface EmbeddedFitness {
   samples: Array<FitnessSample & { defect_classes?: Array<{ klass: string; count: number; example: string; addressed_by_a_guard?: boolean }> }>;
 }
 
-/** The measurement to publish for a standard: its sidecar if it has one, otherwise its
- *  own `measured_fitness`. Never invents one — an absent measurement stays absent. */
+/**
+ * The audit method sentence, COMPOSED from grammar 1.2's structured audit flags.
+ *
+ * 1.0 and 1.1 carry a prose `method`; 1.2 carries booleans and a `completion_state`.
+ * Falling back to an empty paragraph would be the `grounding.sources` failure in its
+ * mildest form — the section would render, look complete, and say nothing.
+ */
+function methodOf(x: FitnessSample): string {
+  if (x.method) return x.method;
+  const a = x.audit;
+  if (!a) return "";
+  const parts: string[] = [];
+  if (a.row_by_row) parts.push(`every one of the ${x.pass_rows_audited} passing rows was adjudicated individually`);
+  if (a.untruncated_evidence) parts.push("against the FULL untruncated evidence rather than the rendered quote");
+  if (a.borderline_recorded) {
+    parts.push(`${a.borderline_count ?? 0} judgement calls were recorded and counted as PASSES, so they can be disputed rather than merely trusted`);
+  }
+  if (!parts.length) return "";
+  const s = parts.join(", ");
+  return `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
+}
+
+/**
+ * The measurement to publish for a standard, WHEREVER THIS VERSION KEEPS IT.
+ *
+ * ⚠️ THREE SHAPES, THREE VERSIONS, AND THIS HELPER IS THE ONLY PLACE THAT KNOWS.
+ *   v1.0 — a SIDECAR `fitness.json` (the measurement came after v1.0 shipped, so it
+ *          could not go inside without changing the bytes a citation resolves through);
+ *   v1.1 — in-document `measured_fitness`, flat bounds;
+ *   v1.2 — in-document `category_fitness`, bounds nested under `bounds`, audit
+ *          discipline as booleans, defects as individual rows, plus `limits`.
+ *
+ * Read the raw field anywhere else and the page renders NOTHING, which looks exactly
+ * like a section that legitimately has nothing to show. That defect has now shipped
+ * three times in this file's history (`grounding.sources`, `s.fitness` twice); a fourth
+ * is prevented by there being one normaliser and a test that no page renders empty.
+ * Never invents a measurement — an absent one stays absent.
+ */
 export function fitnessOf(s: PublishedStandard): FitnessDoc | null {
   if (s.fitness?.samples?.length) return s.fitness;
+
   const inDoc = (s.doc as { measured_fitness?: EmbeddedFitness }).measured_fitness;
-  if (!inDoc?.samples?.length) return null;
+  if (inDoc?.samples?.length) {
+    return {
+      measured_at: inDoc.measured_at,
+      engine_version: inDoc.engine_version,
+      samples: inDoc.samples,
+      // Per-entry rates live on the entries themselves in grammar 1.1, so there is no
+      // separate block to normalise — `measuredOf` reads them directly.
+    };
+  }
+
+  const cf = (s.doc as { category_fitness?: CategoryFitness }).category_fitness;
+  if (!cf?.bounds) return null;
+  // The label is DERIVED from the artifact's own scope fields. `category_fitness` is by
+  // rule the THIS-CATEGORY sample and nothing else — `fitness_sample_is_this_category`
+  // rejects a general-mixed sample outright — so there is exactly one row here, and the
+  // general figure lives in `limits`, labelled a floor, where the artifact put it.
+  const scope = cf.sample?.category_scope === "this_category"
+    ? `${cf.sample.category_standard_id ?? s.doc.standard_id} category sample`
+    : `${String(cf.sample?.category_scope ?? "sample").replace(/_/g, " ")} sample`;
   return {
-    measured_at: inDoc.measured_at,
-    engine_version: inDoc.engine_version,
-    samples: inDoc.samples,
-    // Per-entry rates live on the entries themselves in grammar 1.1, so there is no
-    // separate block to normalise — `measuredOf` reads them directly.
+    measured_at: cf.measured_on,
+    samples: [{
+      name: "category",
+      label: scope,
+      description: cf.sample?.notes,
+      stores: cf.sample?.stores ?? 0,
+      products_evaluated: cf.sample?.products,
+      pass_rows_audited: cf.pass_rows_audited,
+      confirmed_false_positives: cf.confirmed_false_positives,
+      borderline_counted_as_passes: cf.audit?.borderline_count,
+      point_estimate_pct: cf.bounds.point_estimate_pct,
+      bound_95_naive_pct: cf.bounds.naive_95_upper_pct,
+      bound_95_cluster_icc02_pct: cf.bounds.cluster_adjusted_95_upper_pct,
+      icc: cf.bounds.icc,
+      per_store_pct: cf.bounds.per_store_pct,
+      completion_state: cf.completion_state,
+      audit: cf.audit,
+      limits: cf.limits,
+      defects: cf.defects,
+      provenance: cf.sample,
+      source: cf.sample?.sample_id,
+    }],
   };
 }
 
-/** The measured discrimination for one entry, from wherever this version keeps it. */
+/**
+ * The measured discrimination for one entry, from wherever this version keeps it.
+ *
+ * Three sources, and the 1.1 and 1.2 blocks share a FIELD NAME while meaning different
+ * things, which is why the discriminator is a field only 1.2 has (`n_adjudicated`)
+ * rather than the document's version string:
+ *   1.2 — `{verdict: discriminating|indeterminate|not_discriminating, n_asked,
+ *          n_adjudicated, fail_count, interval_95, target_band, instrument_bias}`
+ *   1.1 — `{verdict: held|above_band|…, asked, fail_rate_pct, carries_information}`
+ *   1.0 — the sidecar's `entry_discrimination.entries[]`.
+ */
 export function measuredOf(s: PublishedStandard, e: StandardEntry): EntryDiscrimination | null {
-  const inEntry = (e as { measured_discrimination?: { fail_rate_pct: number; asked: number; verdict: string; note?: string; carries_information?: boolean } }).measured_discrimination;
-  if (inEntry) {
+  const md = (e as { measured_discrimination?: Record<string, unknown> }).measured_discrimination;
+  if (md && typeof md === "object") {
+    if ("n_adjudicated" in md) {
+      const m = md as unknown as {
+        verdict: string; n_asked: number; n_adjudicated: number; fail_count: number; fail_rate_pct: number;
+        interval_95: { lower_pct: number; upper_pct: number };
+        target_band?: { lower_pct: number; upper_pct: number };
+        decision_rule?: string; notes?: string;
+        instrument_bias?: Array<{ source?: string; direction?: string; magnitude_pp?: number }>;
+      };
+      return {
+        id: e.id, kind: "discrimination",
+        asked: m.n_asked, adjudicated: m.n_adjudicated, fail_count: m.fail_count,
+        fail_pct: m.fail_rate_pct, interval: m.interval_95, target_band: m.target_band,
+        decision_rule: m.decision_rule, verdict: m.verdict, note: m.notes,
+        instrument_bias: m.instrument_bias,
+      };
+    }
+    const m = md as unknown as { fail_rate_pct: number; asked: number; verdict: string; note?: string };
     return {
-      id: e.id, asked: inEntry.asked, fail_pct: inEntry.fail_rate_pct,
+      id: e.id, kind: "band_calibration",
+      asked: m.asked, fail_pct: m.fail_rate_pct,
       predicted_band: e.predicted_discrimination?.predicted_fail_rate_band,
-      verdict: inEntry.verdict, note: inEntry.note,
+      verdict: m.verdict, note: m.note,
     };
   }
-  return s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id) ?? null;
+  const side = s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id);
+  return side ? { ...side, kind: "band_calibration" } : null;
+}
+
+/**
+ * The entry's DISCRIMINATION EXPECTATION, whichever grammar wrote it.
+ *
+ * ⚠️ THE BAND IS GONE AT 1.2 AND MUST NOT BE RENDERED AS BLANK. `predicted_discrimination`
+ * does not exist there, so a renderer reading it prints "Predicted fail rate: not stated
+ * (predicted, not yet measured)" beside a measurement — a sentence that is false twice.
+ * At 1.2 there is a direction, a confidence and the original reasoning verbatim, and
+ * `band` is simply absent, so the caller can omit the row instead of emptying it.
+ */
+export function predictionOf(e: StandardEntry): {
+  band?: string; reasoning?: string; direction?: string; confidence?: string; notes?: string;
+} | null {
+  const dp = e.discrimination_prediction;
+  if (dp) return { reasoning: dp.reasoning, direction: dp.direction, confidence: dp.confidence, notes: dp.notes };
+  const pd = e.predicted_discrimination;
+  if (pd) return { band: pd.predicted_fail_rate_band, reasoning: pd.reasoning };
+  return null;
 }
 
 export interface PublishedStandard {
@@ -193,8 +408,19 @@ const PUBLISHED: ReadonlyArray<{ slug: string; publicVersion: string; dir: strin
   // byte-for-byte, forever — that is what a content hash promises — and gains only a
   // supersession notice, added by this RENDERER and never by editing the document.
   { slug: "coffee", publicVersion: "1.0", dir: "standards/coffee/v1.0", supersededBy: "1.1" },
-  { slug: "coffee", publicVersion: "1.1", dir: "standards/coffee/v1.1" },
+  { slug: "coffee", publicVersion: "1.1", dir: "standards/coffee/v1.1", supersededBy: "1.2" },
+  { slug: "coffee", publicVersion: "1.2", dir: "standards/coffee/v1.2" },
 ];
+
+/** The CURRENT version of a slug: the last registry entry for it. Every place that has
+ *  to say "cite this one" derives it here rather than naming a version — llms.txt shipped
+ *  that backwards once, advertising the SUPERSEDED version as measured and the current
+ *  one as unmeasured, to exactly the machine readers the file exists for. */
+export function currentOf(slug: string): PublishedStandard | null {
+  const all = loadPublishedStandards().filter((s) => s.slug === slug);
+  return all.length ? all[all.length - 1]! : null;
+}
+export const isCurrent = (s: PublishedStandard): boolean => currentOf(s.slug)?.publicVersion === s.publicVersion;
 
 let cache: PublishedStandard[] | null = null;
 
@@ -239,15 +465,46 @@ const li = (s: unknown) => `<li>${esc(s)}</li>`;
 
 const TIER_LABEL: Record<string, string> = {
   executable: "Executable",
+  unbound: "Not yet bound",
   not_discriminating: "Not discriminating",
   blocked: "Blocked",
   advisory: "Advisory",
 };
 const TIER_WHY: Record<string, string> = {
   executable: "This question is asked as a test and produces a result for a real page.",
+  // ⚠️ THE ONLY TIER WHOSE OBSTACLE IS OURS. `blocked` says the engine cannot; `advisory`
+  // says public data cannot; `unbound` says BOTH CAN and this standard has not done the
+  // work — no binding written, no adversarial pass run. Presenting it as either of the
+  // other two would blame a limit that does not exist, which is the reason grammar 1.2
+  // added a tier rather than reusing one.
+  unbound: "The engine can run this kind of check and a public product page can settle it — but THIS standard has not yet written the binding or put the entry through its adversarial pass. The obstacle is unwritten work in this document, not the evidence and not the engine. Each one names the engine capability that fits.",
+  // ⚠️ DO NOT REWRITE THIS TO SAY "MEASURED". It is version-dependent, and a draft of this
+  // change did exactly that — which would have been FALSE on every page that renders it.
+  // At grammar 1.2 `not_discriminating` IS a measured verdict, and the tier is consequently
+  // EMPTY: its five occupants had never been run, which is why they became `unbound`. So
+  // this string only ever renders at v1.0 and v1.1, where the tier was assigned from an
+  // authored band and nothing had been measured at all. It is the frozen document's own
+  // framing, published as it was written, and v1.2's changelog is where it is corrected.
   not_discriminating: "This question is executable, but nearly every page answers it the same way — so the answer carries almost no information, and it is published rather than run.",
   blocked: "This question matters to a buyer and CANNOT be answered from a public product page today. What would be required is stated in full.",
   advisory: "This question is worth asking but is not reducible to a check a page can settle. It is published as guidance, not as a test.",
+};
+
+/** THE THREE-VALUED VERDICT, spelled out. `indeterminate` is a first-class outcome and
+ *  must not read as either decision — it is "this measurement ran and decided nothing",
+ *  which is a different sentence from both "it discriminates" and "it does not". */
+const VERDICT_LABEL: Record<string, string> = {
+  discriminating: "Discriminating",
+  indeterminate: "Undecided",
+  not_discriminating: "Not discriminating",
+  held: "Held",
+  above_band: "Above band",
+  below_band: "Below band",
+};
+const VERDICT_WHY: Record<string, string> = {
+  discriminating: "the measured rate lies inside the target band, so the answer separates stores from one another",
+  indeterminate: "the rate is outside the band but its 95% interval is not — this measurement RAN AND DECIDED NOTHING, which is neither of the other two answers and must never be read as either. The entry stays executable and keeps accruing n",
+  not_discriminating: "the whole 95% interval lies outside the target band, so almost every store answers the same way. This is evidence for a retirement decision and is not the decision",
 };
 
 /**
@@ -366,6 +623,30 @@ function tierCounts(doc: StandardDoc): Array<[string, number]> {
   return [...m].sort((a, b) => b[1] - a[1]);
 }
 
+/** Reading order: what runs, then what we have not finished, then what was measured to
+ *  carry no information, then what is not a test, then what the engine cannot do. */
+const TIER_ORDER = ["executable", "unbound", "not_discriminating", "advisory", "blocked"] as const;
+
+/**
+ * Every tier in the document, in reading order — AND NEVER FEWER.
+ *
+ * ⚠️ THIS USED TO BE `TIER_ORDER.filter(t => present(t))`, WHICH SILENTLY DELETES A TIER
+ * THE LIST HAS NOT HEARD OF. Grammar 1.2 added `unbound`, and under the old code its five
+ * entries would have vanished from the table of contents AND from the body of the page —
+ * rendering nothing, which looks exactly like a document that has no such entries. A
+ * conformance list that drops rows without saying so is the failure G-10 exists to
+ * prevent; the renderer must not commit it either. Unknown tiers are appended, so the
+ * worst case is an unstyled section rather than a missing one.
+ */
+export function orderedTiers(doc: StandardDoc): Array<[string, number]> {
+  const counts = tierCounts(doc);
+  const known = TIER_ORDER
+    .filter((t) => counts.some(([k]) => k === t))
+    .map((t) => [t as string, counts.find(([k]) => k === t)![1]] as [string, number]);
+  const unknown = counts.filter(([k]) => !(TIER_ORDER as readonly string[]).includes(k));
+  return [...known, ...unknown];
+}
+
 // ---- the rendered fragments ------------------------------------------------
 
 export interface SitePage {
@@ -404,11 +685,8 @@ function frontMatter(s: PublishedStandard): string {
  * what a citation like `#ALS-COFFEE-1.1-CERT-002` needs anyway.
  */
 function tableOfContents(s: PublishedStandard): string {
-  const counts = tierCounts(s.doc);
   const total = s.doc.entries.length;
-  const order = ["executable", "not_discriminating", "advisory", "blocked"];
-  const ordered = order.filter((t) => counts.some(([k]) => k === t))
-    .map((t) => [t, counts.find(([k]) => k === t)![1]] as [string, number]);
+  const ordered = orderedTiers(s.doc);
 
   const cards = ordered.map(([t, n]) => `<li class="std-toc-tier std-tier-${esc(t)}">
     <a href="#tier-${esc(t)}"><strong>${n}</strong> <span>${esc(TIER_LABEL[t] ?? t)}</span></a>
@@ -447,12 +725,78 @@ function tableOfContents(s: PublishedStandard): string {
  * squarely inside the band where an answer discriminates. Every figure below is derived
  * from the artifact; none is typed.
  */
+const shortId = (id: string) => id.replace(/^ALS-[A-Z]+-[0-9.]+-/, "");
+
+/**
+ * GRAMMAR 1.2's discrimination table — a MEASURED VERDICT, decided by the interval.
+ *
+ * ⚠️ WHY THIS IS A SEPARATE TABLE AND NOT A COLUMN ADDED TO THE ONE BELOW. The 1.0/1.1
+ * table answers "did the authored BAND hold?" and counts `held` / `above_band`. v1.2
+ * carries no bands at all, so running its rows through that table publishes
+ * "0 of 10 predictions held" — a derived-looking sentence about a field the document
+ * does not have. It also renders a `Discriminates: yes/no` column computed from the
+ * POINT ESTIMATE, which contradicts the artifact's own verdict on SOURCE-001: 89% is
+ * outside the band, so the column says "no", while the interval says `indeterminate`,
+ * which is not "no". A page disagreeing with its own JSON is the defect this whole file
+ * is built against, so the verdict is published as the artifact recorded it and nothing
+ * is recomputed here.
+ */
+function verdictTable(s: PublishedStandard, rows: Array<{ e: StandardEntry; m: EntryDiscrimination }>): string {
+  const count = (v: string) => rows.filter((x) => x.m.verdict === v).length;
+  const bands = new Set(rows.map((x) => x.m.target_band ? `${x.m.target_band.lower_pct}-${x.m.target_band.upper_pct}%` : ""));
+  const band = bands.size === 1 ? [...bands][0]! : "";
+  const undecided = rows.filter((x) => x.m.verdict === "indeterminate");
+  const blocked = rows.filter((x) => (x.m.instrument_bias ?? []).length > 0 && x.m.verdict === "not_discriminating");
+
+  const body = rows.map(({ e, m }) => `<tr>
+    <th scope="row"><a href="#${esc(e.id)}"><code>${esc(shortId(e.id))}</code></a></th>
+    <td>${m.fail_pct.toFixed(1)}%</td>
+    <td>${m.interval ? `${m.interval.lower_pct.toFixed(1)} – ${m.interval.upper_pct.toFixed(1)}%` : "—"}</td>
+    <td>${m.fail_count ?? "—"} / ${m.adjudicated ?? m.asked}${
+    m.adjudicated !== undefined && m.adjudicated !== m.asked
+      ? ` <span class="std-eg">(${m.asked - m.adjudicated} of ${m.asked} undecided by the engine, excluded)</span>` : ""}</td>
+    <td class="std-verdict-${esc(String(m.verdict ?? ""))}">${esc(VERDICT_LABEL[String(m.verdict)] ?? String(m.verdict ?? "—"))}</td>
+  </tr>`).join("");
+
+  return `<section class="std-discrimination" id="discrimination">
+  <h2>Measured discrimination, entry by entry</h2>
+  ${p(`Each executable entry was run against the same recorded sample and its failure rate given a 95% interval${band ? `, then compared with the ${band} target band` : ""}. THE INTERVAL DECIDES, not the point estimate — a rate outside the band whose interval straddles the edge has established nothing, and saying so is the difference between a measurement and a number.`)}
+  <table class="std-bounds"><caption>Fail rate, 95% interval and verdict per entry</caption>
+    <thead><tr>
+      <th scope="col">Entry</th><th scope="col">Fail rate</th><th scope="col">95% interval</th>
+      <th scope="col">Failed / adjudicated</th><th scope="col">Verdict</th>
+    </tr></thead>
+    <tbody>${body}</tbody></table>
+  <p><strong>${count("discriminating")} discriminating · ${count("indeterminate")} undecided · ${count("not_discriminating")} not discriminating</strong>, of ${rows.length} measured entries.</p>
+  ${Object.entries(VERDICT_WHY).map(([v, why]) =>
+    `<p class="std-note"><strong>${esc(VERDICT_LABEL[v] ?? v)}</strong> — ${esc(why)}.</p>`).join("")}
+  ${undecided.length ? `<p class="std-limit"><strong>${undecided.length} of ${rows.length} decided nothing, and that is published rather than rounded to a decision.</strong> ${
+    esc(`${undecided.map((x) => `${shortId(x.e.id)} at ${x.m.fail_pct.toFixed(1)}% (95% interval ${x.m.interval ? `${x.m.interval.lower_pct.toFixed(1)}–${x.m.interval.upper_pct.toFixed(1)}%` : "unstated"})`).join(", ")}. An undecided result is "no difference detectable at this n", which is not "no difference".`)
+  }</p>` : ""}
+  ${blocked.length ? `<p class="std-limit"><strong>${blocked.length} of the ${count("not_discriminating")} not-discriminating verdicts MAY NOT BE ACTED ON</strong>, and this document says so instead of working around it: ${
+    esc(blocked.map((x) => shortId(x.e.id)).join(", "))}. A confidence interval bounds sampling error and nothing else, and each of these was measured with a known bias in the instrument pointing at the very band edge its interval cleared. None of the entries below has been retired. ${
+    esc("A measured verdict is EVIDENCE for a retirement decision; it is not the decision.")}</p>` : ""}
+</section>`;
+}
+
 function discriminationTable(s: PublishedStandard): string {
   const rows = s.doc.entries
     .map((e) => ({ e, m: measuredOf(s, e) }))
     .filter((x): x is { e: StandardEntry; m: EntryDiscrimination } => x.m !== null);
   if (!rows.length) return "";
+  // Split rather than pick a winner: a document that somehow carried both would render
+  // both tables, which is visibly odd, instead of silently dropping half its rows.
+  const verdicts = rows.filter((x) => x.m.kind === "discrimination");
+  const calibration = rows.filter((x) => x.m.kind === "band_calibration");
+  if (!calibration.length) return verdictTable(s, verdicts);
+  // A second `id="discrimination"` on one page is a broken anchor, not a duplicate
+  // heading — the citation that lands on it picks whichever the browser finds first.
+  return verdicts.length
+    ? verdictTable(s, verdicts) + bandCalibrationTable(calibration, "discrimination-bands")
+    : bandCalibrationTable(calibration, "discrimination");
+}
 
+function bandCalibrationTable(rows: Array<{ e: StandardEntry; m: EntryDiscrimination }>, anchor = "discrimination"): string {
   const inBand = (pct: number) => pct >= 15 && pct <= 85;
   const held = rows.filter((x) => x.m.verdict === "held").length;
   const above = rows.filter((x) => x.m.verdict === "above_band").length;
@@ -467,7 +811,7 @@ function discriminationTable(s: PublishedStandard): string {
     <td>${inBand(m.fail_pct) ? "yes" : "no"}</td>
   </tr>`).join("");
 
-  return `<section class="std-discrimination" id="discrimination">
+  return `<section class="std-discrimination" id="${esc(anchor)}">
   <h2>Measured against predicted, entry by entry</h2>
   ${p("The bands were written before this standard had ever run. They are kept exactly as authored and shown beside what actually happened, because a document that shows its own hypothesis failing is making a stronger case that its numbers are measured than one whose predictions all came true.")}
   <table class="std-bounds"><caption>Fail rate per entry, over the products each entry was asked</caption>
@@ -518,6 +862,73 @@ function defectClasses(x: FitnessSample): string {
   return `<table class="std-bounds"><caption>${caption}</caption>
     <thead><tr><th scope="col">Class</th><th scope="col">n</th><th scope="col">Example</th><th scope="col">Addressed by a guard</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
+}
+
+/**
+ * GRAMMAR 1.2's defects, as INDIVIDUAL ROWS with the counts derived from them.
+ *
+ * 1.1 published aggregated `defect_classes` — a class name, a count and one example.
+ * 1.2 publishes every confirmed false pass with the store it came from, the evidence the
+ * engine matched, and why that was wrong. The per-entry counts below are counted from
+ * the list rather than carried beside it, so a summary can no longer disagree with the
+ * rows behind it, and the total is reconciled against `confirmed_false_positives` ON THE
+ * PAGE: a class list accounting for fewer errors than the sample records is a partial
+ * explanation presented as a complete one.
+ */
+function defectRows(x: FitnessSample): string {
+  const ds = x.defects ?? [];
+  if (!ds.length) return "";
+  const byEntry = new Map<string, number>();
+  for (const d of ds) byEntry.set(d.entry_id ?? "(unattributed)", (byEntry.get(d.entry_id ?? "(unattributed)") ?? 0) + 1);
+  const perEntry = [...byEntry].sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => `${shortId(id)} ${n}`).join(" · ");
+  const specific = ds.filter((d) => d.category_specific === true).length;
+  const unaddressed = ds.filter((d) => d.status === "pinned_known_gap").length;
+
+  const rows = ds.map((d) => `<tr>
+    <th scope="row"><code>${esc(shortId(d.entry_id ?? ""))}</code></th>
+    <td>${esc(d.evidence ?? "")}</td>
+    <td>${esc(d.why_wrong ?? "")}</td>
+    <td>${d.category_specific === true ? "category-specific" : d.category_specific === false ? "general" : "—"}</td>
+    <td>${d.status === "pinned_known_gap" ? "<strong>no guard addresses it</strong>" : esc(String(d.status ?? "—").replace(/_/g, " "))}</td>
+  </tr>`).join("");
+
+  return `<div class="std-classes">
+  <h4>Every one of the ${ds.length} wrong passes, individually</h4>
+  ${p(`${ds.length} confirmed, against ${x.confirmed_false_positives} recorded on the sample${
+    ds.length === x.confirmed_false_positives ? " — the list accounts for all of them" : " — THESE DO NOT RECONCILE, and the shorter list is the incomplete one"}. Per entry: ${perEntry}. ${specific} of ${ds.length} fire on vocabulary this category's pages contain and a general DTC page does not; ${unaddressed} are pinned known gaps that no mechanism in the engine currently addresses.`)}
+  <details><summary>Read all ${ds.length}, with the store, the evidence the engine matched, and why it was wrong</summary>
+  <table class="std-bounds"><caption>Confirmed false passes</caption>
+    <thead><tr><th scope="col">Entry</th><th scope="col">Store and matched evidence</th><th scope="col">Why it is wrong</th><th scope="col">Scope</th><th scope="col">Status</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </details>
+</div>`;
+}
+
+/** Grammar 1.2's `limits` — published verbatim, because they are the artifact's own
+ *  statement of what its number does NOT cover, and paraphrasing a limit weakens it. */
+function limitsHtml(x: FitnessSample): string {
+  if (!x.limits?.length) return "";
+  return `<div class="std-limit"><h4>What this bound does NOT cover</h4><ul>${x.limits.map(li).join("")}</ul></div>`;
+}
+
+/** The sample this bound was measured on. `stores` here is the AUDIT's count and the
+ *  artifact's own `notes` explain why it is lower than the run's — published rather than
+ *  paraphrased, because substituting one store count for the other is the exact mistake
+ *  the note exists to prevent. */
+function provenanceHtml(x: FitnessSample): string {
+  const s = x.provenance;
+  if (!s) return "";
+  const bits: string[] = [];
+  if (s.products !== undefined) bits.push(`${s.products} products evaluated across ${s.stores} storefronts`);
+  if (s.selection) bits.push(`selected by ${s.selection.replace(/_/g, " ")}`);
+  if (s.deduplicated_by_brand) bits.push("deduplicated by brand before capture");
+  if (s.applicability_gate_enforced) bits.push("the applicability gate enforced");
+  if (s.excluded_out_of_category !== undefined) bits.push(`${s.excluded_out_of_category} excluded as out of category`);
+  if (s.unclassifiable_refused !== undefined) bits.push(`${s.unclassifiable_refused} refused as unclassifiable`);
+  if (s.captured_on) bits.push(`captured ${s.captured_on}`);
+  return `<div class="std-method"><h4>The sample</h4>${bits.length ? p(`${bits.join("; ")}.`) : ""}${s.notes ? p(s.notes) : ""}${
+    s.sample_id ? p(`Record: ${s.sample_id}`) : ""}</div>`;
 }
 
 /**
@@ -592,9 +1003,24 @@ export function renderFitness(s: PublishedStandard): string {
     <td>${x.stores}</td><td>${x.pass_rows_audited}</td><td>${x.confirmed_false_positives}</td>
     <td>${x.point_estimate_pct.toFixed(2)}%</td><td><strong>${x.bound_95_cluster_icc02_pct.toFixed(2)}%</strong></td>
   </tr>`).join("");
-  const methods = f.samples.map((x) =>
-    `<div class="std-method"><h3>${esc(x.label)} — method</h3>${p(x.method)}${defectClasses(x)}${x.source ? p(`Record: ${x.source}`) : ""}</div>`,
-  ).join("");
+  // ⚠️ `methodOf`, NOT `x.method`. Grammar 1.2 has no method STRING — it records the audit
+  // discipline as booleans — so reading the field directly renders an empty paragraph under
+  // a "method" heading, which is the same "nothing looks like nothing to show" failure as
+  // `grounding.sources`, merely quieter.
+  const methods = f.samples.map((x) => {
+    const completion = x.completion_state
+      ? `<p class="std-limit"><strong>Completion state: ${esc(x.completion_state)}.</strong> ${esc(
+        x.completion_state === "DEFECTS_FOUND"
+          ? `${x.confirmed_false_positives} confirmed false passes. A measurement that did not finish resolves to INCOMPLETE and may never be summed into a defect total or read as a pass — zero is the most dangerous number a broken instrument returns, because it is also what a healthy one returns.`
+          : "Every scheduled unit returned and every candidate was adjudicated.")}</p>`
+      : "";
+    const spread = x.per_store_pct !== undefined
+      ? p(`Per-store rate: ${x.per_store_pct.toFixed(2)}%${x.icc !== undefined ? `, clustered at ICC ${x.icc}` : ""} — pass rows are not independent, because rows from one store share that store's copy conventions.`)
+      : "";
+    return `<div class="std-method"><h3>${esc(x.label)} — method</h3>${p(methodOf(x))}${completion}${spread}${
+      provenanceHtml(x)}${defectClasses(x)}${defectRows(x)}${limitsHtml(x)}${
+      x.source && !x.provenance ? p(`Record: ${x.source}`) : ""}</div>`;
+  }).join("");
   const pending = f.pending && Object.keys(f.pending).length
     ? `<div class="std-pending">${Object.entries(f.pending).map(([k, v]) => p(`${k}: ${v}`)).join("")}</div>`
     : "";
@@ -606,9 +1032,14 @@ export function renderFitness(s: PublishedStandard): string {
   // interpretation sitting next to generated numbers is the same "site disagrees with
   // its own JSON" defect one level up, so the comparison is now derived too.
   const shape = renderComparison(f.samples);
+  // ⚠️ DERIVED, NOT ASSERTED. "Every row was audited individually" is a claim about the
+  // audit, and grammar 1.2 records whether that is true as a field. A hand-written
+  // sentence beside generated numbers is the "site disagrees with its own JSON" defect
+  // one level up — it went false once already, on the paragraph below this one.
+  const rowByRow = f.samples.every((x) => x.audit?.row_by_row !== false);
   return `<section class="std-fitness" id="measured-error">
   <h2>Measured error</h2>
-  ${p("Every row this standard passed was audited individually against its full evidence. The bound is a 95% upper bound, cluster-adjusted at ICC 0.2 because pass rows are not independent — rows from one store share that store's copy conventions, and the bare rule of three would overstate the precision.")}
+  ${p(`${rowByRow ? "Every row this standard passed was audited individually against its full evidence. " : ""}The bound is a 95% upper bound, cluster-adjusted at ICC 0.2 because pass rows are not independent — rows from one store share that store's copy conventions, and the bare rule of three would overstate the precision.`)}
   <table class="std-bounds"><caption>False-positive rate by sample</caption>
     <thead><tr><th scope="col">Sample</th><th scope="col">Stores</th><th scope="col">Pass rows audited</th><th scope="col">Confirmed false positives</th><th scope="col">Point estimate</th><th scope="col">95% upper bound</th></tr></thead>
     <tbody>${rows}</tbody></table>
@@ -622,10 +1053,16 @@ function entryHref(s: PublishedStandard, id: string): string {
 }
 
 export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string): SitePage {
-  const measured = s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id) ?? null;
+  // ⚠️ `measuredOf`, NOT `s.fitness.entry_discrimination`. THIS LINE WAS THE FOURTH LIVE
+  // INSTANCE of the defect this file's header documents, and it was shipped: `s.fitness`
+  // is v1.0's SIDECAR, and v1.1 carries its measurement inside the document — so every
+  // v1.1 entry page rendered "Predicted fail rate: 30-60% (predicted, not yet measured)"
+  // for an entry the same document records as measured at 73.7%. Nothing threw and the
+  // page looked complete. The normaliser existed the whole time and was not called here.
+  const measured = measuredOf(s, e);
   const canonical = `${base}${entryHref(s, e.id)}`;
   const a = e.assertion;
-  const pd = e.predicted_discrimination;
+  const pd = predictionOf(e);
 
   const accepted = (e.accepted_evidence ?? []).map((x) =>
     `<li><strong>${esc(x.surface ?? "any product surface")}</strong> — ${esc(x.form ?? "")}${x.example ? ` <span class="std-eg">e.g. ${esc(x.example)}</span>` : ""}</li>`).join("");
@@ -646,17 +1083,64 @@ export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string
     ? p(e.pass_means)
     : `${e.pass_means?.establishes ? `<p><strong>A pass establishes:</strong> ${esc(e.pass_means.establishes)}</p>` : ""}${e.pass_means?.does_not_establish ? `<p class="std-limit"><strong>A pass does NOT establish:</strong> ${esc(e.pass_means.does_not_establish)}</p>` : ""}`;
 
-  // MEASURED beats predicted, and both are shown: a reader should be able to see how
-  // far the hypothesis was off, which is most of what this standard has learned.
+  // MEASURED beats predicted, and both are shown where both exist: a reader should be able
+  // to see how far the hypothesis was off, which is most of what this standard has learned.
+  //
+  // ⚠️ AT GRAMMAR 1.2 THERE IS NO BAND, AND AN ABSENT BAND MUST NOT BE RENDERED AS AN
+  // EMPTY ONE. The old code printed "Predicted fail rate: not stated (predicted, not yet
+  // measured)" whenever the field was missing — on a version that carries measurements and
+  // deliberately carries no prediction, that single line is false twice over. `predictionOf`
+  // returns `band: undefined` at 1.2, so the row is omitted rather than emptied.
+  const bias = measured?.instrument_bias ?? [];
+  const measuredHtml = measured
+    ? `<p><strong>Measured fail rate:</strong> ${measured.fail_pct.toFixed(1)}%${
+      measured.fail_count !== undefined && measured.adjudicated !== undefined
+        ? ` <span class="std-eg">(${measured.fail_count} of ${measured.adjudicated} adjudicated${
+          measured.adjudicated !== measured.asked
+            ? `; ${measured.asked - measured.adjudicated} of the ${measured.asked} rows it was asked returned "requires store access" and are excluded from the denominator, because counting an undecided row as a pass is a different measurement`
+            : ""})</span>`
+        : ` <span class="std-eg">(n=${measured.asked} products asked)</span>`}</p>`
+      + (measured.interval ? `<p><strong>95% interval:</strong> ${measured.interval.lower_pct.toFixed(1)}% – ${measured.interval.upper_pct.toFixed(1)}%${
+        measured.target_band ? `, against a ${measured.target_band.lower_pct}-${measured.target_band.upper_pct}% target band` : ""}${
+        measured.decision_rule ? ` <span class="std-eg">(${esc(measured.decision_rule.replace(/_/g, " "))})</span>` : ""}</p>` : "")
+      + (measured.kind === "discrimination" && measured.verdict
+        ? `<p class="std-verdict-${esc(measured.verdict)}"><strong>Verdict: ${esc(VERDICT_LABEL[measured.verdict] ?? measured.verdict)}</strong> — ${esc(VERDICT_WHY[measured.verdict] ?? "")}.</p>`
+        : "")
+      + (measured.predicted_band ? `<p class="std-note">Predicted before this standard had ever run: ${esc(measured.predicted_band)}${measured.verdict === "held" ? " — held." : measured.verdict === "above_band" ? " — the real rate is higher, so the entry discriminates less than predicted." : " — the real rate is lower, so more stores pass than predicted."}</p>` : "")
+      + (bias.length
+        ? `<div class="std-limit"><h3>Declared bias in the instrument</h3><p>A 95% interval bounds SAMPLING error and nothing else. These are the known biases in the measuring instrument for this row, declared rather than netted — where two point in opposite directions and neither is quantified, combining them into one signed number would be a guess wearing a direction.</p><ul>${
+          bias.map((b) => `<li><strong>${esc(String(b.direction ?? "").replace(/_/g, " "))}${
+            b.magnitude_pp !== undefined ? `, ${b.magnitude_pp}pp` : ", UNQUANTIFIED"}</strong><br /><span class="std-why">${esc(b.source ?? "")}</span></li>`).join("")
+        }</ul></div>`
+        : "")
+      + (measured.note ? p(measured.note) : "")
+    : "";
+  const predictedHtml = !measured && pd?.band
+    ? `<p><strong>Predicted fail rate:</strong> ${esc(pd.band)} <span class="std-eg">(predicted, not yet measured)</span></p>`
+    : "";
+  // At 1.2 the band is replaced by a direction and a confidence, both of which are
+  // deliberately non-numeric. `no_prediction` is the honest first-class value, so it is
+  // rendered as words rather than hidden.
+  const directionHtml = pd?.direction
+    ? `<p class="std-note"><strong>Authored expectation:</strong> ${esc(pd.direction.replace(/_/g, " "))}${
+      pd.confidence ? `, confidence ${esc(pd.confidence)}` : ""}. The numeric band this standard used to carry is not published at this grammar version.</p>`
+    : "";
   const discrimination = (pd || measured)
     ? `<section><h2>Discrimination</h2>
-       ${measured
-        ? `<p><strong>Measured fail rate:</strong> ${measured.fail_pct.toFixed(1)}% <span class="std-eg">(n=${measured.asked} products asked)</span></p>`
-          + (measured.predicted_band ? `<p class="std-note">Predicted before this standard had ever run: ${esc(measured.predicted_band)}${measured.verdict === "held" ? " — held." : measured.verdict === "above_band" ? " — the real rate is higher, so the entry discriminates less than predicted." : " — the real rate is lower, so more stores pass than predicted."}</p>` : "")
-          + (measured.note ? p(measured.note) : "")
-        : `<p><strong>Predicted fail rate:</strong> ${esc(pd?.predicted_fail_rate_band ?? "not stated")} <span class="std-eg">(predicted, not yet measured)</span></p>`}
-       ${pd?.reasoning ? p(pd.reasoning) : ""}</section>`
+       ${measuredHtml}${predictedHtml}${directionHtml}
+       ${pd?.reasoning ? p(pd.reasoning) : ""}${pd?.notes ? p(pd.notes) : ""}</section>`
     : "";
+
+  // WHY THIS ENTRY IS NOT RUN, from whichever field this tier uses. `unbound_reason` is
+  // grammar 1.2's and it says something the other two cannot: the obstacle is OURS.
+  const notRun = e.unbound_reason ?? e.blocked_reason ?? e.not_executable_because;
+  const notRunHtml = notRun
+    ? `<section class="std-insufficient"><h2>${e.unbound_reason ? "Why this is not yet bound" : "Why this cannot be run"}</h2>${p(notRun)}${
+      Array.isArray(e.blocked_by) && (e.blocked_by as string[]).length
+        ? p(`Blocked by ${(e.blocked_by as string[]).join(", ")}.`) : ""}</section>`
+    : (Array.isArray(e.blocked_by) && (e.blocked_by as string[]).length
+      ? `<section class="std-insufficient"><h2>Why this cannot be run</h2>${p(`Blocked by ${(e.blocked_by as string[]).join(", ")}.`)}</section>`
+      : "");
 
   const bodyHtml = `<article class="std-entry">
   <nav class="std-crumb"><a href="/standards">Standards</a> / <a href="/standards/${esc(s.slug)}/${esc(s.publicVersion)}">${esc(shortName(s.doc))}</a></nav>
@@ -664,6 +1148,7 @@ export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string
   <h1>${esc(e.question)}</h1>
   <p class="std-id"><code>${esc(e.id)}</code></p>
   ${p(TIER_WHY[e.tier] ?? "")}
+  ${notRunHtml}
   ${a ? `<section><h2>Assertion</h2><p><code>${esc(a.subject ?? "")} ${esc(a.operator ?? "")} ${esc(expectedText(a.expected))}</code></p>${
     // A DERIVED assertion's `expected` is itself an object — its inputs and the rule
     // that combines them. That is the most interesting part of the entry and it was
@@ -701,8 +1186,7 @@ export function renderStandard(s: PublishedStandard, base: string): SitePage {
     if (!byTier.has(e.tier)) byTier.set(e.tier, []);
     byTier.get(e.tier)!.push(e);
   }
-  const order = ["executable", "not_discriminating", "advisory", "blocked"];
-  const sections = order.filter((t) => byTier.has(t)).map((t) => {
+  const sections = orderedTiers(s.doc).map(([t]) => {
     const items = byTier.get(t)!.map((e) => {
       const m = measuredOf(s, e);
       // ⚠️ PER-ENTRY ANCHORS. A citation is written as "your product pages fail
@@ -711,10 +1195,17 @@ export function renderStandard(s: PublishedStandard, base: string): SitePage {
       const blocked = t === "blocked" && Array.isArray(e.blocked_by) && (e.blocked_by as string[]).length
         ? `<span class="std-eg">blocked by ${esc((e.blocked_by as string[]).join(", "))}${e.blocked_reason ? ` — ${esc(String(e.blocked_reason))}` : ""}</span>`
         : "";
-      const rate = m ? `<span class="std-eg">${m.fail_pct.toFixed(1)}% of ${m.asked} products asked did not state it</span>` : "";
+      // The unbound reason is the ONLY thing that distinguishes this tier from `blocked`
+      // at a glance, so it belongs in the list and not only on the entry page.
+      const unbound = t === "unbound" && e.unbound_reason
+        ? `<span class="std-why">${esc(e.unbound_reason)}</span>` : "";
+      const rate = m
+        ? `<span class="std-eg">${m.fail_pct.toFixed(1)}% of ${m.adjudicated ?? m.asked} adjudicated products did not state it${
+          m.kind === "discrimination" && m.verdict ? ` — ${esc(VERDICT_LABEL[m.verdict] ?? m.verdict).toLowerCase()}` : ""}</span>`
+        : "";
       return `<li id="${esc(e.id)}">
         <a href="${esc(entryHref(s, e.id))}"><code>${esc(e.id)}</code> — ${esc(e.question)}</a>
-        ${rate}${blocked}
+        ${rate}${blocked}${unbound}
       </li>`;
     }).join("");
     return `<section class="std-tier-group" id="tier-${esc(t)}">
@@ -757,11 +1248,33 @@ export function renderStandard(s: PublishedStandard, base: string): SitePage {
   };
 }
 
+/**
+ * The list of standards, GROUPED BY SLUG WITH THE CURRENT VERSION LEADING.
+ *
+ * ⚠️ A FLAT LIST OF EVERY VERSION IS THE llms.txt INVERSION IN HTML. With three versions
+ * of one standard published and nothing marking which to cite, the first item a reader
+ * meets is the OLDEST — the one whose posture is wrong about itself and whose failure
+ * rates are predictions. An agency writing "your pages fail ALS-COFFEE-…" from this page
+ * would pin a citation to a superseded document by simply reading top to bottom.
+ *
+ * The tier counts use `orderedTiers`, not the count-descending order: leading with
+ * "16 Blocked" describes the document by its largest tier rather than by what it does.
+ */
 export function renderStandardsIndex(list: PublishedStandard[], base: string): SitePage {
-  const items = list.map((s) => {
-    const c = tierCounts(s.doc).map(([t, n]) => `${n} ${TIER_LABEL[t] ?? t}`).join(" · ");
-    return `<li><h2><a href="/standards/${esc(s.slug)}/${esc(s.publicVersion)}">${esc(shortName(s.doc))}</a></h2>
-      <p><code>${esc(s.doc.standard_id)}</code> v${esc(s.doc.version)} — ${s.doc.entries.length} entries (${esc(c)})</p></li>`;
+  const slugs = [...new Set(list.map((s) => s.slug))];
+  const items = slugs.map((slug) => {
+    const versions = list.filter((s) => s.slug === slug);
+    const s = versions[versions.length - 1]!;                 // the registry's last = current
+    const older = versions.slice(0, -1).reverse();
+    const c = orderedTiers(s.doc).map(([t, n]) => `${n} ${TIER_LABEL[t] ?? t}`).join(" · ");
+    const bound = fitnessOf(s)?.samples?.[0];
+    return `<li><h2><a href="/standards/${esc(slug)}/${esc(s.publicVersion)}">${esc(shortName(s.doc))}</a></h2>
+      <p><code>${esc(s.doc.standard_id)}</code> v${esc(s.doc.version)} — ${s.doc.entries.length} entries (${esc(c)})</p>
+      ${bound ? p(`Measured false-positive rate on its own category: ${bound.point_estimate_pct.toFixed(2)}% point estimate, ${bound.bound_95_cluster_icc02_pct.toFixed(2)}% 95% upper bound over ${bound.pass_rows_audited} individually audited pass rows.`) : ""}
+      <p class="std-note"><strong>Current version — cite this one.</strong></p>
+      ${older.length ? `<details><summary>${older.length} earlier version${older.length === 1 ? "" : "s"}, still served</summary><ul>${
+      older.map((o) => `<li><a href="/standards/${esc(slug)}/${esc(o.publicVersion)}">v${esc(o.publicVersion)}</a> — superseded by v${esc(o.supersededBy ?? "")}, served byte for byte so existing citations resolve. Do not cite it for new work.</li>`).join("")
+    }</ul></details>` : ""}</li>`;
   }).join("");
   return {
     title: "Buying standards",
@@ -808,6 +1321,47 @@ export function renderGrounding(s: PublishedStandard, base: string): SitePage {
 const ENTRY_RE = /^\/standards\/([a-z0-9-]+)\/([0-9.]+)\/([A-Za-z0-9._-]+)\/?$/;
 const STD_RE = /^\/standards\/([a-z0-9-]+)\/([0-9.]+)\/?$/;
 
+/**
+ * An entry id asked of a version, RESOLVED ACROSS THE WHOLE SUPERSESSION CHAIN.
+ *
+ * ⚠️ THIS USED TO FOLLOW EXACTLY ONE HOP, AND PUBLISHING A THIRD VERSION BROKE IT.
+ * The id carries the version, so every reissue renames all 42 entries and each new entry
+ * names only its IMMEDIATE predecessor in `supersedes`. With v1.0 → v1.1 that is the same
+ * thing as the chain, so the single `find` was indistinguishable from correct. The moment
+ * v1.2 shipped, `/standards/coffee/1.2/ALS-COFFEE-1.0-FORMAT-001` 404ed — measured: 0 of
+ * 42 v1.0 ids resolved at v1.2, while all 42 still resolved at v1.1. Nothing in the
+ * artifacts was wrong; the renderer simply stopped walking after one step, and the failure
+ * grows with every version published, which is the opposite of what a stable citation is.
+ *
+ * The walk is FORWARD from the requested id, so it can only ever resolve an OLD id to a
+ * NEWER entry. Asking v1.0 for a v1.2 id still 404s, which is right: that question did not
+ * exist in that version, and answering it would make the version in a citation cosmetic.
+ */
+export function resolveEntryId(s: PublishedStandard, tail: string): StandardEntry | null {
+  const direct = s.doc.entries.find((x) => x.id === tail);
+  if (direct) return direct;
+
+  const successor = new Map<string, string>();
+  for (const v of loadPublishedStandards()) {
+    if (v.slug !== s.slug) continue;
+    for (const e of v.doc.entries) {
+      const from = (e as { supersedes?: string }).supersedes;
+      if (from) successor.set(from, e.id);
+    }
+  }
+  let cur = tail;
+  const seen = new Set([cur]);           // a mis-authored `supersedes` cycle must not hang
+  for (let hop = 0; hop < 64; hop++) {
+    const next = successor.get(cur);
+    if (!next || seen.has(next)) return null;
+    seen.add(next);
+    cur = next;
+    const hit = s.doc.entries.find((x) => x.id === cur);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 /** The rendered page for a `/standards*` path, or null when the path is not one. */
 export function standardsPageFor(pathname: string, base: string): SitePage | null {
   const list = loadPublishedStandards();
@@ -825,12 +1379,7 @@ export function standardsPageFor(pathname: string, base: string): SitePage | nul
     const tail = ent[3]!;
     if (tail === "grounding") return renderGrounding(s, base);
     if (tail === "standard.json") return null;   // served as JSON, not HTML
-    const e = s.doc.entries.find((x) => x.id === tail)
-      // A PRIOR VERSION'S ID, ASKED OF THIS ONE. The id carries the version, so
-      // reissuing renames every entry — and someone holding a v1.0 citation who trims
-      // the URL to the current version would otherwise get a 404 for a question that
-      // is still right there. `supersedes` is the chain, and this is where it pays.
-      ?? s.doc.entries.find((x) => (x as { supersedes?: string }).supersedes === tail);
+    const e = resolveEntryId(s, tail);
     return e ? renderEntry(s, e, base) : null;
   }
   return null;
@@ -950,22 +1499,41 @@ export function llmsTxt(base: string): string {
   ];
   for (const s of loadPublishedStandards()) {
     const b = `${base}/standards/${s.slug}/${s.publicVersion}`;
-    const counts = tierCounts(s.doc).map(([t, n]) => `${n} ${t}`).join(", ");
-    lines.push(`- [${s.doc.title}](${b}): ${s.doc.entries.length} entries (${counts}). Content hash ${s.hash}.`);
+    const counts = orderedTiers(s.doc).map(([t, n]) => `${n} ${t}`).join(", ");
+    lines.push(`- [${s.doc.title}](${b}): ${s.doc.entries.length} entries (${counts}). Grammar ${s.doc.grammar_version ?? "unstated"}. Content hash ${s.hash}.`);
     // A machine reader has to be told which version is current, or it cites the first
-    // one it finds. This is the same fact the HTML page states in a notice.
+    // one it finds. This is the same fact the HTML page states in a notice — and it is
+    // now stated in BOTH directions, because "not superseded" is an inference a reader
+    // should not have to make about a file whose whole job is to be unambiguous.
     if (s.supersededBy) {
       lines.push(`  - SUPERSEDED by v${s.supersededBy} (${base}/standards/${s.slug}/${s.supersededBy}). Served unchanged so existing citations resolve; do not cite it for new work.`);
+    } else {
+      lines.push(`  - CURRENT version of ${s.slug}. Cite this one.`);
     }
     lines.push(`  - [JSON](${b}/standard.json) — the artifact a citation resolves against.`);
     lines.push(`  - [Grounding](${b}/grounding) — every external source, and what it establishes.`);
-    // ⚠️ `fitnessOf`, NOT `s.fitness`. The THIRD place in this session where reading
-    // one of the two fitness shapes silently produced the wrong answer — and the worst
-    // of the three, because the failure was inverted: llms.txt advertised the SUPERSEDED
-    // version as measured and the CURRENT one as having no published error rate at all,
-    // to exactly the machine readers this file exists for.
-    for (const x of fitnessOf(s)?.samples ?? []) {
+    // ⚠️ `fitnessOf`, NOT `s.fitness` AND NOT `measured_fitness`. THREE grammars keep this
+    // measurement in three different places, and the THIRD time this file read one of them
+    // directly the failure was INVERTED: llms.txt advertised the SUPERSEDED version as
+    // measured and the CURRENT one as having no published error rate at all, to exactly the
+    // machine readers this file exists for. `fitnessOf` is the only reader.
+    const f = fitnessOf(s);
+    if (!f?.samples?.length) {
+      lines.push(`  - No fitness measurement is published for this version. That is stated rather than omitted: an absent bound and an unstated one are not the same thing.`);
+    }
+    for (const x of f?.samples ?? []) {
       lines.push(`  - Measured false-positive rate, ${x.label}: ${x.point_estimate_pct.toFixed(2)}% point estimate, ${x.bound_95_cluster_icc02_pct.toFixed(2)}% 95% upper bound (n=${x.pass_rows_audited} pass rows across ${x.stores} stores, cluster-adjusted)${x.is_floor ? " — a FLOOR: only one defect class was re-checked, so the true rate is at least this" : ""}.`);
+      if (x.completion_state) lines.push(`    - Completion state: ${x.completion_state}. ${x.confirmed_false_positives} confirmed false passes, all enumerated in the artifact.`);
+      // The limits are the artifact's own statement of what the number does NOT cover —
+      // including, at grammar 1.2, the general-sample comparison and the word FLOOR that
+      // keeps it from being read as a peer of a complete audit. Verbatim, never summarised.
+      for (const lim of x.limits ?? []) lines.push(`    - Limit: ${lim}`);
+    }
+    // The three-valued discrimination verdicts, counted from the entries themselves.
+    const verdicts = s.doc.entries.map((e) => measuredOf(s, e)).filter((m): m is EntryDiscrimination => m?.kind === "discrimination");
+    if (verdicts.length) {
+      const n = (v: string) => verdicts.filter((m) => m.verdict === v).length;
+      lines.push(`  - Measured discrimination over ${verdicts.length} executable entries: ${n("discriminating")} discriminating, ${n("indeterminate")} indeterminate, ${n("not_discriminating")} not discriminating. \`indeterminate\` means the measurement ran and decided nothing; it is not either of the other two. None has been retired.`);
     }
   }
   lines.push(``, `## A worked result`, `- [An Example test on a real store](${base}/demo) — a published standard executed against a real coffee product page, every requirement with the evidence sentence and the surface it was read from.`);

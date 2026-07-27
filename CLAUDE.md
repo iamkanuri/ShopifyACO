@@ -971,6 +971,104 @@ published standard page. **A missing webfont degrades to a system font rather th
 error**, so the typography was being tuned against a face that was never on the page.
 `FONT_LINKS` is asserted byte-identical to the SPA's.
 
+## A PARAPHRASE of a rule is not the rule (v3.4)
+
+Two sessions independently authored a grammar and both called it **1.1**. The reconciliation is
+**grammar 1.2**, not a redefinition of 1.1, because `standards/coffee/v1.1/standard.json` is
+published and *declares* `grammar_version: "1.1"` — a grammar version resolves through the same
+citation contract as `standard_hash`, so redefining it would make a hash-frozen document invalid
+against the rules it names. v1.0 and v1.1 both keep validating against the one `schema.json`, gated
+by `grammar_version`; that invariant is a test, not an intention.
+
+**The band is gone** (`predicted_discrimination` → optional, numberless `discrimination_prediction`;
+it held **1 of 10** at n=100). `not_discriminating` is now a MEASURED verdict the schema rejects
+without a `measured_discrimination`. `n_adjudicated` has `minimum: 22` — re-derived here a fourth
+way and exactly symmetric: at k=n the Wilson lower bound is 83.89 / 84.54 / **85.13**% for n=20/21/22,
+at k=0 the upper is 16.11 / 15.46 / **14.87**%. `measured_fitness` → **`category_fitness`**, migrated
+not aliased, because that is the name `discrimination.ts` executes — 6 of its **21** cross-field
+rules run off it. (The brief said 18. `ALL_RULES` is 14 + 6 + 1.)
+
+> ⚠️ **THE ERROR THIS SECTION IS NAMED FOR.** `verdictFor()` is **asymmetric**:
+> `not_discriminating` needs the WHOLE 95% interval outside the band; `discriminating` needs only
+> the POINT ESTIMATE inside it. *Hard to leave, easy to return* — retirement is a one-way door
+> (an entry that is not run cannot produce the evidence that would reverse the decision to stop
+> running it), so it demands the interval; keeping a row costs a noisy line in a report, so it
+> demands only the rate. Working from the natural paraphrase — *"the interval must lie inside the
+> band"* — produced a **symmetric** rule that would retire nothing and demote almost everything to
+> `indeterminate`. That paraphrase reached **three documents**: `schema.json`'s own `verdict`
+> description, `SCHEMA.md` §9.2, and the session brief, each written from the previous one. It
+> published a split of 3 / 2 / 5 where the truth is **discriminating 4 · indeterminate 1 ·
+> not_discriminating 5**. `METHOD.md` §5.2, written independently *from the function*, was right
+> the whole time. **Read the implementation, not a description of it — especially a description
+> you wrote.**
+
+**An UNDECIDABLE row in the denominator is a passing row.** `DELIV-001` shipped at v1.1 as
+`45.0%`, which is `45/100` — and 26 of those 100 came back `requires_store_access`, meaning the
+engine could not decide them. Over *adjudicated* rows it is **`45/74` = 60.8%, 15.8 points
+higher**, and v1.1 stated no denominator at all so a reader could not see which reading it took.
+Run 2's independent 59.4% then agrees to within 1.4pp, having appeared to disagree by 14pp. This is
+`INCOMPLETE` being summed as zero, wearing a percentage sign. `rate_matches_counts` exists for it.
+
+**Deleting a wrong tier exposed that a right one was missing.** The five entries retired on a
+prediction (`PRICE-001`, `STOCK-001`, `TERMS-001`, `DECAF-004`, `DIET-001`) could not simply
+"return to `executable`": none has a `binding`, and the schema requires `binding` **+ `adversarial`
++ `pass_means`** for that tier. Neither surviving tier was true of them either — `advisory` asserts
+public data cannot adjudicate a published price or a stock flag, and `blocked` asserts an engine
+kind that demonstrably exists does not. Both are false sentences in a published document, so
+grammar 1.2 gained **`unbound`**: *the engine can run this kind and public data can adjudicate it,
+and THIS STANDARD has not authored the binding or put it through the adversarial pass.* It adds no
+matcher, no category and no executable entry — it is a state the document was already in, said out
+loud. The work it implies is filed in `ENGINE_GAPS.md`'s **standing proposal register** rather than
+done: *where work implies a change elsewhere, write it down as a proposal rather than make it.*
+
+⚠️ **A test group can be VACUOUS because the fixture is rejected for a different reason.** All six
+`[publish]` mutations in `discrimination.test.ts` asserted "this document is rejected", and every
+one of them was matching the wrong error — the baseline already failed for carrying
+`category_fitness` at a grammar that forbids it, so no mutation was proving anything. The only
+thing that exposed it was the anti-vacuity anchor failing. Where a test mutates a document,
+**assert the UNMUTATED document is accepted first**, or the mutation proves nothing.
+
+⚠️ **Two of the same kind, both in this session's own instruments.** `[grammar] the shipped
+standards are grammar 1.0 and carry NO measurement yet` had silently gone FALSE — v1.1 is grammar
+1.1 with ten measurements — and stayed green because its loop only ever listed two filenames.
+`STANDARD_FILES` in `schema.test.ts` is deliberately explicit so a glob cannot match nothing, which
+leaves the mirror hole: a new standard nobody adds to the list is never validated, and the suite
+stays green. There is now a walker asserting the list and the disk agree in **both** directions.
+
+### Publishing a THIRD version found two defects that TWO versions could not expose
+
+Both were live on the public site, and neither is a v3.4 regression:
+
+- **The entry-id router followed `supersedes` exactly ONE hop.** Measured: 42/42 v1.0 ids resolved
+  at v1.1 and **0/42 at v1.2**. With only two versions published, one hop *is* the whole chain, so
+  the bug was invisible and got worse with every reissue. Citations are the entire promise of a
+  content-hashed standard; a v1.0 citation that stops resolving two versions later breaks it
+  silently. `resolveEntryId()` now walks the chain, and the test asserts **42 × 3** resolutions
+  plus forward-only refusal (a v1.2 id asked of v1.0 must 404).
+- **A FOURTH `s.fitness`-shaped defect was already shipped.** `renderEntry` read v1.0's *sidecar*
+  `s.fitness.entry_discrimination` directly instead of calling `measuredOf()`, so **every v1.1
+  entry page published "Predicted fail rate: 30-60% (predicted, not yet measured)" for an entry the
+  same document records as measured at 73.7%.** The normaliser existed and was not called. This is
+  the third time in three sessions that reading a raw field instead of the normaliser produced a
+  page that was confidently wrong, and the first time it was wrong in the direction of understating
+  our own work.
+
+⚠️ **A stale LINK has no vocabulary to grep for.** `COFFEE_STANDARD_URL` pointed at
+`/standards/coffee/1.1` the day v1.2 was published, and nothing was false — v1.1 serves its own
+bytes and renders a supersession notice, and the link text matched the URL. No banned-word sweep
+and no lint can see a link that is merely superseded. The viewer bundle imports nothing from
+`src/`, so it cannot derive the current version; the literal is now asserted against
+`currentOf("coffee")` instead, which fails the build on the next reissue. Same lesson as v3.3's
+`/api/brand.json` gate: **the replacement for an absence sweep is a presence check over shared
+content.**
+
+⚠️ **And one defect authored and caught inside the same session, worth recording because it is the
+house failure mode.** The `not_discriminating` tier explanation was rewritten to read "MEASURED:
+this question was run against a real sample" — true of the tier at grammar 1.2, and that string
+renders **only at v1.0/v1.1, where those five entries were never run at all.** A correction applied
+to the current version, displayed on the frozen ones. Reverted to each document's own wording, with
+a test forbidding a tier explanation that claims a measurement its entries lack.
+
 ## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
 
 **The three coffee false positives were fixed, measured, and reverted, and the measurement is
