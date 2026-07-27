@@ -756,11 +756,99 @@ ten verdicts were artefacts of n=9**: `WEIGHT-001` (11.1% → 48.8%) and `DELIV-
 33.3pp → HELD) were about to be reclassified as carrying no information, and are among the
 standard's best entries.
 
-⚠️ **`fetchPublicProduct` DROPS `product_type` whenever the page tier answers** — it reads
-JSON-LD `Product.category`, which is null on most themes and was the breadcrumb root `"Home"`
-on one store. **15 of 44 products were unclassifiable from what the engine exposes.** The same
-null flows into `CATEGORY_CLAIMS` and `AttributeSpec.onlyFor`, so **category inference in
-PRODUCTION silently degrades to the title alone on roughly a third of stores.** Open.
+✅ **RESOLVED (v3.2 CP2): `product_type` now survives the page tier.** It used to be dropped
+whenever the page's JSON-LD was complete — `pageSufficient` skips the `.json` tier, so the
+value fell back to JSON-LD `Product.category`, null on most themes and the breadcrumb root
+`"Home"` on one store. 15 of 44 coffee products were unclassifiable, and the same null flows
+into `CATEGORY_CLAIMS` and `AttributeSpec.onlyFor`, so category inference in PRODUCTION was
+degrading to the title alone at that rate. After the fix: **G-10 skips 15 → 2**.
+
+⚠️ **The obvious fix was the wrong one, and the reason generalises.** Fetching
+`/products/{handle}.json` anyway spends the extra request the tier ORDER exists to avoid (the
+v1.1 smoke run measured `.json` returning 429 while HTML on the same hosts returned 200) —
+and it **breaks every existing snapshot**, because replay serves only URLs that were actually
+recorded and on precisely these stores the engine never fetched it. *A fix that invalidates
+the corpus it must be measured on is not a fix.* The value was already in bytes we hold:
+Shopify's analytics bootstrap (`var meta = {"product":{…,"type":"Coffee",…}}`) carries the
+merchant's own field on 43 of 44 captured pages — measured before the code was written. It is
+**parsed, not regexed**: `"type"` also appears inside `variants[]`, so a bare regex would
+silently return a variant's field on a theme that reorders keys.
+
+## The standard is PUBLISHED, and readable without JavaScript (v3.2 CP6+CP7)
+
+`src/server/standardsSite.ts` + `test/standardsSite.test.ts`. Stable URLs, because these
+are citations — an agency writes *"your product pages fail ALS-COFFEE-1.0-CERT-002"* and it
+has to resolve: `/standards` · `/standards/coffee/1.0` · `/standards/coffee/1.0/standard.json`
+(`application/json`, plus an `X-Standard-Hash` header) · `/standards/coffee/1.0/{ENTRY-ID}`
+for all 42 · `/standards/coffee/1.0/grounding` · `/llms.txt`. All are in `sitemap.xml`.
+
+**Every published number is generated from the artifact.** Structure from `standard.json`,
+error bounds from a new `standards/coffee/v1.0/fitness.json` sidecar — beside the document,
+not inside it, for the same reason `applicability.json` is a sidecar: `standard_hash` covers
+`standard.json`'s bytes and a citation resolves through it, so a measurement taken after
+publication must not invalidate every citation made against v1.0. **When a sample is absent
+the page says so; it never invents a bound.** The test asserts the served JSON is byte-identical
+to the file on disk, because a re-serialised body still parses but hashes differently.
+
+⚠️ **The document's own words are published unedited.** Its `status` is `draft` and its posture
+says it "has never been applied to a real store by anyone" and is "a rubric with a versioned
+changelog, not a standard". Publishing it under a heading calling it finished would make the
+site's first claim about itself a false one. The heading is "Buying standards", the status is
+stated, and the posture paragraph renders verbatim above everything else.
+
+> ⚠️ **A renderer that reads a field which does not exist produces NOTHING, and nothing looks
+> exactly like a section that legitimately has nothing to show.** The grounding renderer read
+> `grounding.sources`; the artifact's key is `grounding.citations`. All 42 entry pages and the
+> whole grounding page rendered empty — with eleven tests green, because they asserted the
+> presence of *other* things. The test now asserts CONTENT: ≥20 grounded entries, every citation
+> URL present on both the entry page and the grounding page, and a byte floor. Grounding went
+> from 309 to 26,652 characters. **A presence-only assertion cannot see an empty section.**
+>
+> Related and equally silent: **`[object Object]` reached published pages three times**
+> (`posture`, `applicability`, a derived assertion's `expected`). Template interpolation
+> converts without throwing. There is now one `renderScalarish` and a test forbidding the
+> string on every page.
+
+## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
+
+**The three coffee false positives were fixed, measured, and reverted, and the measurement is
+worth more than the fix would have been.**
+
+| instrument | verdict on the same four guards |
+|---|---|
+| replay over **216 captured real stores**, 1,669 rows, comparing rendered QUOTES not just statuses | **0 real positives lost** |
+| 2 independent attackers, 661 chosen sentences, every claim re-executed and A/B'd against the parent | **192 regressions** |
+
+Both ran in this repo, on the same commit, the same day. The replay is not broken — it is
+answering a different question. This project already wrote the rule down and then trusted the
+sample anyway: *"Sampling real stores catches artefacts; only executing the matcher against
+deliberately chosen input catches logic."* A 216-store sample cannot find
+`"Our stock pot measures 10 inches across."` because none of those stores sells one.
+
+**The operational rule: a real-store replay is a REGRESSION check, never an acceptance gate
+for a matcher change.** The gate is an adversarial pass by someone who did not write the guard.
+
+Why each guard was unsalvageable rather than merely too wide — all four failure modes are
+general, and all four are worth recognising before writing the next guard:
+- **A closed list used as the PROTECTOR fails open in the damaging direction.** `SERVING_HEAD`
+  vetoed `serving` unless followed by a serveware noun; `pitcher, jug, cup, glass, carafe, mug,
+  crock, tureen, ramekin, basket, vessel, cone` were all missing, and each miss deletes a real
+  product. Same shape as the head-noun rule v2.8 removed from `origin` after four attempts.
+- **A frame that also matches money.** `for\s*\d` is how a recipe introduces water *and* how a
+  page states a price: `"Our 16 oz water bottle sells for 19.99."`
+- **Substance words are product words.** `stock` (pot), `ice` (cream scoop), `cream`, `water`
+  (bottle, -resistant). A hyphen defeats an adjacency lookahead entirely.
+- **Homographs, and the violation path.** `SENSE_SHIFT`'s `reach` is both the EU chemicals
+  regulation (`"BPA-free, REACH compliant"`) and the commonest closing clause in DTC copy
+  (`"reach out with any questions"`); `compounds` is the FDA's own wording for an antiperspirant
+  active, so vetoing it told a store that STATES the violating claim that it stated nothing.
+  **Status-only comparison cannot see that** — both answers are `not_proven`.
+
+And they did not close their own class: `"Pour 6 oz of hot water over the grounds."` still
+passes (`USAGE_VERB` has steep/brew/dissolve; coffee copy says pour, heat, fill, boil, bloom),
+and `"organic plant matter"` / `"organic material"` walk past `SENSE_SHIFT` on one adjective
+and one synonym. **Closing three sentences is not closing a class.** All four are pinned in
+the corpus with the cost of the attempt beside them; `EXPECTED_OPEN_GAPS` 31 → 36.
 
 ## Never trust your own fix measurement — the sixth and seventh instances (v3.1)
 
