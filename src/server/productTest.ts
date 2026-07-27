@@ -233,6 +233,80 @@ const USAGE_VERB =
   /\b(steep|brew|dissolve|dilute|mix|stir|apply|ingest|swallow|marinate|infuse)(?:s|ed|ing)?\b/i;
 /** A quantity PER UNIT AREA/LENGTH is a density (GSM, thread count), not an extent. */
 const PER_MEASURE = /\bper\s+(?:square|linear|cubic|running)\s+\w+|\bg\/m2\b|\bgsm\b/i;
+// ---- v3.2 CP1a: the measurement's own HEAD NOUN is a unit of consumption ----
+//
+// MEASURED ON A REAL COFFEE PAGE (`deathwishcoffee.com`, WEIGHT-001):
+//   "…contain approximately 210mg of caffeine … based on a standard 6oz serving
+//    when brewed following package instructions."
+// rendered as proof that the product's own weight is stated. It is a brewing
+// serving size and a caffeine dose.
+//
+// ⚠️ THE PUBLISHED DIAGNOSIS OF THIS DEFECT WAS WRONG, and acting on it would have
+// closed nothing. Both the brief and STANDARD_RUN_2.md say it survives because
+// "`NUTRIENT` does not carry `caffeine`". `NUTRIENT` has carried `caffeine` since
+// d730ea2, which is BEFORE the commit serving production — "Contains 6oz of
+// caffeine." already fails. Executing the sentence rather than reading the source
+// showed the real cause: the nutrient is looked for in the measurement's own
+// COMPLEMENT (two words forward, twelve characters back), and here `caffeine` sits
+// forty-five characters away, belonging to a different quantity in the same
+// sentence. Widening that window is precisely the change v3.1 reverted for breaking
+// "Each 12 oz bag contains 8 g of protein." So the guard is positional instead.
+//
+// ⚠️ POSITION IS THE WHOLE GUARD. `PER_SERVING` requires a quantifier BEFORE the
+// noun (`per serving`, `each scoop`) and cannot see a shape whose quantifier is
+// "a standard". Adding "a" to that quantifier list would reach "Acacia serving
+// board, 18 inches long." — `serving` is a product word on any kitchen store.
+// Requiring the noun to be THIS measurement's complement keeps them apart: in the
+// board the measurement is `18 inches` and `serving` is nowhere near it.
+//
+// The negative lookahead is the other half, and it is not hypothetical: "12 oz
+// serving bowl" is a product whose size is stated, and it is the one shape where a
+// consumption noun IS adjacent to the measurement — because it modifies a vessel,
+// which is the thing being sold.
+const SERVING_HEAD =
+  /^\W*(?:of\s+)?(?:serving|portion|helping|dose|serve)\b(?!\s*(?:board|bowl|platter|tray|dish|plate|spoon|fork|tongs|set|ware|utensils?))/i;
+// ---- v3.2 CP1b: a brewing quantity introduced by a bare preposition ---------
+//
+// MEASURED ON A REAL COFFEE PAGE (`groundsforchange.com`, WEIGHT-001), found by
+// v3.0 CP5 and pinned in the adversarial corpus since:
+//   "Fresh coffee (just shy of 1/4 cup) for 4 ounces water and 4 ounces ice."
+// The water and the ice are an iced-coffee method; the row quoted them as the
+// bag's mass. `nonProductQuantity` already vetoes this class through `USAGE_VERB`
+// ("Brew with 8 ounces of water"), but the veto needs a VERB and a bare preposition
+// introduces the same quantity with nothing to match.
+//
+// ⚠️ BOTH HALVES ARE LOAD-BEARING, and each ALONE deletes a real positive. Measured
+// against the pass rows before this shipped, not reasoned about:
+//   • the frame alone deletes "Rated for 300 lbs." — a genuine capacity spec;
+//   • the substance alone deletes "The pitcher holds 12 oz milk." and "A 32 oz
+//     water bottle for everyday carry." — a vessel's capacity and a product name.
+// Requiring the recipe frame AND the substance complement reaches the method and
+// neither of those. This is the row whose over-tight guards have cost real
+// positives twice (four in v2.9, seven in v3.1's DURATION_NUMBER), which is why it
+// is two conjoined signals rather than one more word on a veto list.
+const RECIPE_FRAME = /\bfor\s+(?:about|approximately|roughly|around)?\s*[\d¼½¾]/i;
+const BREW_SUBSTANCE = `water|ice|milk|cream|juice|broth|stock|syrup`;
+const RECIPE_SUBSTANCE =
+  new RegExp(String.raw`^\W*(?:of\s+)?(?:hot|cold|iced|boiling|filtered|warm|fresh)?\s*(?:${BREW_SUBSTANCE})\b`, "i");
+/**
+ * The thing being WEIGHED or MEASURED in this clause is an external substance:
+ *   "One ounce of water by volume weighs 1 ounce, so it's easy to weigh the ice…"
+ *
+ * ⚠️ FOUND ONLY BECAUSE THE REPLAY COMPARES QUOTES, NOT JUST STATUSES. Closing the
+ * bare-preposition frame above moved `groundsforchange.com` from one brewing
+ * sentence to ANOTHER one in the same product copy — the row still passed, on a
+ * different quote. A status-only diff reported that as "closed". It was not: the
+ * store is still told its bag's weight is stated on the strength of a sentence
+ * about the density of water.
+ *
+ * The negative lookahead is the guard's other half and is not hypothetical:
+ * "Our water bottle weighs 12 oz." and "The kettle measures 8 inches" are real
+ * product measurements on any drinkware store, and both put a brew substance
+ * within a few words of the verb. Only an UNMODIFIED substance counts.
+ */
+const SUBSTANCE_WEIGHED = new RegExp(
+  String.raw`\b(?:${BREW_SUBSTANCE})\b(?!\s+(?:bottle|jug|flask|carafe|filter|pitcher|tumbler|canister|jar|kettle|dispenser|cooler))` +
+  String.raw`[^.;:!?]{0,24}\b(?:weighs?|weighed|weighing|measures?|equals?)\b`, "i");
 /**
  * Containers that are a SHIPMENT or a multi-unit pack, not the item being bought.
  * ⚠️ `case` must be QUANTIFIED. A bare word-bounded `case` vetoed "With its case measuring
@@ -266,6 +340,10 @@ function nonProductQuantity(sentence: string, index: number, matched: string): b
 
   if (OTHER_CAPACITY.test(local)) return true;          // "Battery capacity: 5000 mAh."
   if (PER_SERVING.test(local)) return true;             // "…per serving", "…per load"
+  if (SERVING_HEAD.test(after)) return true;            // "…a standard 6oz serving"
+  // "…for 4 ounces water" — a recipe quantity with no verb to catch it.
+  if (RECIPE_FRAME.test(local) && RECIPE_SUBSTANCE.test(after)) return true;
+  if (SUBSTANCE_WEIGHED.test(clauseBefore)) return true; // "…of water … weighs 1 ounce"
   if (PER_MEASURE.test(local)) return true;             // "280 grams per square meter"
   if (DOSE_NOUN.test(clauseBefore)) return true;        // "Recommended dose is 8 oz…"
   // A nutrient counts only as this measurement's OWN COMPLEMENT — "11 g of protein",

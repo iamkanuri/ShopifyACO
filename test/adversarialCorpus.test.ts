@@ -540,6 +540,27 @@ const CLAIMS: Case[] = [
   C("Made with inorganic mineral pigments.", claimReq("organic"), "not_proven", "substring-single-word-term",
     "`organic` is matched WITHOUT wholeWord (only attributes set that flag), so it matches inside " +
     "`inorganic` — a word that asserts the opposite."),
+  // --- v3.2 CP1c: the term is a DIFFERENT SENSE of the word ---
+  C("The farm's volcanic soils are described as rich in organic matter, while narrow canyons channel warm winds through the surrounding landscape.",
+    claimReq("organic"), "not_proven", "different-sense-compound",
+    "A SOIL-SCIENCE SENTENCE RENDERED AS A CERTIFICATION CLAIM. Measured on a real coffee store " +
+    "(hydrangea.coffee, CERT-001). `organic` is matched whole-word, which is what stops " +
+    "`inorganic` — and nothing stopped `organic matter`.\n" +
+    "This is a THIRD veto shape, which is why SENSE_SHIFT is its own list rather than more nouns " +
+    "in MODIFIED_SUBJECT. There the term keeps its meaning and attaches to the wrong thing " +
+    "(\"aluminum-free PACKAGING\" is a true claim about the box). Here the compound changes what " +
+    "the word MEANS: organic matter is not a weaker organic claim, it is not an organic claim."),
+  C("The soil is high in organic compounds.", claimReq("organic"), "not_proven", "different-sense-compound",
+    "Same sense shift, chemistry rather than soil science. Pinned separately because it reaches a " +
+    "different arm of SENSE_SHIFT."),
+  C("Made from organic beans.", claimReq("organic"), "pass_evidenced", "different-sense-control",
+    "THE CONTROL THE MUTATION PROOF NEEDS. A guard whose removal breaks nothing reads as " +
+    "decorative; this is the case SENSE_SHIFT must NOT touch. `beans` is not in the list and must " +
+    "never be — an over-wide sense list deletes the commonest true organic claim a roaster makes."),
+  C("Made from organic materials.", claimReq("organic"), "pass_evidenced", "different-sense-control",
+    "⚠️ `material(s)` IS DELIBERATELY ABSENT from SENSE_SHIFT and this case is why. It is the " +
+    "nearest miss to `matter` in the whole English list and it is a REAL product claim. Nothing " +
+    "enters that list that has a second reading on a product page."),
   C("Is this vegan? See our FAQ for the full ingredient list.", claimReq("vegan"), "not_proven", "question",
     "A QUESTION is not a statement. splitSentences breaks on `?`, so the question stands alone and " +
     "is rendered as the proof."),
@@ -896,8 +917,62 @@ const V28_FOUND: Case[] = [
     "preposition introduces the same quantity with nothing to match. The gap is the frame, " +
     "not the concept, which is why it is pinned rather than patched with one more word: a " +
     "term added to a veto list without an adversarial pass is how v2.9's `case` regression " +
-    "reached a real watch store.",
-    "pass_evidenced"),
+    "reached a real watch store.\n" +
+    "CLOSED in v3.2 CP1b by RECIPE_FRAME + RECIPE_SUBSTANCE, which are conjoined for exactly " +
+    "the reason this case was left pinned: each signal ALONE deletes a real positive. The " +
+    "frame alone deletes \"Rated for 300 lbs.\"; the substance alone deletes \"The pitcher " +
+    "holds 12 oz milk.\" and \"A 32 oz water bottle for everyday carry.\" Both minimal pairs " +
+    "are pinned below and the recall replay over 507 general and 69 coffee pass rows reports " +
+    "what it cost."),
+  // --- v3.2 CP1b: the minimal pairs that force the guard to stay conjoined ---
+  C("Rated for 300 lbs.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "THE FRAME ALONE IS NOT ENOUGH, and this is the case that proves it. `for <number>` is " +
+    "also how a product states a weight capacity. If RECIPE_FRAME ever fires without the " +
+    "substance complement, this real positive dies."),
+  C("The pitcher holds 12 oz milk.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "THE SUBSTANCE ALONE IS NOT ENOUGH. A vessel's capacity is stated in terms of what it " +
+    "holds, so a consumable complement is ordinary product copy on any drinkware store."),
+  C("A 32 oz water bottle for everyday carry.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "The hardest of the three: it contains the substance AND the word `for`. It survives only " +
+    "because `for` is not followed by a digit. A looser frame deletes a product name."),
+  C("One ounce of water by volume weighs 1 ounce, so it's easy to weigh the ice and then measure the water by volume.",
+    attr("dimensions"), "not_proven", "usage-quantity",
+    "THE SECOND BREWING SENTENCE ON THE SAME REAL STORE, and it is here because of HOW it was " +
+    "found. Closing the bare-preposition frame moved groundsforchange.com's pass from one " +
+    "brewing sentence to ANOTHER in the same copy — the row still passed, on a different quote. " +
+    "A status-only diff called that closed. Only comparing the RENDERED QUOTE showed it was not.\n" +
+    "CLOSED by SUBSTANCE_WEIGHED. On the real store the row now passes from the variant options " +
+    "(\"12 oz.\", \"2 lb.\", \"5 lb\"), which is the store's actual weight and the correct answer — " +
+    "the defect was never that the row passed, it was WHAT proved it."),
+  C("Our water bottle weighs 12 oz.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "THE CONTROL FOR SUBSTANCE_WEIGHED, and the reason it carries a negative lookahead. A brew " +
+    "substance sits within a few words of `weighs` here too — but it MODIFIES a container that " +
+    "is the product. Only an unmodified substance counts."),
+  C("The kettle measures 8 inches across.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
+    "Same shape, `measures` rather than `weighs`, and the substance word is absent entirely — " +
+    "pinned so a future widening of the verb list has something to break."),
+  // --- v3.2 CP1a: a serving size read as the product's own weight ---
+  C("Based on a standard 6oz serving.", attr("dimensions"), "not_proven", "serving-size-quantity",
+    "A SERVING SIZE READ AS THE PRODUCT'S WEIGHT. Found on a real coffee store (WEIGHT-001) " +
+    "in the form \"…contain approximately 210mg of caffeine … based on a standard 6oz serving " +
+    "when brewed following package instructions.\"\n" +
+    "⚠️ THE PUBLISHED DIAGNOSIS WAS WRONG. The v3.1 writeup and the v3.2 brief both say this " +
+    "survives because \"NUTRIENT does not carry caffeine\". It does, since d730ea2 — before " +
+    "the commit serving production — and \"Contains 6oz of caffeine.\" already failed. " +
+    "Executing the sentence rather than reading the source found the real cause: the nutrient " +
+    "is sought in the measurement's own complement, and here it is 45 characters away on a " +
+    "different quantity. CLOSED by SERVING_HEAD, which is positional instead."),
+  C("Acacia serving board, 18 inches long.", attr("dimensions"), "pass_evidenced", "serving-size-control",
+    "`serving` IS A PRODUCT WORD on any kitchen store. This is why SERVING_HEAD requires the " +
+    "noun to be THIS measurement's complement rather than adding \"a\" to PER_SERVING's " +
+    "quantifier list — here the measurement is `18 inches` and `serving` is nowhere near it."),
+  C("Stoneware serving bowl, 9 inches across.", attr("dimensions"), "pass_evidenced", "serving-size-control",
+    "Same class, different vessel. Pinned separately because `bowl` and `board` reach different " +
+    "arms of the negative lookahead."),
+  C("A 12 oz serving bowl in matte glaze.", attr("dimensions"), "pass_evidenced", "serving-size-control",
+    "THE ONE SHAPE WHERE THE CONSUMPTION NOUN IS GENUINELY ADJACENT to the measurement — " +
+    "because it modifies a vessel, which is the thing being sold. The negative lookahead in " +
+    "SERVING_HEAD exists for this sentence and nothing else."),
 
   // ── v2.9 CP2 — THE OWED MUTATION ANCHOR, now closed ────────────────────────
   // Removing `origin` in v2.8 deleted the only corpus case that failed when
@@ -1121,7 +1196,7 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // clean win. Both new gaps are FALSE FAILS accepted to close FALSE PASSES, and both
   // are named at their case: a care instruction in the sentence AFTER its pointer, and
   // a delivery window whose only match in production was a substring accident.
-  const EXPECTED_OPEN_GAPS = 32;
+  const EXPECTED_OPEN_GAPS = 31;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

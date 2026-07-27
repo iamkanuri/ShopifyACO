@@ -227,6 +227,35 @@ export function isNegated(sentence: string, term: string, opts: { absenceFrames?
  *  something other than the product (the Stage 3 TRAP: "aluminum-free packaging"). */
 const MODIFIED_SUBJECT = /^\W{0,3}(packaging|package|packet|carton|box|wrapper|label|bag|pouch|container|bottle|shipping|delivery|mailer)\b/i;
 
+// ---- v3.2 CP1c: the term is a DIFFERENT SENSE of the word -------------------
+//
+// MEASURED ON A REAL COFFEE PAGE (`hydrangea.coffee`, CERT-001):
+//   "The farm's volcanic soils are described as rich in organic matter, while
+//    narrow canyons channel warm winds through the surrounding landscape…"
+// rendered as a stated organic claim. A soil-science sentence read as a
+// certification. `organic` is matched whole-word, which is what stops `inorganic`
+// — and nothing stopped `organic matter`, `organic compounds` or `organic growth`.
+//
+// This is a THIRD veto shape, distinct from the two beside it, which is why it is
+// its own list rather than a few more nouns in `MODIFIED_SUBJECT`. There the term
+// keeps its meaning and attaches to the wrong thing ("aluminum-free PACKAGING" is
+// a true claim about the box). Here the compound changes what the word MEANS:
+// organic matter is not a weaker organic claim, it is not an organic claim.
+//
+// ⚠️ DELIBERATELY TINY, and `material(s)` is deliberately ABSENT. "Made from
+// organic materials" is a real product claim and would be a real positive lost;
+// "organic matter" has no product reading at all. Nothing enters this list that
+// has a second reading on a product page. The marketing senses (`traffic`,
+// `search`, `reach`) are included because they cannot appear as a claim either,
+// and a store whose copy mentions organic search is not asserting anything about
+// its coffee.
+//
+// It applies to every term, not just `organic`, because the shape is general —
+// but no other current term has a compound of this kind, so `organic` is the only
+// word it can reach today. That is measured, not assumed: the mutation proof and
+// the recall replay over 507 general and 69 coffee pass rows both report it.
+const SENSE_SHIFT = /^\W{0,3}(matter|compounds?|chemistry|growth|traffic|search|reach)\b/i;
+
 /** Whole-sentence contexts that are never product evidence: upsell/related items,
  *  review excerpts, and subscription/purchase widgets (the live regression's source). */
 const CONTEXT_VETO: Array<{ name: string; re: RegExp }> = [
@@ -262,15 +291,23 @@ export function passesAboutness(sentence: string, term: string, opts: { allowLog
   const n = normalize(sentence);
   const t = normalize(term);
   let i = n.indexOf(t);
+  // Which veto rejected the LAST occurrence, so the reason reported is the reason
+  // that actually fired. Reporting "modifies-non-product-subject" for a sense shift
+  // would misdescribe the finding in the one place a later session goes to read it.
+  let lastReason = "modifies-non-product-subject";
   while (i !== -1) {
     const after = n.slice(i + t.length, i + t.length + 24);
+    // A different sense of the word asserts nothing about the product, and unlike
+    // the two checks below there is no opt-in that should ever rescue it.
+    if (SENSE_SHIFT.test(after)) { lastReason = "different-sense-compound"; i = n.indexOf(t, i + 1); continue; }
     const m = MODIFIED_SUBJECT.exec(after);
     if (!m) return { ok: true }; // this occurrence stands on its own
+    lastReason = "modifies-non-product-subject";
     if (opts.allowLogisticsSubject && /^(\W{0,3})(shipping|delivery|mailer)\b/i.test(after)) return { ok: true };
     if (opts.allowContainerSubject && CONTAINER_IS_PRODUCT.test(after)) return { ok: true };
     i = n.indexOf(t, i + 1);
   }
-  return { ok: false, reason: "modifies-non-product-subject" };
+  return { ok: false, reason: lastReason };
 }
 
 // ---- gate 3: presentable quote ----------------------------------------------
