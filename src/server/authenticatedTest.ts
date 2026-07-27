@@ -3,6 +3,7 @@ import { buildEvidence, SURFACE_LABEL, type EvidenceSentence } from "./testEvide
 import { lintStrings } from "./claimLinter.js";
 import {
   evaluate, buildBuyerTask, contractVersion, ENGINE_VERSION, PASSING,
+  isPlaceholderIdentifier, isPublishableGtin,
   type Assertion, type AssertionStatus, type ProductTestResult, type PublicProduct, type Requirement,
 } from "./productTest.js";
 
@@ -70,6 +71,90 @@ function metafieldText(value: string, type: string | null): string {
   return value;
 }
 
+// ---- G-07: identifiers in the authenticated path (v3.0 CP3) -----------------
+//
+// `snapshotFromCatalog` used to set `extracted: null`, so `evaluate`'s `identifiers`
+// branch took the `!p.extracted` path and answered "We couldn't read this product's
+// page markup" — REQUIRES STORE ACCESS, FOR A STORE THAT GRANTED US ACCESS — while
+// the barcode sat in the synced catalog on `NormalizedVariant`. Worse than a gap: a
+// regression triggered by the merchant doing the thing the product asked them to do.
+// `diffAssertions` then recorded the row as `unchanged` rather than `resolved`, so the
+// install-value metric quietly under-counted the one row install exists to fix.
+//
+// WHICH VARIANT'S BARCODE REPRESENTS THE PRODUCT — the one real decision here, since a
+// 12 oz bag and a 5 lb bag are different GTINs.
+//
+//   RULE: the first variant, in Shopify's own ordering, that publishes a PUBLISHABLE
+//   GTIN; failing that, the first non-placeholder barcode; failing that, none.
+//
+// Why "any variant" rather than "the default" or "all of them". The row asserts
+// EVIDENCE AVAILABILITY at product level — "a machine buyer can match this product to
+// a catalogue entry". A roaster who barcodes their retail 12 oz bag and not the 5 lb
+// foodservice sack HAS published a machine-readable identifier for this product, so
+// answering "no identifier published" would be false. Requiring every variant to carry
+// one would produce exactly that false statement, which is the direction this project
+// treats as unrecoverable. Resolving evidence per PURCHASABLE OFFER is a real and
+// separate gap (G-12); until it exists, product-level availability is the honest claim
+// and it is what the row's own wording says.
+//
+// The fallback tier matters and is not decoration: without it, a first variant holding
+// "N/A" would mask a real barcode on the second. With it, the placeholder is still
+// rejected — by `evaluate`, not here — so `isPlaceholderIdentifier` and the check-digit
+// arithmetic stay LOAD-BEARING on this path instead of being pre-empted by selection.
+//
+// ⚠️ SKU IS DELIBERATELY NOT MAPPED TO MPN. G-07 says `barcode` -> `gtin`, `sku` -> `sku`,
+// and `evaluate` reads only gtin and mpn — so mapping sku onto mpn is the only way a
+// SKU could change this verdict, and it would be inventing evidence. A SKU is a
+// store-local stock-keeping unit; it cannot match a product to an external catalogue,
+// which is precisely what the row promises. It is carried as `sku` for signal parity
+// and decides nothing.
+function identifiersFromCatalog(p: NormalizedProduct): { gtin: string | null; sku: string | null } {
+  const barcodes = p.variants
+    .map((v) => (v.barcode ?? "").trim())
+    .filter((b) => b.length > 0 && !isPlaceholderIdentifier(b));
+  const chosen = barcodes.find((b) => isPublishableGtin(b)) ?? barcodes[0] ?? null;
+  // The SKU reported alongside is the one belonging to the variant we chose, so the
+  // two fields describe the same offer rather than two different ones.
+  const owner = chosen ? p.variants.find((v) => (v.barcode ?? "").trim() === chosen) : undefined;
+  return { gtin: chosen, sku: (owner?.sku ?? p.variants[0]?.sku ?? null) || null };
+}
+
+/**
+ * A synthetic `ExtractedPage` carrying the catalog's identifiers, so the SHARED
+ * `identifiers` evaluation can adjudicate a connected store instead of claiming it
+ * cannot see the page.
+ *
+ * `productSchema: true` is a deliberate and defensible reading, not a convenience.
+ * The row's copy calls its surface "structured data", and the synced Admin API catalog
+ * IS a structured product record — a more authoritative one than page JSON-LD. Setting
+ * it false would make the not_proven branch say "This product publishes no Product
+ * structured data", a claim about page markup we never fetched on this path: the
+ * accusation-versus-finding line the engine works hard not to cross.
+ *
+ * ⚠️ KNOWN WORDING LIMIT, recorded rather than hidden: the not_proven copy still says
+ * "structured data" where a connected merchant would rather read "your product
+ * catalog". Fixing that means teaching `evaluate` which path it is on, and the ENGINE
+ * CONTRACT's first rule is that the SAME pure evaluator decides every row. Not worth
+ * breaking for a noun.
+ */
+function extractedFromCatalog(p: NormalizedProduct): PublicProduct["extracted"] {
+  const { gtin, sku } = identifiersFromCatalog(p);
+  return {
+    jsonLdTypes: [], hasProductSchema: true,
+    product: { name: p.title, brand: p.vendor, sku, gtin, mpn: null, offer: null, rating: null, reviewCount: null },
+    title: p.title, metaDescription: p.seoDescription, canonicalUrl: p.onlineUrl, robotsIndex: true,
+    headings: { h1: [], h2: [] }, faqs: [],
+    signals: {
+      jsonLd: false, productSchema: true, offer: p.variants.length > 0,
+      price: p.variants.some((v) => v.price != null),
+      availability: p.variants.some((v) => v.available != null),
+      gtin: Boolean(gtin), mpn: false, sku: Boolean(sku), brand: Boolean(p.vendor),
+      rating: false, reviews: false, shipping: false, returns: false,
+      faq: false, canonical: Boolean(p.onlineUrl), indexable: true,
+    },
+  } as PublicProduct["extracted"];
+}
+
 export interface AuthenticatedContext {
   /** Full shipping/refund policy bodies from the shop, when synced. */
   policyText?: string | null;
@@ -126,7 +211,9 @@ export function snapshotFromCatalog(p: NormalizedProduct, ctx: AuthenticatedCont
     minPriceUsd: prices.length ? Math.min(...prices) : null,
     optionNames: [...new Set(p.variants.flatMap((v) => v.options.map((o) => o.name)))],
     optionValues,
-    extracted: null,
+    // G-07 (v3.0 CP3): the catalog's own identifiers, so the `identifiers` row stops
+    // answering "requires store access" to a store that granted store access.
+    extracted: extractedFromCatalog(p),
     evidence,
     // The catalog carries no JSON-LD; availability comes from the (complete,
     // authenticated) variant list instead, which is strictly better.

@@ -582,6 +582,29 @@ const PLACEHOLDER_TOKEN = "na|tbd|none|null|nil|unknown|unspecified|notapplicabl
 /** Token(s), then optional trailing digits, then an optional "see …"/"on request" note. */
 const PLACEHOLDER_CORE = new RegExp(`^(?:${PLACEHOLDER_TOKEN})+\\d*(?:see\\w*|onrequest|tbc|comingsoon)?$`, "i");
 
+/**
+ * True when a raw GTIN string is a real, publishable GTIN.
+ *
+ * Extracted in v3.0 CP3 so the AUTHENTICATED path can pick a variant barcode using
+ * the identical rule the `identifiers` row judges it by. ENGINE_GAPS G-07 is explicit
+ * that these guards must apply to catalog values exactly as they do to JSON-LD ones —
+ * "an Admin API value is no more trustworthy than a JSON-LD one. Reuse, do not
+ * reimplement." A second copy of this arithmetic is how the two paths drift.
+ *
+ * Merchants publish GTINs with the separators printed on the barcode ("0-36000-29145-2",
+ * "400 638 133 3931"). Those are the same number, and rejecting them told stores that DO
+ * publish an identifier that they don't. Normalised HERE rather than in `isValidGtin`,
+ * which is shared with the feed validator — there the spec genuinely requires a
+ * digits-only value, so loosening it would weaken a different, correct check.
+ *
+ * All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the commonest
+ * "I had to put something in the field" value there is.
+ */
+export function isPublishableGtin(raw: string): boolean {
+  const digits = raw.trim().replace(/[\s-]/g, "");
+  return isValidGtin(digits) && !/^0+$/.test(digits);
+}
+
 /** True when this identifier value cannot identify anything. */
 export function isPlaceholderIdentifier(raw: string): boolean {
   // Separators and punctuation carry no identifying information, and stripping
@@ -1080,9 +1103,34 @@ export interface Requirement {
  *  input). Pure additions that cannot change an existing verdict don't need a bump. */
 export const ENGINE_VERSION = "v2.0.0";
 
+/** Identity of a published standard a run was executed against. Plain data by
+ *  design: the engine must not import anything from `standards/`, or the dependency
+ *  runs backwards and `standards/tsconfig.json` (which follows imports INTO src/)
+ *  becomes circular. The caller supplies id, version and content hash. */
+export interface StandardIdentity {
+  id: string;
+  version: string;
+  /** sha256 of the standard's canonical form — see standards/hash.ts. */
+  hash: string;
+}
+
 /** A stable fingerprint of a buyer task: same requirements ⇒ same version, in any
- *  process, forever. Deliberately covers only the fields that decide a verdict. */
-export function contractVersion(requirements: Requirement[]): string {
+ *  process, forever. Deliberately covers only the fields that decide a verdict.
+ *
+ *  v3.0 CP4 — WIDENED FOR STANDARDS, AND THE PRECEDENT IS RESPECTED. Two runs under
+ *  DIFFERENT versions of the same standard must not compare as though they asked the
+ *  same question, so the standard's identity has to be inside the fingerprint. But the
+ *  existing hash was deliberately built so pre-v2.3 contracts hash unchanged, and
+ *  widening the tuple unconditionally would have re-fingerprinted every stored contract
+ *  at once and made every saved before/after comparison refuse itself as "drifted".
+ *
+ *  So the identity is an OPTIONAL second argument and the tag changes with it:
+ *    - no standard  -> `c1-xxxxxxxx`, byte-identical to what it has always produced.
+ *    - a standard   -> `c1s-xxxxxxxx`, and the id+version+hash are inside the hashed
+ *                      string.
+ *  A standard-pinned contract therefore cannot collide with a generated one even by
+ *  hash accident, and the difference is legible to a human reading a stored row. */
+export function contractVersion(requirements: Requirement[], standard?: StandardIdentity): string {
   const canonical = requirements
     // `attribute` is appended ONLY when present, so every pre-v2.3 requirement
     // hashes to exactly the byte string it always did. Widening the tuple
@@ -1091,14 +1139,19 @@ export function contractVersion(requirements: Requirement[]): string {
     .map((r) => [r.kind, r.claim ?? "", r.capUsd ?? "", r.optionValue ?? "", ...(r.attribute ? [r.attribute] : [])].join(":"))
     .sort()
     .join("|");
+  // Prefixed rather than appended, so a standard's identity can never be confused
+  // with a requirement tuple by a reader of the canonical string.
+  const full = standard
+    ? `std:${standard.id}@${standard.version}#${standard.hash}||${canonical}`
+    : canonical;
   // FNV-1a — short, deterministic, dependency-free. Not a security hash: this
   // detects accidental drift, it does not defend against a forged contract.
   let h = 0x811c9dc5;
-  for (let i = 0; i < canonical.length; i++) {
-    h ^= canonical.charCodeAt(i);
+  for (let i = 0; i < full.length; i++) {
+    h ^= full.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
-  return `c1-${h.toString(16).padStart(8, "0")}`;
+  return `${standard ? "c1s" : "c1"}-${h.toString(16).padStart(8, "0")}`;
 }
 
 function inferClaims(p: PublicProduct): string[] {
@@ -1189,7 +1242,16 @@ export function taskSubject(p: PublicProduct): string {
 
 /** Upper bound on rows in the table. v2.2 shipped 4–6; the measured consequence was
  *  a modal store with ONE genuine finding. The target (v2.3 CP2) is 8–12 tested with
- *  2–4 failing, and a failing SET that differs between stores. */
+ *  2–4 failing, and a failing SET that differs between stores.
+ *
+ *  ⚠️ v3.0 CP4 — THIS CAP BELONGS TO GENERATION, NOT TO EVALUATION, and it is scoped
+ *  to `buildBuyerTask` alone (its only reference). A standard has more entries than
+ *  ten and every one of them is a published assertion someone may cite, so truncating
+ *  a conformance run to the first ten would silently drop entries while the result
+ *  still claimed to have tested the standard. Supplied requirements bypass this by
+ *  construction — they never pass through `buildBuyerTask` — which is why no change
+ *  was needed here beyond saying so. Verified by a test that runs an 18-entry pinned
+ *  contract and asserts 18 rows come back. */
 const MAX_REQUIREMENTS = 10;
 
 export function buildBuyerTask(p: PublicProduct): { summary: string; requirements: Requirement[] } {
@@ -1528,16 +1590,10 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const gtinRaw = (info?.gtin ?? "").trim();
       const mpnRaw = (info?.mpn ?? "").trim();
       const realMpn = !isPlaceholderIdentifier(mpnRaw);
-      // Merchants publish GTINs with the separators printed on the barcode
-      // ("0-36000-29145-2", "400 638 133 3931"). Those are the same number, and
-      // rejecting them told stores that DO publish an identifier that they don't.
-      // Normalised HERE rather than in `isValidGtin`, which is shared with the feed
-      // validator — there the spec genuinely requires a digits-only value, so
-      // loosening it would weaken a different, correct check.
-      const gtinDigits = gtinRaw.replace(/[\s-]/g, "");
-      // All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the
-      // commonest "I had to put something in the field" value there is.
-      const realGtin = isValidGtin(gtinDigits) && !/^0+$/.test(gtinDigits);
+      // Separator normalisation, check digit and the all-zeros rejection all live in
+      // `isPublishableGtin` so the authenticated path can select a variant barcode by
+      // the SAME rule this row judges it by (v3.0 CP3 / G-07).
+      const realGtin = isPublishableGtin(gtinRaw);
       const have = [realGtin ? "GTIN" : null, realMpn ? "MPN" : null].filter(Boolean) as string[];
       if (have.length) {
         return {
@@ -1712,6 +1768,13 @@ export interface ProductTestResult {
   /** V2 CP2 — the token that carries THIS result through install, so the first
    *  authenticated screen is the merchant's own test continued. */
   testToken?: string;
+  /** v3.0 CP4 — which published standard this result was tested against, when one was
+   *  supplied. Absent on a generated task, which is the honest signal that the questions
+   *  came from the engine's heuristic rather than from a citable public text. */
+  standard?: StandardIdentity;
+  /** The contract fingerprint. Only set on a standard-pinned run; a generated public run
+   *  has never carried one and gaining one would change nothing but the payload. */
+  contractVersion?: string;
 }
 
 export interface RunOptions extends FetchDeps {
@@ -1719,6 +1782,23 @@ export interface RunOptions extends FetchDeps {
   force?: boolean;
   /** Injectable semantic-tier transport (tests never hit the network). */
   semantic?: SemanticDeps;
+  /**
+   * G-09 (v3.0 CP4) — A PINNED CONTRACT FOR THE PUBLIC PATH.
+   *
+   * Without this there is no way to ask a public URL a fixed set of questions: the
+   * requirements were generated per product by `buildBuyerTask`, which is exactly the
+   * vendor's private rubric a published standard exists to replace. `runAuthenticatedTest`
+   * has accepted a pinned contract since v2 CP2, so a standard could be executed against a
+   * CONNECTED store and not against a public URL — an asymmetry, not a design.
+   *
+   * The pure evaluator is shared, so this is plumbing. `buildBuyerTask` still runs: its
+   * `summary` is a linted, merchant-visible string and must stay.
+   */
+  requirements?: Requirement[];
+  /** Identity of the published standard `requirements` were compiled from. Without it a
+   *  conformance result cannot say WHICH text it was tested against, and the whole
+   *  standards position is decorative. Folded into `contractVersion`. */
+  standard?: StandardIdentity;
 }
 
 export async function runProductTest(url: string, deps: RunOptions = {}): Promise<ProductTestResult> {
@@ -1729,7 +1809,15 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
   };
 
   // Serve from cache first — the cheapest request is the one we never make.
-  const cacheKey = normalizeProductUrl(url);
+  //
+  // ⚠️ A PINNED RUN NEVER TOUCHES THE CACHE, in either direction. The cache is keyed
+  // on the normalised URL alone, so without this a standard-pinned result would be
+  // served to the public funnel for the same product — a merchant would be shown a
+  // conformance table against a standard they never asked about — and, in reverse, a
+  // conformance run would silently return a generated 10-row task. The key predates
+  // any notion of a contract; scoping the cache by contract fingerprint would be the
+  // richer fix and is not needed while pinned runs are measurement runs.
+  const cacheKey = deps.requirements?.length ? null : normalizeProductUrl(url);
   if (cacheKey) {
     const cached = getCachedResult(cacheKey, deps);
     if (cached) return cached;
@@ -1749,9 +1837,20 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     };
   }
 
-  const { summary, requirements } = buildBuyerTask(fetched);
+  // `buildBuyerTask` ALWAYS runs, even when a standard supplies the requirements: its
+  // `summary` is the first line the merchant reads, it is claim-linted, and a standard
+  // has no equivalent. Only the requirement LIST is replaced.
+  const generated = buildBuyerTask(fetched);
+  const pinned = deps.requirements?.length ? deps.requirements : null;
+  const requirements = pinned ?? generated.requirements;
+  const summary = generated.summary;
 
   // ONE extra fetch, only when the task actually needs delivery timing (§3.2).
+  //
+  // ⚠️ CONFIRMED, NOT ASSUMED (the gaps doc asked for exactly this): the trigger reads
+  // the EFFECTIVE requirement list, so a standard carrying a `delivery` entry still
+  // fetches the policy. Pinned by a test — had this kept reading `generated`, every
+  // standard's delivery row would have silently answered from product copy alone.
   let product = fetched;
   if (ctx && requirements.some((r) => r.kind === "delivery")) {
     product = await attachShippingPolicy(fetched, ctx);
@@ -1766,16 +1865,27 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
 
   // §4.2 — at most ONE "requires store access" row in the table. The rest move
   // below it, where they read as the install argument rather than a blind spot.
+  //
+  // ⚠️ v3.0 CP4 — THIS COLLAPSE IS DISABLED FOR A STANDARD-PINNED RUN, deliberately.
+  // It is a RENDERING rule, and it is the right one for a generated 10-row task: a
+  // column of blind spots reads as an accusation and buries the findings. A
+  // conformance result is a different artifact. A reader checking a page against
+  // ALS-COFFEE-1.0 wants every assertion the standard makes, each with its own
+  // verdict — a result that silently moves eight of ten entries "below the table" is
+  // not a conformance list, and a citation like "fails ALS-COFFEE-1.0-IDENT-001"
+  // cannot resolve against a row that was collapsed away. Nothing is hidden and
+  // `deferred` stays empty; the honest per-row states do all the work.
   const kindOf = (a: Assertion) => requirements.find((r) => r.label === a.label)?.kind;
   const deferred: Assertion[] = [];
-  let accessShown = 0;
-  const tableAssertions = assertions.filter((a) => {
-    if (a.status !== "requires_store_access") return true;
-    if (accessShown === 0) { accessShown++; return true; }
-    deferred.push(a);
-    return false;
-  });
-  assertions = tableAssertions;
+  if (!pinned) {
+    let accessShown = 0;
+    assertions = assertions.filter((a) => {
+      if (a.status !== "requires_store_access") return true;
+      if (accessShown === 0) { accessShown++; return true; }
+      deferred.push(a);
+      return false;
+    });
+  }
   const count = (s: AssertionStatus) => assertions.filter((a) => a.status === s).length;
 
   // FLOOR (v2.3 CP3): below a minimum of actually-read data, say so plainly.
@@ -1882,6 +1992,10 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     robotsStatus: product.diagnostics.robots,
     throttleSource: product.diagnostics.throttleSource,
     policyStatus: product.policyStatus,
+    // v3.0 CP4 — a conformance result must be able to name the exact text it was
+    // tested against, or a citation cannot resolve. Set only on a pinned run.
+    ...(pinned ? { contractVersion: contractVersion(requirements, deps.standard) } : {}),
+    ...(deps.standard ? { standard: deps.standard } : {}),
   };
   // A degraded result is deliberately NOT cached: it is missing surfaces we would
   // normally read, and pinning it for 7 days would turn a transient upstream block

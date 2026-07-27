@@ -443,3 +443,73 @@ test("23b/24b. a 'no' produces no proposal; a 'yes' produces one that applies on
     await pgQuery("delete from shops where shop_domain=$1", [shop]);
   }
 });
+
+// ---- G-07 (v3.0 CP3): identifiers must resolve for a CONNECTED store ---------
+
+test("G-07: the identifiers row resolves from the synced catalog, and diffAssertions records it", () => {
+  // THE DEFECT. `snapshotFromCatalog` set `extracted: null`, so the identifiers branch
+  // took the `!p.extracted` path and told a merchant who had granted store access that
+  // we "couldn't read this product's page markup" — while their barcode sat in the
+  // synced catalog. And `diffAssertions` scored the movement `unchanged`, so the
+  // install-value metric under-counted the row install exists to resolve.
+  const idsReq: Requirement = { id: "ids", kind: "identifiers", label: "Product identifier (GTIN or MPN) is published" };
+  const base = {
+    productGid: "gid://shopify/Product/1", handle: "guji", title: "Ethiopia Guji",
+    description: "A washed Ethiopian coffee.", descriptionHtml: "<p>A washed Ethiopian coffee.</p>",
+    vendor: "Acme Roasters", productType: "Coffee", tags: [], status: "ACTIVE",
+    onlineUrl: "https://acme.example/products/guji", imageUrl: null,
+    seoTitle: null, seoDescription: null, metafields: [], collections: [],
+  } as unknown as NormalizedProduct;
+  const variant = (over: Partial<{ sku: string | null; barcode: string | null; title: string }>) => ({
+    variantGid: `gid://shopify/ProductVariant/${Math.abs(hashish(over.title ?? "v"))}`,
+    title: over.title ?? "12 oz", sku: over.sku ?? null, barcode: over.barcode ?? null,
+    price: 19, available: true, inventoryQuantity: 5, options: [{ name: "Size", value: over.title ?? "12 oz" }],
+  });
+  const withVariants = (vs: ReturnType<typeof variant>[]) =>
+    ({ ...base, variants: vs } as unknown as NormalizedProduct);
+
+  // 1. A real barcode on the catalog RESOLVES the row.
+  const real = runAuthenticatedTest({
+    product: withVariants([variant({ title: "12 oz", barcode: "0123456789012", sku: "GUJI-12" })]),
+    requirements: [idsReq],
+    previous: [{ label: idsReq.label, status: "requires_store_access", detail: "public run couldn't see it", surfacesChecked: [] }],
+  });
+  assert.equal(real.assertions[0]!.status, "pass_evidenced", "a synced barcode is a published identifier");
+  assert.equal(real.deltas[0]!.change, "resolved", "the install-value metric must score this resolved, not unchanged");
+  assert.equal(real.resolvedCount, 1);
+
+  // 2. THE GUARDS STAY LOAD-BEARING on catalog values. An Admin API value is no more
+  //    trustworthy than a JSON-LD one, and a merchant filling a required field with
+  //    "N/A" is the normal case (G-07's stated caveat).
+  for (const bad of ["N/A", "TBD", "0000000000000", "1234567890123" /* bad check digit */]) {
+    const r = runAuthenticatedTest({ product: withVariants([variant({ barcode: bad })]), requirements: [idsReq] });
+    assert.equal(r.assertions[0]!.status, "not_proven", `a catalog barcode of "${bad}" must not pass`);
+  }
+
+  // 3. THE VARIANT RULE. A roaster who barcodes the retail 12 oz bag and not the 5 lb
+  //    sack HAS published an identifier for this product; answering "none published"
+  //    would be false. The chosen variant is the first PUBLISHABLE one, so a leading
+  //    placeholder cannot mask a real barcode further down the list.
+  const mixed = runAuthenticatedTest({
+    product: withVariants([
+      variant({ title: "5 lb", barcode: "N/A", sku: "GUJI-5LB" }),
+      variant({ title: "12 oz", barcode: "0123456789012", sku: "GUJI-12" }),
+    ]),
+    requirements: [idsReq],
+  });
+  assert.equal(mixed.assertions[0]!.status, "pass_evidenced", "a placeholder on variant 1 must not mask a real GTIN on variant 2");
+
+  // 4. No barcode anywhere is an honest not_proven — NOT requires_store_access.
+  const none = runAuthenticatedTest({ product: withVariants([variant({ sku: "GUJI-12" })]), requirements: [idsReq] });
+  assert.equal(none.assertions[0]!.status, "not_proven");
+  // A SKU is store-local and cannot match a product to an external catalogue, so it
+  // must never be what makes this row pass.
+  assert.notEqual(none.assertions[0]!.status, "pass_evidenced", "a SKU is not a GTIN or an MPN");
+});
+
+/** Tiny deterministic id helper so variant gids differ without a clock or randomness. */
+function hashish(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+  return h;
+}
