@@ -94,6 +94,7 @@ import {
 } from "./buyerTests.js";
 import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
 import { standardsPageFor, standardJsonFor, standardsSitemapPaths, llmsTxt, renderStandaloneDocument } from "./standardsSite.js";
+import { publicSsrFor } from "./publicSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
@@ -1405,6 +1406,17 @@ async function serveIndex(req: Request, res: Response) {
     } catch {
       /* CSR fallback */
     }
+  }
+
+  // ---- the public marketing routes (v3.2 CP6) -------------------------------
+  // Rendered into #root for a reader with no JavaScript; React mounts over it and
+  // takes the page. These ARE React routes, which is why the injection is correct
+  // here and was wrong for /standards — see the header of publicSsr.ts.
+  try {
+    const snapshot = publicSsrFor(req.path);
+    if (snapshot) html = html.replace(/<div id="root">\s*<\/div>/, `<div id="root">${snapshot}</div>`);
+  } catch {
+    /* CSR fallback — a rendering bug must never 500 the landing page */
   }
 
   // Utility pages: correct the per-page og:url (the template default says "/", which

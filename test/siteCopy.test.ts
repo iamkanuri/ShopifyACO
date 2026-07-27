@@ -224,3 +224,18 @@ test('"publishes" is checkable — the URLs the copy points at are really served
     );
   }
 });
+
+// ---- v3.2 CP6: the three titles must tell ONE story -------------------------
+test("<title>, og:title and twitter:title are byte-identical", () => {
+  // ⚠️ THEY USED TO TELL THREE DIFFERENT STORIES: <title> and twitter:title said
+  // "AI Commerce QA for Shopify" while og:title carried "AI buyers treat your store
+  // like an API." A search result and a shared link then described different
+  // products, and nothing in the build could notice.
+  const html = readFileSync(join(process.cwd(), "viewer/index.html"), "utf8");
+  const title = /<title>([^<]*)<\/title>/.exec(html)?.[1];
+  const og = /<meta property="og:title" content="([^"]*)"/.exec(html)?.[1];
+  const tw = /<meta name="twitter:title" content="([^"]*)"/.exec(html)?.[1];
+  assert.ok(title && og && tw, "one of the three title tags is missing from viewer/index.html");
+  assert.equal(og, title, `og:title differs from <title>:\n  title: ${title}\n  og   : ${og}`);
+  assert.equal(tw, title, `twitter:title differs from <title>:\n  title: ${title}\n  tw   : ${tw}`);
+});
