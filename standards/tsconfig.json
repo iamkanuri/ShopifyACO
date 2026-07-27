@@ -1,0 +1,5 @@
+{
+  "//": "Typecheck scoped to standards/ ONLY. The root tsconfig's `include` is [\"src/**/*.ts\"], so `npm run typecheck` never sees this directory — and this session may not modify the root config. Run: npx tsc --noEmit -p standards/tsconfig.json (it follows imports into src/, which is how a contract mismatch with the engine becomes a type error here).",
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"]
+}

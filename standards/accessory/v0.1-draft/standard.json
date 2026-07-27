@@ -1,0 +1,494 @@
+{
+  "grammar_version": "1.0",
+  "standard_id": "ALS-ACCESSORY",
+  "version": "0.1",
+  "title": "AisleLens Device Accessory Standard v0.1 — PARTIAL DRAFT, authored only to test whether the grammar generalises",
+  "status": "draft",
+  "posture": {
+    "independently_applied": false,
+    "statement": "This is a PARTIAL DRAFT and not a standard. It exists for one purpose: to find out whether a grammar authored against provenance and process claims survives a category whose claims are compatibility and specification. It covers a deliberately incomplete slice of the category and must not be applied to any store or cited as coverage of device accessories."
+  },
+  "applicability_envelope": {
+    "covers": "Retail product pages selling third-party accessories for consumer electronic devices — cables, chargers, cases, straps, mounts and docks — where the purchase decision turns on whether the item fits or works with a device the buyer already owns.",
+    "excludes": [
+      "the host devices themselves",
+      "first-party accessories sold by the device manufacturer, where fitment is implied by the catalogue",
+      "consumables and replacement parts requiring installation",
+      "software and subscriptions"
+    ],
+    "category_signals": {
+      "authoritative": ["product_type", "JSON-LD Product.category"],
+      "fallback": ["product_title"],
+      "never": ["tags", "collection handles, which name marketing bundles rather than compatibility"]
+    }
+  },
+  "out_of_scope": [
+    { "subject": "whether the accessory actually fits or works", "why_not": "The assertion is that fitment evidence of a defined form is published and readable. Only physically pairing the two products establishes fit, and no page-level test can do that." },
+    { "subject": "performance claims such as charging speed achieved in practice", "why_not": "A realised rate depends on the host device, the cable, ambient temperature and battery state, none of which the seller controls or the page can bound." },
+    { "subject": "durability and lifetime claims", "why_not": "No external definition exists to check a drop rating or a bend-cycle count against unless a named test method is cited, and the claim linter forbids the assurance vocabulary such claims are usually written in." },
+    { "subject": "trademark and licensing disputes", "why_not": "Whether a seller may lawfully name another company's device is a legal question about the seller, not an evidence question about the page." }
+  ],
+  "engine_contract": {
+    "engine_version": "v2.0.0",
+    "contract_document": "standards/ENGINE_CONTRACT.md",
+    "requirement_kinds_used": ["attribute", "variant_option", "identifiers"],
+    "verified_against_commit": "96ceacd"
+  },
+  "changelog": [
+    {
+      "version": "0.1",
+      "date": "2026-07-26",
+      "summary": "Partial draft authored as a grammar generalisation test. Four executable entries, three blocked, one advisory. Nothing measured, nothing applied.",
+      "changes": [
+        {
+          "entry_id": "ALS-ACCESSORY-0.1-FIT-001",
+          "change_type": "added",
+          "rationale": "The central compatibility question, and the entry that exposed the grammar's one structural limitation — its expected value is supplied by the buyer at test time rather than authored into the standard."
+        },
+        {
+          "entry_id": "ALS-ACCESSORY-0.1-IDENT-001",
+          "change_type": "added",
+          "rationale": "In this category a manufacturer part number is the fitment key rather than a bookkeeping field, which makes the same engine requirement carry far more weight than it does for coffee."
+        }
+      ]
+    }
+  ],
+  "standard_hash": {
+    "algorithm": "sha256",
+    "canonicalisation": "json-sorted-keys-no-hash-field",
+    "value": "58382911e8d10bc43e9c224ab8f309fb35c2ec203fc93f72f7f7cef5c9fd23a1"
+  },
+  "entries": [
+    {
+      "id": "ALS-ACCESSORY-0.1-FIT-001",
+      "question": "Will this fit the exact model I own?",
+      "assertion": {
+        "subject": "compatible_model_list",
+        "operator": "includes_buyer_parameter",
+        "expected": { "list": "the published compatible-model list", "parameter": "the buyer's device model" }
+      },
+      "buyer_parameter": {
+        "name": "device_model",
+        "description": "The model identifier of the device the buyer already owns. Supplied at test time, not authored into the standard.",
+        "example": "a specific handset or laptop model designation"
+      },
+      "tier": "blocked",
+      "blocked_by": ["G-13"],
+      "applicability": { "applies_when": "the accessory is device-specific rather than universal", "signal": "product_type or title names a host device or device family" },
+      "accepted_evidence": [
+        { "surface": "product_description", "form": "an explicit compatible-model list in which the buyer's model appears as a distinct entry", "example": "Compatible models: A-14, A-14 Plus, A-15." },
+        { "surface": "structured_data", "form": "the same list as structured product data rather than prose" }
+      ],
+      "insufficient_evidence": [
+        { "form": "a device FAMILY name where models within it differ dimensionally", "why_not": "A family name covers models with different bodies and port placements, so it asserts coverage the seller has not checked and cannot be resolved to the buyer's model." },
+        { "form": "\"compatible with\" a brand name", "why_not": "Naming a brand is the standard formulation of the third-party position and is the opposite of endorsement, so brand proximity must never be read as authorisation or as verified fitment." },
+        { "form": "\"fits most models\" or \"universal fit\"", "why_not": "Maximally inclusive and unfalsifiable, and a naive check accepts it precisely because it excludes nothing." },
+        { "form": "a model list in a comparison table, a shop-by-model navigation block or SEO text", "why_not": "Site navigation and keyword text are chrome rather than an assertion about this item, which is why raw page text is never an evidence surface." },
+        { "form": "the buyer's model appearing in a customer review", "why_not": "A buyer reporting that it worked for them is not the seller's claim and carries no obligation." },
+        { "form": "a list that names models but not the variants that differ", "why_not": "Where a model exists in sizes or with different port configurations, the model name alone does not resolve fitment." },
+        { "form": "\"designed for\" or \"style compatible\"", "why_not": "Intent and resemblance claims rather than a fitment assertion; geometry resembling a fit is not a fit." }
+      ],
+      "conflict_rules": [
+        { "when": "a model list and a family claim disagree", "resolution": "the enumerated list governs; a family claim cannot widen an explicit list", "precedence": ["structured_data", "product_description"] },
+        { "when": "the buyer's model is absent from the list", "resolution": "report that the list does not cover it rather than that it is incompatible — absence from a seller's list is not evidence of misfit" }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["product_description", "structured_data"],
+      "registry": { "resolvable": false, "engine_can_perform": false, "notes": "No public register maps an accessory to the devices it fits. Manufacturer part numbers and connector standards are the nearest thing and resolve specifications rather than fitment." },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "25-60%",
+        "in_target_band": true,
+        "reasoning": "Enumerated model lists are common in this category and family-level claims are commoner still, so a real split is likely. The band is a hypothesis about two seller conventions and the assertion cannot be run at all until the engine can accept a test-time parameter.",
+        "measured": false
+      },
+      "consumer_note": "A family name is not a model list: two handsets in the same family can differ in body size and port placement. Look for your exact model named as its own entry, and treat universal or fits-most wording as telling you nothing.",
+      "merchant_remediation": "Publish an enumerated compatible-model list as structured data, naming each model and each variant that differs dimensionally, rather than a family name or a fits-most claim.",
+      "grounding": {
+        "demand_basis": ["retailer_faq_pattern", "documented_complaint_pattern", "comparison_guide_convention"],
+        "citations": [
+          { "source": "Google Merchant Center product data specification, compatibility and product-detail attributes", "url": "https://support.google.com/merchants/answer/6324448", "kind": "retailer_help_centre", "establishes": "that the dominant product-feed specification carries structured attributes for compatibility and product detail, which is evidence that machine consumers of retail data treat fitment as a field to be resolved rather than as prose" },
+          { "source": "Baymard Institute e-commerce usability research on product-compatibility information", "url": "https://baymard.com/blog/ecommerce-product-lists", "kind": "academic", "establishes": "that shoppers abandon or return purchases when compatibility cannot be resolved from the listing, which is the documented cost of family-level rather than model-level disclosure" }
+        ],
+        "refutation": {
+          "challenged": "Whether a compatibility assertion is expressible in a grammar whose assertions carry an expected value authored in advance.",
+          "verdict": "narrowed",
+          "resolution": "It is not, and that is the finding this draft exists to produce. The expected value here is the BUYER's model, supplied at test time, so the grammar needed a `buyer_parameter` field and an `includes_buyer_parameter` operator. Both were added to grammar 1.0 as a result of authoring this entry. The engine has no mechanism for a test-time parameter, so the entry is blocked on the new gap G-13."
+        }
+      }
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-CONN-001",
+      "question": "Which connector does this have — can I choose the one my device takes?",
+      "assertion": { "subject": "connector_option", "operator": "option_available", "expected": true },
+      "tier": "executable",
+      "applicability": { "applies_when": "the accessory terminates in a connector the buyer must match", "signal": "product_type or title indicates a cable, charger or dock" },
+      "accepted_evidence": [
+        { "surface": "product_options", "form": "a purchasable option value naming the connector standard", "example": "USB-C" },
+        { "surface": "variant_availability", "form": "the matching variant is listed and marked available" }
+      ],
+      "insufficient_evidence": [
+        { "form": "a connector named in prose but not selectable", "why_not": "A description of what the product family offers is not a purchasable option, and the buyer cannot complete the purchase on it." },
+        { "form": "a generic term such as \"fast charge cable\" or \"charging cable\"", "why_not": "It names no connector standard, and the physical connector is the thing that must match." },
+        { "form": "an image showing a connector", "why_not": "Image content is not page text, is not read by the engine, and connector photography is frequently reused across variants." },
+        { "form": "a connector option that is present but permanently out of stock", "why_not": "A connector offered but unbuyable is not one the buyer can receive, which the engine reports separately as listed and unavailable." },
+        { "form": "the connector standard named in a shop-by-connector navigation block", "why_not": "Navigation chrome is not an assertion about this item." }
+      ],
+      "conflict_rules": [
+        { "when": "the title names one connector and the options offer another", "resolution": "the purchasable option list governs, because it is the offer", "precedence": ["product_options", "product_title"] }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["product_options", "variant_availability"],
+      "registry": { "resolvable": false, "engine_can_perform": false, "notes": "Connector standards are published specifications, so the VALUE is externally defined even though no register maps a product to one — a materially stronger position than any coffee vocabulary." },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "30-65%",
+        "in_target_band": true,
+        "reasoning": "Sellers offering more than one connector usually expose it as an option, while single-connector listings state it only in the title. The band is a hypothesis about which convention dominates and is untested.",
+        "measured": false
+      },
+      "consumer_note": "The connector is the part that physically has to match, and it is often the only difference between two otherwise identical listings. Check that the connector you need is selectable rather than merely mentioned.",
+      "merchant_remediation": "Expose the connector standard as a purchasable option value using its published designation, and keep each connector variant in stock rather than describing the range in prose.",
+      "grounding": {
+        "demand_basis": ["regulatory_requirement", "retailer_faq_pattern", "comparison_guide_convention"],
+        "citations": [
+          { "source": "EU Directive 2022/2380 on a common charging solution", "url": "https://eur-lex.europa.eu/eli/dir/2022/2380/oj/eng", "kind": "legal_instrument", "establishes": "that a common charging interface is mandated for classes of consumer device and that charging characteristics must be disclosed to consumers, which makes the connector a regulated disclosure rather than a detail" },
+          { "source": "Google Merchant Center product data specification", "url": "https://support.google.com/merchants/answer/6324448", "kind": "retailer_help_centre", "establishes": "that machine consumers of retail data expect distinguishing physical attributes to be exposed per offer rather than described at page level" }
+        ]
+      },
+      "binding": {
+        "req_kind": "variant_option",
+        "option_value": "USB-C",
+        "label": "A USB-C connector option is listed and purchasable",
+        "passing_states": ["pass_evidenced"]
+      },
+      "adversarial": {
+        "attack": "A seller names a size option \"USB-C Bundle 3-Pack\", so the option value contains the connector designation while the bundle's actual cables terminate in a different connector at the device end.",
+        "outcome": "enriched_insufficient_evidence",
+        "resolution": "Bundle and pack names containing a connector designation are named as insufficient, and pass_means limits the conclusion to the existence of the option value rather than to the connector delivered.",
+        "residual_risk": "Any merchant-authored option value containing the designation passes, and a cable has two ends while this assertion can only see one string. Resolving which end is which needs per-offer evidence attribution (ENGINE_GAPS G-12)."
+      },
+      "pass_means": {
+        "establishes": "That an option value naming this connector standard is purchasable on this product at the time of the test.",
+        "does_not_establish": "Which end of the accessory carries it, that the connector is wired to any particular specification, or that it will work with the buyer's device."
+      },
+      "known_gaps": [
+        { "corpus_case": "no adversarial-corpus coverage exists for variant_option at all", "effect": "false_pass" }
+      ]
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-DIM-001",
+      "question": "How big is it, and how long is the cable?",
+      "assertion": { "subject": "mass_or_dimension_stated", "operator": "is_stated", "expected": true },
+      "tier": "executable",
+      "applicability": { "applies_when": "the accessory's size or length bears on whether it suits the buyer's use", "signal": "any physical accessory" },
+      "accepted_evidence": [
+        { "surface": "product_description", "form": "a number bound to a unit of length or mass in a readable sentence", "example": "The cable measures 100 cm and weighs 45 grams." },
+        { "surface": "product_title", "form": "a number bound to a unit in the product title" }
+      ],
+      "insufficient_evidence": [
+        { "form": "a size word such as Small, Standard or Long with no unit", "why_not": "No quantity is stated, so two sellers cannot be compared and the buyer cannot check clearance." },
+        { "form": "a shipping or dispatch weight", "why_not": "It includes packaging and is systematically higher than the item's own mass." },
+        { "form": "a fitment dimension belonging to the host device", "why_not": "A measurement of what the accessory attaches to is not a measurement of the accessory, and the engine's own record shows a fitment dimension passing a product-size row on a real store." },
+        { "form": "a dimension expressed only with a hyphenated unit", "why_not": "The engine's measurement rule accepts a space between number and unit but not a hyphen, so a twelve-inch form fails — a known limit rather than an absent measurement." },
+        { "form": "a dimension in feet", "why_not": "Foot and feet are deliberately excluded from the engine's unit list because they produced measured false passes, so a cable length in feet alone will not be seen." }
+      ],
+      "conflict_rules": [
+        { "when": "the title states one length and the page sells several lengths", "resolution": "record that a measurement is stated and that it cannot be attributed to a specific offer", "precedence": ["product_options", "product_title"] }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["product_description", "product_title"],
+      "registry": { "resolvable": false, "engine_can_perform": false },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "20-55%",
+        "in_target_band": true,
+        "reasoning": "Cable lengths appear in titles very often, which pushes the pass rate up, while case and mount dimensions are frequently absent. The unit exclusions bite harder here than in coffee, because cable length is commonly stated in feet — so part of any measured failure rate would be an artefact of the engine rather than a fact about sellers.",
+        "measured": false
+      },
+      "consumer_note": "Length and clearance are the measurements that decide whether an accessory is usable at your desk or in your car, and they are often only in the title. Note that a length given in feet may not be readable by an automated check even though you can read it.",
+      "merchant_remediation": "State length and mass in a readable sentence per purchasable variant, in metric as well as customary units, rather than relying on a size word or the title alone.",
+      "grounding": {
+        "demand_basis": ["retailer_faq_pattern", "comparison_guide_convention", "documented_complaint_pattern"],
+        "citations": [
+          { "source": "Google Merchant Center product data specification, product dimension and weight attributes", "url": "https://support.google.com/merchants/answer/6324448", "kind": "retailer_help_centre", "establishes": "that dimension and weight are distinct structured attributes machine consumers expect, which is why their absence is a machine-buying defect and not only a presentational one" }
+        ]
+      },
+      "binding": {
+        "req_kind": "attribute",
+        "attribute": "dimensions",
+        "label": "A measurement is stated in readable text",
+        "passing_states": ["pass_evidenced"]
+      },
+      "adversarial": {
+        "attack": "A phone-case page whose only measurement is the dimensions of the handset it fits — \"designed for a 6.1 inch display\" — passes as having stated a measurement, so the merchant is told measurements are published while the case's own dimensions appear nowhere.",
+        "outcome": "enriched_insufficient_evidence",
+        "resolution": "Host-device fitment dimensions are named as insufficient and the label is worded as \"a measurement is stated\" rather than as the accessory's own size, which keeps the row true even when it matches on fitment.",
+        "residual_risk": "The engine's own record contains this exact failure on a real store — a bar-end plug passing on a handlebar inner-diameter figure — and it is not closed. In this category, where almost every page states a host-device dimension, the risk is structurally higher than in coffee."
+      },
+      "pass_means": {
+        "establishes": "That a number bound to a unit of length or mass appears in readable product text.",
+        "does_not_establish": "That it is the accessory's own dimension, that it applies to the selected variant, or that it is not a measurement of the device the accessory attaches to."
+      },
+      "known_gaps": [
+        { "corpus_case": "\"Compatible with handlebars measuring 18 mm to 21.5 mm inner diameter.\"", "effect": "false_pass", "note": "A fitment dimension passing as the product's own size — found on a real store and the reason the engine's label was rescoped. This category makes it the normal case rather than an edge case." },
+        { "corpus_case": "\"A 12-oz mug in matte ceramic.\"", "effect": "false_fail", "note": "Hyphenated units are not matched, and accessory copy uses compound-adjective forms constantly." },
+        { "corpus_case": "\"The cord is 6 ft long.\"", "effect": "false_fail", "note": "Feet are deliberately excluded from the unit list, which for cables is the commonest unit in some markets." }
+      ]
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-MAT-001",
+      "question": "What is it made of?",
+      "assertion": { "subject": "material_composition_stated", "operator": "is_stated", "expected": true },
+      "tier": "executable",
+      "applicability": { "applies_when": "the accessory's material bears on grip, weight, durability or appearance", "signal": "product_type indicates a case, strap, mount or dock" },
+      "accepted_evidence": [
+        { "surface": "product_description", "form": "a composition frame naming an actual material", "example": "The shell is made from polycarbonate with a silicone lining." },
+        { "surface": "product_title", "form": "the same in the product title" }
+      ],
+      "insufficient_evidence": [
+        { "form": "\"premium materials\" or \"military grade\"", "why_not": "Evaluative wording naming no material, and the second borrows the appearance of a specification without citing a test method." },
+        { "form": "a colour or finish name that is also a material word", "why_not": "Steel Blue and Denim Wash are colours, and the engine's material rule cannot tell a colour from a composition — a pinned defect." },
+        { "form": "a material belonging to the packaging", "why_not": "A statement about the box or the mailer is not a statement about the accessory, and the engine's subject rules only partly reach this." },
+        { "form": "a material belonging to a bundled item", "why_not": "The composition of an included cloth or stand is not the composition of the product." },
+        { "form": "a spec-style composition line with no frame verb", "why_not": "A line such as an aluminium body with a nylon braid states the composition plainly and the engine's frame-based rule cannot see it — a pinned false fail." }
+      ],
+      "conflict_rules": [
+        { "when": "the packaging material and the product material both appear", "resolution": "attribute each to its own subject; a recycled-packaging claim must never satisfy a product composition assertion" }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["product_description", "product_title"],
+      "registry": { "resolvable": false, "engine_can_perform": false },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "30-65%",
+        "in_target_band": true,
+        "reasoning": "Accessory pages state materials often but usually in a specification line rather than a composition sentence, and the engine's rule requires a frame verb. A meaningful part of any measured failure rate would therefore be the matcher's shape rather than the seller's omission.",
+        "measured": false
+      },
+      "consumer_note": "Material decides grip, weight and how a case ages, and it is the detail most often replaced by an adjective. A page saying premium materials has told you nothing you can compare.",
+      "merchant_remediation": "State the composition in a sentence naming the material — for example that the shell is made from a named polymer — rather than in an adjective or a bare specification line.",
+      "grounding": {
+        "demand_basis": ["regulatory_requirement", "comparison_guide_convention", "retailer_faq_pattern"],
+        "citations": [
+          { "source": "EU Regulation 1007/2011 on textile fibre names and labelling", "url": "https://eur-lex.europa.eu/eli/reg/2011/1007/oj/eng", "kind": "legal_instrument", "establishes": "that fibre composition disclosure is mandated for textile products, which reaches fabric straps and sleeves in this category and gives the material question a legal footing that it lacks for rigid accessories" }
+        ],
+        "refutation": {
+          "challenged": "Whether material composition is a compatibility-category question at all, or borrowed from apparel.",
+          "verdict": "narrowed",
+          "resolution": "It is borrowed, and the entry says so: its grounding is a textile-labelling instrument that reaches only fabric accessories, plus comparison convention. It is retained because it exercises a second engine attribute against a different vocabulary, which is part of what this draft is testing."
+        }
+      },
+      "binding": {
+        "req_kind": "attribute",
+        "attribute": "materials",
+        "label": "Material composition is stated in readable text",
+        "passing_states": ["pass_evidenced"]
+      },
+      "adversarial": {
+        "attack": "A case page reading \"Ships in a mailer made from 100% recycled kraft paper\" passes as having stated the product's composition, crediting the packaging's material to the accessory.",
+        "outcome": "enriched_insufficient_evidence",
+        "resolution": "Packaging-subject and bundled-item forms are named as insufficient, and the entry declares the pinned corpus defects that make several of them pass today.",
+        "residual_risk": "The packaging-subject class is only partly closed in the engine: a container verb with a wrapping object is caught, while a pronoun subject in a following sentence and several packaging nouns are not. Sustainability copy is near-universal in this category, so the exposure is higher than the corpus cases suggest."
+      },
+      "pass_means": {
+        "establishes": "That readable product text contains a composition statement naming a material.",
+        "does_not_establish": "That the material belongs to the product rather than to its packaging or a bundled item, or that any performance property follows from it."
+      },
+      "known_gaps": [
+        { "corpus_case": "\"Comes in 100% recycled kraft paper packaging.\"", "effect": "false_pass", "note": "One adjective defeats the adjacency guard. Sustainability copy is ubiquitous in this category." },
+        { "corpus_case": "\"Available in Steel Blue and Denim Wash — made with care.\"", "effect": "false_pass", "note": "Colour names that are material words. Accessory colourways use them constantly." },
+        { "corpus_case": "\"Stainless steel body, silicone lid.\"", "effect": "false_fail", "note": "The commonest spec-style composition line, invisible to a frame-based rule." }
+      ]
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-IDENT-001",
+      "question": "Is there a part number I can use to check this is the right item?",
+      "assertion": { "subject": "product_identifier_published", "operator": "is_present", "expected": true },
+      "tier": "executable",
+      "applicability": { "applies_when": "the page publishes readable Product structured data", "signal": "presence of a JSON-LD Product node" },
+      "accepted_evidence": [
+        { "surface": "structured_identifier", "form": "a valid GTIN, or a manufacturer part number that is not a placeholder" }
+      ],
+      "insufficient_evidence": [
+        { "form": "a placeholder value in any punctuated or suffixed form", "why_not": "A field filled with nothing identifies nothing, and this is how such values arise." },
+        { "form": "a seller-internal stock code in the part-number field", "why_not": "A private code cannot be cross-referenced against a manufacturer's fitment documentation, which is the whole use of the field in this category." },
+        { "form": "a value with a wrong check digit", "why_not": "It resolves to nothing in any catalogue, so length is not evidence of validity." },
+        { "form": "the host device's part number", "why_not": "Publishing the identifier of the thing the accessory fits, rather than of the accessory, inverts the field's meaning and is a category-specific failure." }
+      ],
+      "conflict_rules": [
+        { "when": "different variants carry different part numbers", "resolution": "the engine reads the product-level node only, so per-variant identity is not resolvable — which matters more here than in most categories" }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["structured_identifier"],
+      "registry": { "resolvable": false, "engine_can_perform": false, "notes": "No free public register resolves an arbitrary identifier to a product record, but in this category a manufacturer part number can often be cross-referenced against the manufacturer's own fitment documentation — which is closer to resolution than anything available for coffee." },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "35-70%",
+        "in_target_band": true,
+        "reasoning": "Accessory sellers reaching marketplaces carry identifiers far more often than small food producers do, so the expected failure rate is materially lower than the same requirement's rate for coffee. That contrast is itself part of what this draft was authored to observe: an identical engine requirement discriminates differently across categories.",
+        "measured": false
+      },
+      "consumer_note": "In this category a part number is the most reliable way to confirm you are buying the item a compatibility list refers to, because product names vary between sellers while part numbers do not.",
+      "merchant_remediation": "Publish the manufacturer part number and a valid GTIN in the Product structured data, and never place the host device's identifier in the accessory's field.",
+      "grounding": {
+        "demand_basis": ["comparison_guide_convention", "retailer_faq_pattern", "trade_body_definition"],
+        "citations": [
+          { "source": "Google Merchant Center product data specification", "url": "https://support.google.com/merchants/answer/6324461", "kind": "retailer_help_centre", "establishes": "that a manufacturer part number is the required identifier where no global trade item number exists, which is exactly the accessory case and is why the field carries fitment weight here" },
+          { "source": "GS1 general specifications overview", "url": "https://www.gs1.org/standards/barcodes-epcrfid-id-keys/gs1-general-specifications", "kind": "trade_body", "establishes": "that global trade item numbers are allocated under a defined numbering system with a computed check digit, which is the basis for validating a published value" }
+        ]
+      },
+      "binding": {
+        "req_kind": "identifiers",
+        "label": "A product identifier is published in structured data",
+        "passing_states": ["pass_evidenced"]
+      },
+      "adversarial": {
+        "attack": "A seller publishes the HOST DEVICE's part number in the accessory's part-number field, so the value is real, plausible and validates, while identifying a different product entirely.",
+        "outcome": "survived_unchanged",
+        "resolution": "No change was made, because the assertion is about publication and its pass_means already refuses the identity conclusion.",
+        "residual_risk": "A valid identifier belonging to the host device, or duplicated across variants, passes. The engine validates form and cannot resolve identity, and this category makes the host-device substitution a natural mistake rather than a contrived one."
+      },
+      "pass_means": {
+        "establishes": "That the page publishes a structurally plausible identifier that is not a placeholder.",
+        "does_not_establish": "That it identifies this accessory rather than the device it fits, that it is unique to this variant, or that it resolves to any catalogue record."
+      },
+      "known_gaps": []
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-SPEC-001",
+      "question": "What power output does this actually deliver?",
+      "assertion": { "subject": "power_delivery_profile", "operator": "equals_one_of", "expected": ["a published wattage", "a named power-delivery profile"] },
+      "tier": "blocked",
+      "blocked_by": ["G-03"],
+      "applicability": { "applies_when": "the accessory supplies or carries power", "signal": "product_type indicates a charger, power bank or power cable" },
+      "accepted_evidence": [
+        { "surface": "product_description", "form": "a wattage figure with its condition, or a named power-delivery profile drawn from a published specification" }
+      ],
+      "insufficient_evidence": [
+        { "form": "\"fast charge\" or \"super fast charging\"", "why_not": "Speed adjectives naming no wattage and no profile, and different manufacturers use the same words for materially different rates." },
+        { "form": "a total wattage on a multi-port charger with no per-port allocation", "why_not": "A shared budget divides when ports are used together, so the headline figure is not available to any one device." },
+        { "form": "a peak figure presented as the sustained rate", "why_not": "A momentary maximum is not the rate the device will see, and the difference is the whole question." },
+        { "form": "a wattage quoted for a different model in the range", "why_not": "A figure from a sibling product is not a specification of this one." },
+        { "form": "a cable's rating quoted as the charger's output", "why_not": "The two are separate limits and the lower one governs, so substituting either for the other overstates what the buyer gets." }
+      ],
+      "conflict_rules": [
+        { "when": "a total and a per-port figure both appear", "resolution": "record both with their conditions; the per-port figure under simultaneous use is the one the buyer experiences" }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["product_description"],
+      "registry": { "resolvable": false, "engine_can_perform": false, "notes": "Power-delivery profiles are defined in published specifications, so the vocabulary is externally defined — unlike almost every coffee vocabulary, where the terms are vendor-defined." },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "30-70%",
+        "in_target_band": true,
+        "reasoning": "Wattage is commonly stated while per-port allocation and sustained-versus-peak conditions rarely are, so the band depends on how strictly the condition is required. This is the entry where an enumerated-value matcher would be most defensible, because the profile names come from a published specification rather than from house convention.",
+        "measured": false
+      },
+      "consumer_note": "Fast charging means different rates for different manufacturers, and a multi-port charger's headline wattage is usually shared. The figure that matters is what one port delivers while the others are in use.",
+      "merchant_remediation": "State wattage per port with the condition it applies under, and name the power-delivery profile from its published specification rather than using a speed adjective.",
+      "grounding": {
+        "demand_basis": ["regulatory_requirement", "comparison_guide_convention"],
+        "citations": [
+          { "source": "EU Directive 2022/2380 on a common charging solution", "url": "https://eur-lex.europa.eu/eli/dir/2022/2380/oj/eng", "kind": "legal_instrument", "establishes": "that charging characteristics including power requirements must be disclosed to consumers for devices in scope, which makes power specification a regulated disclosure and gives an enumerated-value assertion an external definition to appeal to" }
+        ],
+        "refutation": {
+          "challenged": "Whether this is a specification question or a performance claim the standard has excluded.",
+          "verdict": "narrowed",
+          "resolution": "A published rating is a specification; a rate achieved in practice is a performance claim and is listed in out_of_scope. The entry is scoped strictly to whether a rating with its condition is published, and asserts nothing about realised charging speed."
+        }
+      }
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-SAFE-001",
+      "question": "Does this carry a real safety or conformity mark, and can I check it?",
+      "assertion": { "subject": "safety_mark_register_resolution", "operator": "resolves_against_register", "expected": true },
+      "tier": "blocked",
+      "blocked_by": ["G-04", "G-06"],
+      "applicability": { "applies_when": "the accessory is an electrical product subject to a conformity marking regime", "signal": "product_type indicates a powered accessory" },
+      "accepted_evidence": [
+        { "surface": "external_register", "form": "a file or listing number for this model in the certifying organisation's public database, with a current status" },
+        { "surface": "product_description", "form": "the certifying organisation named together with the file or listing number, which are the keys a lookup needs" }
+      ],
+      "insufficient_evidence": [
+        { "form": "a conformity mark image with no organisation and no number", "why_not": "The image is not page text, resolves to nothing, and is the easiest element on a page to copy." },
+        { "form": "a self-declared conformity statement treated as third-party assessment", "why_not": "Some marks are manufacturer self-declarations, so the mark's presence says nothing about independent testing unless the regime requires it." },
+        { "form": "a certificate PDF hosted on the seller's own domain", "why_not": "Self-published is not the register, and a document can outlive the listing it describes." },
+        { "form": "a number belonging to a different model in the range", "why_not": "Listings are per-model, so a sibling's number does not cover this item." },
+        { "form": "\"tested\" or \"lab tested\" with no organisation named", "why_not": "An unnamed test by an unnamed party cannot be checked and is not a conformity claim." },
+        { "form": "absence from a register read as unsafe", "why_not": "Absence may reflect a different regime, a different marking route, or a lookup key the page does not publish, so rendering it as a safety finding would be the worst false statement available here." }
+      ],
+      "conflict_rules": [
+        { "when": "the register is unreachable", "resolution": "produce an honest unreachable state rather than a failure; an unreachable register must never look like a failed lookup", "precedence": ["external_register", "product_description"] }
+      ],
+      "public_inspectable": false,
+      "evidence_surfaces": ["external_register", "product_description"],
+      "registry": {
+        "resolvable": true,
+        "register_name": "certifying organisations' public product-listing databases",
+        "operator": "independent product-safety certification organisations",
+        "lookup_key": "the file or listing number plus the model designation",
+        "lookup_method": "Search the certifying organisation's public online listing database by file number, company or model to retrieve the covered models and the listing's current status.",
+        "resolves_to_level": "product",
+        "public_free": true,
+        "machine_queryable": false,
+        "engine_can_perform": false,
+        "notes": "STRUCTURALLY STRONGER THAN ANYTHING IN COFFEE: these registers resolve to a MODEL rather than to an organisation. That makes this the first assertion class in either standard where a register could confirm a fact about the item in the box."
+      },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "55-90%",
+        "in_target_band": false,
+        "reasoning": "Very few accessory listings publish a file or listing number even where the product is genuinely listed, so the assertion would fail for most pages while usually indicating a disclosure gap rather than an absent certification. The band is above target, which is why the entry is blocked rather than specified for running as written.",
+        "measured": false
+      },
+      "consumer_note": "Some marks are independent assessments and some are the manufacturer's own declaration, and the difference is not visible in the logo. Where a file or listing number is published you can look it up yourself and see which models it covers.",
+      "merchant_remediation": "Name the certifying organisation and publish the file or listing number alongside the model designation, so a reader can resolve it in the public database instead of trusting a logo.",
+      "grounding": {
+        "demand_basis": ["regulatory_requirement", "certification_body_material", "comparison_guide_convention"],
+        "citations": [
+          { "source": "US Consumer Product Safety Commission, regulatory framework for consumer product safety", "url": "https://www.cpsc.gov/Regulations-Laws--Standards", "kind": "regulator", "establishes": "that consumer product safety obligations attach to electrical products and are enforced through published standards and recall action, which is what makes a conformity claim on a powered accessory a checkable assertion rather than a marketing badge" }
+        ],
+        "refutation": {
+          "challenged": "Whether this is a safety assertion the standard should refuse to make, given the exclusion on safety properties.",
+          "verdict": "narrowed",
+          "resolution": "The exclusion is on asserting a safety PROPERTY from page text. This entry asserts only that a named organisation and a resolvable listing number are published, and its insufficient_evidence forbids reading absence as unsafe. That keeps it on the evidence-availability side of the line, which is also the safe side legally."
+        }
+      }
+    },
+    {
+      "id": "ALS-ACCESSORY-0.1-RET-001",
+      "question": "If it turns out not to fit, can I return it?",
+      "assertion": { "subject": "misfit_return_terms", "operator": "is_stated", "expected": true },
+      "tier": "advisory",
+      "applicability": { "applies_when": "the accessory is device-specific", "signal": "any device-specific accessory" },
+      "accepted_evidence": [
+        { "surface": "shipping_policy", "form": "an explicit statement of whether an item opened to test fitment may be returned, with the window and the remedy" }
+      ],
+      "insufficient_evidence": [
+        { "form": "a returns window with no statement about opened items", "why_not": "Fitment cannot be tested without opening the package, so a window that excludes opened items is void for the only reason this category generates returns." },
+        { "form": "\"unused and in original packaging only\"", "why_not": "Trying an accessory on a device is use, so this excludes the case the buyer is asking about while appearing to grant a right." },
+        { "form": "a restocking fee mentioned without an amount", "why_not": "An unquantified deduction is not a term the buyer can evaluate before purchasing." },
+        { "form": "\"buyer pays return shipping\" with no statement for a wrong-fit case", "why_not": "Where the seller's own compatibility information was the cause, who bears the cost is the substance of the question." }
+      ],
+      "conflict_rules": [
+        { "when": "structured returns data and the policy prose disagree", "resolution": "record both and report the disagreement rather than choosing" }
+      ],
+      "public_inspectable": true,
+      "evidence_surfaces": ["shipping_policy"],
+      "registry": { "resolvable": false, "engine_can_perform": false },
+      "predicted_discrimination": {
+        "predicted_fail_rate_band": "65-92%",
+        "in_target_band": false,
+        "reasoning": "Almost no policy addresses the opened-to-test-fitment case explicitly, which is exactly why the question matters. Advisory because the substance sits in a policy document rather than on the product page and because the underlying entitlement varies by jurisdiction.",
+        "measured": false
+      },
+      "consumer_note": "You cannot find out whether an accessory fits without opening it, so a returns policy that only accepts unopened items does not cover the case you are likely to need it for.",
+      "merchant_remediation": "State whether an item opened to test fitment may be returned, with the window, who pays return shipping, and any deduction expressed as an amount.",
+      "grounding": {
+        "demand_basis": ["regulatory_requirement", "documented_complaint_pattern"],
+        "citations": [
+          { "source": "EU Consumer Rights Directive 2011/83/EU, Articles 6 and 14", "url": "https://eur-lex.europa.eu/eli/dir/2011/83/oj/eng", "kind": "legal_instrument", "establishes": "that a consumer must be informed of the cancellation right before the contract and may inspect goods to establish their nature and characteristics without losing that right, which is the provision an unopened-only policy sits awkwardly against" }
+        ],
+        "refutation": {
+          "challenged": "Whether this is a compatibility question or a generic returns question borrowed from the coffee standard.",
+          "verdict": "narrowed",
+          "resolution": "It is the same shape as the coffee opened-bag entry, and that similarity is a finding rather than a flaw: in both categories the purchase cannot be evaluated without an act that a generic returns policy treats as disqualifying use. The entry is retained as advisory and its wording is category-specific."
+        }
+      }
+    }
+  ]
+}
