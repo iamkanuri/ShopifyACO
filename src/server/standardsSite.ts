@@ -39,7 +39,11 @@ export interface StandardEntry {
   question: string;
   assertion?: { subject?: string; operator?: string; expected?: unknown };
   tier: "executable" | "not_discriminating" | "blocked" | "advisory" | string;
-  applicability?: string;
+  /** An OBJECT ({applies_when, signal}) in the artifact, not a string. Rendering it
+   *  directly produced "[object Object]" — the SECOND field in this file to do so
+   *  after `posture`, which is why `renderScalarish` exists rather than a third
+   *  bespoke branch, and why a test now forbids the string anywhere on any page. */
+  applicability?: { applies_when?: string; signal?: string } | string;
   accepted_evidence?: Array<{ surface?: string; form?: string; example?: string }>;
   insufficient_evidence?: Array<{ form?: string; why_not?: string }>;
   conflict_rules?: Array<{ when?: string; resolution?: string; precedence?: string[] }>;
@@ -176,6 +180,37 @@ const TIER_WHY: Record<string, string> = {
   blocked: "This question matters to a buyer and CANNOT be answered from a public product page today. What would be required is stated in full.",
   advisory: "This question is worth asking but is not reducible to a check a page can settle. It is published as guidance, not as a test.",
 };
+
+/**
+ * Render a field that MIGHT be a string and might be a small object of strings.
+ *
+ * ⚠️ TWO FIELDS IN THIS ARTIFACT ARE OBJECTS THAT READ LIKE STRINGS — `posture` and
+ * `applicability` — and both rendered as the literal text "[object Object]" on a
+ * published page. Template interpolation converts silently, so nothing failed; the
+ * page simply published a JavaScript diagnostic to a reader. A third such field is
+ * a matter of time, so this handles the shape rather than the two known names, and
+ * `standardsSite.test.ts` forbids "[object Object]" on EVERY page.
+ */
+function renderScalarish(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string") return p(v);
+  if (Array.isArray(v)) return `<ul>${v.map((x) => li(typeof x === "string" ? x : JSON.stringify(x))).join("")}</ul>`;
+  if (typeof v === "object") {
+    const rows = Object.entries(v as Record<string, unknown>)
+      .filter(([, val]) => typeof val === "string" && val.trim())
+      .map(([k, val]) => `<div><dt>${esc(k.replace(/_/g, " "))}</dt><dd>${esc(val)}</dd></div>`);
+    return rows.length ? `<dl class="std-kv">${rows.join("")}</dl>` : "";
+  }
+  return p(String(v));
+}
+
+/** The scalar rendering of an assertion's `expected`, which is a boolean or a string
+ *  on a direct assertion and an object on a DERIVED one. */
+function expectedText(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "object") return Array.isArray(v) ? v.join(", ") : "(derived — see below)";
+  return String(v);
+}
 
 /** The grounding citations for an entry. See the note on `StandardEntry.grounding`. */
 export function groundingOf(e: StandardEntry): Array<{ source?: string; url?: string; kind?: string; establishes?: string }> {
@@ -324,8 +359,13 @@ export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string
   <h1>${esc(e.question)}</h1>
   <p class="std-id"><code>${esc(e.id)}</code></p>
   ${p(TIER_WHY[e.tier] ?? "")}
-  ${a ? `<section><h2>Assertion</h2><p><code>${esc(a.subject ?? "")} ${esc(a.operator ?? "")} ${esc(String(a.expected ?? ""))}</code></p></section>` : ""}
-  ${e.applicability ? `<section><h2>Applicability</h2>${p(e.applicability)}</section>` : ""}
+  ${a ? `<section><h2>Assertion</h2><p><code>${esc(a.subject ?? "")} ${esc(a.operator ?? "")} ${esc(expectedText(a.expected))}</code></p>${
+    // A DERIVED assertion's `expected` is itself an object — its inputs and the rule
+    // that combines them. That is the most interesting part of the entry and it was
+    // rendering as "[object Object]": the THIRD field in this artifact to do so.
+    a.expected && typeof a.expected === "object" ? renderScalarish(a.expected) : ""
+  }</section>` : ""}
+  ${e.applicability ? `<section><h2>Applicability</h2>${renderScalarish(e.applicability)}</section>` : ""}
   ${accepted ? `<section><h2>Accepted evidence</h2><ul class="std-accept">${accepted}</ul></section>` : ""}
   ${insufficient ? `<section class="std-insufficient"><h2>Explicitly insufficient evidence</h2><p class="std-note">What does <em>not</em> count, and why. Published because the omission is where a check quietly becomes a claim.</p><ul>${insufficient}</ul></section>` : ""}
   ${conflicts ? `<section><h2>Conflict rules</h2><ul>${conflicts}</ul></section>` : ""}

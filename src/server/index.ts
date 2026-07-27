@@ -104,8 +104,10 @@ import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 const MINI_PROMPTS = 5;
 const DEFAULT_ENGINES = ["openai", "gemini", "perplexity"];
 const SUGGEST_COST_CAP_USD = 0.02;
+// ⚠️ Kept byte-identical to TAGLINE in viewer/src/copy.ts (test/siteCopy.test.ts
+// asserts the pair, and lints this string with the real claim linter).
 const TAGLINE =
-  "AisleLens runs executable shopping tests against your Shopify store — showing the exact buyer requirement that failed, the evidence your store exposed, and proof the identical test passes after the fix.";
+  "AisleLens publishes versioned buying standards — the questions a competent buyer asks in a category, written as executable tests — and runs them against your real product pages, reporting every requirement as proven, not proven, or requires store access, with the evidence.";
 // MERGE NOTE (v2.1): the DESCRIPTION is v2's (the QA repositioning). The DEMO_NOTE is main's,
 // deliberately: v2's shorter note dropped the third-party trademark attribution that main added
 // for the Sennen demo. The demo still renders those real brands, so the attribution is a legal

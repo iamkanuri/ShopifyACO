@@ -223,3 +223,33 @@ test("BANNED VOCABULARY never appears in the standard pages' own chrome", () => 
     }
   }
 });
+
+test("NO PAGE ANYWHERE RENDERS \"[object Object]\"", () => {
+  // ⚠️ TWO FIELDS DID. `posture` and `applicability` are objects in the artifact that
+  // read like strings, and template interpolation converts silently — so nothing threw,
+  // nothing failed, and a published page showed a reader a JavaScript diagnostic. A
+  // third such field is a matter of time, so this is asserted over EVERY page rather
+  // than over the two names already known to be wrong.
+  const s = findStandard("coffee", "1.0")!;
+  const paths = ["/standards", "/standards/coffee/1.0", "/standards/coffee/1.0/grounding",
+    ...s.doc.entries.map((e) => `/standards/coffee/1.0/${e.id}`)];
+  const bad: string[] = [];
+  for (const path of paths) {
+    const page = standardsPageFor(path, BASE)!;
+    for (const [what, text] of [["body", page.bodyHtml], ["title", page.title], ["description", page.description]] as const) {
+      if (text.includes("[object Object]")) bad.push(`${path} (${what})`);
+      if (/\bundefined\b/.test(text)) bad.push(`${path} (${what}) renders the literal "undefined"`);
+    }
+  }
+  assert.deepEqual(bad, [], `pages rendered a JavaScript value as prose:\n${bad.join("\n")}`);
+});
+
+test("the applicability of an entry is published as its actual fields, not stringified", () => {
+  const s = findStandard("coffee", "1.0")!;
+  const e = s.doc.entries.find((x) => x.applicability && typeof x.applicability === "object")!;
+  assert.ok(e, "no entry carries an object applicability — the artifact changed shape");
+  const page = standardsPageFor(`/standards/coffee/1.0/${e.id}`, BASE)!;
+  const app = e.applicability as { applies_when?: string; signal?: string };
+  if (app.applies_when) assert.ok(page.bodyHtml.includes(app.applies_when), "applies_when is not published");
+  if (app.signal) assert.ok(page.bodyHtml.includes(app.signal), "the applicability signal is not published");
+});

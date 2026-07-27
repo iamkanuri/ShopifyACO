@@ -1,0 +1,25 @@
+{
+  "_comment": "MEASURED FITNESS, kept BESIDE the standard rather than inside it. `standard_hash` covers standard.json's bytes and a citation resolves through it, so a measurement taken after publication must not invalidate every citation made against v1.0 — the same reason applicability.json is a sidecar (G-10, v3.1 CP3). The published site reads THIS file; no number on the site is hand-copied. If a sample is absent here the site says so rather than inventing one.",
+  "measured_at": "2026-07-27",
+  "engine_version": "v2.0.0",
+  "samples": [
+    {
+      "name": "general",
+      "label": "General DTC sample",
+      "description": "Stores captured without regard to category — the shape a broad fitness sweep produces.",
+      "stores": 172,
+      "pass_rows_audited": 507,
+      "confirmed_false_positives": 0,
+      "point_estimate_pct": 0.0,
+      "bound_95_naive_pct": 0.59,
+      "bound_95_cluster_icc02_pct": 0.83,
+      "rows_per_store": 2.95,
+      "deff_icc02": 1.39,
+      "method": "Every pass_evidenced row audited individually against its full untruncated evidence. The 95% upper bound is the rule of three inflated by a design effect for clustering within store (ICC 0.2), because pass rows are not independent — they share a store's copy conventions.",
+      "source": "experiments/v2-9/FITNESS_2.md, experiments/v3-0/FITNESS_3.md"
+    }
+  ],
+  "pending": {
+    "coffee": "Re-measurement on an expanded coffee sample is in progress; until it lands the site publishes no category bound rather than the stale n=69 figure."
+  }
+}
