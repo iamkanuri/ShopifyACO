@@ -355,8 +355,9 @@ const CARE: Case[] = [
     "guard that branched on the matched term would delete this real instruction — the over-tight " +
     "shape that cost v2.9's first quantity guard four real positives."),
   C("Care instructions: store in a cool dry place.", attr("care"), "pass_evidenced", "canonical-true",
-    "`store` and `condition` are deliberately ABSENT from CARE_DIRECTIVE — `store` is the " +
-    "merchant noun on nearly every page and `conditions apply` is ordinary terms copy. The " +
+    "`store` is deliberately ABSENT from CARE_DIRECTIVE — it is the merchant noun on nearly " +
+    "every page. (`condition` was absent too, on the `conditions apply` argument, until v3.1 " +
+    "measured that it cost a real positive; it is now admitted only as a transitive verb.) The " +
     "comment claims the cost is nil because this still passes on `dry`. This is that claim, " +
     "executed — and writing it corrected the comment, which had asserted the BARE sentence " +
     "\"Store in a cool dry place away from sunlight.\" passes. It does not and never did: it " +
@@ -386,9 +387,15 @@ const CARE: Case[] = [
     "an independent attacker: 46 of 70 hand-written pointer phrasings leak this way, 0 of 26 " +
     "canonical positives lost.\n" +
     "NOT A REGRESSION — verified mechanically, not argued: this sentence returns pass_evidenced " +
-    "identically on the pre-guard engine (experiments/v3-0/attribute_ab.mjs A/Bs all 53 attacker " +
-    "claims against b8a1fff^ and finds ZERO status changes). The guard closes strictly more than " +
-    "before and closes less than its comment claims.\n" +
+    "identically on the pre-guard engine.\n" +
+    "⚠️ THE SENTENCE AFTER THAT ONE USED TO BE FALSE, and correcting it is why v3.1 exists. It " +
+    "claimed the A/B found ZERO status changes across all 53 attacker claims. Re-run from two " +
+    "independently built worktrees, the same A/B finds NINE — every one a real care instruction " +
+    "the guard deleted, because CARE_REFERENCE was tested against the whole sentence and the " +
+    "commonest way to write an instruction is `<pointer frame>: <the instruction>`. The claim was " +
+    "not a judgement call that aged badly; it was an instrument returning the flattering answer, " +
+    "which is the failure mode src/measure/completion.ts exists for. Closed in v3.1 CP0 by " +
+    "scoping the frame to its own clause. Record: experiments/v3-1/AB_CARE.md.\n" +
     "NOT FIXED HERE, and the reason is the v2.8 `origin` precedent rather than fatigue. The " +
     "narrowing that closes it (drop the inflections, match instructive terms whole-word) would cost " +
     "real positives — \"Care instructions: we recommend hand washing.\" — to close a class with " +
@@ -406,6 +413,44 @@ const CARE: Case[] = [
     "carries BOTH a reference frame (`printed`) and a real instruction. Without the instructive " +
     "read, CARE_REFERENCE fires first and deletes a merchant's genuine care instructions — a " +
     "false FAIL on ordinary hangtag copy."),
+
+  // ── v3.1 CP0 — the nine true statements the whole-sentence frame deleted ────
+  // The case above only survived because `machine wash` is an INSTRUCTIVE term, so
+  // it never reached the narrow branch. Once the instruction after the colon is
+  // phrased with ordinary verbs, the pre-v3.1 guard read the pointer frame in the
+  // FIRST clause and answered "no care instructions stated" — about copy that
+  // states them in the second. Nine of these were confirmed by A/B against the
+  // pre-guard commit; the shapes below are one per splitting rule, so a future
+  // narrowing of CARE_CLAUSE_SPLIT fails here instead of on a merchant.
+  C("Care instructions are printed on the tag: rinse in cool water and dry immediately.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "COLON. The frame (`printed`) is true of the first clause and says nothing about the second. " +
+    "This is the commonest hangtag shape there is, and it returned not_proven before v3.1."),
+  C("Per the care instructions, sanitize the board with diluted vinegar weekly.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "COMMA. `per the` is a frame; the instruction follows it in the same sentence. A splitter that " +
+    "only cut on terminal punctuation could not reach this, which is why CARE_CLAUSE_SPLIT cuts on " +
+    "a bare comma — over-splitting makes this guard MORE permissive, the direction it is documented " +
+    "to fail in.",
+    undefined, { title: "Oak Board", productType: "Cutting Boards" }),
+  C("Our care instructions are void of jargon — rinse, dry, done.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "EM DASH. `void` is in CARE_REFERENCE because of the warranty sentence in the v2.9 sample; here " +
+    "it is an idiom meaning `free of`, and the instruction is on the other side of the dash."),
+  C("Care instructions: condition the leather twice a year.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "The measured cost of keeping `condition` out of CARE_DIRECTIVE. Admitted in v3.1 only as a " +
+    "TRANSITIVE verb (`condition the …`), which is what the two cases below hold the line on.",
+    undefined, { title: "Leather Belt", productType: "Accessories" }),
+  C("Care instructions and warranty conditions apply.", attr("care"), "not_proven", "marketing-idiom",
+    "THE COLLISION the `condition` exclusion was written to avoid, kept closed by requiring an " +
+    "object after the verb. `conditions apply` has none. Without this case the transitive frame " +
+    "reads as decorative and a later session widens it back to a bare word."),
+  C("Care instructions: follow the wash symbols printed on the label.",
+    attr("care"), "not_proven", "placeholder",
+    "CLAUSE SCOPING IS NOT THE SAME AS DELETING THE FRAME. Here the pointer (`follow`, `printed`) " +
+    "and the care word (`wash`) are in the SAME clause, so the frame still governs and the row " +
+    "correctly fails. If this ever passes, the fix has become a removal."),
 ];
 
 // ---------------------------------------------------------------------------

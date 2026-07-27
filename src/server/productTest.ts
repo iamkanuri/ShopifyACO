@@ -404,7 +404,15 @@ const CARE_INSTRUCTIVE = CARE_TERMS.filter((t) => !CARE_META.has(t));
 
 /** The instructions exist somewhere we are not reading. A pointer to evidence is
  *  not evidence — the same distinction `isPlaceholderIdentifier` draws for a field
- *  the merchant filled with "see description". */
+ *  the merchant filled with "see description".
+ *
+ *  ⚠️ SCOPED TO ITS OWN CLAUSE (v3.1 CP0). Tested against the WHOLE sentence, this
+ *  frame vetoed nine real care instructions, because the overwhelmingly common way
+ *  a merchant writes one is `<pointer frame>: <the instruction>` — "Care instructions
+ *  are printed on the tag: rinse in cool water and dry immediately." The frame is
+ *  true of the first clause and says nothing about the second, and reading it over
+ *  both deleted the instruction the sentence plainly gives. Measured, not argued:
+ *  see `experiments/v3-1/AB_CARE.md`. */
 const CARE_REFERENCE =
   /\b(see|refer to|consult|read|follow(?:ing)?|enclosed|included|attached|supplied|provided|printed|listed|labell?ed|as per|per the|according to|subject to|failure to|void|voids|refer)\b/i;
 
@@ -425,11 +433,17 @@ const CARE_REFERENCE =
  *  Deliberately a closed list of care verbs plus the two things a care instruction
  *  states when it names no verb (a temperature and a cycle).
  *
- *  `store`/`storing` and `condition` are DELIBERATELY ABSENT despite "store in a
- *  cool dry place" being a real instruction: `store` is the merchant noun that
- *  appears on nearly every page and `conditions apply` is ordinary terms copy, so
- *  both are collisions waiting to happen. The cost is nil, because
+ *  `store`/`storing` is DELIBERATELY ABSENT despite "store in a cool dry place"
+ *  being a real instruction: `store` is the merchant noun that appears on nearly
+ *  every page, so it is a collision waiting to happen. The cost is nil, because
  *  "Care instructions: store in a cool dry place." still passes on `dry`.
+ *
+ *  `condition` was absent for the same reason — `conditions apply` is ordinary terms
+ *  copy — and that cost a real positive: "Care instructions: condition the leather
+ *  twice a year." was answered "no care instructions stated". It is admitted in v3.1
+ *  only in its TRANSITIVE VERB form (`condition the …`, `conditions your …`), which
+ *  `warranty conditions apply` and `terms and conditions` cannot reach. A bare
+ *  `condition` would; that is why this is a frame and not a word.
  *
  *  ⚠️ An earlier draft of this comment claimed the BARE sentence "Store in a cool
  *  dry place away from sunlight." passes. It does not, and never did — it contains
@@ -437,7 +451,21 @@ const CARE_REFERENCE =
  *  That claim survived review and was killed by writing its corpus case, which is
  *  the entire reason a comment saying "must still pass" owes one. */
 const CARE_DIRECTIVE =
-  /\b(wash(es|ed|ing)?|rinse[sd]?|rinsing|clean(s|ed|ing)?|wipe[sd]?|wiping|dry(ing)?|dries|soak(s|ed|ing)?|scrub(s|bed|bing)?|polish(es|ed|ing)?|oil(s|ed|ing)?|season(s|ed|ing)?|launder(s|ed|ing)?|bleach(es|ed|ing)?|iron(s|ed|ing)?|tumble[sd]?|dust(s|ed|ing)?|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing)|hand-?wash|dishwasher|air-?dry|line-?dry|dry-?clean)\b|\d+\s*°|\b(cold|warm|lukewarm|hot) water\b|\b(low|medium|high) heat\b|\b(delicate|gentle|permanent press) cycle\b/i;
+  /\b(wash(es|ed|ing)?|rinse[sd]?|rinsing|clean(s|ed|ing)?|wipe[sd]?|wiping|dry(ing)?|dries|soak(s|ed|ing)?|scrub(s|bed|bing)?|polish(es|ed|ing)?|oil(s|ed|ing)?|season(s|ed|ing)?|launder(s|ed|ing)?|bleach(es|ed|ing)?|iron(s|ed|ing)?|tumble[sd]?|dust(s|ed|ing)?|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing)|hand-?wash|dishwasher|air-?dry|line-?dry|dry-?clean)\b|\bcondition(?:s|ed|ing)?\s+(?:the|your|it|them|this)\b|\d+\s*°|\b(cold|warm|lukewarm|hot) water\b|\b(low|medium|high) heat\b|\b(delicate|gentle|permanent press) cycle\b/i;
+
+/**
+ * The spans the reference frame is allowed to govern.
+ *
+ * DELIBERATELY NOT `CLAUSE_BOUNDARY` (testEvidence.ts). That splitter is already
+ * documented in CLAUDE.md as serving two incompatible jobs for negation scope, and
+ * loading a third onto it would make all three harder to change. This one answers a
+ * narrower question — "is there a span here that gives an instruction without a
+ * pointer frame in it" — so it splits MORE aggressively, including on a bare comma
+ * and a dash. Over-splitting makes this guard more permissive, which is the
+ * direction it is documented to fail in, and never the direction that invents a
+ * finding.
+ */
+const CARE_CLAUSE_SPLIT = /[.;:!?]|\s[—–]\s|--|,/;
 
 /**
  * True when the sentence GIVES a care instruction rather than merely mentioning
@@ -451,12 +479,13 @@ function statesCareInstruction(sentence: string): boolean {
   const n = normalize(sentence);
   // An actual instruction anywhere in the sentence settles it.
   if (termMatches(n, CARE_INSTRUCTIVE, false).length > 0) return true;
-  // Only `care instructions` matched. A reference frame means the instructions are
-  // held elsewhere ("included in the box", "printed on the label", "if you follow…").
-  if (CARE_REFERENCE.test(sentence)) return false;
-  // Otherwise it counts only if it actually carries a care action — which is what
-  // closes the bare placeholder "Care instructions: TBD.", where no frame fires.
-  return CARE_DIRECTIVE.test(sentence);
+  // Only `care instructions` matched. It counts when SOME clause carries a care
+  // action and is not itself a pointer — "…printed on the tag: rinse in cool water".
+  // A pointer clause ("included in the box", "if you follow…") proves nothing, and a
+  // clause with no action at all closes the bare placeholder "Care instructions: TBD."
+  return sentence
+    .split(CARE_CLAUSE_SPLIT)
+    .some((clause) => CARE_DIRECTIVE.test(clause) && !CARE_REFERENCE.test(clause));
 }
 
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
@@ -1087,11 +1116,93 @@ export type ReqKind =
   | "claim" | "price_under" | "variant_option" | "no_subscription" | "delivery" | "in_stock"
   // v2.3 CP2 — depth the public data can actually adjudicate.
   | "attribute"   // a stated product attribute (materials, dimensions, origin, …)
-  | "identifiers"; // GTIN/MPN in structured data — what a machine consumer needs
+  | "identifiers" // GTIN/MPN in structured data — what a machine consumer needs
+  // v3.1 CP1 — a row we cannot re-ask. NOT a verdict about the store: it is the
+  // engine reporting that it failed to reconstruct the question. See `evaluate`.
+  | "unsupported";
 export interface Requirement {
   id: string; kind: ReqKind; label: string; claim?: string; capUsd?: number; optionValue?: string;
   /** Key into ATTRIBUTE_SPECS. Only set for `attribute` requirements. */
   attribute?: string;
+  /** Why an `unsupported` row could not be re-asked. Rendered to the merchant, so it
+   *  must describe OUR limitation and never imply anything about their store. */
+  unsupportedReason?: string;
+}
+
+// ---- label → requirement (v3.1 CP1) -----------------------------------------
+//
+// The public result persists RENDERED ASSERTIONS, not the `Requirement` objects that
+// produced them, so importing a public test into a shop has to rebuild the contract
+// from labels. `contractFromPublicResult` did that with a regex ladder that ended in
+// an unconditional `kind: "claim"` — so "Materials are stated" was rebuilt as the
+// claim key `materials_are_stated`, which no dictionary contains, and `evaluate`
+// dereferenced `undefined`. A merchant who imported a public test containing a
+// materials, measurements, care or identifiers row pinned a contract that THREW on
+// every re-run: the public-test-to-install path the whole funnel depends on.
+//
+// The tables below are DERIVED from the same objects that generate the labels
+// (`ATTRIBUTE_SPECS`, `CLAIM_LABEL`, the fixed candidates in `buildBuyerTask`), never
+// retyped. Renaming a label therefore keeps the round-trip working; renaming it in
+// only one of two places — the actual failure mode here — is no longer possible.
+const FIXED_LABEL_KINDS: ReadonlyArray<readonly [string, ReqKind]> = [
+  ["In stock and purchasable", "in_stock"],
+  ["Available as a one-time purchase", "no_subscription"],
+  ["Delivery timing is stated", "delivery"],
+  ["Product identifier (GTIN or MPN) is published", "identifiers"],
+];
+
+/**
+ * Labels this generator USED to emit. A pinned contract is a database row that can
+ * be older than any rename, so dropping these would break exactly the merchants who
+ * have been here longest — and it would do it silently, by degrading their rows to
+ * `unsupported` rather than by failing anything a test can see.
+ *
+ * Enumerated by sweeping every historical revision of this file for requirement
+ * labels, not by memory. The complete set of renames is:
+ *   "Ships in the US within a week"    -> "Delivery timing is stated"
+ *   "Size, capacity or weight is stated" -> "Measurements are stated"
+ * `"Country of origin is stated"` is deliberately ABSENT: v2.8 CP2 removed that
+ * requirement outright, so there is nothing to map it to. A contract still carrying
+ * it resolves to `unsupported`, which is the honest answer — the engine really
+ * cannot ask that question any more, and saying so beats inventing a verdict.
+ */
+const LEGACY_LABELS: ReadonlyArray<readonly [string, Omit<Requirement, "id" | "label">]> = [
+  ["Ships in the US within a week", { kind: "delivery" }],
+  ["Size, capacity or weight is stated", { kind: "attribute", attribute: "dimensions" }],
+];
+
+const normLabel = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** True when the key names a claim this engine can actually evaluate. */
+export const isKnownClaim = (key: string | undefined): boolean =>
+  typeof key === "string" && Object.prototype.hasOwnProperty.call(CLAIM_TERMS, key);
+/** True when the key names an attribute this engine can actually evaluate. */
+export const isKnownAttribute = (key: string | undefined): boolean =>
+  typeof key === "string" && Object.prototype.hasOwnProperty.call(ATTRIBUTE_SPECS, key);
+
+/**
+ * Recover the requirement a generated label came from, exactly.
+ *
+ * Returns null for the two labels that embed merchant-supplied values (a price cap
+ * and a variant option) — those carry their parameter in the text and are parsed by
+ * the caller, which is the only place that knows the row index to build an id from.
+ */
+export function requirementFromLabel(label: string, id: string): Requirement | null {
+  const key = normLabel(label);
+  for (const [text, kind] of FIXED_LABEL_KINDS) if (normLabel(text) === key) return { id, kind, label };
+  for (const [attribute, spec] of Object.entries(ATTRIBUTE_SPECS)) {
+    if (normLabel(spec.label) === key) return { id, kind: "attribute", attribute, label };
+  }
+  for (const claim of Object.keys(CLAIM_TERMS)) {
+    // Both forms `buildBuyerTask` can emit: the pretty label, and the underscore
+    // fallback it uses for a claim with no CLAIM_LABEL entry.
+    const pretty = CLAIM_LABEL[claim];
+    if ((pretty && normLabel(pretty) === key) || normLabel(claim.replace(/_/g, " ")) === key) {
+      return { id, kind: "claim", claim, label };
+    }
+  }
+  for (const [text, req] of LEGACY_LABELS) if (normLabel(text) === key) return { ...req, id, label };
+  return null;
 }
 
 // ---- contract + engine versioning (V2 §4.4) ---------------------------------
@@ -1203,6 +1314,10 @@ function adjudicability(p: PublicProduct, r: Requirement): number {
     case "attribute": return p.evidence.length ? 3 : 0;
     // Structural and binary: readable whenever the page markup was readable.
     case "identifiers": return p.extracted ? 3 : 0;
+    // Never generated — `unsupported` only ever arrives on a RECONSTRUCTED contract,
+    // which bypasses `buildBuyerTask` entirely. Scored 0 so that if a future path
+    // ever does feed one through generation, it is ranked out rather than shown.
+    case "unsupported": return 0;
   }
 }
 
@@ -1371,10 +1486,44 @@ const THROTTLED_DETAIL =
 const accessDetail = (p: PublicProduct, whenReadable: string): string =>
   p.diagnostics?.degraded ? THROTTLED_DETAIL : whenReadable;
 
+/**
+ * The honest row for a requirement this engine cannot ask (v3.1 CP1).
+ *
+ * `requires_store_access` is the right STATUS and the wrong WORDS: it is the engine's
+ * existing "we did not adjudicate this" bucket, it counts as neither pass nor fail,
+ * and `PASSING` excludes it — but its usual copy blames the store's visibility. This
+ * detail deliberately blames US instead. The distinction the whole engine turns on is
+ * finding vs accusation, and "we could not re-ask this question" must never be
+ * rendered as "your store does not state this".
+ */
+function unsupportedRow(p: PublicProduct, req: Requirement, reason: string): Assertion {
+  console.error(`[buyer-test] UNSUPPORTED REQUIREMENT id=${req.id} kind=${req.kind} label=${JSON.stringify(req.label)} — ${reason}`);
+  return {
+    label: req.label,
+    status: "requires_store_access",
+    surfacesChecked: textSurfaces(p),
+    detail: "We couldn't re-run this check automatically. That's a limitation on our side, not a finding about your store — this row is reported as unchecked rather than as a result.",
+  };
+}
+
 export function evaluate(p: PublicProduct, req: Requirement): Assertion {
   switch (req.kind) {
+    // A row whose question could not be reconstructed. Reported, never silently
+    // dropped: a contract that quietly loses a row the merchant already saw is the
+    // same class of dishonesty as a conformance list that drops entries (CP3).
+    case "unsupported":
+      return unsupportedRow(p, req, req.unsupportedReason ?? "no reason recorded");
     case "claim": {
-      const fx = CLAIM_TERMS[req.claim!]!;
+      // ⚠️ TOTAL, NOT `!`. The bare non-null assertion here was the live crash: a
+      // reconstructed contract carrying `claim: "materials_are_stated"` made this
+      // `undefined`, and the very next line read `.violating` off it — a TypeError
+      // thrown inside an unguarded `.map()` in `runAuthenticatedTest`, which took
+      // down the merchant's entire re-run over one row. Reconstruction is fixed in
+      // `requirementFromLabel`; this branch stays defensive anyway, because a pinned
+      // contract is DATA that has been sitting in a database since before the fix,
+      // and a compiled standard can name a claim key this build does not have.
+      const fx = CLAIM_TERMS[req.claim!];
+      if (!fx) return unsupportedRow(p, req, `unknown claim key '${req.claim}'`);
       const checked = textSurfaces(p);
       // PRODUCT surfaces only — the same filter the attribute rows apply, and for the
       // same reason. The shipping policy is evidence about ORDERS, not about this
@@ -1522,8 +1671,12 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // merchant's problem. Say so: when `origin` was removed in v2.8 CP2 the bare `!`
       // turned three stale call sites into "Cannot read properties of undefined
       // (reading 'shipmentVeto')", which names neither the attribute nor the cause.
+      // v3.1 CP1 — this used to THROW. Naming the attribute was the right instinct
+      // and killing the run was not: `runAuthenticatedTest` maps `evaluate` over the
+      // pinned contract with no per-row guard, so one stale requirement destroyed
+      // every other row's verdict. It is now loud in the log and honest in the table.
       const spec = ATTRIBUTE_SPECS[req.attribute!];
-      if (!spec) throw new Error(`unknown attribute requirement '${req.attribute}' — no ATTRIBUTE_SPECS entry (was it removed?)`);
+      if (!spec) return unsupportedRow(p, req, `unknown attribute '${req.attribute}' — no ATTRIBUTE_SPECS entry (was it removed?)`);
       // PRODUCT surfaces only. The shipping policy is evidence about ORDERS, not
       // about this product, and matching attributes there produces false passes —
       // measured, not hypothesised: "Size, capacity or weight is stated" passed a

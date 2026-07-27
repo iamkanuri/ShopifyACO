@@ -80,3 +80,6 @@ experiments/*/pass_rows.txt
 !experiments/v3-0/
 experiments/v3-0/*
 !experiments/v3-0/*.md
+!experiments/v3-1/
+experiments/v3-1/*
+!experiments/v3-1/*.md
