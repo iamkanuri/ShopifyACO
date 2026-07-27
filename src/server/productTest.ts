@@ -4,7 +4,7 @@ import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extra
 import { htmlToText, htmlToBlockText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
-  buildEvidence, findSupport, findViolation, findTimingSupport, normalize,
+  buildEvidence, findSupport, findViolation, findTimingSupport, normalize, termMatches,
   SURFACE_LABEL, type EvidenceSentence, type SupportedEvidence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
@@ -364,6 +364,88 @@ function statesProductMeasurement(sentence: string): boolean {
 // separators. Full record: experiments/v2-8/FITNESS.md.
 
 
+// ---- care: STATING an instruction vs POINTING AT one (v3.0 CP1) -------------
+//
+// `care` was the only attribute with NO valueGuard, and the v2.9 measurement over
+// 172 stores found the one false positive it produced: a cookware store was told
+// "Care or use instructions are stated" on
+//     "If you follow our easy care instructions, we'll help out if anything goes
+//      wrong within three years from your date of purchase."
+// The sentence REFERS to care instructions and states none — a buyer asking how to
+// look after the pan learns nothing.
+//
+// THE CLASS IS REFERENCE-TO-ELSEWHERE, not that one sentence. Every other care term
+// IS the instruction ("machine wash", "dishwasher safe", "do not bleach"); exactly
+// one term — `care instructions` — names the category without giving a member of it,
+// and every recorded defect in this row runs through that term: a pointer ("included
+// in the box"), a placeholder ("Care instructions: TBD."), and a condition of a
+// warranty. So the guard is scoped to that term rather than applied to all of them.
+//
+// ⚠️ THE GUARD MUST READ THE WHOLE SENTENCE, NOT `matchedTerm`. `termMatches` sorts
+// longest-first (testEvidence.ts:272), and `care instructions` (17) is longer than
+// `machine wash` (12), `dishwasher safe` (15) and `hand wash only` (14). So in
+// "Care instructions: machine wash cold." the matched term is the META one, and a
+// guard that branched on `matchedTerm` would delete a canonical true positive. That
+// is the shape of the over-tight guard that cost v2.9's first quantity attempt four
+// real positives.
+const CARE_TERMS = [
+  // "how to use" and "instructions for use" were REMOVED: they matched "Learn
+  // how to use our rewards program in 3 steps", which is site chrome, not care.
+  "machine wash", "machine-wash", "hand wash", "hand-wash", "dishwasher safe", "dishwasher-safe",
+  "care instructions", "wipe clean", "tumble dry", "air dry", "spot clean", "do not bleach",
+  "hand wash only", "season before", "dry flat", "do not tumble", "iron on low",
+] as const;
+/** The term(s) that name the category instead of giving a member of it. */
+const CARE_META = new Set<string>(["care instructions"]);
+/** Everything else: a term whose mere presence IS an instruction. Derived from the
+ *  shipped list rather than retyped, so a term added to `CARE_TERMS` is instructive
+ *  by default and cannot silently fall into the narrower meta branch. */
+const CARE_INSTRUCTIVE = CARE_TERMS.filter((t) => !CARE_META.has(t));
+
+/** The instructions exist somewhere we are not reading. A pointer to evidence is
+ *  not evidence — the same distinction `isPlaceholderIdentifier` draws for a field
+ *  the merchant filled with "see description". */
+const CARE_REFERENCE =
+  /\b(see|refer to|consult|read|follow(?:ing)?|enclosed|included|attached|supplied|provided|printed|listed|labell?ed|as per|per the|according to|subject to|failure to|void|voids|refer)\b/i;
+
+/** An actual care ACTION, for the sentences where only the meta term matched.
+ *  Deliberately a closed list of care verbs plus the two things a care instruction
+ *  states when it names no verb (a temperature and a cycle).
+ *
+ *  `store`/`storing` and `condition` are DELIBERATELY ABSENT despite "store in a
+ *  cool dry place" being a real instruction: `store` is the merchant noun that
+ *  appears on nearly every page and `conditions apply` is ordinary terms copy, so
+ *  both are collisions waiting to happen. The cost is nil, because
+ *  "Care instructions: store in a cool dry place." still passes on `dry`.
+ *
+ *  ⚠️ An earlier draft of this comment claimed the BARE sentence "Store in a cool
+ *  dry place away from sunlight." passes. It does not, and never did — it contains
+ *  no CARE_TERMS entry at all, so it is `not_proven` before the guard is reached.
+ *  That claim survived review and was killed by writing its corpus case, which is
+ *  the entire reason a comment saying "must still pass" owes one. */
+const CARE_DIRECTIVE =
+  /\b(wash(es|ed|ing)?|rinse[sd]?|rinsing|clean(s|ed|ing)?|wipe[sd]?|wiping|dry(ing)?|dries|soak(s|ed|ing)?|scrub(s|bed|bing)?|polish(es|ed|ing)?|oil(s|ed|ing)?|season(s|ed|ing)?|launder(s|ed|ing)?|bleach(es|ed|ing)?|iron(s|ed|ing)?|tumble[sd]?|dust(s|ed|ing)?|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing)|hand-?wash|dishwasher|air-?dry|line-?dry|dry-?clean)\b|\d+\s*°|\b(cold|warm|lukewarm|hot) water\b|\b(low|medium|high) heat\b|\b(delicate|gentle|permanent press) cycle\b/i;
+
+/**
+ * True when the sentence GIVES a care instruction rather than merely mentioning
+ * that care instructions exist.
+ *
+ * Fails OPEN for every instructive term — those are self-evidently instructions and
+ * vetoing them would cost real findings for no measured gain. The narrow branch runs
+ * only when the sole care term present is the meta one.
+ */
+function statesCareInstruction(sentence: string): boolean {
+  const n = normalize(sentence);
+  // An actual instruction anywhere in the sentence settles it.
+  if (termMatches(n, CARE_INSTRUCTIVE, false).length > 0) return true;
+  // Only `care instructions` matched. A reference frame means the instructions are
+  // held elsewhere ("included in the box", "printed on the label", "if you follow…").
+  if (CARE_REFERENCE.test(sentence)) return false;
+  // Otherwise it counts only if it actually carries a care action — which is what
+  // closes the bare placeholder "Care instructions: TBD.", where no frame fires.
+  return CARE_DIRECTIVE.test(sentence);
+}
+
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
   materials: {
     label: "Materials are stated",
@@ -420,13 +502,12 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
   care: {
     label: "Care or use instructions are stated",
     missingDetail: "no care or use instructions an AI buyer could read",
-    terms: [
-      // "how to use" and "instructions for use" were REMOVED: they matched "Learn
-      // how to use our rewards program in 3 steps", which is site chrome, not care.
-      "machine wash", "machine-wash", "hand wash", "hand-wash", "dishwasher safe", "dishwasher-safe",
-      "care instructions", "wipe clean", "tumble dry", "air dry", "spot clean", "do not bleach",
-      "hand wash only", "season before", "dry flat", "do not tumble", "iron on low",
-    ],
+    terms: CARE_TERMS,
+    // A term occurring is not the attribute being stated — the same rule
+    // `materials` and `dimensions` already carry. See the block above CARE_TERMS
+    // for the measured false positive this closes and why it is scoped to the one
+    // term that names the category rather than giving a member of it.
+    valueGuard: (s) => statesCareInstruction(s),
     // Categories where a buyer genuinely constrains on care. A pencil does not.
     // WORD-BOUNDED: without \b, "pan" matched "Company" and "Japanese", "pot" matched
     // "Potato", and "rug" matched "Arugula" and "Rugged" — so every brand named

@@ -330,15 +330,61 @@ const CARE: Case[] = [
     "Care for a bundled accessory, quoted as care for the product. Nothing in the pipeline reads " +
     "the subject `The included tote bag`."),
   C("Care instructions: TBD.", attr("care"), "not_proven", "placeholder",
-    "A placeholder. The term `care instructions` matches and nothing checks for an actual instruction.",
-    "pass_evidenced"),
+    "A placeholder. CLOSED in v3.0 CP1 — and this is the MUTATION ANCHOR for the " +
+    "CARE_DIRECTIVE half of `statesCareInstruction`: no reference frame fires here, so " +
+    "only the requirement that a meta-term sentence carry an actual care ACTION closes it. " +
+    "Delete that half and this case passes again."),
   C("Full care instructions are included in the box.", attr("care"), "not_proven", "placeholder",
-    "A POINTER to instructions is not instructions an AI buyer can read — which is the whole claim.",
-    "pass_evidenced"),
+    "A POINTER to instructions is not instructions an AI buyer can read — which is the whole " +
+    "claim. CLOSED in v3.0 CP1 by CARE_REFERENCE (`included`)."),
   C("Do not machine wash.", attr("care"), "pass_evidenced", "negation",
     "A prohibition IS a care instruction. The negation guard, correct elsewhere, is wrong here — " +
-    "`do not tumble` and `do not bleach` are already in the term list for this reason.",
+    "`do not tumble` and `do not bleach` are already in the term list for this reason. " +
+    "NOT the valueGuard's doing: `statesCareInstruction` returns true here (an instructive term " +
+    "is present) and the veto happens earlier, in `findSupport`'s cross-term negation rule. " +
+    "Verified against the pre-v3.0 engine, which fails it identically.",
     "not_proven"),
+
+  // ── v3.0 CP1 — the `care` valueGuard ───────────────────────────────────────
+  // Every sentence a comment in productTest.ts names as a must-pass owes a case
+  // here, in the same commit. This is that debt paid.
+  C("Care instructions: machine wash cold.", attr("care"), "pass_evidenced", "canonical-true",
+    "THE LONGEST-MATCH TRAP, and the reason `statesCareInstruction` reads the whole sentence " +
+    "instead of `matchedTerm`. `termMatches` sorts longest-first, so the term handed to the " +
+    "valueGuard here is the META one (`care instructions`, 17) and not `machine wash` (12). A " +
+    "guard that branched on the matched term would delete this real instruction — the over-tight " +
+    "shape that cost v2.9's first quantity guard four real positives."),
+  C("Care instructions: store in a cool dry place.", attr("care"), "pass_evidenced", "canonical-true",
+    "`store` and `condition` are deliberately ABSENT from CARE_DIRECTIVE — `store` is the " +
+    "merchant noun on nearly every page and `conditions apply` is ordinary terms copy. The " +
+    "comment claims the cost is nil because this still passes on `dry`. This is that claim, " +
+    "executed — and writing it corrected the comment, which had asserted the BARE sentence " +
+    "\"Store in a cool dry place away from sunlight.\" passes. It does not and never did: it " +
+    "carries no CARE_TERMS entry, so it is not_proven before the guard is ever reached."),
+  C("Store in a cool dry place away from sunlight.", attr("care"), "not_proven", "canonical-true",
+    "The counterpart to the case above, pinned so the correction cannot rot back into the " +
+    "comment. No care TERM occurs, so no valueGuard runs. This is a term-list limit, not a " +
+    "guard defect — recorded rather than fixed, because widening CARE_TERMS to bare `store` " +
+    "is the collision the directive list already refuses."),
+  C("Failure to follow the care instructions when washing will void this warranty.",
+    attr("care"), "not_proven", "marketing-idiom",
+    "MUTATION ANCHOR for CARE_REFERENCE. This sentence DOES carry a care action (`washing`), so " +
+    "the CARE_DIRECTIVE half alone would pass it — only the reference frame (`follow`, `failure " +
+    "to`, `void`) closes it. Without this case the reference veto reads as decorative in the " +
+    "mutation proof, which is a corpus hole rather than a useless guard.",
+    undefined, { title: "Ceramic Pan", productType: "Cookware" }),
+  C("Care instructions are printed on the label.", attr("care"), "not_proven", "placeholder",
+    "The instructions exist; they are not on any surface we read. Reference-to-elsewhere is the " +
+    "CLASS the v2.9 false positive belonged to, not just the one warranty sentence."),
+  C("Care instructions are printed on the tag: machine wash cold, tumble dry low.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "CONTROL CASE for the whole-sentence instructive read, which the first mutation run reported " +
+    "DECORATIVE — every case written for it also passed through CARE_DIRECTIVE, so removing it " +
+    "changed nothing. That is a corpus coverage hole, not a useless guard (same finding shape as " +
+    "v2.4, where 4 of 12 guards read decorative for exactly this reason). Here the sentence " +
+    "carries BOTH a reference frame (`printed`) and a real instruction. Without the instructive " +
+    "read, CARE_REFERENCE fires first and deletes a merchant's genuine care instructions — a " +
+    "false FAIL on ordinary hangtag copy."),
 ];
 
 // ---------------------------------------------------------------------------
@@ -546,13 +592,14 @@ const V28_FOUND: Case[] = [
     "The sentence REFERS to care instructions; it does not state any. A buyer asking how to " +
     "look after this learns nothing, so the row's claim that care instructions are stated is " +
     "false. Found on a real cookware store in the v2.9 audit of 506 pass rows — the only " +
-    "confirmed false positive in that sample. The mechanism is that `care` has NO valueGuard: " +
+    "confirmed false positive in that sample. The mechanism was that `care` had NO valueGuard: " +
     "`materials` requires a MATERIAL_NOUN and `dimensions` requires a real measurement, but the " +
-    "care terms match their own name, so a warranty sentence mentioning the phrase passes. The " +
-    "fix is a valueGuard demanding an actual instruction (an imperative, a temperature, a cycle), " +
-    "and it is NOT attempted here: a fix without an independent adversarial pass is how the last " +
-    "three sessions each shipped a regression.",
-    "pass_evidenced", { title: "Ceramic Pan", productType: "Cookware" }),
+    "care terms match their own name, so a warranty sentence mentioning the phrase passed. " +
+    "CLOSED in v3.0 CP1 by `statesCareInstruction` — the sentence carries no care ACTION at all, " +
+    "so it is closed by the CARE_DIRECTIVE half and would also be closed by CARE_REFERENCE " +
+    "(`follow`). The class, not the instance, is what the guard is designed to: see the four " +
+    "sibling cases in the CARE block.",
+    undefined, { title: "Ceramic Pan", productType: "Cookware" }),
 
   // ── v2.9 CP2 — THE OWED MUTATION ANCHOR, now closed ────────────────────────
   // Removing `origin` in v2.8 deleted the only corpus case that failed when
@@ -753,7 +800,12 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // v2.9 CP4 the 172-store measurement found ONE false positive (a warranty sentence
   //          referring to care instructions rather than stating any). Pinned, not fixed.
   //                                                                             -> 31
-  const EXPECTED_OPEN_GAPS = 31;
+  // v3.0 CP1 the `care` valueGuard CLOSED three: that warranty sentence, the pointer
+  //          "Full care instructions are included in the box.", and the placeholder
+  //          "Care instructions: TBD." All three ran through the one term that names
+  //          the category without giving a member of it.
+  //                                                                             -> 28
+  const EXPECTED_OPEN_GAPS = 28;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
