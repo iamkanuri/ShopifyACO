@@ -97,6 +97,33 @@ export const MINIMAL_VALID: Json = {
         reasoning: "A fixture has no real prediction; this text exists to satisfy the minimum length rule.",
         measured: false,
       },
+      // Present so the mutation proof has somewhere to break `minimum` and
+      // `maximum`, and so the baseline demonstrates the shape a GRAMMAR-1.0
+      // standard uses to record a measurement without being rewritten to 1.1.
+      // 15 of 30 is exactly 50%; the interval is the real Wilson score interval
+      // for that count, because the suite recomputes it.
+      measured_discrimination: {
+        verdict: "discriminating",
+        n_asked: 32,
+        n_adjudicated: 30,
+        fail_count: 15,
+        fail_rate_pct: 50,
+        interval_95: { lower_pct: 33.1541, upper_pct: 66.8459 },
+        target_band: { lower_pct: 15, upper_pct: 85 },
+        decision_rule: "wilson95_vs_target_band",
+        measured_on: "2026-07-27",
+        sample: {
+          sample_id: "FIXTURE-SAMPLE-0",
+          category_scope: "this_category",
+          category_standard_id: "ALS-FIXTURE",
+          stores: 30,
+          products: 30,
+          selection: "first_applicable_product",
+          deduplicated_by_brand: true,
+          applicability_gate_enforced: true,
+          captured_on: "2026-07-27",
+        },
+      },
       consumer_note: "A fixture note that is long enough to satisfy the forty-character minimum length.",
       merchant_remediation: "Nothing to remediate — this entry is never applied to a real store at all.",
       grounding: {
@@ -191,10 +218,27 @@ export const MUTATIONS: Mutation[] = [
     mutate: (s) => { entry0(s).severity = "high"; },
   },
   {
-    name: "const — grammar_version is not 1.0",
-    keyword: "const",
+    // Was a `const` mutation until the grammar gained version 1.1. `const` is
+    // still covered below by `predicted_discrimination.measured`.
+    name: "enum — grammar_version is a version the grammar does not define",
+    keyword: "enum",
     pathContains: "grammar_version",
     mutate: (s) => { s.grammar_version = "2.0"; },
+  },
+  {
+    // THE MINIMUM-n FLOOR. Below 22 adjudicated rows no observation whatsoever
+    // can put a 95% Wilson interval outside the 15-85% band, so a verdict there
+    // is arithmetically incapable of supporting itself. 21 is one short.
+    name: "minimum — a discrimination verdict recorded below the minimum n",
+    keyword: "minimum",
+    pathContains: "measured_discrimination/n_adjudicated",
+    mutate: (s) => { (entry0(s).measured_discrimination as Json).n_adjudicated = 21; },
+  },
+  {
+    name: "maximum — a fail rate above 100%",
+    keyword: "maximum",
+    pathContains: "measured_discrimination/fail_rate_pct",
+    mutate: (s) => { (entry0(s).measured_discrimination as Json).fail_rate_pct = 150; },
   },
   {
     name: "const — predicted_discrimination.measured is claimed true",

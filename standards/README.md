@@ -3,7 +3,11 @@
 A grammar for publishing **versioned, executable, category conformance standards** for product
 pages, and the first standard authored against it.
 
-**Nothing here is published. Nothing here has been applied to a real store.**
+**Nothing here is published.** The coffee standard **has** now been applied — offline, at $0, against
+recorded captures of 42 real roasters — and that measurement is what forced the corrections in
+[§ what the first measured standard taught the method](#what-the-first-measured-standard-taught-the-method).
+No standard has been applied by a second party, so `posture.independently_applied` is still `false`
+and this is still a rubric with a versioned changelog.
 
 ---
 
@@ -41,16 +45,17 @@ the reasoning in `standard.test.ts`.
 
 | artifact | what it is | state |
 |---|---|---|
-| [`SCHEMA.md`](SCHEMA.md) · [`schema.json`](schema.json) | **The grammar.** Human explanation and the validatable JSON Schema. | **Complete at v1.0**, revised once during authoring (§ below). |
+| [`SCHEMA.md`](SCHEMA.md) · [`schema.json`](schema.json) | **The grammar.** Human explanation and the validatable JSON Schema. | **v1.0, plus the v1.1 correction** the first measurement forced (`SCHEMA.md` §9). 1.0 documents stay valid. |
+| [`discrimination.ts`](discrimination.ts) | The measured-verdict lifecycle: Wilson intervals, the derived minimum n, and the cross-field rules a schema cannot express. | **New.** Pure, no dependencies. |
 | [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md) | What the engine can actually execute, derived from the code at commit `96ceacd`. | **Complete.** Includes a section on where the commissioning brief was wrong. |
-| [`ENGINE_GAPS.md`](ENGINE_GAPS.md) | 13 gaps: the specification for a future engine session. | **Complete and prioritised.** G-09 first. |
-| [`METHOD.md`](METHOD.md) | How a standard gets authored, so category three is a process. | **Complete.** Includes the category-selection rule. |
-| [`coffee/v1.0/`](coffee/v1.0/) | The first standard: 42 entries, 10 executable. | **Complete, validated, adversarially reviewed. Never measured.** |
+| [`ENGINE_GAPS.md`](ENGINE_GAPS.md) | 14 gaps: the specification for a future engine session. | **Complete and prioritised.** G-09 first; **G-14 is a campaign, not a session.** |
+| [`METHOD.md`](METHOD.md) | How a standard gets authored, so category three is a process. | **Corrected against the first measurement** — §5, §6 and §8.1a all replace rules that did not survive it. |
+| [`coffee/v1.0/`](coffee/v1.0/) | The first standard: 42 entries, 10 executable. | **Complete, validated, adversarially reviewed, and now MEASURED — which is what invalidated three of the method's rules.** Its own migration to grammar 1.1 is specified (`SCHEMA.md` §9.3) and deliberately not performed here. |
 | [`accessory/v0.1-draft/`](accessory/v0.1-draft/) | A **partial draft** on a structurally different category. | **Deliberately incomplete.** Authored only as a generalisation test. |
 | [`attack/`](attack/README.md) | **The attack templatizer.** Generates the review gate's hostile sentences from any vocabulary, deterministically, with a coverage report. | **Complete.** Covers 6 of 8 classes; §4 states exactly which 2 it cannot and why. |
 | [`acceptance/subject-tense/`](acceptance/subject-tense/README.md) | **The acceptance target** for the engine's subject and tense handling — the 37 hostile shapes no term list can close, plus 19 that must not regress. | **Complete as a target.** `hostile 4/37` at `e9ec942`, an observation, not an expectation. |
 | [`compile.ts`](compile.ts) · [`validate.ts`](validate.ts) · [`hash.ts`](hash.ts) · [`rehash.ts`](rehash.ts) | Compiler to engine requirements, schema validator, content hashing. | **Complete.** No new dependencies. |
-| [`__tests__/`](__tests__/) | 121 pure tests. | **Green.** |
+| [`__tests__/`](__tests__/) | 181 pure tests. | **Green.** |
 
 ---
 
@@ -60,7 +65,7 @@ the reasoning in `standard.test.ts`.
 |---|---|---|
 | executable | 10 | the engine runs it today, against public data |
 | blocked | 16 | should be executable; the engine cannot yet, each naming its gap |
-| not_discriminating | 5 | the engine *could* run it and deliberately does not |
+| not_discriminating | 5 | the engine *could* run it and deliberately does not. ⚠️ **All five were assigned on a PREDICTION, which grammar 1.1 forbids** — the re-derivation from measurement is specified in `SCHEMA.md` §9.3 and not performed here |
 | advisory | 11 | a real buyer question public data cannot adjudicate |
 
 **Ten of forty-two is the honest ratio, and the binding constraint is not the research** — 90
@@ -74,7 +79,57 @@ Read [`coffee/v1.0/STANDARD.md`](coffee/v1.0/STANDARD.md) for the entries and
 
 ---
 
-## The grammar was revised once, and that is the point
+## WHAT THE FIRST MEASURED STANDARD TAUGHT THE METHOD
+
+Read this before authoring anything. The coffee standard was applied to 43 in-category product
+records across 42 real roasters, with applicability enforced. **Three of the method's rules did not
+survive contact with that measurement**, and none of the three failures was visible from inside the
+document — every one needed real stores.
+
+**1. The method predicted, and the predictions were wrong in one direction.** Ten authored
+`predicted_discrimination` bands: **HELD 2 OF 10, with ALL EIGHT MISSES HIGH.** The author
+systematically over-estimated how much a category's stores publish. Four repair shapes were scored on
+the same ten entries and **none could be shown to carry information** — the best-looking one, a
+two-valued direction at 9 of 10, is statistically identical to always guessing "most will fail". So
+the band is gone at grammar 1.1, replaced by an optional direction and confidence that **may not
+determine anything**, kept only because it is the falsification target that made this measurable.
+
+**2. Tiers were assigned on that prediction, and it nearly deleted the standard's best entry.**
+`WEIGHT-001` was predicted 15–40%, measured **11.1% on nine products**, and flagged
+`not_discriminating` — published, not run, one reclassification from deletion. On a valid sample it
+measures **48.8%**. The error had no route back: an entry that is not run cannot produce the evidence
+that would reverse the decision to stop running it. Discrimination is now a **measured verdict** with
+`n`, a date and its sample, and **no verdict may be recorded below 22 adjudicated rows** — a floor
+derived from the 15–85% band rather than chosen, because below it *no observation that exists* can
+support the conclusion.
+
+**3. The error bound the project trusted was measured on somebody else's copy.** Same engine, same
+day, same audit discipline: a 172-store general sample gave **0 false positives in 506 audited pass
+rows, a 0.83% bound**. The 42-store coffee sample gave **3 in 69 rows, 13.68%**. All three coffee
+defects fire on copy only a coffee page writes — a brewing recipe read as a net weight, a caffeine
+dose per serving read as the product's mass, soil *rich in organic matter* read as an organic claim.
+**A general-sample bound is not an estimate of the error rate; it is an estimate of the error rate on
+copy that looks like the average of every category at once, which is copy no merchant writes.** A
+standard now cannot publish without a fitness measurement on its own category.
+
+And two smaller lessons that cost as much to learn:
+
+- **Applicability is a precondition, not a field.** Run over the first run's own snapshots, the gate
+  excluded **16 of 25 products** — roasters lead their catalogue with t-shirts and mugs. The shipped
+  predicate is stricter than the hand count that preceded it, because it *refuses what it cannot
+  classify* rather than guessing, and that is the correct default.
+- **Sampling defects survive being written down.** The run document announced that a duplicated brand
+  had been *"removed from every denominator"*. Recomputing from its own JSONL: it was removed from the
+  false-positive bound and **not** from the discrimination table. A correction stated in prose was
+  applied to one table and not the other, and only recomputation found it. (The corrected verdict rule
+  is unmoved by it — not one verdict changes — which is the best available argument for reading an
+  interval rather than a point.)
+
+The full record, with the arithmetic, is [`METHOD.md`](METHOD.md) §5 and §6.
+
+---
+
+## The grammar was revised once during authoring, and again after measuring
 
 The grammar shipped with three tiers and ten operators. Authoring found two things it could not say.
 
@@ -124,7 +179,7 @@ both versions would catch it. The `standard_hash` at least makes any content cha
 node --import tsx --test standards/__tests__/*.test.ts
 ```
 
-121 tests, **pure** — no database, no network, no server, no model calls. They prove:
+181 tests, **pure** — no database, no network, no server, no model calls. They prove:
 
 - the standards validate against the JSON Schema — and **the hand-written validator is itself proven**
   by 20 mutation fixtures, one per keyword the schema uses, each of which must fail for the right
@@ -153,7 +208,15 @@ node --import tsx --test standards/__tests__/*.test.ts
 - the **subject/tense acceptance suite** parses, stratifies per class, and its must-not-regress half
   is non-empty and **currently green**, so it is a live regression guard rather than only a target.
   Its most dangerous mutation — deleting the term list, which would score the hostile half 37/37 —
-  is caught before the runner produces a number.
+  is caught before the runner produces a number;
+- **the discrimination lifecycle**, which is the newest and least-trusted part: the Wilson bounds are
+  checked against the equation that *defines* them rather than against the closed form that produced
+  them; the minimum n of 22 is re-derived a third way, by exhaustive search, so the constant cannot
+  drift from the band it depends on; the rule's verdicts are asserted against the real run's own
+  counts; **and every one of the eighteen cross-field rules has a negative fixture that must provoke
+  it**, with a meta-test that fails when a rule is added without one. It has already caught two of
+  its own: a rule that permitted "measure once, retire, no attestation", and an interval tolerance
+  wider than the narrowest margin the rule decides on.
 
 Typecheck (the root config scopes to `src/`, so this directory needs its own):
 
@@ -187,10 +250,19 @@ node --import tsx standards/acceptance/subject-tense/run.ts
    a supplied contract, so no conformance result can currently be produced against a public URL.
    Every other gap is academic until this is closed. The authenticated path already accepts a pinned
    contract, so this is plumbing rather than design.
-2. **Measure the ten executable entries** against a sample of real coffee pages and publish the rates
-   with `n=`. Every band in the standard is a prediction flagged `measured: false`, and the plan is in
-   `GROUNDING.md` §6. Audit the passes by hand: this project's own history is that audits of 37 and 18
-   rows reported zero false positives and an audit of 100 rows then found two.
+2. ✅ **Measure the ten executable entries** — **DONE**, twice, and the second run is the one that
+   counts. It invalidated three of the method's rules; see the section above. What is left is the
+   **write-back**, which this session deliberately did not perform because another session owns those
+   files: record a `measured_discrimination` on each of the ten entries, re-derive the five
+   `not_discriminating` tiers from measurement instead of prediction, and migrate the document to
+   grammar 1.1 (`SCHEMA.md` §9.3). **The five retirements cannot simply be carried over** — under the
+   corrected rule not one of them is currently supportable, and one, `WEIGHT-001`, was measured as the
+   standard's most informative entry.
+2b. **Measure the coffee standard's category fitness and attach it**, so the document can ever leave
+   `draft`. The measurement exists — 69 pass rows, 3 confirmed false positives, 13.68% cluster-adjusted
+   — and it needs to be written into `category_fitness` in the shape the schema now requires, including
+   the method that produced each of the three bounds (the naive 11.23% is not reproducible from Wilson,
+   Clopper–Pearson, Wald or Agresti–Coull, and the closest match is Jeffreys at 11.15%).
 3. **Close the subject and tense gap**, against
    [`acceptance/subject-tense/`](acceptance/subject-tense/README.md) — `hostile 4/37` today. This is
    the binding constraint on every vocabulary in every category, not a coffee problem: narrowing a

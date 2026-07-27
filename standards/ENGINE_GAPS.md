@@ -13,6 +13,12 @@ Read alongside [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md), which is where the cu
 recorded. Line references are to commit `96ceacd` unless stated otherwise; the G-06 section was
 re-derived against `989b33d` and cites its own lines.
 
+> **G-14 is not like the others.** Every gap G-01 to G-13 is a capability the engine lacks. G-14 is a
+> **measurement** the engine has never had: the thirteen claim keys that run for every merchant today
+> have never been attacked systematically, and both defects known in them were found by accident. It
+> is written as a campaign specification rather than a session's work, and its trigger is explicit —
+> **it must run against the shipped engine, not a pinned worktree.**
+
 **Priority, if a future session can only do some.** **G-06's fail-closed fix first** — it is four
 lines and it closes a *live crash* on the engine's own import path (see G-06, "A live defect this gap
 already causes"). Then `G-09`, because without it no standard can be run against a public URL at all
@@ -939,3 +945,120 @@ with no API key and therefore cannot be measured by the offline acceptance gate 
 **Recommendation:** treat as a standing limitation. State it in the standard's own limits section,
 and prefer assertions whose true phrasing fits one sentence. This is a real constraint on what a
 standard should *contain*, not a to-do.
+
+---
+
+## G-14 — the thirteen built-in claim keys have never had the six-class treatment
+
+**This is not a capability gap. It is a MEASUREMENT gap, and it is the only one on this list that
+touches every merchant the product has.** [`VOCABULARY_REVIEW.md`](VOCABULARY_REVIEW.md) defines
+eight hostile classes and [`attack/`](attack/README.md) generates six of them from any vocabulary
+artifact. That machinery has been pointed at exactly one term list — the coffee `decaf-method`
+vocabulary, which **ships in no engine and runs for no merchant.** The thing that actually runs is
+`CLAIM_TERMS` at `src/server/productTest.ts:47`: **one dictionary, thirteen keys, 56 supporting terms
+and 13 violating terms**, none of which has ever been attacked systematically.
+
+> A note on nouns, because the two counts get conflated. There is **one** claim dictionary holding
+> **13 keys**. The "two hardcoded dictionaries" that bound how much of a category is executable
+> (G-06) are `CLAIM_TERMS` **and** `ATTRIBUTE_SPECS`. This gap is about the first one's contents.
+
+**The two defects known in that dictionary were both found by accident, not by review** — one while
+auditing something else, one while writing a worked example for a documentation section:
+
+| key | defect | status |
+|---|---|---|
+| `gluten_free` | `contains gluten` is a substring of `contains gluten-free`, and violating terms are checked first — so a store *stating* the claim was told its copy "states the opposite", quoting its own compliant sentence | **CLOSED.** Fixed by `findViolation`'s overlap rule (`src/server/testEvidence.ts:342-354`) and pinned green in `test/adversarialCorpus.test.ts` |
+| `cruelty_free` | `tested on animals` is **suffix-aligned** inside supporting `not tested on animals`, which the overlap rule does not reach. `"Tested on animals: never."` produces *"Your public copy states the opposite of this requirement"*, because `:` is a `CLAUSE_BOUNDARY` and the denial cannot reach back | **LIVE.** Recorded in `VOCABULARY_MECHANISM.md` and in G-06 above; **not pinned in the engine's own corpus** |
+
+⚠️ Do not conflate the two geometries, and do not describe `gluten_free` in the present tense. Its
+was *strictly inside*; `cruelty_free`'s is *suffix-aligned*, which is exactly why the first fix does
+not cover the second. And the same `cruelty_free` sentence stem has a *third* recorded outcome —
+`"Never tested on animals."` produces `not_proven`, a false **fail** — so one key errs in both
+directions at once.
+
+**The other eleven keys have had neither treatment.** That is the gap.
+
+### What the campaign is
+
+Express each built-in as a vocabulary artifact, generate the attack set, execute it, and produce a
+**defect inventory with reproducible minimal pairs** — the decaf review's shape, thirteen times.
+
+1. **Synthesise a `vocabulary.json` per key.** `CLAIM_TERMS` carries bare strings; the artifact
+   requires, per term, `grounding` (at least one citation), `positive_examples`, and — for every
+   violating term — `contradicting_examples` **and** `must_not_contradict_examples`. That last field
+   is the whole point and **cannot be derived**: it enumerates the ways a *compliant* store mentions
+   the substance, which is a claim about how merchants write, not about the term. A human writes it
+   or the pass is theatre.
+2. **Write the category contexts.** Only `attack/contexts/coffee.json` exists. Class 2
+   (adjacent-domain collisions) contributes almost nothing without one, and the templatizer reports
+   those cells as `requires_category_context` rather than as clean — which is correct, and which
+   means a run without contexts reports mostly "not tested". Five more are needed: personal care,
+   supplements, food, drinkware and containers, and general DTC.
+3. **Generate.** Thirteen CLI invocations. Effectively free.
+4. **Adjudicate.** Roughly 1,500 sentences at the default per-cell cap, ~3,700 uncapped. **This is
+   the entire cost**, and METHOD.md §4.2's conclusion applies harder here than it did for one
+   vocabulary: generation stops being the expensive step and reading becomes it.
+5. **Refute independently, then inventory.** Each confirmed defect gets a minimal pair — the sentence
+   that misfires and the smallest edit that stops it — because a defect without a minimal pair cannot
+   be told apart from the guard someone will write for it. This is the move that turned one of this
+   project's own findings from "the change caused it" into "the change only altered which strings
+   reach the pre-existing leak".
+
+### Shape hazards already visible by inspection — starting hypotheses, not results
+
+- **`organic` is one bare word** and `wholeWord` only blocks `inorganic`. It does not block another
+  domain's noun phrase: *"lined with organic cotton"*, *"organic silhouette"*, and the measured
+  production case *"the farm's volcanic soils are rich in organic matter"*.
+- **`third_party_tested` has `lab tested` in its SUPPORT list.** *"Lab tested for potency in our own
+  facility."* satisfies a **third-party** requirement with an in-house lab. The highest-value
+  letter-versus-spirit hazard in the set, and it is inside the dictionary rather than outside it.
+- **Nine violating terms are unframed states rather than disclosure frames**: `tested on animals`,
+  `contains gluten`, `contains wheat`, `with aluminum`, `aluminum-based`, `added fragrance`,
+  `contains parabens`, `contains sulfates`, `contains bpa`. *"Unlike sticks made with aluminum, ours
+  is a salt."* and *"We replaced our aluminum-based formula in 2022."* both report a contradiction.
+  The schema already records this lesson for authored vocabularies — *frame the violating term* — and
+  it was never carried back to the built-ins.
+- **Orthography is internally inconsistent.** `aluminum_free` covers `aluminium`; `sulfate_free` does
+  not cover `sulphate`. `third_party_tested` lacks the fully-hyphenated `third-party-tested`.
+- **Four of thirteen keys are unreachable by category routing at all** — `cruelty_free`, `vegan`,
+  `sulfate_free`, `fair_trade` — reachable only through the tag fallback, which uses a plain
+  substring test with **no `wholeWord`**, unlike evaluation. A tag `vegan leather` can route the
+  `vegan` claim onto a wallet. And **`sulfate_free` is dead in the one category it exists for**: the
+  shampoo regex routes to `fragrance_free` and `paraben_free`.
+- **`ENGINE_CONTRACT.md` publishes the 13 keys with their SUPPORTING terms only.** The violating
+  lists — the half that can print *"your copy states the opposite"* — are absent from the contract
+  entirely. Fix that first; it is an hour, and it is a prerequisite for anyone reviewing the rest.
+
+### THE TRIGGER, AND WHY IT IS NOT NEGOTIABLE
+
+> **This must run against the SHIPPED engine, not against a pinned worktree.** The matchers are being
+> changed right now; an inventory measured against stale code is worthless in the expensive
+> direction, because it reports defects that are already closed and misses the ones just introduced.
+> Wait for the engine to be quiet, pin the commit, record it in the inventory, and **re-execute every
+> claim mechanically against that commit** rather than trusting an agent's verdict. This project has
+> twice had an adversarial pass whose verdicts had to be demoted to candidates because `src/` changed
+> underneath it, and once had a pass report zero regressions where there were nine.
+
+### The expected yield, stated honestly enough to decide against
+
+- **Roughly 1,500 sentences to read** at the default cap; 3,700 uncapped, of which 62% are dropped by
+  the per-cell cap. A cell showing three attacks is not a cell with three available, and a coverage
+  report that does not say so reads as completeness.
+- **About 170 of them are structurally malformed at source.** The nine `contains X` / `with X`
+  violating terms are finite-verb phrases, and every template routing through a noun-phrase transform
+  produces ungrammatical copy from them — *"Our product is free of contains gluten."* Those are
+  coverage-count inflation, not attacks. **This is itself the campaign's highest-value early finding
+  and it is a generator defect**: the templatizer has no shape case for a finite-verb violating term.
+- **The `violation` class — the one that produces the unrecoverable error — is the SMALLEST class in
+  the set**: about 39 sentences across all thirteen keys, and it exercises nothing at all for the
+  four keys with no violating terms.
+- **The last full adversarial pass left 75 residual defects already live in production, and that pass
+  resolved `INCOMPLETE`** — so 75 is a floor of unknown depth, not a count, and its own bucket
+  arithmetic leaves 26 of 123 claims unlabelled. This campaign adds to a pile the project cannot
+  currently clear. **An inventory is a specification for a campaign, not a session's deliverable**,
+  and it should be sized and scheduled as one.
+- **It buys no independence.** A generated attack set is still the author's own set. The decaf review
+  verified 21 narrowings by re-running the attacker's own sentences — which felt independent and was
+  not — and an independent refuter then found a false claim in the committed review record: a class
+  reported as 5 of 5 closed was 13 of 13 still failing. Generating 1,500 sentences changes the cost
+  of coverage and changes nothing about that.

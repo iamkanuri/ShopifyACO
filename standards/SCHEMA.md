@@ -1,7 +1,13 @@
-# THE AISLELENS STANDARD GRAMMAR — v1.0
+# THE AISLELENS STANDARD GRAMMAR — v1.0, and the v1.1 correction (§9)
 
 The machine-readable authority is [`schema.json`](schema.json). This document explains what each
 field is *for*, and states the four rules a schema cannot express.
+
+> **§9 is the part to read first if you are authoring a new standard.** The grammar was revised after
+> the first standard was ever measured against real stores, and three of its rules did not survive
+> that measurement: tiers were being assigned from a prediction that held 2 of 10, verdicts were
+> being recorded on nine products, and nothing stopped a standard publishing an error bound measured
+> on somebody else's category. 1.0 documents remain valid and readable as 1.0.
 
 **The grammar is the asset, not any individual standard.** A second category should be a script run
 plus a review pass. If authoring category three still feels like invention, the grammar is wrong and
@@ -32,7 +38,7 @@ block a merchant's entire report (§6), so it is enforced mechanically as well a
 
 | field | purpose |
 |---|---|
-| `grammar_version` | Which grammar the standard is authored against. A standard is only readable against a stated grammar version; `1.0` is the only value. |
+| `grammar_version` | Which grammar the standard is authored against. A standard is only readable against a stated grammar version. `1.0` and `1.1`; **§9** is the difference and why it exists. |
 | `standard_id` | `ALS-{CATEGORY}`. Stable forever. Never reused for a different category. |
 | `version` | `MAJOR.MINOR`. A MAJOR bump means a result under the old version is **not comparable** to one under the new — the same discipline as the engine's `contractVersion` (`src/server/productTest.ts:858`), and for the same reason: a before/after comparison is only evidence if both runs asked the same question. |
 | `status` | `draft` \| `published` \| `withdrawn`. `draft` means *authored, never applied to a real store by anyone*. |
@@ -136,9 +142,14 @@ patched, because tightening `standard_id` is a breaking change for a cosmetic ga
   about what gets run.
 - `blocked` — *should* be executable; the engine cannot yet. Requires `blocked_by` referencing
   `ENGINE_GAPS.md`.
-- `not_discriminating` — the engine **could** run it and deliberately does not, because the
-  predicted failure rate falls outside the 15–85% band and the row would carry no information.
-  Published so a reader can see the question was considered rather than missed. No `binding`.
+- `not_discriminating` — the engine **could** run it and deliberately does not, because the failure
+  rate falls outside the 15–85% band and the row would carry no information. Published so a reader
+  can see the question was considered rather than missed. No `binding`.
+
+  > ⚠️ **At grammar 1.0 this tier is assigned from a PREDICTION, and that was measured wrong.** At
+  > **1.1 it requires a `measured_discrimination` whose verdict is `not_discriminating`** — the
+  > schema rejects the tier without one, so the most confident prediction an author can write cannot
+  > retire an entry. §9, and [`METHOD.md`](METHOD.md) §5.
 
 > **Why the fourth tier exists — a grammar change made during authoring, and the most useful thing
 > the coffee standard taught the grammar.** The original three tiers conflated *the engine cannot
@@ -157,6 +168,15 @@ patched, because tightening `standard_id` is a breaking change for a cosmetic ga
 > It is guarded against becoming a dumping ground: the test suite requires a
 > `not_discriminating` entry's predicted band to genuinely fall outside 15–85%. **If it
 > discriminates, run it.**
+>
+> ⚠️ **That guard was not enough, and the measurement said so.** It checks the band against itself,
+> so it can only catch an author who contradicts their own prediction — never an author whose
+> prediction is simply wrong. `WEIGHT-001` predicted 15–40%, measured 11.1% on nine products, and
+> passed this guard on its way to being flagged `not_discriminating`. It measures 48.8% on a valid
+> sample. **At grammar 1.1 the guard is replaced by a measurement**: the tier requires a
+> `measured_discrimination` verdict, so the price question stays `executable` and *runs* until data
+> retires it. The fourth tier's reason for existing is unchanged and correct; what changed is who is
+> allowed to put an entry into it. §9.
 
 The ratio matters and should not be flattered. Most real buyer questions cannot be adjudicated from
 public data, and saying so plainly is more credible than pretending otherwise.
@@ -218,16 +238,28 @@ change is a false statement.
 
 ### The honesty fields
 
-**`predicted_discrimination`** — a **band with reasoning, flagged as an untested hypothesis**
-(`measured` is `const: false`). Target band 15–85%.
+**`predicted_discrimination`** *(grammar 1.0)* / **`discrimination_prediction`** *(grammar 1.1)* —
+what the author expects, before measuring. Target band 15–85%.
 
-The engine's own measurements are why this is a required field: a defaulted `cruelty_free` claim
-failed **13/13 = 100%** and carried zero information; `price_under` fails **0/13 = 0%** and carries
-zero information; `delivery` fails **71%** and is near-optimal (`src/server/productTest.ts:87-89`,
-`:1017`). The `cruelty_free` row was *not false* — the store genuinely did not state the attribute.
-It was **irrelevant, identical across unrelated merchants, and enough to make a specific diagnosis
-read like a template**. A fifty-question standard applied uniformly is that failure with a version
-number on it, and `applicability` is what prevents it.
+The engine's own measurements are why a discrimination field exists at all: a defaulted
+`cruelty_free` claim failed **13/13 = 100%** and carried zero information; `price_under` fails
+**0/13 = 0%** and carries zero information; `delivery` fails **71%** and is near-optimal
+(`src/server/productTest.ts:87-89`, `:1017`). The `cruelty_free` row was *not false* — the store
+genuinely did not state the attribute. It was **irrelevant, identical across unrelated merchants,
+and enough to make a specific diagnosis read like a template**. A fifty-question standard applied
+uniformly is that failure with a version number on it, and `applicability` is what prevents it.
+
+> ⚠️ **THE 1.0 FORM OF THIS FIELD WAS MEASURED AND IT WAS WRONG.** Ten authored bands, tested on 43
+> in-category coffee records: **HELD 2 OF 10, with ALL EIGHT MISSES HIGH.** At 1.1 the band is gone
+> and the field is a direction, a confidence and the reasoning — optional, and forbidden from
+> determining a tier. §9.1, and [`METHOD.md`](METHOD.md) §5.1 for the four alternative shapes that
+> were scored and why none of them could be shown to be better.
+
+**`measured_discrimination`** — the verdict, **with `n`, a date and the sample it came from**.
+Optional at both grammar versions, so a 1.0 standard can record a measurement without being
+rewritten. Absent means *unmeasured*, which is not the same as *measured and fine*. A verdict may
+not be recorded below **22 adjudicated rows** — a floor derived from the target band, not chosen —
+and the schema enforces it. §9.2.
 
 **`pass_means`** — what a conformant result licenses a reader to conclude, and what it does not.
 Required for `executable`. This is the field that stops *"verified against
@@ -305,7 +337,18 @@ Two `change_type` values weaken an assertion, and they are treated identically b
 on a merchant who failed is identical:
 
 - **`weakened`** — the same store copy that failed before now passes.
-- **`demoted`** — `executable` → `advisory` or `blocked`. The row stops being tested at all.
+- **`demoted`** — `executable` → `advisory`, `blocked`, **or `not_discriminating`**. The row stops
+  being tested at all.
+
+  > ⚠️ **`not_discriminating` was missing from this list, and that was a hole.** The tier was added
+  > to the grammar after §5 was written, and its effect on a merchant who failed the row is
+  > *identical* to a demotion to advisory: the row stops being tested. So until now, retiring an
+  > entry was the one way to stop testing it **without** triggering an attestation — the cheapest
+  > exit from a standard, and the one an aggrieved-merchant scenario would reach for. It now costs
+  > the same as every other exit. See [`METHOD.md`](METHOD.md) §5.4 for the argument, including why
+  > a *measured* retirement is still a weakening: a merchant who fails an entry and then watches it
+  > disappear cannot distinguish "the measurement said it carried no information" from "someone
+  > complained", and that indistinguishability is the whole damage this rule exists to prevent.
 
 For comparison, **`strengthened`** (copy that passed before now fails) is always safe to ship, needs
 no attestation, and is the direction a maturing standard should mostly move.
@@ -411,3 +454,78 @@ refute**: which questions are actually asked by shoppers versus invented by the 
   generates the sentence. The engine has a separate, four-way-gated write path for that, and
   merging the two would let a standard author cause a store mutation.
 - **No `certified` / `compliant` vocabulary**, per §0.
+
+---
+
+## 9. GRAMMAR 1.1 — the revision the first measurement forced
+
+`grammar_version` is now `"1.0" | "1.1"`. A 1.0 document validates exactly as it always did, because
+a reader of a published standard must be able to resolve it against the rules it was authored under.
+Everything below is the difference, and every item exists because a specific number invalidated a
+specific rule. The measurement record is [`METHOD.md`](METHOD.md) §5 and §6.
+
+| | 1.0 | **1.1** |
+|---|---|---|
+| the prediction | `predicted_discrimination` — **required**, a numeric band, `in_target_band`, `measured: false` | `discrimination_prediction` — **optional**, a direction and a confidence, **no number** |
+| what assigns `tier: not_discriminating` | the author's prediction | **a `measured_discrimination` whose verdict is `not_discriminating`.** The schema rejects the tier without one |
+| the measurement | *(nothing)* | `measured_discrimination` — also permitted at 1.0, so a 1.0 standard can record what it measured without being rewritten |
+| publishing | `status: "published"` needs nothing | `status: "published"` requires `category_fitness` — at **both** versions |
+
+### 9.1 `discrimination_prediction` — a field that is deliberately unranked
+
+Three properties, all executed by `standards/__tests__/discrimination.test.ts` rather than asserted
+here:
+
+1. **It carries no number.** Its properties are exactly `direction`, `confidence`, `reasoning`,
+   `notes`, and a test fails the build if any of them becomes numeric. A band authored wide enough
+   to always hold carries no information, which is the failure the band was supposed to detect.
+2. **It cannot determine anything.** Setting the most extreme direction at the highest confidence
+   changes no validation outcome, which the suite checks across all twelve combinations.
+3. **Its own `description` in `schema.json` states the measured bias** — bands have held 2 of 10
+   with every miss high — so an author filling the field in cannot avoid reading how the last author
+   did. A test asserts that text is present.
+
+`no_prediction` is a first-class value. **The field is kept rather than dropped for exactly one
+reason:** the calibration that condemned its predecessor is computable only because the predictions
+were preserved beside the measured rates. A field nobody records cannot be shown to be wrong.
+
+### 9.2 `measured_discrimination` — and the minimum n, which is derived
+
+The full argument is [`METHOD.md`](METHOD.md) §5.2. The schema's part of it:
+
+- **`n_adjudicated` has `"minimum": 22`.** Below 22 adjudicated rows no observation whatsoever — not
+  0 of n, not n of n — can place a 95% Wilson interval outside the 15–85% band, because
+  `n > z²(1−b)/b = 21.77`. A verdict there is arithmetically incapable of supporting itself, so this
+  is a schema constraint and not a guideline. `standards/discrimination.ts` recomputes the floor from
+  the band rather than hard-coding it, and the test suite re-derives it a *third* way, by exhaustive
+  search, so the constant cannot drift away from the band it depends on.
+- **The verdict is one of three**, because `src/measure/completion.ts` has three for the same reason:
+  `indeterminate` means the measurement ran and decided nothing, and it must never read as either
+  decision. On the first valid run it is the verdict for five of ten entries.
+- **The interval and the rate are recomputed by the test suite** from `fail_count` / `n_adjudicated`,
+  to a tolerance tighter than the Wald–Wilson gap. A published interval nobody recomputes is a
+  number, not evidence.
+- **`instrument_bias` is required for a retirement.** An interval bounds sampling error only; a
+  declared one-directional bias pointing at the cleared band edge must be quantified and smaller than
+  the margin, and an *unquantified* one blocks the retirement outright.
+- **`supersedes` is append-only.** A superseded measurement stays in the document, because the
+  disagreement is itself the finding, and `larger_sample` is rejected as the explanation for two
+  intervals that do not overlap.
+
+### 9.3 What a 1.0 standard has to do to become a 1.1 standard
+
+Not performed here — specified, so the session that owns those files can do it deliberately:
+
+1. Run every `executable` entry against a category sample and record a `measured_discrimination`.
+   This is legal at grammar 1.0 and needs no other change.
+2. Re-derive every `not_discriminating` tier from its measurement. An entry whose verdict is
+   `discriminating` or `indeterminate` **goes back to `executable`** — that is a `strengthened`
+   change and needs no attestation. An entry that has no measurement at all cannot stay
+   `not_discriminating` at 1.1.
+3. Replace each `predicted_discrimination` with a `discrimination_prediction`, **preserving the
+   reasoning text and discarding the band**. Do not translate the band into a direction: the band was
+   the part that was wrong, and a direction derived from it inherits the error.
+4. Set `grammar_version` to `"1.1"`, bump the standard's own `version`, and write the changelog —
+   including a `demoted` change with a `weakening_attestation` for any entry that is being retired.
+5. Rehash (`node --import tsx standards/rehash.ts --write`).
+

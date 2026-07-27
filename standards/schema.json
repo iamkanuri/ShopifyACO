@@ -21,8 +21,8 @@
   ],
   "properties": {
     "grammar_version": {
-      "const": "1.0",
-      "description": "The version of THIS grammar the standard is authored against. A standard is only readable against a stated grammar version."
+      "enum": ["1.0", "1.1"],
+      "description": "The version of THIS grammar the standard is authored against. A standard is only readable against a stated grammar version.\n\n1.0 assigns the `not_discriminating` tier from an AUTHORED PREDICTION. That was measured wrong: on the first valid sample (43 coffee brands) the predicted bands held 2 of 10 and all 8 misses were high, and one entry flagged `not_discriminating` at n=9 measured 48.8% at n=43 — informative, and one reclassification away from deletion. 1.1 is the correction: the prediction loses its number and may not determine a tier, and `not_discriminating` is reachable only through a recorded `measured_discrimination`. 1.0 documents remain valid and readable against 1.0; see SCHEMA.md §9."
     },
     "standard_id": {
       "type": "string",
@@ -117,12 +117,96 @@
         "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
+    "category_fitness": {
+      "$ref": "#/$defs/categoryFitness",
+      "description": "THE PUBLICATION GATE. Required when status is `published`. See $defs/categoryFitness."
+    },
     "entries": {
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/entry" }
     }
   },
+  "allOf": [
+    {
+      "description": "CP3 — A STANDARD MAY NOT PUBLISH WITHOUT A FITNESS MEASUREMENT ON ITS OWN CATEGORY. Measured the same day, by the same engine, with the same audit discipline: a 172-store general DTC sample produced 506 audited pass rows, 0 confirmed false positives and a 0.83% cluster-adjusted bound; a 42-store COFFEE sample produced 69 pass rows, 3 confirmed false positives and 13.68%. All three coffee defects fire on copy only a coffee page writes — a brewing recipe read as a net weight, a caffeine dose per 6oz serving read as the product's mass, soil described as rich in organic matter read as an organic claim. (The source records say `two of the three` and then list three; that discrepancy is unresolved in the record and does not affect the 16x ratio.) A general-sample bound estimates the error rate on copy that looks like the average of every category at once, which is copy no merchant writes. The number that matters to a coffee roaster is 13.68%.",
+      "if": { "properties": { "status": { "const": "published" } }, "required": ["status"] },
+      "then": {
+        "required": ["category_fitness"],
+        "properties": {
+          "category_fitness": {
+            "properties": {
+              "completion_state": {
+                "enum": ["VERIFIED_CLEAN", "DEFECTS_FOUND"],
+                "description": "INCOMPLETE blocks publication. A measurement that did not complete is not a passing measurement."
+              },
+              "audit": {
+                "properties": {
+                  "row_by_row": { "const": true },
+                  "untruncated_evidence": { "const": true },
+                  "borderline_recorded": { "const": true }
+                },
+                "required": ["row_by_row", "untruncated_evidence", "borderline_recorded"]
+              },
+              "sample": {
+                "required": ["category_standard_id"],
+                "properties": {
+                  "category_scope": { "const": "this_category" },
+                  "deduplicated_by_brand": { "const": true },
+                  "applicability_gate_enforced": { "const": true }
+                },
+                "not": {
+                  "properties": { "selection": { "const": "first_handle" } },
+                  "required": ["selection"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Grammar 1.0 entry rules: the numeric prediction band is required, and the reshaped 1.1 prediction may not appear.",
+      "if": { "properties": { "grammar_version": { "const": "1.0" } }, "required": ["grammar_version"] },
+      "then": {
+        "properties": {
+          "entries": {
+            "items": {
+              "required": ["predicted_discrimination"],
+              "not": { "required": ["discrimination_prediction"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Grammar 1.1 entry rules — CP1 and CP2. The numeric band is gone; `not_discriminating` is a MEASURED VERDICT and cannot be reached from a prediction.",
+      "if": { "properties": { "grammar_version": { "const": "1.1" } }, "required": ["grammar_version"] },
+      "then": {
+        "properties": {
+          "entries": {
+            "items": {
+              "not": { "required": ["predicted_discrimination"] },
+              "allOf": [
+                {
+                  "if": { "properties": { "tier": { "const": "not_discriminating" } }, "required": ["tier"] },
+                  "then": {
+                    "required": ["measured_discrimination"],
+                    "properties": {
+                      "measured_discrimination": {
+                        "properties": { "verdict": { "const": "not_discriminating" } },
+                        "required": ["verdict"]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "reqKind": {
       "type": "string",
@@ -333,17 +417,302 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["predicted_fail_rate_band", "reasoning", "measured"],
-      "description": "A HYPOTHESIS about how well the assertion discriminates, never a fact. Target band 15-85%: a requirement that fails for everyone and one that fails for no one carry the same information, which is none.",
+      "description": "GRAMMAR 1.0 ONLY, AND MEASURED WRONG. A HYPOTHESIS about how well the assertion discriminates, never a fact. Target band 15-85%: a requirement that fails for everyone and one that fails for no one carry the same information, which is none.\n\n⚠️ THE MEASURED CALIBRATION OF THIS FIELD. On the first valid sample — 43 coffee brands, applicability enforced, brands deduplicated — the ten authored bands HELD 2 OF 10, and ALL EIGHT MISSES WERE HIGH. The author systematically over-estimated how much a category's stores publish, and there is no evidence a different author in a different category would not. A field wrong 80% of the time in a known direction is worse than no field, because it looks like information. Grammar 1.1 replaces it with `discrimination_prediction`, which carries a direction and a confidence and no number.\n\n⚠️ NEVER OVERWRITE A PREDICTION WITH ITS MEASUREMENT. The calibration above is computable only because the predictions were preserved beside the measured rates. A measured rate goes in `measured_discrimination`; this block keeps saying what was predicted, and `measured` stays false forever — it means `this band is a hypothesis`, not `this entry has never been run`.",
       "properties": {
         "predicted_fail_rate_band": {
           "type": "string",
           "pattern": "^[0-9]{1,3}-[0-9]{1,3}%$"
         },
-        "in_target_band": { "type": "boolean" },
+        "in_target_band": {
+          "type": "boolean",
+          "description": "⚠️ THE FIELD THAT DROVE TIER ASSIGNMENT, AND THE REASON GRAMMAR 1.1 EXISTS. A false value here made an entry `not_discriminating` — published and never run — on the strength of a guess. WEIGHT-001 was predicted 15-40%, measured 11.1% at n=9, flagged accordingly, and measured 48.8% at n=43. Removed in grammar 1.1."
+        },
         "reasoning": { "type": "string", "minLength": 40 },
         "measured": {
           "const": false,
-          "description": "Always false in v1.0. This standard has never been run against a sample of real stores. A true value requires a recorded measurement and a changelog entry."
+          "description": "Always false. A prediction is a prediction permanently; measured rates live in `measured_discrimination`, which may be added to a grammar-1.0 entry without touching this block."
+        }
+      }
+    },
+    "discriminationPrediction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direction", "confidence", "reasoning"],
+      "description": "GRAMMAR 1.1. The reshaped prediction: a DIRECTION and a CONFIDENCE, which is all an author who has not measured can honestly supply, plus the reasoning, which is the only part of the old field that ever carried value.\n\n⚠️ THE BIAS AN AUTHOR MUST READ BEFORE FILLING THIS IN. Bands authored without measurement have held 2 of 10, WITH EVERY MISS HIGH — the author expected stores to publish more than they do. Scored on the same ten entries, a three-valued direction would have been right 5 of 10 (95% CI 24-76%, which at ten entries is not distinguishable from a coin). So this field is OPTIONAL and it is UNRANKED: it may not determine `tier`, it may not determine a `measured_discrimination.verdict`, and no test may read it. It exists to record the author's reasoning so a later measurement can falsify it, and for no other purpose.\n\nDeliberately carries NO number. A band authored wide enough to always hold carries no information, which is the failure it was supposed to detect.",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": ["expect_most_to_fail", "expect_most_to_pass", "expect_a_split", "no_prediction"],
+          "description": "`no_prediction` is a first-class and often correct value. An author with no grounded expectation should say so rather than manufacture one."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "`high` requires the reasoning to cite something measured, not something assumed."
+        },
+        "reasoning": { "type": "string", "minLength": 40 },
+        "notes": { "type": "string" }
+      }
+    },
+    "sampleProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_id",
+        "category_scope",
+        "stores",
+        "selection",
+        "deduplicated_by_brand",
+        "applicability_gate_enforced",
+        "captured_on"
+      ],
+      "description": "How a sample was drawn. Every field here exists because its absence produced a wrong number in a real run.",
+      "properties": {
+        "sample_id": { "type": "string", "minLength": 3 },
+        "category_scope": {
+          "type": "string",
+          "enum": ["this_category", "general_mixed_category"],
+          "description": "THE CP3 GATE. `general_mixed_category` may never back a published error bound: the same engine on the same day measured 0.83% over 506 general-sample pass rows and 13.68% over 69 coffee pass rows, because category vocabulary produces category-specific false passes a broad sample structurally cannot contain."
+        },
+        "category_standard_id": {
+          "type": "string",
+          "pattern": "^ALS-[A-Z][A-Z0-9]*(-[A-Z0-9]+)*$",
+          "description": "Required when category_scope is `this_category`, and the test suite additionally asserts it equals the document's own standard_id — a cross-field check JSON Schema cannot express."
+        },
+        "stores": { "type": "integer", "minimum": 1 },
+        "products": { "type": "integer", "minimum": 1 },
+        "selection": {
+          "type": "string",
+          "enum": ["first_applicable_product", "random_applicable_product", "all_applicable_products", "first_handle", "other"],
+          "description": "⚠️ `first_handle` IS A KNOWN-DEFECTIVE SELECTION and the publication gate rejects it. Roasters lead their catalogue with merchandise: taking each store's first product handle captured t-shirts, mugs, a tote bag and a cocktail shaker, and 16 of 25 of the first run's products should never have been asked at all."
+        },
+        "deduplicated_by_brand": {
+          "type": "boolean",
+          "description": "⚠️ MUST BE TRUE TO PUBLISH. `deathwishcoffee.com` and `www.deathwishcoffee.com` are one brand; they produced the same product and therefore the same false positive twice, and inflated the denominator. Inflating a denominator flatters a bound."
+        },
+        "applicability_gate_enforced": {
+          "type": "boolean",
+          "description": "⚠️ MUST BE TRUE TO PUBLISH. Applicability is a precondition, not a field. Run against run 1's own snapshots the shipped predicate excluded 16 of 25 products; a standard applied uniformly is the cruelty_free failure with a version number on it."
+        },
+        "unclassifiable_refused": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Products the applicability predicate could not classify and therefore REFUSED. `unknown` is not the same as out-of-category and must not be silently treated as in-category: the shipped predicate is stricter than the hand count that preceded it precisely because it refuses what it cannot classify."
+        },
+        "excluded_out_of_category": { "type": "integer", "minimum": 0 },
+        "attrition_logged": {
+          "type": "boolean",
+          "description": "Whether every attempted target that produced no product was logged with a cause. A sample whose attrition is unlogged cannot be shown to be unbiased."
+        },
+        "captured_on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "notes": { "type": "string" }
+      }
+    },
+    "discriminationMeasurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "n_asked",
+        "n_adjudicated",
+        "fail_count",
+        "fail_rate_pct",
+        "interval_95",
+        "decision_rule",
+        "measured_on",
+        "sample"
+      ],
+      "description": "CP1 — A DISCRIMINATION VERDICT IS A MEASUREMENT, NOT AN AUTHORING GUESS. An entry that compiles and executes is `executable` and stays executable until a record of this shape says otherwise.\n\nMINIMUM n IS ENFORCED HERE AND IT IS DERIVED, NOT CHOSEN. Below 22 adjudicated rows no observation whatsoever — not even 0/n or n/n, the two most extreme results obtainable — can place a 95% Wilson interval entirely outside the 15-85% target band. Formally n > z²(1-b)/b with z=1.96 and b=0.15 gives 21.77, so 22. A verdict recorded below that is arithmetically incapable of supporting the conclusion it states, which is why the floor is a schema `minimum` and not a guideline. Derivation and worked table: SCHEMA.md §9.2.\n\nMINIMUM n IS NECESSARY AND NOT SUFFICIENT, and the evidence for that is documentary rather than statistical. WEIGHT-001 measured 1 of 9 (Wilson 2.0-43.5%) and then 21 of 43 (48.8%, Wilson 34.6-63.2%). The later POINT ESTIMATE falls outside the earlier interval — but the two intervals OVERLAP, and Fisher's exact test on the pair gives p=0.062, so the disagreement is NOT established as beyond sampling error and nothing here claims it is. What IS established is separate and stronger: re-running the applicability predicate over run 1's own snapshots excluded 16 of its 25 products as merchandise, so run 1's sample was invalid on its own terms. A verdict can be defeated by a bad sample at any n, which is what `sample` exists to record.",
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["discriminating", "not_discriminating", "indeterminate"],
+          "description": "`discriminating` = the whole 95% interval lies inside the target band. `not_discriminating` = the whole interval lies outside it; the entry may be retired. `indeterminate` = the interval straddles a band edge: the measurement RAN, is recorded, and decides nothing — the entry stays executable and keeps running. Three states rather than two, for the same reason src/measure/completion.ts has three: a measurement that could not decide must never read as one that decided. On run 2 this is the verdict for six of ten entries, including GRIND-002 at 87.8%, which STANDARD_RUN_2 itself calls a marginal call a third run could move back."
+        },
+        "n_asked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows the entry was asked of, including those the engine could not adjudicate. REQUIRED, because the gap between asked and adjudicated is the record's only visible handle on missingness and it is not ignorable: DELIV-001's 11 unadjudicated rows are 25.6% of what it was asked, and the three readings of that entry (drop them, count them as fails, count them as passes) give 59.4%, 69.8% and 44.2%. Publishing only the adjudicated count hides which reading was taken."
+        },
+        "n_adjudicated": {
+          "type": "integer",
+          "minimum": 22,
+          "description": "Rows the engine actually decided. THE RATE AND THE INTERVAL ARE COMPUTED OVER THIS, NEVER OVER n_asked: `requires_store_access` is not a fail, and counting it as one silently changes the answer — DELIV-001 is 59.4% over 32 adjudicated rows and 44.2% over 43 asked."
+        },
+        "fail_count": { "type": "integer", "minimum": 0 },
+        "fail_rate_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "interval_95": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lower_pct", "upper_pct"],
+          "description": "Wilson score interval, recomputed and checked against fail_count/n_adjudicated by the test suite — a published interval nobody recomputes is a number, not evidence.",
+          "properties": {
+            "lower_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "upper_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "target_band": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lower_pct", "upper_pct"],
+          "description": "The band the interval is compared against. PINNED to the grammar's 15-85%, and stated in the record so a reader can recompute the floor rather than trust it.\n\n⚠️ IT IS A `const` AND NOT A FREE NUMBER FOR A MEASURED REASON. `n_adjudicated.minimum` is hard-coded to 22, which is the floor DERIVED FROM THIS BAND: n > z²(1-b)/b. The floor moves steeply with the edge — 73 at 5%, 35 at 10%, 22 at 15%, 16 at 20%, 12 at 25% — so a record free to declare a 10-90% band would pass the schema at n=22 while its own derived floor was 35. That is precisely the 'quietly weakened the rule' failure this floor exists to prevent, reintroduced by the field meant to make it auditable. Changing the band is a GRAMMAR change, and it recomputes the minimum.",
+          "properties": {
+            "lower_pct": { "const": 15 },
+            "upper_pct": { "const": 85 }
+          }
+        },
+        "decision_rule": {
+          "type": "string",
+          "const": "wilson95_vs_target_band",
+          "description": "The only rule this grammar defines. Naming it in the record means a later change of rule is visible rather than silent."
+        },
+        "measured_on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "sample": { "$ref": "#/$defs/sampleProvenance" },
+        "instrument_bias": {
+          "type": "array",
+          "description": "R3 — THE INSTRUMENT GATE. A confidence interval bounds SAMPLING error and nothing else; it does not cover a known one-directional bias in the engine doing the measuring. Required (possibly empty, which is itself a claim) whenever the verdict is `not_discriminating`, because that is the only verdict that deletes something.\n\nThe measurement that forced it: the one entry run 2's arithmetic permits retiring, CERT-002, clears the band edge by 2.94pp — and it is a CLAIM row, measured with the semantic tier off, which can only overstate a claim row's fail rate. One row reclassified from fail to pass takes it to 41 of 43 and refuses. On an instrument with a measured 4.35% false-pass rate over 69 rows, a retirement decided by a 2.94pp margin is decided by the instrument rather than by the stores. Under R3, run 2 licenses ZERO retirements.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "direction"],
+            "properties": {
+              "source": { "type": "string", "minLength": 10 },
+              "direction": {
+                "type": "string",
+                "enum": ["inflates_fail_rate", "deflates_fail_rate", "unknown"],
+                "description": "Which way the bias moves the measured rate. Only a bias pushing TOWARD the band edge the interval cleared can have manufactured the retirement."
+              },
+              "magnitude_pp": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Omit when the bias is real but unquantified. An unquantified bias toward the cleared edge BLOCKS retirement outright: it cannot be shown to be smaller than the margin."
+              }
+            }
+          }
+        },
+        "supersedes": {
+          "type": "array",
+          "description": "CP1 — WHAT HAPPENS WHEN A RE-MEASUREMENT CONTRADICTS AN EARLIER ONE. Append-only: a superseded measurement is never deleted, because the disagreement is itself the finding. Three of run 1's ten verdicts were artefacts of n=9 and deleting them would have erased the evidence that small samples invert verdicts.",
+          "items": { "$ref": "#/$defs/priorMeasurement" }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "priorMeasurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "n_adjudicated", "fail_rate_pct", "measured_on", "superseded_because"],
+      "description": "A measurement this record replaces, kept in the document.",
+      "properties": {
+        "verdict": { "type": "string", "enum": ["discriminating", "not_discriminating", "indeterminate"] },
+        "n_adjudicated": { "type": "integer", "minimum": 22 },
+        "fail_rate_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "interval_95": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lower_pct", "upper_pct"],
+          "properties": {
+            "lower_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "upper_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "measured_on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "sample_id": { "type": "string" },
+        "superseded_because": {
+          "type": "string",
+          "enum": ["larger_sample", "prior_sample_invalid", "applicability_gate_added", "deduplication_corrected", "engine_changed"],
+          "description": "⚠️ `larger_sample` IS NOT AN EXPLANATION FOR DISJOINT INTERVALS. Size alone widens or narrows an interval; it does not move it off the old one. When two measurements' 95% intervals do not overlap, something systematic differs and it must be named — the test suite rejects `larger_sample` in that case. This is exactly the WEIGHT-001 history: 11.1% at n=9 and 48.8% at n=43 do not overlap, and the reason is not that 43 is bigger than 9, it is that run 1's sample was t-shirts and mugs."
+        },
+        "rationale": { "type": "string" }
+      }
+    },
+    "categoryFitness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample",
+        "pass_rows_audited",
+        "audit",
+        "confirmed_false_positives",
+        "bounds",
+        "completion_state",
+        "measured_on",
+        "limits"
+      ],
+      "description": "CP3 — THE FITNESS OF THE ENGINE ON THIS CATEGORY'S COPY, WHICH IS A DIFFERENT NUMBER FROM ITS FITNESS IN GENERAL. Required to publish. See the root `allOf` for the evidence.",
+      "properties": {
+        "sample": { "$ref": "#/$defs/sampleProvenance" },
+        "pass_rows_audited": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Rows that PASSED and were then read individually. Fail rows carry no false-positive information."
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["row_by_row", "untruncated_evidence", "borderline_recorded"],
+          "properties": {
+            "row_by_row": {
+              "type": "boolean",
+              "description": "Every pass row read, not a sample of them. Two prior audits of 37 and 18 rows reported zero false positives; an audit of 100 rows then found two."
+            },
+            "untruncated_evidence": {
+              "type": "boolean",
+              "description": "⚠️ MUST BE TRUE. Auditors read the full evidence sentence, not the 180-character rendered quote. Two separate audits nearly mis-classified a real row because the supporting text sat past the cut."
+            },
+            "borderline_recorded": {
+              "type": "boolean",
+              "description": "Judgement calls counted as passes are NAMED so the call can be disputed. An audit whose judgement calls are invisible cannot be checked."
+            },
+            "borderline_count": { "type": "integer", "minimum": 0 },
+            "auditor": { "type": "string" }
+          }
+        },
+        "confirmed_false_positives": { "type": "integer", "minimum": 0 },
+        "bounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["point_estimate_pct", "naive_95_upper_pct", "cluster_adjusted_95_upper_pct", "icc", "per_store_pct"],
+          "description": "ALL THREE BOUNDS, NEVER ONE. Publishing the naive bound alone understates: rows are clustered within stores, and the cluster-adjusted number is the honest headline (11.23% naive versus 13.68% adjusted on the coffee sample). Publishing only the per-store rate hides row-level exposure.",
+          "properties": {
+            "point_estimate_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "naive_95_upper_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "cluster_adjusted_95_upper_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "icc": { "type": "number", "minimum": 0, "maximum": 1 },
+            "per_store_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "completion_state": {
+          "type": "string",
+          "enum": ["VERIFIED_CLEAN", "DEFECTS_FOUND", "INCOMPLETE"],
+          "description": "src/measure/completion.ts applied to the fitness run. `INCOMPLETE` blocks publication rather than reading as clean: a measurement that did not complete is not a passing measurement, and zero is the most dangerous number a broken instrument returns because it is also what a healthy one returns."
+        },
+        "defects": {
+          "type": "array",
+          "description": "The confirmed false positives, each reproducible. A bound with no named defects behind it cannot be checked or fixed.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entry_id", "evidence", "why_wrong"],
+            "properties": {
+              "entry_id": { "type": "string", "minLength": 3 },
+              "evidence": { "type": "string", "minLength": 15 },
+              "why_wrong": { "type": "string", "minLength": 15 },
+              "category_specific": {
+                "type": "boolean",
+                "description": "Whether the defect fires on vocabulary this category's pages carry and a general sample does not. Two of coffee's three did, which is the whole mechanism behind the 16x gap between the two bounds."
+              },
+              "status": { "type": "string", "enum": ["open", "fixed", "pinned_known_gap"] }
+            }
+          }
+        },
+        "measured_on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "limits": {
+          "type": "array",
+          "minItems": 1,
+          "description": "What this measurement did NOT establish, stated by the party publishing it. Never empty: a fitness record with no limits is a claim of completeness no sample of this size supports.",
+          "items": { "type": "string", "minLength": 15 }
         }
       }
     },
@@ -390,7 +759,6 @@
         "public_inspectable",
         "evidence_surfaces",
         "registry",
-        "predicted_discrimination",
         "consumer_note",
         "merchant_remediation",
         "grounding"
@@ -491,7 +859,18 @@
           "description": "Denormalised surface list, so surface constraints are checkable without walking accepted_evidence. Must equal the set of surfaces in accepted_evidence."
         },
         "registry": { "$ref": "#/$defs/registry" },
-        "predicted_discrimination": { "$ref": "#/$defs/predictedDiscrimination" },
+        "predicted_discrimination": {
+          "$ref": "#/$defs/predictedDiscrimination",
+          "description": "Grammar 1.0 only, and REQUIRED there — the root `allOf` makes it mandatory at 1.0 and forbidden at 1.1."
+        },
+        "discrimination_prediction": {
+          "$ref": "#/$defs/discriminationPrediction",
+          "description": "Grammar 1.1 only, and OPTIONAL there. Forbidden at 1.0."
+        },
+        "measured_discrimination": {
+          "$ref": "#/$defs/discriminationMeasurement",
+          "description": "Optional at BOTH grammar versions, so a 1.0 standard can record what it measured without being rewritten. Absent means UNMEASURED, which is not the same as measured-and-fine."
+        },
         "consumer_note": {
           "type": "string",
           "minLength": 40,
@@ -559,6 +938,14 @@
             "required": ["assertion"]
           },
           "then": { "required": ["buyer_parameter"] }
+        },
+        {
+          "description": "A claim that a band was measured requires the measurement. `measured: true` on its own is the flattering-instrument failure in miniature: it reads as a verified band and carries no n, no date and no sample. At grammar 1.0 `measured` is const false, so this rule can only ever fire on a hand-edited document — which is precisely when it needs to.",
+          "if": {
+            "properties": { "predicted_discrimination": { "properties": { "measured": { "const": true } }, "required": ["measured"] } },
+            "required": ["predicted_discrimination"]
+          },
+          "then": { "required": ["measured_discrimination"] }
         }
       ]
     },
