@@ -970,11 +970,93 @@ export type ReqKind =
   | "claim" | "price_under" | "variant_option" | "no_subscription" | "delivery" | "in_stock"
   // v2.3 CP2 — depth the public data can actually adjudicate.
   | "attribute"   // a stated product attribute (materials, dimensions, origin, …)
-  | "identifiers"; // GTIN/MPN in structured data — what a machine consumer needs
+  | "identifiers" // GTIN/MPN in structured data — what a machine consumer needs
+  // v3.1 CP1 — a row we cannot re-ask. NOT a verdict about the store: it is the
+  // engine reporting that it failed to reconstruct the question. See `evaluate`.
+  | "unsupported";
 export interface Requirement {
   id: string; kind: ReqKind; label: string; claim?: string; capUsd?: number; optionValue?: string;
   /** Key into ATTRIBUTE_SPECS. Only set for `attribute` requirements. */
   attribute?: string;
+  /** Why an `unsupported` row could not be re-asked. Rendered to the merchant, so it
+   *  must describe OUR limitation and never imply anything about their store. */
+  unsupportedReason?: string;
+}
+
+// ---- label → requirement (v3.1 CP1) -----------------------------------------
+//
+// The public result persists RENDERED ASSERTIONS, not the `Requirement` objects that
+// produced them, so importing a public test into a shop has to rebuild the contract
+// from labels. `contractFromPublicResult` did that with a regex ladder that ended in
+// an unconditional `kind: "claim"` — so "Materials are stated" was rebuilt as the
+// claim key `materials_are_stated`, which no dictionary contains, and `evaluate`
+// dereferenced `undefined`. A merchant who imported a public test containing a
+// materials, measurements, care or identifiers row pinned a contract that THREW on
+// every re-run: the public-test-to-install path the whole funnel depends on.
+//
+// The tables below are DERIVED from the same objects that generate the labels
+// (`ATTRIBUTE_SPECS`, `CLAIM_LABEL`, the fixed candidates in `buildBuyerTask`), never
+// retyped. Renaming a label therefore keeps the round-trip working; renaming it in
+// only one of two places — the actual failure mode here — is no longer possible.
+const FIXED_LABEL_KINDS: ReadonlyArray<readonly [string, ReqKind]> = [
+  ["In stock and purchasable", "in_stock"],
+  ["Available as a one-time purchase", "no_subscription"],
+  ["Delivery timing is stated", "delivery"],
+  ["Product identifier (GTIN or MPN) is published", "identifiers"],
+];
+
+/**
+ * Labels this generator USED to emit. A pinned contract is a database row that can
+ * be older than any rename, so dropping these would break exactly the merchants who
+ * have been here longest — and it would do it silently, by degrading their rows to
+ * `unsupported` rather than by failing anything a test can see.
+ *
+ * Enumerated by sweeping every historical revision of this file for requirement
+ * labels, not by memory. The complete set of renames is:
+ *   "Ships in the US within a week"    -> "Delivery timing is stated"
+ *   "Size, capacity or weight is stated" -> "Measurements are stated"
+ * `"Country of origin is stated"` is deliberately ABSENT: v2.8 CP2 removed that
+ * requirement outright, so there is nothing to map it to. A contract still carrying
+ * it resolves to `unsupported`, which is the honest answer — the engine really
+ * cannot ask that question any more, and saying so beats inventing a verdict.
+ */
+const LEGACY_LABELS: ReadonlyArray<readonly [string, Omit<Requirement, "id" | "label">]> = [
+  ["Ships in the US within a week", { kind: "delivery" }],
+  ["Size, capacity or weight is stated", { kind: "attribute", attribute: "dimensions" }],
+];
+
+const normLabel = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** True when the key names a claim this engine can actually evaluate. */
+export const isKnownClaim = (key: string | undefined): boolean =>
+  typeof key === "string" && Object.prototype.hasOwnProperty.call(CLAIM_TERMS, key);
+/** True when the key names an attribute this engine can actually evaluate. */
+export const isKnownAttribute = (key: string | undefined): boolean =>
+  typeof key === "string" && Object.prototype.hasOwnProperty.call(ATTRIBUTE_SPECS, key);
+
+/**
+ * Recover the requirement a generated label came from, exactly.
+ *
+ * Returns null for the two labels that embed merchant-supplied values (a price cap
+ * and a variant option) — those carry their parameter in the text and are parsed by
+ * the caller, which is the only place that knows the row index to build an id from.
+ */
+export function requirementFromLabel(label: string, id: string): Requirement | null {
+  const key = normLabel(label);
+  for (const [text, kind] of FIXED_LABEL_KINDS) if (normLabel(text) === key) return { id, kind, label };
+  for (const [attribute, spec] of Object.entries(ATTRIBUTE_SPECS)) {
+    if (normLabel(spec.label) === key) return { id, kind: "attribute", attribute, label };
+  }
+  for (const claim of Object.keys(CLAIM_TERMS)) {
+    // Both forms `buildBuyerTask` can emit: the pretty label, and the underscore
+    // fallback it uses for a claim with no CLAIM_LABEL entry.
+    const pretty = CLAIM_LABEL[claim];
+    if ((pretty && normLabel(pretty) === key) || normLabel(claim.replace(/_/g, " ")) === key) {
+      return { id, kind: "claim", claim, label };
+    }
+  }
+  for (const [text, req] of LEGACY_LABELS) if (normLabel(text) === key) return { ...req, id, label };
+  return null;
 }
 
 // ---- contract + engine versioning (V2 §4.4) ---------------------------------
@@ -1056,6 +1138,9 @@ function adjudicability(p: PublicProduct, r: Requirement): number {
     case "attribute": return p.evidence.length ? 3 : 0;
     // Structural and binary: readable whenever the page markup was readable.
     case "identifiers": return p.extracted ? 3 : 0;
+    // A row we could not reconstruct decides nothing, so it must not be able to
+    // pull a contract's ordering around either.
+    case "unsupported": return 0;
   }
 }
 
@@ -1215,10 +1300,41 @@ const THROTTLED_DETAIL =
 const accessDetail = (p: PublicProduct, whenReadable: string): string =>
   p.diagnostics?.degraded ? THROTTLED_DETAIL : whenReadable;
 
+/**
+ * A row the engine could not re-ask, rendered as UNCHECKED.
+ *
+ * `requires_store_access` is the right status and the wrong words on its own, so the
+ * detail deliberately blames US instead. The distinction the whole engine turns on is
+ * finding vs accusation, and "we could not re-ask this question" must never be
+ * rendered as "your store does not state this".
+ */
+function unsupportedRow(p: PublicProduct, req: Requirement, reason: string): Assertion {
+  console.error(`[buyer-test] UNSUPPORTED REQUIREMENT id=${req.id} kind=${req.kind} label=${JSON.stringify(req.label)} — ${reason}`);
+  return {
+    label: req.label,
+    status: "requires_store_access",
+    surfacesChecked: textSurfaces(p),
+    detail: "We couldn't re-run this check automatically. That's a limitation on our side, not a finding about your store — this row is reported as unchecked rather than as a result.",
+  };
+}
+
 export function evaluate(p: PublicProduct, req: Requirement): Assertion {
   switch (req.kind) {
+    // A row whose question could not be reconstructed. Reported, never silently
+    // dropped: a contract that quietly loses a row the merchant already saw is the
+    // same class of dishonesty as a conformance list that drops entries.
+    case "unsupported":
+      return unsupportedRow(p, req, req.unsupportedReason ?? "no reason recorded");
     case "claim": {
-      const fx = CLAIM_TERMS[req.claim!]!;
+      // ⚠️ TOTAL, NOT `!`. The bare non-null assertion here was the live crash: a
+      // reconstructed contract carrying `claim: "materials_are_stated"` made this
+      // `undefined`, and the very next line read `.violating` off it — a TypeError
+      // thrown inside an unguarded `.map()` in `runAuthenticatedTest`, which took
+      // down the merchant's entire re-run over one row. Reconstruction is fixed in
+      // `requirementFromLabel`; this branch stays defensive anyway, because a pinned
+      // contract is DATA that has been sitting in a database since before the fix.
+      const fx = CLAIM_TERMS[req.claim!];
+      if (!fx) return unsupportedRow(p, req, `unknown claim key '${req.claim}'`);
       const checked = textSurfaces(p);
       // PRODUCT surfaces only — the same filter the attribute rows apply, and for the
       // same reason. The shipping policy is evidence about ORDERS, not about this
@@ -1361,8 +1477,12 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // merchant's problem. Say so: when `origin` was removed in v2.8 CP2 the bare `!`
       // turned three stale call sites into "Cannot read properties of undefined
       // (reading 'shipmentVeto')", which names neither the attribute nor the cause.
+      // v3.1 CP1 — this used to THROW. Naming the attribute was the right instinct
+      // and killing the run was not: `runAuthenticatedTest` maps `evaluate` over the
+      // pinned contract with no per-row guard, so one stale requirement destroyed
+      // every other row's verdict. It is now loud in the log and honest in the table.
       const spec = ATTRIBUTE_SPECS[req.attribute!];
-      if (!spec) throw new Error(`unknown attribute requirement '${req.attribute}' — no ATTRIBUTE_SPECS entry (was it removed?)`);
+      if (!spec) return unsupportedRow(p, req, `unknown attribute '${req.attribute}' — no ATTRIBUTE_SPECS entry (was it removed?)`);
       // PRODUCT surfaces only. The shipping policy is evidence about ORDERS, not
       // about this product, and matching attributes there produces false passes —
       // measured, not hypothesised: "Size, capacity or weight is stated" passed a

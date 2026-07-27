@@ -443,3 +443,124 @@ test("23b/24b. a 'no' produces no proposal; a 'yes' produces one that applies on
     await pgQuery("delete from shops where shop_domain=$1", [shop]);
   }
 });
+
+// ---- 30. v3.1 CP1 — the crash in the public → install → re-run path ---------
+
+test("30. every label the public path can render rebuilds into a requirement the evaluator can actually run", () => {
+  // THE DEFECT, reproduced from the outside. `contractFromPublicResult` rebuilt the
+  // contract from RENDERED LABELS with a keyword ladder whose last rung was an
+  // unconditional `kind: "claim"`. Four labels the public path emits on ordinary
+  // stores missed every rung — the three attribute rows and the identifiers row —
+  // so each was pinned as a claim key no dictionary contains, and `evaluate` read
+  // `.violating` off `undefined`. In `runAuthenticatedTest` that TypeError was
+  // thrown inside a bare `.map()`, so ONE bad row destroyed the whole re-run.
+  //
+  // Written as "every label", not "these four", so a label added to the generator
+  // without a matching reconstruction fails here rather than on a merchant.
+  const LABELS = [
+    "Fragrance-free / unscented",                     // claim, pretty label
+    "Organic",                                        // claim, single word
+    "Price under $10",                                // parametric
+    "Travel option available",                        // parametric, merchant string
+    "In stock and purchasable",
+    "Available as a one-time purchase",
+    "Delivery timing is stated",
+    "Materials are stated",                           // ← threw before v3.1
+    "Measurements are stated",                        // ← threw before v3.1
+    "Care or use instructions are stated",            // ← threw before v3.1
+    "Product identifier (GTIN or MPN) is published",  // ← threw before v3.1
+  ];
+  const publicResult = {
+    task: "Find this cedar bar soap and confirm what it states.",
+    assertions: LABELS.map((label) => ({ label, status: "not_proven" as const, detail: "…", surfacesChecked: [] })),
+  };
+
+  const contract = contractFromPublicResult(publicResult);
+  assert.equal(contract.requirements.length, LABELS.length, "no row may be dropped — the merchant already saw them all");
+
+  // The KIND round-trips, which is what makes the re-run ask the same question.
+  assert.deepEqual(
+    contract.requirements.map((r) => r.kind),
+    ["claim", "claim", "price_under", "variant_option", "in_stock", "no_subscription",
+     "delivery", "attribute", "attribute", "attribute", "identifiers"],
+  );
+  assert.deepEqual(
+    contract.requirements.filter((r) => r.kind === "attribute").map((r) => r.attribute),
+    ["materials", "dimensions", "care"],
+    "the attribute KEY is recovered, not just the kind — a wrong key evaluates a different row",
+  );
+  assert.equal(contract.requirements.find((r) => r.kind === "claim")!.claim, "fragrance_free");
+
+  // And the whole path survives: this is the assertion that would have thrown.
+  const result = runAuthenticatedTest({
+    product: mkProduct({ productType: "Bar Soap", description: "Made from 100% olive oil. Each bar is 4 oz. Care instructions: wipe clean." }),
+    requirements: contract.requirements,
+    summary: contract.summary,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.assertions.length, LABELS.length);
+  assert.equal(result.assertions.filter((a) => a.status === "requires_store_access" &&
+    /limitation on our side/.test(a.detail)).length, 0, "no row may degrade to the unsupported fallback");
+});
+
+test("30b. a label the engine cannot reconstruct is reported as unchecked, never as a finding and never as a crash", () => {
+  // The safety net. A pinned contract is DATA: it can predate a rename, or come from
+  // a standard whose vocabulary this build does not carry. The row must survive
+  // (dropping it would silently shrink a contract the merchant saw, and would move
+  // `contractVersion` so the rerun guard reports a drift that never happened) and it
+  // must not be rendered as a verdict about the store.
+  const contract = contractFromPublicResult({
+    task: "t",
+    assertions: [{ label: "Certified carbon-neutral shipping and packaging", status: "not_proven", detail: "…", surfacesChecked: [] }],
+  });
+  assert.equal(contract.requirements.length, 1);
+  assert.equal(contract.requirements[0]!.kind, "unsupported");
+
+  const result = runAuthenticatedTest({ product: mkProduct(), requirements: contract.requirements });
+  assert.equal(result.ok, true, "one unknown row must not fail the run");
+  const row = result.assertions[0]!;
+  assert.equal(row.status, "requires_store_access", "not a pass, and not a not_proven — we did not look");
+  assert.match(row.detail, /limitation on our side/, "the copy must blame us, not the store");
+  assert.doesNotMatch(row.detail, /your store does not|no evidence/i);
+});
+
+test("30c. one unrunnable row costs exactly one row — it does not take the re-run down with it", () => {
+  // Containment, measured rather than assumed. A hand-built contract carrying a
+  // claim key that no longer exists is exactly what a database row from before a
+  // rename looks like.
+  const stale: Requirement[] = [
+    { id: "a", kind: "claim", claim: "materials_are_stated", label: "Materials are stated" },   // the exact bad key
+    { id: "b", kind: "attribute", attribute: "origin", label: "Country of origin is stated" },  // removed in v2.8 CP2
+    { id: "c", kind: "in_stock", label: "In stock and purchasable" },
+  ];
+  const result = runAuthenticatedTest({ product: mkProduct(), requirements: stale });
+  assert.equal(result.ok, true);
+  assert.equal(result.assertions.length, 3, "all three rows come back");
+  assert.equal(result.assertions[2]!.status, "pass_evidenced", "the healthy row is decided normally");
+  for (const i of [0, 1]) {
+    assert.equal(result.assertions[i]!.status, "requires_store_access");
+    assert.match(result.assertions[i]!.detail, /limitation on our side/);
+  }
+});
+
+test("30d. a contract pinned under an older label still round-trips — a rename must not silently break old merchants", () => {
+  // A pinned contract is a database row, so it can be older than any rename. The
+  // legacy set was enumerated by sweeping every historical revision of
+  // productTest.ts for requirement labels, not from memory:
+  //   "Ships in the US within a week"      -> delivery
+  //   "Size, capacity or weight is stated" -> attribute:dimensions
+  const contract = contractFromPublicResult({
+    task: "t",
+    assertions: [
+      { label: "Ships in the US within a week", status: "not_proven", detail: "…", surfacesChecked: [] },
+      { label: "Size, capacity or weight is stated", status: "not_proven", detail: "…", surfacesChecked: [] },
+      { label: "Country of origin is stated", status: "not_proven", detail: "…", surfacesChecked: [] },
+    ],
+  });
+  assert.deepEqual(contract.requirements.map((r) => r.kind), ["delivery", "attribute", "unsupported"]);
+  assert.equal(contract.requirements[1]!.attribute, "dimensions");
+  // `origin` is the deliberate exception: v2.8 CP2 removed the requirement, so there
+  // is nothing honest to map it to. "We can no longer ask this" beats inventing a
+  // verdict, and it must stay visible rather than being quietly dropped.
+  assert.equal(contract.requirements[2]!.kind, "unsupported");
+});

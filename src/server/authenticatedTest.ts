@@ -204,7 +204,25 @@ export function runAuthenticatedTest(args: {
   const requirements = args.requirements?.length ? args.requirements : generated.requirements;
   const summary = args.summary ?? generated.summary;
 
-  const assertions = requirements.map((r) => evaluate(snapshot, r));
+  // ⚠️ PER-ROW CONTAINMENT (v3.1 CP1). This was a bare `.map(evaluate)`, and a pinned
+  // contract carrying one unrecognised claim key threw a TypeError straight through
+  // it — so a single bad row took down every other row's verdict on a merchant's
+  // re-run. `evaluate` is now total for that case, which is the real fix; this is the
+  // belt to its braces, because a pinned contract is DATA and the set of things it
+  // can contain grows without this file changing. One row failing must cost one row.
+  const assertions = requirements.map((r) => {
+    try {
+      return evaluate(snapshot, r);
+    } catch (e) {
+      console.error(`[buyer-test] row FAILED, contained: id=${r.id} kind=${r.kind} label=${JSON.stringify(r.label)} — ${(e as Error)?.message}`);
+      return {
+        label: r.label,
+        status: "requires_store_access" as AssertionStatus,
+        surfacesChecked: [],
+        detail: "We couldn't re-run this check automatically. That's a limitation on our side, not a finding about your store — this row is reported as unchecked rather than as a result.",
+      };
+    }
+  });
   const count = (s: AssertionStatus) => assertions.filter((a) => a.status === s).length;
 
   const suggestedCorrections = assertions

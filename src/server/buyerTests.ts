@@ -14,7 +14,10 @@ import { loadNormalizedProducts, getStorefrontUrl } from "../db/catalog.js";
 import { fetchShopPolicies } from "../catalog/source.js";
 import { getAccessToken, shopCandidateHosts } from "../db/shops.js";
 import type { NormalizedProduct } from "../catalog/normalize.js";
-import { contractVersion, ENGINE_VERSION, type Assertion, type Requirement } from "./productTest.js";
+import {
+  contractVersion, ENGINE_VERSION, requirementFromLabel, isKnownClaim,
+  type Assertion, type Requirement,
+} from "./productTest.js";
 import { runAuthenticatedTest, unprovenClaimRows, type AuthenticatedTestResult } from "./authenticatedTest.js";
 
 // ===========================================================================
@@ -141,14 +144,38 @@ export function contractFromPublicResult(result: unknown): BuyerTestContract {
   const rows = [...(r.assertions ?? []), ...(r.deferred ?? [])];
   const requirements: Requirement[] = rows.map((a, i) => {
     const label = a.label;
+    // The two labels that embed a MERCHANT-supplied value carry their parameter in
+    // the text, so they are parsed here rather than looked up.
     const priceMatch = /price under \$([\d.]+)/i.exec(label);
     if (priceMatch) return { id: `price${i}`, kind: "price_under", label, capUsd: Number(priceMatch[1]) };
     const optionMatch = /^(.+) option available$/i.exec(label);
     if (optionMatch) return { id: `variant${i}`, kind: "variant_option", label, optionValue: optionMatch[1]! };
-    if (/in stock/i.test(label)) return { id: `stock${i}`, kind: "in_stock", label };
-    if (/one-time purchase/i.test(label)) return { id: `sub${i}`, kind: "no_subscription", label };
-    if (/ships|deliver/i.test(label)) return { id: `delivery${i}`, kind: "delivery", label };
-    return { id: `claim${i}`, kind: "claim", label, claim: claimKeyFromLabel(label) };
+
+    // Everything else is a label the engine itself generated, so ask the engine what
+    // it means instead of guessing from keywords. `requirementFromLabel` is derived
+    // from the very tables that produce the labels, which is what makes this exact.
+    //
+    // ⚠️ THE ORDER MATTERS AND USED TO BE THE BUG. The old ladder tested
+    // `/ships|deliver/i` before falling through to `claim`, and every attribute row
+    // ("Materials are stated", "Measurements are stated", "Care or use instructions
+    // are stated") and the identifiers row missed every rung — so all four were
+    // rebuilt as claims with keys no dictionary contains, and `evaluate` threw.
+    const recovered = requirementFromLabel(label, `req${i}`);
+    if (recovered) return recovered;
+
+    // A label we did not generate. Prefer the historical key derivation, but ONLY if
+    // it names a claim this engine can actually evaluate — the check that was missing.
+    const derived = claimKeyFromLabel(label);
+    if (isKnownClaim(derived)) return { id: `claim${i}`, kind: "claim", label, claim: derived };
+
+    // Out of options. The row is KEPT, as `unsupported`, for two reasons: dropping it
+    // would silently shrink a contract the merchant has already seen, and it would
+    // change `contractVersion` so the rerun guard reports a contract drift that never
+    // happened. `evaluate` renders it as unchecked and says the limit is ours.
+    return {
+      id: `unsupported${i}`, kind: "unsupported", label,
+      unsupportedReason: `no requirement matches the rendered label (derived claim key '${derived}' is not in the dictionary)`,
+    };
   });
   return { summary: r.task ?? "", requirements };
 }
