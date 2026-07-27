@@ -172,7 +172,17 @@ function deniedAfter(haystack: string, index: number, termLength: number): boole
 // the code it replaced, and reverted. This is a vocabulary gap in one direction.
 
 /** "free of parabens", "free from animal testing" — frames that only ever deny. */
-const ABSENCE_FRAME = /(^|[^a-z])free\s+(of|from)([^a-z]|$)/i;
+// ⚠️ ANCHORED TO THE TERM, and the first version was not. `clauseBefore` is bounded by
+// CLAUSE_BOUNDARY, which does not cut on a bare comma or on ` and ` — so an unanchored
+// frame reached a DIFFERENT substance later in the sentence and suppressed a genuine
+// violation. An independent adversarial pass confirmed sixteen of these, and they are
+// the commonest shape in personal-care copy there is:
+//     "Free from parabens, this antiperspirant contains aluminum chlorohydrate."
+//     "This shampoo is free of parabens and contains sulfates."
+//     "Our newer tumblers are free of BPA while this legacy model contains BPA."
+// The store states BOTH things, and production correctly reports the violation.
+// "free of X" negates X, not whatever is mentioned eight words later.
+const ABSENCE_FRAME = /(^|[^a-z])free\s+(of|from)\s*$/i;
 
 /**
  * The violating term used as a LABEL whose value is a flat denial:
@@ -183,7 +193,14 @@ const ABSENCE_FRAME = /(^|[^a-z])free\s+(of|from)([^a-z]|$)/i;
  * whose `no` governs the noun after it rather than the label before it, and the
  * separator alone cannot tell those apart.
  */
-const LABEL_DENIAL = /^\s*[:–—-]\s*(never|none|nope)\b/i;
+// ⚠️ THE DENIAL MUST BE THE WHOLE VALUE. An unanchored version suppressed real
+// violations whose denial is immediately qualified away:
+//     "Tested on animals: never by us, always by our EU distributor."
+//     "Contains gluten — none of our facilities are certified."
+//     "Made with aluminum: none other than USP grade."
+// Each of those ADMITS the thing. A label denial is only a denial when nothing
+// follows it, which is what the terminator requires.
+const LABEL_DENIAL = /^\s*[:–—-]\s*(never|none|nope)\s*[.!?;]?\s*$/i;
 
 /** True when EVERY occurrence of `term` in `sentence` sits in a negated clause.
  *
@@ -425,6 +442,7 @@ export function findViolation(
 export const TIMING_TERMS_NEEDING_DIGIT = [
   "ships within", "ships in", "business days", "business day", "delivery in", "arrives in",
   "arrive within", "delivered within", "delivered in", "shipping time", "shipping times",
+  "shipping timeframe", "shipping timeframes", "arrive in", "working days", "working day",
   "ships out in", "dispatch within",
 ] as const;
 
@@ -460,8 +478,16 @@ export const TIMING_TERMS_SELF_CONTAINED = [
 //     which is 2 of the 55 and passes today only by accident — the digit that
 //     satisfied `requireDigit` in both was a CLOCK TIME ("after 2:00pm PST",
 //     "after 9 AM"). A digit-only guard would delete them.
+// ⚠️ THE GAP BETWEEN THE NUMBER AND THE UNIT IS NOT ALWAYS A SPACE, and the first
+// version assumed it was. An independent pass confirmed seven real windows the guard
+// deleted, every one over punctuation the merchant chose:
+//     "3-Business Days"   "10+ business days"   "(3-5) business days"
+//     "1-2 wks."          "3 workdays"          "7 to 10 days"   "3-5 *business days*"
+// `[^a-zA-Z]{0,6}` spans a hyphen, a plus, a closing bracket, an asterisk, an en dash
+// and a second number in a range — while still refusing a bare postcode, because what
+// stops "…zip code: 90038." is the absence of a TIME UNIT, not the spacing.
 const DURATION_NUMBER =
-  /\b\d[\d.,]*\s*(?:\w+[\s-]+){0,2}(?:business\s+|working\s+|calendar\s+)?(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?)\b/i;
+  /\d[^a-zA-Z]{0,6}(?:\w+[\s\-*]+){0,2}(?:business\s+|working\s+|calendar\s+)?(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|workdays?|working\s+days?)\b/i;
 const DURATION_WORDED =
   /\b(?:same|next|following)\s+(?:business\s+|working\s+)?day\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|a|an)\s+(?:\w+\s+){0,2}(?:business\s+|working\s+)?(?:days?|weeks?|hours?)\b/i;
 

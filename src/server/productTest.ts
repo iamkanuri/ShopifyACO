@@ -465,7 +465,39 @@ const CARE_DIRECTIVE =
  * direction it is documented to fail in, and never the direction that invents a
  * finding.
  */
-const CARE_CLAUSE_SPLIT = /[.;:!?]|\s[—–]\s|--|,/;
+// ` and ` is a boundary too: "Read the care instructions and wash separately in cold
+// water before first wear." puts the pointer and the instruction in one comma-less
+// sentence, and an independent pass confirmed the guard deleting it. Adding it cannot
+// reopen the noun-phrase class, because that class fails the IMPERATIVE test either
+// way ("and a washing symbol guide" does not begin with a verb).
+const CARE_CLAUSE_SPLIT = /[.;:!?,]|\s[—–]\s|--|\sand\s/i;
+
+/**
+ * A clause that READS as an instruction: imperative, verb first.
+ *
+ * ⚠️ THE FIRST VERSION OF THIS FIX WAS WRONG, and an independent adversarial pass
+ * confirmed nine sentences of the shape it reopened. Clause-scoping the frame and
+ * then accepting ANY `CARE_DIRECTIVE` match in an unframed clause hands the guard a
+ * NOUN PHRASE:
+ *     "Care instructions are printed on the hangtag, and a washing symbol guide is on our site."
+ *     "Care instructions are included in the box, along with a cleaning cloth."
+ *     "Care instructions are enclosed, and our leather polish is available separately."
+ *     "Care instructions are supplied with your order — washing guidance is on the label."
+ * The pointer sits in the first clause; the second merely CONTAINS a care word —
+ * `washing`, `cleaning`, `polish`, `seasoning`, `dust`. Every one of those passed.
+ *
+ * The distinction that actually separates the two classes is grammatical, not
+ * positional: an instruction is IMPERATIVE and begins with its verb, in BASE FORM.
+ * That is what tells "sanitize the board with diluted vinegar weekly" from "washing
+ * symbols and fabric details at the link below" — the `-ing`/`-s` forms are precisely
+ * the deverbal nouns English uses to NAME a topic rather than give an instruction,
+ * which is the same weak point the residual gap in the corpus records.
+ *
+ * `follow` is deliberately absent: "follow the wash symbols printed on the label" is
+ * imperative and is still a pointer.
+ */
+const CARE_IMPERATIVE_CLAUSE =
+  /^\s*(?:then\s+|please\s+|and\s+then\s+)?(?:wash|rinse|clean|wipe|dry|soak|scrub|polish|oil|season|launder|bleach|iron|tumble|dust|sanitize|sanitise|condition|hand-?wash|air-?dry|line-?dry|dry-?clean)\b/i;
 
 /**
  * True when the sentence GIVES a care instruction rather than merely mentioning
@@ -483,9 +515,23 @@ function statesCareInstruction(sentence: string): boolean {
   // action and is not itself a pointer — "…printed on the tag: rinse in cool water".
   // A pointer clause ("included in the box", "if you follow…") proves nothing, and a
   // clause with no action at all closes the bare placeholder "Care instructions: TBD."
-  return sentence
-    .split(CARE_CLAUSE_SPLIT)
-    .some((clause) => CARE_DIRECTIVE.test(clause) && !CARE_REFERENCE.test(clause));
+  // No pointer frame anywhere: unchanged, and it FAILS OPEN. Vetoing ordinary
+  // subject-less care copy would gut the row for no measured gain, and the known
+  // deverbal-noun residual ("Washing and care instructions are on the label.") lives
+  // on this branch, pinned in the corpus rather than closed.
+  if (!CARE_REFERENCE.test(sentence)) return CARE_DIRECTIVE.test(sentence);
+  // A pointer frame IS present, so the default is that the instructions are held
+  // somewhere we are not reading. Only a clause that is itself an instruction —
+  // imperative, verb first — overrides it.
+  // ⚠️ NO SECOND REFERENCE TEST ON THE CLAUSE. It looked like cheap extra safety and an
+  // independent pass measured it deleting ordinary instructions, because the objects a
+  // care verb takes are exactly the frame's vocabulary:
+  //     "Care instructions: polish with the INCLUDED beeswax balm."
+  //     "Care instructions: season the pan with the PROVIDED oil before first use."
+  // A verb-initial clause IS an instruction; what it acts on does not change that.
+  // `follow` is kept out of CARE_IMPERATIVE_CLAUSE precisely so that the one imperative
+  // that IS a pointer — "follow the wash symbols printed on the label" — still fails.
+  return sentence.split(CARE_CLAUSE_SPLIT).some((clause) => CARE_IMPERATIVE_CLAUSE.test(clause));
 }
 
 const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {

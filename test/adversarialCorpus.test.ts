@@ -455,6 +455,62 @@ const CARE: Case[] = [
     "THE COLLISION the `condition` exclusion was written to avoid, kept closed by requiring an " +
     "object after the verb. `conditions apply` has none. Without this case the transitive frame " +
     "reads as decorative and a later session widens it back to a bare word."),
+  // -- v3.1, found by the INDEPENDENT pass, against the fix itself ------------
+  C("Care instructions are printed on the hangtag, and a washing symbol guide is on our site.",
+    attr("care"), "not_proven", "placeholder",
+    "THE CLASS THE FIRST VERSION OF THE v3.1 FIX REOPENED, and the reason the rule is now " +
+    "grammatical rather than positional. Clause-scoping the pointer frame and then accepting any " +
+    "CARE_DIRECTIVE match in an unframed clause hands the guard a NOUN PHRASE: the pointer sits " +
+    "before the comma and `washing symbol guide` sits after it. Four independent attackers found " +
+    "nine sentences of this shape and a separate refuter re-executed every one. Closed by " +
+    "requiring a framed sentence to carry an IMPERATIVE clause — verb first, base form — which " +
+    "`washing`/`cleaning`/`seasoning` cannot satisfy because those are the deverbal nouns that " +
+    "name a topic instead of giving an instruction.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are supplied with your order — washing guidance is on the label.",
+    attr("care"), "not_proven", "placeholder",
+    "Same class across a DASH rather than a comma, which is why the imperative rule is applied to " +
+    "every boundary and not just the one the attackers happened to use. Without it, narrowing the " +
+    "comma alone would have left this open and looked like a complete fix.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are included in the box, along with a cleaning cloth.",
+    attr("care"), "not_proven", "bundled-item",
+    "The bundled-accessory variant: the only care word belongs to a DIFFERENT ITEM in the box. " +
+    "MUTATION ANCHOR for CARE_IMPERATIVE_CLAUSE — restore the plain CARE_DIRECTIVE test here and " +
+    "this passes.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Per the care instructions, sanitize the board with diluted vinegar weekly.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "THE RECALL ANCHOR for the same rule, and the reason a comma is still a boundary at all. This " +
+    "is a real instruction introduced by a pointer frame, and it is the ONE shape of the nine " +
+    "restored in CP0 that needs the comma. It is duplicated deliberately from the CP0 block: a " +
+    "future tightening of the comma rule must fail here, next to the case that motivated it.",
+    undefined, { title: "Oak Board", productType: "Cutting Boards" }),
+  C("Care instructions: polish with the included beeswax balm.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "MUTATION ANCHOR for NOT re-testing CARE_REFERENCE inside an imperative clause. That extra " +
+    "test looked like cheap safety and an independent pass measured it deleting ordinary " +
+    "instructions, because the objects a care verb takes are exactly the frame's vocabulary — " +
+    "`the INCLUDED balm`, `the PROVIDED oil`. A verb-initial clause is an instruction; what it " +
+    "acts on does not change that.",
+    undefined, { title: "10in Skillet", productType: "cookware" }),
+  C("Read the care instructions and wash separately in cold water before first wear.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "MUTATION ANCHOR for ` and ` as a clause boundary. The pointer and the instruction share one " +
+    "comma-less sentence, which no punctuation-only splitter can separate. Adding the conjunction " +
+    "cannot reopen the noun-phrase class, because `and a washing symbol guide` fails the " +
+    "imperative test either way — which is the property that makes this safe rather than lucky.",
+    undefined, { title: "Merino Crew", productType: "apparel" }),
+  C("Care instructions are below. Rinse in cool water and dry immediately.",
+    attr("care"), "pass_evidenced", "canonical-true",
+    "KNOWN GAP, and the measured price of having a `care` value guard AT ALL. The pointer and the " +
+    "instruction are in DIFFERENT SENTENCES, and evidence is sentence-scoped by construction, so " +
+    "no formulation of this guard can see both. The v3.0 guard fails it identically. It is " +
+    "recorded rather than fixed because the alternative is no guard: the guard closes one measured " +
+    "false positive on a real store plus twelve independently-confirmed pointer false passes, and " +
+    "costs this one shape. Closing it needs cross-sentence scope, which is a different piece of " +
+    "work and would touch every row, not just this one.",
+    "not_proven", { title: "Merino Crew", productType: "apparel" }),
   C("Care instructions: follow the wash symbols printed on the label.",
     attr("care"), "not_proven", "placeholder",
     "CLAUSE SCOPING IS NOT THE SAME AS DELETING THE FRAME. Here the pointer (`follow`, `printed`) " +
@@ -531,6 +587,21 @@ const CLAIMS: Case[] = [
     "read it as decorative. Here the store ALSO states the claim, so suppressing the false " +
     "contradiction lets findSupport reach `cruelty-free` and the status genuinely flips. Same " +
     "corpus-hole shape v2.4 found in 4 of 12 guards: write the control case, keep the guard."),
+  C("Free of parabens, this cream is cruelty-free but is tested on animals in China.",
+    claimReq("cruelty_free"), "not_proven", "contrary",
+    "MUTATION ANCHOR for anchoring ABSENCE_FRAME to the term, and a REGRESSION an independent pass " +
+    "caught in the CP2a fix itself. `clauseBefore` is bounded by CLAUSE_BOUNDARY, which cuts on " +
+    "neither a bare comma nor ` and `, so an unanchored `free of` reached a DIFFERENT substance " +
+    "later in the sentence and suppressed a genuine violation. Sixteen sentences of this shape were " +
+    "confirmed, and they are the commonest thing personal-care copy does: deny one ingredient, " +
+    "admit another. The status flips because the sentence ALSO states the claim — suppress the " +
+    "violation and findSupport passes it on `cruelty-free`, telling a store that tests on animals " +
+    "that it is cruelty-free."),
+  C("Our cruelty-free line is tested on animals: never by us, always by our EU distributor.",
+    claimReq("cruelty_free"), "not_proven", "contrary",
+    "MUTATION ANCHOR for LABEL_DENIAL's terminator. `X: never` is a denial only when nothing " +
+    "follows it; here the denial is immediately qualified away and the sentence ADMITS the testing. " +
+    "Without the terminator the violation is suppressed and the row passes on `cruelty-free`."),
   C("Gluten-free: never any wheat.", claimReq("gluten_free"), "pass_evidenced", "canonical-true",
     "The same asymmetry for the post-term form. Here `never` scopes over `wheat`, not over the " +
     "claim it follows, so applying LABEL_DENIAL on the support side would cost this pass."),
@@ -609,6 +680,29 @@ const DELIVERY: Case[] = [
     "removed the row renders a SHELF-LIFE statement as proof of a delivery window; with it, the " +
     "row correctly finds nothing.",
     undefined, { policyStatus: "readable" }),
+  C("Ships in (3-5) business days.", deliveryReq(), "pass_evidenced", "canonical-true",
+    "RECALL ANCHOR for the CP2c value guard's number-to-unit gap, which the first version got " +
+    "wrong. It required whitespace, and an independent pass confirmed SEVEN real windows deleted " +
+    "over punctuation the merchant chose: `3-Business Days`, `10+ business days`, `1-2 wks.`, " +
+    "`3 workdays`, `(3-5) business days`, `3-5 *business days*`, `7 to 10 days`. What refuses a " +
+    "postcode is the absence of a TIME UNIT, never the spacing — conflating the two cost recall " +
+    "on the row the engine can least afford to lose it on.",
+    undefined, { policyStatus: "readable" }),
+  C("Ships in 1-2 wks.", deliveryReq(), "pass_evidenced", "canonical-true",
+    "The abbreviation half of the same finding. `wks`, `mos` and `workdays` were absent from the " +
+    "unit list, so an abbreviated window read as no window at all.",
+    undefined, { policyStatus: "readable" }),
+  C("Delivery information: allow 7 to 10 days for your order to arrive.",
+    deliveryReq(), "pass_evidenced", "surface-scoping",
+    "KNOWN GAP, and an honest cost of CP2b rather than a defect it introduced. Production passes " +
+    "this by matching the term `delivery in` INSIDE the word `Delivery information` — the same " +
+    "substring accident that let `ships in` match inside `Ships internationally` and render a " +
+    "geography sentence as a delivery window. The boundary cannot be added for one and not the " +
+    "other. No listed term matches `7 to 10 days`, and the obvious repairs are worse: a bare " +
+    "`days` term would pass `30 days to return`, and `delivery information` is a HEADING that " +
+    "would pass `30 day returns` sitting under it. A missed finding is recoverable; a false " +
+    "statement about a store is not.",
+    "not_proven", { policyStatus: "readable" }),
   C("Shipping times: 3-5 business days.", deliveryReq(), "pass_evidenced", "canonical-true",
     "THE RECALL ANCHOR for the boundary change. `shipping times` is the commoner merchant spelling " +
     "and stopped matching inside itself once terms were bounded; without its own list entry this " +
@@ -1023,7 +1117,11 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //                                                                             -> 31
   // 31 -> 30: v3.1 CP2c closed the ZIP-code delivery false pass. A gap count that
   // only ever rises is a backlog; this is the second direction the corpus asserts in.
-  const EXPECTED_OPEN_GAPS = 30;
+  // 30 -> 32: and then it rose, which is the honest record of a trade rather than a
+  // clean win. Both new gaps are FALSE FAILS accepted to close FALSE PASSES, and both
+  // are named at their case: a care instruction in the sentence AFTER its pointer, and
+  // a delivery window whose only match in production was a substring accident.
+  const EXPECTED_OPEN_GAPS = 32;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
