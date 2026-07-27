@@ -151,15 +151,61 @@ Three attacker instructions that produce the highest yield:
 - **Attack the near-synonym.** Every vague phrase that a keyword matcher will accept and a careful
   buyer will not (`chemical-free` for a named decaffeination process, `fresh roasted` for a date).
 - **Attack the subject.** Write the true statement about something adjacent — the packaging, the
-  shipment, a bundled item, a competitor, a review quote, a brew ratio instead of a net weight.
-  These are the engine's largest confirmed false-pass class and they are still partly open.
-- **Attack with the merchant's own strings.** Titles, product types and option values are
-  merchant-controlled and reach linted output. A store can destroy its own report through one of
-  them, and the standard must not create a new route for that.
+  shipment, a bundled item, a competitor, a review quote, a **sibling product**, a brew ratio
+  instead of a net weight. These are the engine's largest confirmed false-pass class, they are
+  still open, and a matched pair of benchmark runs against them is specified in
+  [`acceptance/subject-tense/`](acceptance/subject-tense/README.md).
+- **Attack with the merchant's own strings.** Titles and option values are merchant-controlled and
+  reach linted output. A store can destroy its own report through one of them, and the standard must
+  not create a new route for that. (`product_type` is **not** an evidence surface — see
+  `VOCABULARY_REVIEW.md` §2.4, which said otherwise until it was executed.)
 
 **Run the attacker on the assertion, not on the engine.** "The engine has a pinned gap here" is a
 `known_gaps` entry. "This assertion is satisfiable by copy that misleads a buyer" is an
 `adversarial` finding, and it is the standard's fault, not the engine's.
+
+### 4.1 If the entry binds a VOCABULARY, the gate is stricter and the generation is scripted
+
+An assertion that is too loose produces a weak finding; a term list that is too loose produces a
+false statement about a real store. [`VOCABULARY_REVIEW.md`](VOCABULARY_REVIEW.md) is the gate, and
+its eight attack classes are now **generated** rather than hand-written:
+
+```bash
+node --import tsx standards/attack/cli.ts <vocabulary.json> --context <category>
+```
+
+**What that changes, and what it does not.** The script writes the hostile copy for six of the eight
+classes, reports coverage per term per class, and refuses to render a restricted run as a small
+clean number. It does **nothing** for independence — a generated set is still the author's own set —
+and it cannot produce the two classes that are a function of the *domain* rather than the *term*
+(class 1's near-synonyms, class 2's adjacent-domain collisions). Those two are where the highest-
+value findings have historically come from.
+
+### 4.2 A realistic effort estimate, now that generation is scripted
+
+For one vocabulary of roughly forty terms, from the decaf review's actual shape:
+
+| step | before | now |
+|---|---|---|
+| write the hostile sentences for classes 3–8 | four agents, the bulk of the pass | **one command** |
+| write the category context (`attack/contexts/*.json`) — nouns, and the adjacent domains | — | **a human, once per category**, and it is real research |
+| write class 1's near-synonym / abbreviation / quantity / geography phrasings | included above | **a human, per vocabulary.** Unchanged, and it is the `insufficient_evidence` set |
+| **adjudicate** the generated sentences: which are genuinely misleading, which are copy no merchant would write | the same agents | **a human, and this is now the dominant cost** |
+| decide removed vs narrowed vs limit-recorded, per finding | a human | unchanged |
+| independent refutation of the attacker's findings | a separate agent | unchanged |
+| natural-frequency read against real merchant copy | **never performed** | **still never performed** — see below |
+
+The honest summary: **generation stops being the expensive step and adjudication becomes it.** The
+number of sentences to judge goes *up*, not down — 803 at the default cap for a forty-term
+vocabulary — so a review that treats the coverage report as the result rather than as the input has
+made the pass cheaper and worse. Budget for reading, not for writing.
+
+**And the step that was never done is still not done.** No narrowing in any vocabulary here has been
+measured against real merchant copy. The `origin` tombstone is what that costs: a narrowing that
+closed every false pass in hand-built sets was measured on 5,322 real product descriptions at **17
+true statements lost for 0 false passes gained**, and the class it closed had zero natural
+instances. Scripting the attack does not touch this, and nothing in the tooling should be read as
+though it did.
 
 ---
 

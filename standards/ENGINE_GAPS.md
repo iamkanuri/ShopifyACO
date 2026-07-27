@@ -573,6 +573,28 @@ runnable assertion. Three things gate that, in order of how much they cost:
    engine investment the standards work has surfaced, and it is worth more than any new requirement kind.
 3. **Tense and modality** — nothing in the engine reads either, and no term list can supply them.
 
+> **(2) and (3) now have a measurable target.**
+> [`acceptance/subject-tense/`](acceptance/subject-tense/README.md) turns them into a pass/fail
+> suite: **37 hostile cases** across 15 strata with the outcome the engine *should* produce, and
+> **19 must-not-regress cases** — the half that makes it honest, since v2.6 measured 16/16 on its own
+> set and an independent pass then measured it as a net regression. It reports **per stratum**,
+> never as a single number, because a fix closing sibling-product while breaking past-tense is a
+> different result from one closing both.
+>
+> ```bash
+> node --import tsx standards/acceptance/subject-tense/run.ts
+> ```
+>
+> Observed at `e9ec942`: **hostile 4/37, must-not-regress 19/19.** An observation, not an
+> expectation — the four that pass are closed by existing guards, and the guard half being green is
+> what makes any future regression visible.
+>
+> It deliberately proposes **no design**. v2.6's precedent is that a plausible design measured worse
+> than the naive code it replaced. And it states, in the artifact and on every run, that it measures
+> **capability, not value**: a fix passing it still needs the natural-frequency read the `origin`
+> tombstone requires, which — see the third bullet below — has still never been performed for
+> anything in this gap.
+
 Two supporting notes, both measured. `CONTEXT_VETO` is a **closed phrase list**, so it covers
 `also available` but not `also stock`, `comes with` but not `goes with`, and cadence phrases like
 `deliver every 2 weeks` but not the bare word `subscription`. And the subject rule **fails open on an

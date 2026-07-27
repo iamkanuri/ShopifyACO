@@ -46,29 +46,80 @@ that "I reviewed it myself" is unrepresentable rather than merely discouraged.
 
 The attacker works from the vocabulary artifact and the engine mechanics in
 [`VOCABULARY_MECHANISM.md`](VOCABULARY_MECHANISM.md), and must produce **verbatim store copy**, not
-descriptions of copy. Six obligatory attack classes, one per structural hazard the mechanism has:
+descriptions of copy.
+
+> **Generation is now a script.** [`attack/`](attack/README.md) produces the sentences for these
+> classes from any vocabulary artifact, deterministically and seeded, with a coverage report that
+> names every term left untested in every class. Run it first; §2.1 says exactly what it does not
+> do. Six of the eight classes are mechanical; two are not, and the report says which per term.
+>
+> ```bash
+> node --import tsx standards/attack/cli.ts <vocabulary.json> --context <category>
+> ```
+
+**Eight obligatory attack classes**, one per structural hazard the mechanism has. Six were derived
+from the mechanism; the last two were forced by measurement, and how they arrived is part of why
+this list should be treated as open rather than complete.
 
 1. **Satisfy the letter, mislead the buyer.** For every supporting term, write the sentence that
    matches it and leaves a shopper with a false impression. This is the entry-level attack from
-   `METHOD.md` §4, applied per term.
+   `METHOD.md` §4, applied per term. ⚠️ **Its most valuable half is not generatable** — the
+   near-synonym (`chemical-free` for a named process), the generic abbreviation (`WP`), the bare
+   quantity (`99.9% of the caffeine`), the geography (`decaffeinated at origin`). In every one the
+   hostile string is **not the term**, so it cannot be derived from the term. That half is human
+   work, and it is the half that fills `insufficient_evidence`.
 2. **The adjacent vocabulary.** Find a *different* domain that uses the same words about the same
    product. Coffee produced the canonical instance: `Process: Washed` names the post-harvest
    treatment, and a decaffeination check keyed on `process` reads a drying method as a solvent
-   disclosure.
-3. **The wrong subject.** Put each supporting term on packaging, on the shipment, on a bundled item,
-   on a competitor, and inside a review quote. The engine's aboutness guards catch some of these and
-   the corpus pins others open; the attacker's job is to find which.
-4. **The merchant-controlled string.** Put each supporting term in a product title, a product type,
-   and a variant option value. Two of the six evidence surfaces are merchant-controlled and the
-   engine cannot be told to ignore them ([`VOCABULARY.md`](VOCABULARY.md) §5), so any term that
-   reads naturally as a *product name* is a standing false-pass channel.
-5. **The orthography attack.** Write every supporting term as a store that is being *careful* would
-   write it — with `®`, with `™`, hyphenated, abbreviated, in a spec block, in a sentence that a
+   disclosure. ⚠️ **Also not generatable.** The script emits *fragment probes* — each term's
+   maximal proper prefix and suffix, which reaches the `water process` inside `Sparkling Water
+   Process` shape — and it *replays* whatever domain collisions a human has written into
+   `attack/contexts/{category}.json`. With that file empty it produces none, and says so.
+3. **The wrong subject.** Put each term on packaging, on the shipment, on a bundled item, on a
+   competitor, in a review quote, in industry-generic copy, in a comparative, and **on a sibling
+   product** (`"Our Ethiopian decaf uses…"`). The sibling case was under-weighted in the first
+   version of this list and the decaf review showed it is unclosable by any term list.
+4. **The merchant-controlled string.** Put each term in a **product title** and a **variant option
+   value** — and on the four other surfaces a claim reaches that nobody probed before the decaf
+   review's refuting pass.
+
+   > ⚠️ **Two corrections, both measured by execution rather than reasoned about.**
+   > **The surface count is NINE, not six.** `QuotableSurface` defines nine, and the claim branch
+   > filters `p.evidence` on the claim linter alone and restricts **no** surface — so
+   > `shipping_policy`, `product_metafield` and `seo_description` all accept a match.
+   > **`product_type` is NOT an evidence surface.** An earlier version of this list told attackers
+   > to place a term in the product type. `productType` is read only for category inference and is
+   > never folded into the evidence index, so that probe can never fire — and an attacker following
+   > the instruction records a pass that means nothing. Both are pinned bidirectionally in
+   > `__tests__/attack.test.ts`: if the engine ever indexes `product_type`, that test fails and this
+   > paragraph must be corrected back.
+5. **The orthography attack.** Write every term as a store that is being *careful* would write it —
+   with `®`, with `™`, hyphenated, pluralised, possessive, in a spec block, in a sentence that a
    period splits. A term that only matches the casual spelling fails exactly the sellers most likely
-   to be telling the truth.
+   to be telling the truth. **Fully mechanical**, and the position of a symbol is decisive: a
+   trailing `®` is harmless because word bounding blocks only on ASCII letters, while an internal
+   one defeats a multi-word term outright.
 6. **The violation attack.** For every violating term, write the sentence in which a **compliant**
    store trips it. This is the class that produces the unrecoverable error, and it is the one an
-   author is least likely to attempt against their own list.
+   author is least likely to attempt against their own list. **Mechanical, including the step a
+   human had to invent**: violating terms are required to be *framed*
+   ([`VOCABULARY.md`](VOCABULARY.md) §3.2), and a compliant store writes the **bare substance**, so
+   the generator strips the frame by rule to reach `"Our decaf is free of methylene chloride."`
+7. **Tense and modality.** `"Until 2024 we used X"`, `"we are switching to X"`, `"we may use X"`,
+   `"X is available on request"`, `"we are evaluating X"`, `"we asked our supplier about X"`.
+   **Added by measurement**: the decaf review closed *zero* of these, and none of them is a subject
+   problem. Nothing in the engine reads tense or modality, and the distinguishing word is never the
+   matched term.
+8. **The denial of a SUPPORTING term.** `"We do not offer a Swiss Water Process decaf in this
+   range."`, `"Our decaf is free of methylene chloride."`, `"Methylene chloride: never."`,
+   `"We avoid the Swiss Water Process altogether."`
+
+   > **Found by measuring the generator against the corpus, not by review.** Class 6 covers the
+   > denial shape for **violating** terms only. The mirror had no class here — and it is one of only
+   > **two** classes the decaf review measured as genuinely closed (5/5). A class that produced
+   > measured closures and had no name is a hole in the gate. Take the eight as open, not complete:
+   > this one was found by taking sentences four humans actually wrote and asking which class each
+   > belonged to. Two belonged to none.
 
 Each finding resolves to exactly one `review.adversarial_findings[].outcome`:
 
@@ -78,6 +129,46 @@ Each finding resolves to exactly one `review.adversarial_findings[].outcome`:
 **A `survived_unchanged` finding with no `residual_risk` should be read as an attacker who was not
 trying** — the same rule `SCHEMA.md` §3 applies to entries. And a review recording *zero* findings
 is rejected outright by `vocabulary.ts`.
+
+---
+
+## 2.1 What the script does, and what it emphatically does not
+
+**It buys COVERAGE. It buys nothing at all for INDEPENDENCE.**
+
+A generated attack set is still the **author's own set**. §1 separates author, attacker and refuter
+because the failure mode — a term that *sounds* like it names something specific — is invisible from
+inside the decision that created it, and no script changes who is inside it.
+
+The decaf review is the proof, and it is unambiguous. Its author applied 21 narrowings and verified
+them by re-running **the attackers' own sentences** — *"which felt independent and isn't, because
+those are precisely the sentences the change was tuned to stop."* An independent refuter then found
+a **false statement** in the committed review record: a class reported as 5/5 closed was 13/13 still
+failing. Running a generator would not have caught that; it would have produced the same sentences
+the author was already re-running.
+
+| step | who does it |
+|---|---|
+| write the hostile copy for classes 3–8 | **the script** |
+| supply class 2's adjacent domains (`attack/contexts/{category}.json`) | a human, per category |
+| write class 1's near-synonym / abbreviation / quantity / geography phrasings | a human, per category |
+| judge whether a generated sentence is **genuinely misleading** to a shopper | a human |
+| judge whether the generated copy is copy a **merchant would actually write** | a human |
+| decide `term_removed` vs `term_narrowed` vs `limit_recorded` | a human |
+| **be a different person from the author** | unchanged, and not machine-checkable |
+
+Two of those deserve emphasis because they are easy to skip once a tool exists.
+
+**Naturalness is a gate, not a nicety.** A generated sentence no merchant would write cannot be
+judged for misleadingness by anyone, so it is not an attack — it is noise that inflates a coverage
+count. Every phrase builder in `attack/templates.ts` was corrected by *executing* it; reading the
+template table was not enough.
+
+**A count is not a closure.** The decaf review's finding was about *which classes* closed, not how
+many sentences were written, and the same author read "21 sentences stopped" as a class being
+closed when a rewrite of that class passed 13 of 13. The script reports per class for that reason,
+and it names what it left out: untested term/class cells, classes that ran against nothing, and
+everything the per-cell cap dropped.
 
 ---
 
@@ -113,13 +204,44 @@ A standard entry may bind to a vocabulary only when **all** of these hold:
 | 3 | `review.state` is `verified_clean` or `defects_found_and_resolved` | `vocabulary.ts` |
 | 4 | `review.attacker` ≠ author, `review.refuter` ∉ {author, attacker} | the review record; a human gate |
 | 5 | at least one adversarial finding is recorded | `vocabulary.ts` |
-| 6 | all six attack classes in §2 were attempted, and any not attempted are recorded as `limits` | the review record; a human gate |
+| 6 | all **eight** attack classes in §2 were attempted, and any not attempted are recorded as `limits` | partly; see below |
 | 7 | `limits` is non-empty | schema `minItems: 1` |
 | 8 | `vocabulary_hash` covers the content | V12 |
 
-Conditions 4 and 6 are **not machine-checkable** and are marked as such rather than being given a
-field that would imply they were verified. A format that claimed to check them would be doing the
-thing this whole gate exists to prevent.
+**Condition 4 is not machine-checkable and never will be.** Whether the attacker is a different
+party from the author is a fact about people, and a field asserting it would be doing the thing this
+whole gate exists to prevent.
+
+**Condition 6 is now HALF machine-checkable, and the halves must not be confused.** The templatizer
+reports, per term and per class, whether any attack sentence was *generated* — and a restricted run
+reports `incomplete` rather than a small clean number. That is a real check and it replaces a step
+that used to be an assertion.
+
+What it cannot check is whether the attempt was **serious**: whether a human read the generated
+sentences, judged which are genuinely misleading, and pursued the two classes the script cannot
+generate. A coverage report showing 803 sentences across 8 classes and a reviewer who read none of
+them produce the same artifact. So:
+
+> **Generated coverage is a floor, not a review.** Record in `review.attacker` what was generated
+> (tool, seed, per-cell limit, and the coverage verdict) *and* what a human added on top —
+> specifically for classes 1 and 2, which the script cannot produce. A review whose attacker field
+> names only a tool is a review nobody performed.
+
+---
+
+## 4.1 The classes the tool cannot reach, stated once so they are not skipped
+
+Measured against the corpus in `attack/corpus/decaf-review.json` and pinned exactly in
+`__tests__/attack.test.ts`:
+
+> **The generator covers the classes that are a function of the TERM. It cannot cover the classes
+> that are a function of the DOMAIN.**
+
+Six of the eight are term-functions and are mechanical. The two domain-functions are class 1's
+near-miss half and class 2's collision half, and both are precisely where the highest-value findings
+have historically come from — `chemical-free`, `naturally decaffeinated`, `Process: Washed`,
+`carbonic natural`. **The tool makes the cheap classes free; it does not make the expensive ones
+cheaper, and a review that stops when the script stops has skipped the part that mattered.**
 
 ---
 
