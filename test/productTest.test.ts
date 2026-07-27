@@ -1161,3 +1161,58 @@ test("v2.3 CP4: a measurement row's label never claims more than its quote suppo
     `the label must not claim size or weight specifically; got "${a.label}"`);
   assert.match(a.label, /measurements/i);
 });
+
+// ---- G-08 (v3.0 CP2): one unquotable sentence must never destroy a report ----
+
+test("G-08: a 'delivery guaranteed' shipping policy no longer refuses the whole report", async () => {
+  // THE DEFECT, reproduced as a fixture before it was fixed. The claim linter forbids
+  // `guarantee` in any merchant-visible string and it runs over `evidenceQuote`, so a
+  // single sentence in the merchant's own shipping policy returned the ENTIRE result
+  // as errorKind "unreachable" — a flatly false statement about a store we read
+  // perfectly well. `claim` and `attribute` rows pre-filter their evidence with
+  // `lintStrings`; `delivery` read `p.evidence` raw. Same class that got the
+  // `warranty` requirement dropped in v2.3, still reachable through this door.
+  //
+  // Coffee makes it likely rather than exotic: "delivery guaranteed" and "guaranteed
+  // fresh" are ordinary phrasings in the category.
+  const policy = (body: string) =>
+    `<html><body><main><h1>Shipping Policy</h1><p>${body}</p></main></body></html>`;
+  const coffee = JSON.stringify({ product: {
+    title: "Ethiopia Guji 12 oz", vendor: "Acme Roasters", product_type: "Coffee", tags: "",
+    body_html: "<p>A washed Ethiopian coffee.</p>",
+    options: [{ name: "Grind", values: ["Whole Bean"] }],
+    variants: [{ title: "Whole Bean", price: "19.00", option1: "Whole Bean" }],
+  } });
+  const run = async (policyBody: string) => {
+    const { __resetCaches } = await import("../src/server/productTestCache.js");
+    __resetCaches();
+    return runProductTest("https://g08.example/products/ethiopia-guji", {
+      semantic: { disabled: true },
+      loadRobots: async () => ({ rules: [], fetched: false }),
+      sleep: async () => {},
+      fetchUrl: async (u: string) =>
+        /\.json$/.test(u) ? { status: 200, contentType: "application/json", body: coffee }
+        : /shipping|policies/.test(u) ? { status: 200, contentType: "text/html", body: policy(policyBody) }
+        : { status: 200, contentType: "text/html", body: "<html><body><p>A washed Ethiopian coffee.</p></body></html>" },
+    });
+  };
+
+  // CONTROL: a lintable window still passes and still quotes.
+  const clean = await run("Most orders arrive within 3 business days for US addresses.");
+  assert.equal(clean.ok, true);
+  const cleanRow = clean.assertions.find((a) => /delivery/i.test(a.label));
+  assert.equal(cleanRow?.status, "pass_evidenced");
+  assert.match(String(cleanRow?.evidenceQuote), /within 3 business days/);
+
+  // THE FIX: the report survives, and the row is HONEST rather than silently passing.
+  const hostile = await run("We are a small roaster. Delivery guaranteed within 3 business days.");
+  assert.equal(hostile.ok, true, "the merchant's own wording must never refuse their report");
+  assert.notEqual(hostile.errorKind, "unreachable");
+  assert.equal(hostile.assertions.length, clean.assertions.length, "the full table survives");
+  const row = hostile.assertions.find((a) => /delivery/i.test(a.label));
+  // FAIL CLOSED PER ROW: the only timing sentence was unquotable, so the row must not
+  // pass on evidence it cannot show. `not_proven` because the policy WAS readable —
+  // an unreadable policy is the separate `requires_store_access` branch (§3.2).
+  assert.equal(row?.status, "not_proven", "an unquotable sentence must not silently pass");
+  assert.equal(row?.evidenceQuote, undefined, "no quote is rendered for a row that found none");
+});

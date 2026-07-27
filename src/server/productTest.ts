@@ -1431,7 +1431,12 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const checked = textSurfaces(p);
       // Same PRODUCT-surface + lint filter as the claim and attribute rows. This row
       // searched `p.evidence` raw — no surface filter and not even the lint pre-filter —
-      // which was undocumented and unintentional. Two consequences: a subscription
+      // which was undocumented and unintentional.
+      //
+      // ✅ G-08 names `no_subscription` alongside `delivery` as reading `p.evidence`
+      // raw. That half was ALREADY CLOSED here by v2.9's policy-surface work, before
+      // the gap was written up; only `delivery` was still exposed at v3.0. Recorded so
+      // a future session reading ENGINE_GAPS.md does not go looking for a second fix. Two consequences: a subscription
       // sentence in the SHIPPING POLICY ("Subscribe & save on every delivery") is a
       // statement about the store's ordering options, not about whether THIS product can
       // be bought once; and an unlintable policy sentence could refuse the whole report.
@@ -1549,7 +1554,25 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     }
     case "delivery": {
       const checked = textSurfaces(p);
-      const hit = findTimingSupport(p.evidence);
+      // G-08 — DROP ANY SENTENCE WE COULD NOT LEGALLY SHOW, exactly as the claim and
+      // attribute rows do. The claim linter runs over `evidenceQuote` as a final gate
+      // and BLOCKS THE WHOLE RESULT when it trips, returning errorKind "unreachable"
+      // for a store we read perfectly well. This row read `p.evidence` raw, so a
+      // shipping policy saying "Delivery guaranteed within 3 business days" refused
+      // the merchant's entire report — a flatly false statement about their store,
+      // reproduced as a fixture before this line existed (10 rows -> 0).
+      //
+      // This is the identical failure class the `warranty` requirement was DROPPED
+      // for in v2.3. The rule was already written in the attribute branch's comment
+      // and simply was not applied here: fail closed per ROW, never fail the report.
+      //
+      // ⚠️ NO SURFACE FILTER, and that asymmetry is deliberate rather than an
+      // oversight. Claim and attribute rows also exclude `shipping_policy` because a
+      // statement about ORDERS is not a statement about the PRODUCT. Delivery is the
+      // one requirement whose subject genuinely IS the shipping policy, so excluding
+      // it would delete the row's best evidence. Only the lint filter applies.
+      const quotable = p.evidence.filter((e) => lintStrings([e.text]).ok);
+      const hit = findTimingSupport(quotable);
       if (hit) {
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
