@@ -12,14 +12,19 @@
 
 # ▶ RELEASE (pending): v3.3 — a real result on /demo, and a navigable standard
 
-**Branch:** working tree · **Base:** `main` @ `24dedf0` (v3.2, pushed 2026-07-27)
-**Commit:** `________` — **PENDING: fill this SHA in at merge.** Until it carries one, nothing
-below has been verified in production. Treat this block as intent, not as a measurement.
+**Branch:** `feat/v3-3-public-surfaces` · **Base:** `main` @ `24dedf0` (v3.2, pushed 2026-07-27)
+**Commit:** `a9cea94` — **PENDING merge to `main`.** Until `/healthz` reports a SHA from this
+branch, nothing below has been verified in production. Treat it as intent, not a measurement.
 **No migration.**
+
+> ⚠️ **DEPLOY THIS BEFORE thirdocular.com.** `ThirdOcular/scripts/check-copy.mjs` is wired into
+> that repo's `npm run build` and fetches `GET /api/brand.json` from this service. It correctly
+> refuses to pass a check it could not perform, so until this release is live the next push to
+> `thirdocular`'s `main` goes red — by design, and in the right direction.
 
 ## AA.1 What it carries
 
-- **`/demo` is a real Coffee Standard v1.0 result**, not a hand-written sample —
+- **`/demo` is a real Coffee Standard v1.1 result**, not a hand-written sample —
   `klatchcoffee.com`, replayed from a **committed frozen capture**, so the page is deterministic
   and costs no egress on every view.
 - **Coffee Standard v1.1 issued. v1.0 is byte-frozen and still served** — `standard_hash` covers
@@ -47,7 +52,7 @@ git push origin main                      # Railway auto-builds + deploys
 ## AA.4 Post-deploy verification
 
 1. `/healthz` → `commit` matches the pushed SHA.
-2. `/demo` renders the `klatchcoffee.com` Coffee Standard v1.0 result, and **every green row's
+2. `/demo` renders the `klatchcoffee.com` Coffee Standard v1.1 result, and **every green row's
    quote plainly supports its label**. *If any pass isn't supported by its quote, roll back —
    that is the one unrecoverable failure mode.*
 3. `/standards/coffee/1.0/standard.json` still returns the v1.0 bytes with the same
