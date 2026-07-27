@@ -93,6 +93,7 @@ import {
   proposeFromTestHandler, testProposalsHandler,
 } from "./buyerTests.js";
 import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
+import { standardsPageFor, standardJsonFor, standardsSitemapPaths, llmsTxt } from "./standardsSite.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
@@ -193,13 +194,36 @@ app.get("/robots.txt", (req, res) => {
     // case page names a real third-party store, so it should never be indexed.
     .send(`User-agent: *\nDisallow: /admin\nDisallow: /api/\nDisallow: /c/\nAllow: /\n\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
 });
+// ---- the published standard (v3.2 CP7) -------------------------------------
+//
+// Registered BEFORE `express.static` and the SPA catch-all so these paths resolve to
+// the artifact rather than to index.html. The point of a stable entry id is an agency
+// writing "your product pages fail ALS-COFFEE-1.0-CERT-002" and having it resolve, so
+// these URLs are a contract: they must keep working, and the JSON must keep being JSON.
+app.get(/^\/standards\/[a-z0-9-]+\/[0-9.]+\/standard\.json$/, (req, res) => {
+  const found = standardJsonFor(req.path);
+  if (!found) return res.status(404).type("application/json").send(`{"error":"no such standard"}`);
+  // The content hash is served as a header too, so a machine can check the artifact it
+  // just fetched against a citation without parsing the body first.
+  res.set("X-Standard-Hash", found.hash);
+  res.set("Cache-Control", "public, max-age=3600");
+  res.type("application/json").send(found.json);
+});
+
+// A plain-text map for a machine reader that arrives without a crawler.
+app.get("/llms.txt", (req, res) => {
+  res.type("text/plain").send(llmsTxt(baseUrl(req)));
+});
+
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
   // Repositioning: Index is retired from the public identity (nav/footer) but its
   // routes stay crawlable for now (existing shared links + prior distribution work).
-  const urls = ["/", "/demo", "/methodology", "/scan", "/privacy", "/terms", "/support", "/index"].map(
-    (p) => `  <url><loc>${base}${p}</loc></url>`,
-  );
+  const urls = ["/", "/demo", "/methodology", "/scan", "/privacy", "/terms", "/support", "/index"]
+    // Every published standard and every ENTRY. A citation that resolves is the whole
+    // reason the ids are stable, so each one is a first-class indexable page.
+    .concat(standardsSitemapPaths())
+    .map((p) => `  <url><loc>${base}${p}</loc></url>`);
   try {
     for (const idx of await listCategoryIndexes()) {
       const lastmod = idx.updated_at ? `<lastmod>${new Date(idx.updated_at).toISOString().slice(0, 10)}</lastmod>` : "";
@@ -1352,6 +1376,39 @@ async function serveIndex(req: Request, res: Response) {
       }
     } catch {
       /* CSR fallback */
+    }
+  }
+
+  // ---- the published standard (v3.2 CP6/CP7) --------------------------------
+  //
+  // Rendered into the DOCUMENT, not just into <head>. A published standard no
+  // crawler can read defeats the reason to publish it, and until now every route
+  // but /index shipped an empty <div id="root"> to a non-JavaScript fetch — on a
+  // site whose headline is "AI buyers treat your store like an API".
+  //
+  // Same mechanism as the Index SSR above and for the same reason: the snapshot
+  // sits inside #root, React mounts over it and takes the page for interaction, so
+  // the document is complete for a machine and the app is still an app for a person.
+  if (req.path === "/standards" || req.path.startsWith("/standards/")) {
+    try {
+      const page = standardsPageFor(req.path, baseUrl(req));
+      if (page) {
+        const t = escapeHtml(page.title);
+        const d = escapeHtml(page.description);
+        const u = escapeHtml(page.canonical);
+        html = html
+          .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+          .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
+          .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`)
+          .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
+          .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
+          .replace("</head>", `<link rel="canonical" href="${u}" />\n    ${page.jsonLd}\n  </head>`)
+          .replace(/<div id="root">\s*<\/div>/, `<div id="root">${page.bodyHtml}</div>`);
+      }
+    } catch {
+      /* CSR fallback — never let a rendering bug 500 the page */
     }
   }
 

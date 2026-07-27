@@ -549,10 +549,22 @@ const CLAIMS: Case[] = [
     "This is a THIRD veto shape, which is why SENSE_SHIFT is its own list rather than more nouns " +
     "in MODIFIED_SUBJECT. There the term keeps its meaning and attaches to the wrong thing " +
     "(\"aluminum-free PACKAGING\" is a true claim about the box). Here the compound changes what " +
-    "the word MEANS: organic matter is not a weaker organic claim, it is not an organic claim."),
+    "the word MEANS: organic matter is not a weaker organic claim, it is not an organic claim.\n" +
+    "⚠️ SENSE_SHIFT closed this and was REVERTED — 98 measured regressions, the worst of any guard " +
+    "this session. `reach` is a homograph of the EU chemicals regulation (\"BPA-free, REACH " +
+    "compliant\") and of the commonest closing clause in DTC copy (\"reach out with any " +
+    "questions\"); `growth` is a product BENEFIT (\"certified organic growth serum\"); `chemistry` " +
+    "is ordinary beauty copy; `compounds` is the FDA's own wording for an antiperspirant active, " +
+    "so it broke the VIOLATION path — a store that states the violating claim was reported silent, " +
+    "and status-only comparison cannot see that because both answers are not_proven. It did not " +
+    "close the class either: one adjective (\"organic plant matter\") or one synonym (\"organic " +
+    "material\") walks past it. Adjacency is not headship.",
+    "pass_evidenced"),
   C("The soil is high in organic compounds.", claimReq("organic"), "not_proven", "different-sense-compound",
-    "Same sense shift, chemistry rather than soil science. Pinned separately because it reaches a " +
-    "different arm of SENSE_SHIFT."),
+    "Same sense shift, chemistry rather than soil science. Kept as a separate gap because the fix " +
+    "for it is exactly what broke \"Contains aluminum compounds for all-day protection.\" — the " +
+    "FDA's own wording for an antiperspirant active, on the VIOLATION side.",
+    "pass_evidenced"),
   C("Made from organic beans.", claimReq("organic"), "pass_evidenced", "different-sense-control",
     "THE CONTROL THE MUTATION PROOF NEEDS. A guard whose removal breaks nothing reads as " +
     "decorative; this is the case SENSE_SHIFT must NOT touch. `beans` is not in the list and must " +
@@ -918,12 +930,17 @@ const V28_FOUND: Case[] = [
     "not the concept, which is why it is pinned rather than patched with one more word: a " +
     "term added to a veto list without an adversarial pass is how v2.9's `case` regression " +
     "reached a real watch store.\n" +
-    "CLOSED in v3.2 CP1b by RECIPE_FRAME + RECIPE_SUBSTANCE, which are conjoined for exactly " +
-    "the reason this case was left pinned: each signal ALONE deletes a real positive. The " +
-    "frame alone deletes \"Rated for 300 lbs.\"; the substance alone deletes \"The pitcher " +
-    "holds 12 oz milk.\" and \"A 32 oz water bottle for everyday carry.\" Both minimal pairs " +
-    "are pinned below and the recall replay over 507 general and 69 coffee pass rows reports " +
-    "what it cost."),
+    "⚠️ v3.2 ATTEMPTED THIS AND REVERTED IT, and the attempt is the most useful thing anyone " +
+    "has learned about this gap. RECIPE_FRAME + RECIPE_SUBSTANCE closed this sentence and the " +
+    "second brewing sentence on the same store. A 216-store replay then reported ZERO real " +
+    "positives lost — and two independent attackers, re-executed mechanically against the " +
+    "parent commit, found 192. The frame reaches any price near a substance " +
+    "(\"Our 16 oz water bottle sells for 19.99.\"); the substance reaches every stock pot, " +
+    "milk frother, ice cream scoop and water-resistant shell. It also does not close the " +
+    "CLASS: \"Pour 6 oz of hot water over the grounds.\" still passes, because USAGE_VERB " +
+    "lists steep/brew/dissolve and coffee copy says pour, heat, fill, boil, bloom.\n" +
+    "The gap is the FRAME, and a frame is not a word list. Do not attempt a fourth veto term.",
+    "pass_evidenced"),
   // --- v3.2 CP1b: the minimal pairs that force the guard to stay conjoined ---
   C("Rated for 300 lbs.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
     "THE FRAME ALONE IS NOT ENOUGH, and this is the case that proves it. `for <number>` is " +
@@ -941,9 +958,12 @@ const V28_FOUND: Case[] = [
     "found. Closing the bare-preposition frame moved groundsforchange.com's pass from one " +
     "brewing sentence to ANOTHER in the same copy — the row still passed, on a different quote. " +
     "A status-only diff called that closed. Only comparing the RENDERED QUOTE showed it was not.\n" +
-    "CLOSED by SUBSTANCE_WEIGHED. On the real store the row now passes from the variant options " +
-    "(\"12 oz.\", \"2 lb.\", \"5 lb\"), which is the store's actual weight and the correct answer — " +
-    "the defect was never that the row passed, it was WHAT proved it."),
+    "SUBSTANCE_WEIGHED closed it and was REVERTED: mechanically re-executed against the parent " +
+    "commit it carried 45 regressions of its own, because `stock`, `ice`, `cream` and `water` " +
+    "are product words. \"Our stock pot measures 10 inches across.\" is the commonest cookware " +
+    "SKU there is, and \"Water-resistant shell measures 28 inches\" loses to a hyphen the vessel " +
+    "lookahead cannot see. Kept as a measured gap.",
+    "pass_evidenced"),
   C("Our water bottle weighs 12 oz.", attr("dimensions"), "pass_evidenced", "usage-quantity-control",
     "THE CONTROL FOR SUBSTANCE_WEIGHED, and the reason it carries a negative lookahead. A brew " +
     "substance sits within a few words of `weighs` here too — but it MODIFIES a container that " +
@@ -961,7 +981,14 @@ const V28_FOUND: Case[] = [
     "the commit serving production — and \"Contains 6oz of caffeine.\" already failed. " +
     "Executing the sentence rather than reading the source found the real cause: the nutrient " +
     "is sought in the measurement's own complement, and here it is 45 characters away on a " +
-    "different quantity. CLOSED by SERVING_HEAD, which is positional instead."),
+    "different quantity.\n" +
+    "⚠️ SERVING_HEAD closed this and was REVERTED — 23 measured regressions. Its protection was " +
+    "a closed list of serveware nouns (bowl, board, platter, tray…) and such a list can never be " +
+    "complete: pitcher, jug, cup, glass, carafe, mug, crock, tureen, ramekin, basket, vessel and " +
+    "cone all died, as did every `dose bottle` and `portion container`. Same shape as the " +
+    "head-noun rule v2.8 removed from `origin` after four attempts — a closed list used as the " +
+    "PROTECTOR fails open in the damaging direction.",
+    "pass_evidenced"),
   C("Acacia serving board, 18 inches long.", attr("dimensions"), "pass_evidenced", "serving-size-control",
     "`serving` IS A PRODUCT WORD on any kitchen store. This is why SERVING_HEAD requires the " +
     "noun to be THIS measurement's complement rather than adding \"a\" to PER_SERVING's " +
@@ -1196,7 +1223,7 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // clean win. Both new gaps are FALSE FAILS accepted to close FALSE PASSES, and both
   // are named at their case: a care instruction in the sentence AFTER its pointer, and
   // a delivery window whose only match in production was a substring accident.
-  const EXPECTED_OPEN_GAPS = 31;
+  const EXPECTED_OPEN_GAPS = 36;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

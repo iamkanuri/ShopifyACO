@@ -36,11 +36,17 @@ const H = 630;
 const MX = 140;        // left content margin
 const RX = W - MX;     // right-aligned numbers anchor (1060)
 const CW = W - 2 * MX; // max content width for fitted text (920)
-const INK = "#ECEAE3";
-const MUTED = "#8a8882";
-const GOLD = "#cba35c";
-const GREEN = "#6bbf9a";
-const BG = "#14161f";
+// The shared palette (see viewer/src/theme.css). NOTE WHAT IS ABSENT: this card
+// family carries NO crimson and NO tan. Those two colours are reserved for a
+// not-proven and a requires-store-access requirement result, and a share card
+// renders no requirement results — it frames a category question. A poster that
+// borrowed the failure colour for decoration would spend the one signal this
+// product cannot afford to dilute. test/palette.test.ts enforces it.
+const INK = "#CBD8E4";      // ice
+const MUTED = "#8598B2";    // ice, muted
+const ACCENT = "#7B9BC7";   // slate-light — the highlight of the card family
+const SLATE = "#4F6890";    // slate — structure (the un-gated frame rule)
+const BG = "#1B2131";       // navy
 
 const xml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -130,7 +136,7 @@ function reportInner(p: ReportPreview): string {
     y += frameLine.size + 12;
   }
   parts.push(textEl(MX, y + 4, 26, MUTED, xml(nLine)));
-  parts.push(textEl(MX, 520, 26, GREEN, xml("See the full breakdown →"), { weight: 700 }));
+  parts.push(textEl(MX, 520, 26, ACCENT, xml("See the full breakdown →"), { weight: 700 }));
   parts.push(engineFooter());
   return parts.join("\n  ");
 }
@@ -138,7 +144,7 @@ function reportInner(p: ReportPreview): string {
 /** The /report/:id share card. NO score, NO losing rate — the poster frames the
  *  category question; the merchant's numbers live on the page they lead to. */
 export function buildReportCardSvg(p: ReportPreview, brandName: string): string {
-  return frame(GREEN, brandName, "AI VISIBILITY REPORT", reportInner(p));
+  return frame(ACCENT, brandName, "AI VISIBILITY REPORT", reportInner(p));
 }
 
 /** Everything the demo card renders — extracted from the sample report's own
@@ -158,10 +164,12 @@ export interface DemoCardModel {
  *  the SAMPLE badge is what licenses full disclosure). Index-card layout: substitution
  *  headline + named rivals with counts + the sample brand's own count against them. */
 export function buildDemoCardSvg(m: DemoCardModel, brandName: string): string {
-  const RED = "#d07a7a";
+  // The merchant row is marked by the "→" and by weight, not by a failure colour:
+  // being out-recommended in a sample is not a failed requirement.
+  const OWN = ACCENT;
   const parts: string[] = [];
-  parts.push(`<rect x="760" y="52" rx="8" width="300" height="44" fill="none" stroke="${GOLD}" stroke-width="2"/>`);
-  parts.push(textEl(910, 81, 20, GOLD, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
+  parts.push(`<rect x="760" y="52" rx="8" width="300" height="44" fill="none" stroke="${ACCENT}" stroke-width="2"/>`);
+  parts.push(textEl(910, 81, 20, ACCENT, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
 
   parts.push(textEl(MX, 208, 44, INK, xml(`${m.brand} — ${m.category}`), { weight: 700 }));
 
@@ -169,27 +177,27 @@ export function buildDemoCardSvg(m: DemoCardModel, brandName: string): string {
   const head = fittedLines(m.headline, CW, 30, 20);
   let y = 262;
   for (const l of head.lines) {
-    parts.push(textEl(MX, y, head.size, GOLD, xml(l), { weight: 700 }));
+    parts.push(textEl(MX, y, head.size, ACCENT, xml(l), { weight: 700 }));
     y += head.size + 10;
   }
 
-  // Leaderboard rows: rivals + the sample brand, sorted by count, its row marked in red.
+  // Leaderboard rows: rivals + the sample brand, sorted by count, own row arrow-marked.
   const rows: Array<{ name: string; count: number | null; own: boolean }> = [
     ...m.rivals.map((r) => ({ name: r.name, count: r.recCount as number | null, own: false })),
     ...(m.merchantCount != null ? [{ name: m.brand, count: m.merchantCount as number | null, own: true }] : []),
   ].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 4);
   let ry = Math.max(y + 30, 356);
   for (const r of rows) {
-    const color = r.own ? RED : INK;
+    const color = r.own ? OWN : INK;
     parts.push(textEl(MX, ry, 30, color, xml(`${r.own ? "→ " : ""}${r.name}`), { weight: r.own ? 700 : 400 }));
     if (r.count != null) {
-      parts.push(textEl(RX, ry, 30, r.own ? RED : MUTED, xml(m.total ? `${r.count} of ${m.total}` : String(r.count)), { anchor: "end" }));
+      parts.push(textEl(RX, ry, 30, r.own ? OWN : MUTED, xml(m.total ? `${r.count} of ${m.total}` : String(r.count)), { anchor: "end" }));
     }
     ry += 44;
   }
 
   parts.push(engineFooter(`${m.total ? `· n=${m.total} answers ` : ""}· fictional sample data`));
-  return frame(GOLD, brandName, "SAMPLE REPORT", parts.join("\n  "));
+  return frame(ACCENT, brandName, "SAMPLE REPORT", parts.join("\n  "));
 }
 
 // ---- index cards (dominance-gated — same gate as the page) -----------------
@@ -211,7 +219,7 @@ export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): s
   const head = fittedLines(model.headline, CW, 30, 20);
   y += 24;
   for (const [i, l] of head.lines.entries()) {
-    parts.push(textEl(MX, y, head.size, model.gated ? GOLD : INK, xml(i === 0 && model.gated ? `★ ${l}` : l), { weight: 700 }));
+    parts.push(textEl(MX, y, head.size, model.gated ? ACCENT : INK, xml(i === 0 && model.gated ? `★ ${l}` : l), { weight: 700 }));
     y += head.size + 10;
   }
 
@@ -221,8 +229,8 @@ export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): s
   for (const [i, r] of rows.entries()) {
     const isCrown = model.gated && i === 0;
     const countLabel = r.count != null && model.n ? `${r.count} of ${model.n}` : `${Math.round(r.recommendation * 100)}%`;
-    parts.push(textEl(MX, ry, 30, isCrown ? GOLD : INK, xml(`${r.rank}. ${r.brand}${isCrown ? "  ★" : ""}`), { weight: isCrown ? 700 : 400 }));
-    parts.push(textEl(RX, ry, 30, isCrown ? GOLD : MUTED, xml(countLabel), { anchor: "end" }));
+    parts.push(textEl(MX, ry, 30, isCrown ? ACCENT : INK, xml(`${r.rank}. ${r.brand}${isCrown ? "  ★" : ""}`), { weight: isCrown ? 700 : 400 }));
+    parts.push(textEl(RX, ry, 30, isCrown ? ACCENT : MUTED, xml(countLabel), { anchor: "end" }));
     ry += 44;
   }
 
@@ -232,7 +240,7 @@ export function buildIndexSlugCardSvg(model: IndexOgModel, brandName: string): s
     model.n ? `· n=${model.n} answers` : "",
   ].filter(Boolean).join(" ");
   parts.push(engineFooter(metaBits));
-  return frame(model.gated ? GOLD : GREEN, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
+  return frame(model.gated ? ACCENT : SLATE, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
 }
 
 /** The /index (category list) share card. */
@@ -253,7 +261,7 @@ export function buildIndexListCardSvg(categories: Array<{ label: string; brands:
   }
   if (categories.length > 4) parts.push(textEl(MX, ry, 24, MUTED, xml(`+ ${categories.length - 4} more categories`)));
   parts.push(engineFooter("· measured by scan, not vibes"));
-  return frame(GREEN, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
+  return frame(ACCENT, brandName, "AI VISIBILITY INDEX", parts.join("\n  "));
 }
 
 // ---- default brand card (landing + utility pages) ---------------------------
@@ -261,7 +269,7 @@ export function buildIndexListCardSvg(categories: Array<{ label: string; brands:
 export function buildDefaultCardSvg(brandName: string, tagline: string): string {
   const parts: string[] = [];
   parts.push(textEl(MX, 280, 72, INK, xml(brandName), { weight: 700 }));
-  parts.push(textEl(MX, 336, 30, GREEN, xml("Does AI recommend your store — or your competitors?"), { weight: 700 }));
+  parts.push(textEl(MX, 336, 30, ACCENT, xml("Does AI recommend your store — or your competitors?"), { weight: 700 }));
   const tag = fittedLines(tagline, CW, 26, 19);
   let y = 410;
   for (const l of tag.lines) {
@@ -269,7 +277,7 @@ export function buildDefaultCardSvg(brandName: string, tagline: string): string 
     y += tag.size + 10;
   }
   parts.push(engineFooter());
-  return frame(GREEN, brandName, "AI SHOPPING VISIBILITY", parts.join("\n  "));
+  return frame(ACCENT, brandName, "AI SHOPPING VISIBILITY", parts.join("\n  "));
 }
 
 // ---- rasterization -----------------------------------------------------------
