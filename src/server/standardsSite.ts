@@ -99,9 +99,14 @@ export interface StandardDoc {
 
 export interface FitnessSample {
   name: string; label: string; description?: string;
-  stores: number; pass_rows_audited: number; confirmed_false_positives: number;
+  stores: number; products_evaluated?: number;
+  pass_rows_audited: number; confirmed_false_positives: number; borderline_counted_as_passes?: number;
   point_estimate_pct: number; bound_95_naive_pct?: number; bound_95_cluster_icc02_pct: number;
   rows_per_store?: number; deff_icc02?: number; method: string; source?: string;
+  /** Grammar 1.1: the classes behind the confirmed errors, each with its count and an
+   *  example, and whether ANY mechanism in the engine addresses it. `false` is the
+   *  interesting value and the reason this is published at all. */
+  defect_classes?: Array<{ klass: string; count: number; example: string; addressed_by_a_guard?: boolean } | string>;
   /** Only PART of this sample has been re-checked, so its rate is a lower bound. A
    *  floor and a complete audit must never be compared as peers. */
   is_floor?: boolean;
@@ -120,6 +125,50 @@ export interface FitnessDoc {
   entry_discrimination?: { n_products?: number; bands_held?: number; entries?: EntryDiscrimination[] };
 }
 
+/**
+ * The fitness a document carries INSIDE itself (grammar 1.1), rather than beside it.
+ *
+ * The sidecar rule is not "measurements live outside the document" — it is that a
+ * measurement taken AFTER a version is published must not change that version's bytes,
+ * because a citation resolves through its hash. v1.0's measurement came after v1.0
+ * shipped, so it is a sidecar; v1.1's came before v1.1 existed, so it is in the
+ * document. `fitnessOf` below normalises the two into one shape so the renderer never
+ * has to know which kind it is looking at.
+ */
+export interface EmbeddedFitness {
+  measured_at: string; engine_version?: string;
+  bands_held?: number; bands_total?: number;
+  samples: Array<FitnessSample & { defect_classes?: Array<{ klass: string; count: number; example: string; addressed_by_a_guard?: boolean }> }>;
+}
+
+/** The measurement to publish for a standard: its sidecar if it has one, otherwise its
+ *  own `measured_fitness`. Never invents one — an absent measurement stays absent. */
+export function fitnessOf(s: PublishedStandard): FitnessDoc | null {
+  if (s.fitness?.samples?.length) return s.fitness;
+  const inDoc = (s.doc as { measured_fitness?: EmbeddedFitness }).measured_fitness;
+  if (!inDoc?.samples?.length) return null;
+  return {
+    measured_at: inDoc.measured_at,
+    engine_version: inDoc.engine_version,
+    samples: inDoc.samples,
+    // Per-entry rates live on the entries themselves in grammar 1.1, so there is no
+    // separate block to normalise — `measuredOf` reads them directly.
+  };
+}
+
+/** The measured discrimination for one entry, from wherever this version keeps it. */
+export function measuredOf(s: PublishedStandard, e: StandardEntry): EntryDiscrimination | null {
+  const inEntry = (e as { measured_discrimination?: { fail_rate_pct: number; asked: number; verdict: string; note?: string; carries_information?: boolean } }).measured_discrimination;
+  if (inEntry) {
+    return {
+      id: e.id, asked: inEntry.asked, fail_pct: inEntry.fail_rate_pct,
+      predicted_band: e.predicted_discrimination?.predicted_fail_rate_band,
+      verdict: inEntry.verdict, note: inEntry.note,
+    };
+  }
+  return s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id) ?? null;
+}
+
 export interface PublishedStandard {
   slug: string;            // "coffee"
   publicVersion: string;   // "1.0"
@@ -129,6 +178,9 @@ export interface PublishedStandard {
   hash: string;
   hashOk: boolean;
   rawJson: string;
+  /** The version that replaces this one, when there is one. Set HERE, in the registry —
+   *  never inside the artifact, whose bytes are what a citation resolves through. */
+  supersededBy?: string;
 }
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "..");
@@ -136,8 +188,12 @@ const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname.rep
 /** Every standard that is PUBLISHED. A draft under `standards/` is not published by
  *  existing — it is published by appearing here, so `accessory/v0.1-draft` cannot
  *  leak onto the site because someone added a directory. */
-const PUBLISHED: ReadonlyArray<{ slug: string; publicVersion: string; dir: string }> = [
-  { slug: "coffee", publicVersion: "1.0", dir: "standards/coffee/v1.0" },
+const PUBLISHED: ReadonlyArray<{ slug: string; publicVersion: string; dir: string; supersededBy?: string }> = [
+  // ORDER MATTERS: the LAST entry for a slug is the current one. v1.0 keeps serving,
+  // byte-for-byte, forever — that is what a content hash promises — and gains only a
+  // supersession notice, added by this RENDERER and never by editing the document.
+  { slug: "coffee", publicVersion: "1.0", dir: "standards/coffee/v1.0", supersededBy: "1.1" },
+  { slug: "coffee", publicVersion: "1.1", dir: "standards/coffee/v1.1" },
 ];
 
 let cache: PublishedStandard[] | null = null;
@@ -274,8 +330,25 @@ function postureHtml(doc: StandardDoc): string {
   const statement = typeof po === "string" ? po : po?.statement;
   const status = doc.status ?? "unstated";
   return `<aside class="std-posture" role="note">
-  <p class="std-status"><strong>Status: ${esc(status)}.</strong></p>
+  <p class="std-status"><strong>Status: ${esc(status.replace(/_/g, " "))}</strong></p>
   ${statement ? p(statement) : ""}
+</aside>`;
+}
+
+/**
+ * The supersession notice, added AT RENDER TIME and never by editing the document.
+ *
+ * v1.0 keeps serving its original bytes forever — that is what a content hash promises,
+ * and every citation already made against it resolves through those bytes. But a reader
+ * who lands on it should not have to discover from the version list that a newer one
+ * exists, so the notice lives here, in the registry-driven renderer, where it changes
+ * nothing that is hashed.
+ */
+function supersessionHtml(s: PublishedStandard): string {
+  if (!s.supersededBy) return "";
+  const href = `/standards/${s.slug}/${s.supersededBy}`;
+  return `<aside class="std-superseded" role="note">
+  <p><strong>Superseded by v${esc(s.supersededBy)}.</strong> This version is served exactly as it was published, byte for byte, because a citation made against it resolves through its content hash. Nothing here has been edited — including the parts it gets wrong about itself, which is what v${esc(s.supersededBy)} corrects. <a href="${esc(href)}">Read v${esc(s.supersededBy)} →</a></p>
 </aside>`;
 }
 
@@ -304,30 +377,213 @@ export interface SitePage {
 }
 
 function frontMatter(s: PublishedStandard): string {
-  const counts = tierCounts(s.doc);
   const total = s.doc.entries.length;
-  const rows = counts.map(([t, n]) =>
-    `<tr><th scope="row">${esc(TIER_LABEL[t] ?? t)}</th><td>${n}</td><td>${esc(TIER_WHY[t] ?? "")}</td></tr>`).join("");
   return `<section class="std-front" aria-label="Standard front matter">
   <dl class="std-meta">
     <div><dt>Standard</dt><dd>${esc(s.doc.standard_id)}</dd></div>
     <div><dt>Version</dt><dd>${esc(s.doc.version)}</dd></div>
-    <div><dt>Status</dt><dd>${esc(s.doc.status ?? "published")}</dd></div>
+    <div><dt>Status</dt><dd>${esc((s.doc.status ?? "published").replace(/_/g, " "))}</dd></div>
     <div><dt>Content hash</dt><dd><code>${esc(s.hash)}</code></dd></div>
     <div><dt>Entries</dt><dd>${total}</dd></div>
     <div><dt>Independently applied</dt><dd>No</dd></div>
   </dl>
   <p class="std-note"><strong>Independently applied: no.</strong> We wrote this standard and we run it; no third party has applied it to a store. That is a limit on what a pass here is worth, and it is stated because a site about claim discipline cannot make its first unchecked claim about itself.</p>
-  <table class="std-tiers"><caption>Entries by tier</caption>
-    <thead><tr><th scope="col">Tier</th><th scope="col">Count</th><th scope="col">What the tier means</th></tr></thead>
-    <tbody>${rows}</tbody></table>
 </section>`;
+}
+
+/**
+ * THE TABLE OF CONTENTS — the thing whose absence made this document unusable.
+ *
+ * Before v3.3 a reader met a giant H1, four sentences of self-negation and a metadata
+ * card, and then 42 entries with no way to navigate them. The document was legible in
+ * the literal sense and unusable in every other. This is a jump table with the tier
+ * split visible immediately, above the entries, and it doubles as the split itself —
+ * one structure rather than a summary table AND a list that can disagree.
+ *
+ * No JavaScript: same-page fragment links, which work with the bundle absent and are
+ * what a citation like `#ALS-COFFEE-1.1-CERT-002` needs anyway.
+ */
+function tableOfContents(s: PublishedStandard): string {
+  const counts = tierCounts(s.doc);
+  const total = s.doc.entries.length;
+  const order = ["executable", "not_discriminating", "advisory", "blocked"];
+  const ordered = order.filter((t) => counts.some(([k]) => k === t))
+    .map((t) => [t, counts.find(([k]) => k === t)![1]] as [string, number]);
+
+  const cards = ordered.map(([t, n]) => `<li class="std-toc-tier std-tier-${esc(t)}">
+    <a href="#tier-${esc(t)}"><strong>${n}</strong> <span>${esc(TIER_LABEL[t] ?? t)}</span></a>
+    <p>${esc(TIER_WHY[t] ?? "")}</p>
+  </li>`).join("");
+
+  const groups = ordered.map(([t]) => {
+    const items = s.doc.entries.filter((e) => e.tier === t).map((e) =>
+      `<li><a href="#${esc(e.id)}"><code>${esc(e.id.replace(/^ALS-[A-Z]+-[0-9.]+-/, ""))}</code> ${esc(e.question)}</a></li>`).join("");
+    return `<div class="std-toc-group"><h3><a href="#tier-${esc(t)}">${esc(TIER_LABEL[t] ?? t)}</a></h3><ol>${items}</ol></div>`;
+  }).join("");
+
+  return `<nav class="std-toc" aria-label="Contents">
+  <h2 id="contents">What is in here — ${total} entries</h2>
+  <ul class="std-toc-tiers">${cards}</ul>
+  <p class="std-note">${esc(`${ordered.find(([t]) => t === "executable")?.[1] ?? 0} of ${total} run against a public product page today. The rest are published with the reason each one does not, because the second number is the one you need in order to know what a passing result did not cover.`)}</p>
+  <details class="std-toc-all"><summary>Every entry, by tier</summary>${groups}</details>
+</nav>`;
 }
 
 /** The measured error bounds — the single most checkable thing on the site, and the
  *  one no competitor can copy without first measuring themselves. */
+/**
+ * MEASURED VERSUS PREDICTED, as a table rather than as prose.
+ *
+ * Three numbers this document must not run together, because they answer three
+ * different questions and the brief that asked for this page ran two of them together:
+ *
+ *   bands held        — how often the PREDICTION was right (1 of 10)
+ *   above band        — how many discriminate LESS than predicted (8 of 10)
+ *   carries information — how many MEASURED rates sit inside the grammar's own 15-85%
+ *                       target band (4 of 10)
+ *
+ * "Above its predicted band" and "carries no information" are not the same claim.
+ * FORMAT-001 measured 73.7% against a predicted 30-60% — above its band, and still
+ * squarely inside the band where an answer discriminates. Every figure below is derived
+ * from the artifact; none is typed.
+ */
+function discriminationTable(s: PublishedStandard): string {
+  const rows = s.doc.entries
+    .map((e) => ({ e, m: measuredOf(s, e) }))
+    .filter((x): x is { e: StandardEntry; m: EntryDiscrimination } => x.m !== null);
+  if (!rows.length) return "";
+
+  const inBand = (pct: number) => pct >= 15 && pct <= 85;
+  const held = rows.filter((x) => x.m.verdict === "held").length;
+  const above = rows.filter((x) => x.m.verdict === "above_band").length;
+  const carries = rows.filter((x) => inBand(x.m.fail_pct));
+
+  const body = rows.map(({ e, m }) => `<tr>
+    <th scope="row"><a href="#${esc(e.id)}"><code>${esc(e.id.replace(/^ALS-[A-Z]+-[0-9.]+-/, ""))}</code></a></th>
+    <td>${m.fail_pct.toFixed(1)}%</td>
+    <td>${esc(m.predicted_band ?? "—")}</td>
+    <td>${esc((m.verdict ?? "").replace(/_/g, " "))}</td>
+    <td>${m.asked}</td>
+    <td>${inBand(m.fail_pct) ? "yes" : "no"}</td>
+  </tr>`).join("");
+
+  return `<section class="std-discrimination" id="discrimination">
+  <h2>Measured against predicted, entry by entry</h2>
+  ${p("The bands were written before this standard had ever run. They are kept exactly as authored and shown beside what actually happened, because a document that shows its own hypothesis failing is making a stronger case that its numbers are measured than one whose predictions all came true.")}
+  <table class="std-bounds"><caption>Fail rate per entry, over the products each entry was asked</caption>
+    <thead><tr>
+      <th scope="col">Entry</th><th scope="col">Measured</th><th scope="col">Predicted</th>
+      <th scope="col">Verdict</th><th scope="col">Asked</th><th scope="col">Discriminates</th>
+    </tr></thead>
+    <tbody>${body}</tbody></table>
+  <p><strong>${held} of ${rows.length}</strong> predictions held. <strong>${above} of ${rows.length}</strong> came in above their band, which means those entries discriminate <em>less</em> than predicted, not more.</p>
+  <p class="std-limit"><strong>Discrimination and conformance are different questions, and only one of them is about whether an entry belongs here.</strong> ${
+    esc(`${carries.length} of ${rows.length} entries have a measured fail rate inside the 15-85% band where an answer carries information: ${carries.map((x) => `${x.e.id.replace(/^ALS-[A-Z]+-[0-9.]+-/, "")} at ${x.m.fail_pct.toFixed(1)}%`).join(", ")}.`)
+  } The others are failed by almost every store, so they separate nobody from anybody — and they are still legitimate requirements, because whether the page states the thing is still what a buyer needs settled. Nothing is deleted for discriminating poorly.</p>
+</section>`;
+}
+
+/**
+ * The defect classes behind a sample's confirmed errors.
+ *
+ * ⚠️ TWO SHAPES, AND ASSUMING ONE OF THEM REPRODUCED THE `grounding.sources` DEFECT
+ * VERBATIM. v1.0's sidecar stores these as prose STRINGS with the count written into
+ * the sentence; grammar 1.1 stores them as objects with `klass`, `count`, `example` and
+ * `addressed_by_a_guard`. A renderer written for the object shape read `c.klass` off a
+ * string, got `undefined`, and published four table rows reading "undefined" on the
+ * v1.0 page — the same failure this file's header already documents for `grounding`,
+ * introduced again, one version later, by the same reflex. The blanket
+ * "no page renders undefined" assertion is what caught it; nothing else would have.
+ *
+ * `addressed_by_a_guard: false` is the interesting value in the object shape and the
+ * reason the list is published at all: it says out loud that the engine has no
+ * mechanism for that class, instead of leaving a reader to assume every known error has
+ * been fixed.
+ */
+function defectClasses(x: FitnessSample): string {
+  const cs = x.defect_classes ?? [];
+  if (!cs.length) return "";
+  const caption = `What the ${esc(x.label.toLowerCase())}'s ${x.confirmed_false_positives} wrong passes actually were`;
+  // The prose shape (v1.0's sidecar): a list, because there are no fields to tabulate.
+  if (cs.every((c) => typeof c === "string")) {
+    return `<div class="std-classes"><h4>${caption}</h4><ul>${(cs as unknown as string[]).map(li).join("")}</ul></div>`;
+  }
+  type Klass = { klass: string; count: number; example: string; addressed_by_a_guard?: boolean };
+  const rows = cs.filter((c): c is Klass => Boolean(c) && typeof c === "object").map((c) => `<tr>
+    <th scope="row">${esc(c.klass)}</th><td>${c.count}</td>
+    <td><q>${esc(c.example)}</q></td>
+    <td>${c.addressed_by_a_guard === false ? "<strong>no</strong>" : c.addressed_by_a_guard === true ? "yes" : "—"}</td>
+  </tr>`).join("");
+  if (!rows) return "";
+  return `<table class="std-bounds"><caption>${caption}</caption>
+    <thead><tr><th scope="col">Class</th><th scope="col">n</th><th scope="col">Example</th><th scope="col">Addressed by a guard</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+/**
+ * THE IDENTIFIER WORKED EXAMPLE — the one defect class a rendered-evidence audit
+ * cannot see, shown as three real rows from three real stores.
+ *
+ * Why it belongs on the BOUND page and nowhere else. The identifiers row renders no
+ * quote: it says "Your structured data publishes MPN" and shows the merchant nothing to
+ * be suspicious of, so the row looks identical whether the value is a GS1 barcode or a
+ * number the store minted about itself. A general sample of 507 rows was read
+ * individually and reported ZERO false positives; one mechanical check of this single
+ * class found eighteen in the same sample, and correcting them moved a bound this
+ * project had published for weeks from 0.83% to 7.80%. That is not a story about a term
+ * list — it is a story about what an audit method can and cannot see, which is exactly
+ * what a page publishing its own error rate owes a reader.
+ *
+ * Every value below is read from `fixtures/identifiers/worked-example.json`, extracted
+ * from the captured bytes of the three stores. Nothing here is typed.
+ */
+interface IdentifierRow {
+  host: string; url: string; capturedAt: string; value: string;
+  fields: string[]; verdict: string; why: string; excerpt: string; byteOffset: number;
+  alsoAppearsAs?: string[];
+}
+interface IdentifierExample {
+  requirement: string; why_it_matters: string; source: string;
+  honest: IdentifierRow; storeLocal: IdentifierRow[];
+}
+let identCache: IdentifierExample | null | undefined;
+function identifierExample(): IdentifierExample | null {
+  if (identCache !== undefined) return identCache;
+  try {
+    identCache = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, "fixtures/identifiers/worked-example.json"), "utf8"),
+    ) as IdentifierExample;
+  } catch { identCache = null; }   // absent ⇒ the section is absent, never invented
+  return identCache;
+}
+
+function identifierRowHtml(r: IdentifierRow, honest: boolean): string {
+  return `<div class="std-ident-row ${honest ? "std-ident-ok" : "std-ident-bad"}">
+  <h4>${esc(r.host)} — <code>${esc(r.value)}</code></h4>
+  <p><strong>${esc(honest ? "Honest pass" : "False pass")}:</strong> ${esc(r.why)}</p>
+  <pre class="std-ident-bytes"><code>${esc(r.excerpt)}</code></pre>
+  <p class="std-note">From the page captured on ${esc(r.capturedAt.slice(0, 10))}, at byte ${r.byteOffset}. Published in: ${
+    r.fields.map((f) => `<code>${esc(f)}</code>`).join(", ")}.</p>
+</div>`;
+}
+
+function identifierSection(): string {
+  const ex = identifierExample();
+  if (!ex) return "";
+  return `<section class="std-ident" id="identifier-example">
+  <h2>Worked example: the row that shows you nothing</h2>
+  ${p(`“${ex.requirement}” is the one requirement in this standard whose result renders NO QUOTE. It reports that your structured data publishes an identifier; it cannot show you the identifier, so the row reads the same whether the value is a real barcode or a number the store made up about itself.`)}
+  ${p(ex.why_it_matters)}
+  ${p("Three real stores, all three passing that row, from the captured bytes of their own pages. One of them deserved to.")}
+  ${identifierRowHtml(ex.honest, true)}
+  ${ex.storeLocal.map((r) => identifierRowHtml(r, false)).join("")}
+  <p class="std-limit"><strong>This is why the general figure moved.</strong> An audit that reads rendered evidence — however many rows it reads — is structurally unable to see this class, because there is no rendered evidence to read. The two false passes above sat inside a sample of 507 rows that had been read individually and reported zero errors. One mechanical check against the captured bytes found eighteen.</p>
+  <p class="std-note">Record: ${esc(ex.source)}</p>
+</section>`;
+}
+
 export function renderFitness(s: PublishedStandard): string {
-  const f = s.fitness;
+  const f = fitnessOf(s);
   if (!f || !f.samples?.length) {
     return `<section class="std-fitness"><h2>Measured error</h2>${p("This standard has not yet been fitness-measured on a published sample. No bound is stated, because an unmeasured bound would be a guess presented as a number.")}</section>`;
   }
@@ -337,7 +593,8 @@ export function renderFitness(s: PublishedStandard): string {
     <td>${x.point_estimate_pct.toFixed(2)}%</td><td><strong>${x.bound_95_cluster_icc02_pct.toFixed(2)}%</strong></td>
   </tr>`).join("");
   const methods = f.samples.map((x) =>
-    `<div class="std-method"><h3>${esc(x.label)} — method</h3>${p(x.method)}${x.source ? p(`Record: ${x.source}`) : ""}</div>`).join("");
+    `<div class="std-method"><h3>${esc(x.label)} — method</h3>${p(x.method)}${defectClasses(x)}${x.source ? p(`Record: ${x.source}`) : ""}</div>`,
+  ).join("");
   const pending = f.pending && Object.keys(f.pending).length
     ? `<div class="std-pending">${Object.entries(f.pending).map(([k, v]) => p(`${k}: ${v}`)).join("")}</div>`
     : "";
@@ -446,9 +703,26 @@ export function renderStandard(s: PublishedStandard, base: string): SitePage {
   }
   const order = ["executable", "not_discriminating", "advisory", "blocked"];
   const sections = order.filter((t) => byTier.has(t)).map((t) => {
-    const items = byTier.get(t)!.map((e) =>
-      `<li><a href="${esc(entryHref(s, e.id))}"><code>${esc(e.id)}</code> — ${esc(e.question)}</a></li>`).join("");
-    return `<section class="std-tier-group"><h2>${esc(TIER_LABEL[t] ?? t)} <span class="std-eg">(${byTier.get(t)!.length})</span></h2>${p(TIER_WHY[t] ?? "")}<ul>${items}</ul></section>`;
+    const items = byTier.get(t)!.map((e) => {
+      const m = measuredOf(s, e);
+      // ⚠️ PER-ENTRY ANCHORS. A citation is written as "your product pages fail
+      // CERT-002", and a reader following it needs to land ON that line, not at the top
+      // of a 42-entry page. `id` here is what makes `#ALS-COFFEE-1.1-CERT-002` work.
+      const blocked = t === "blocked" && Array.isArray(e.blocked_by) && (e.blocked_by as string[]).length
+        ? `<span class="std-eg">blocked by ${esc((e.blocked_by as string[]).join(", "))}${e.blocked_reason ? ` — ${esc(String(e.blocked_reason))}` : ""}</span>`
+        : "";
+      const rate = m ? `<span class="std-eg">${m.fail_pct.toFixed(1)}% of ${m.asked} products asked did not state it</span>` : "";
+      return `<li id="${esc(e.id)}">
+        <a href="${esc(entryHref(s, e.id))}"><code>${esc(e.id)}</code> — ${esc(e.question)}</a>
+        ${rate}${blocked}
+      </li>`;
+    }).join("");
+    return `<section class="std-tier-group" id="tier-${esc(t)}">
+      <h2>${esc(TIER_LABEL[t] ?? t)} <span class="std-eg">(${byTier.get(t)!.length})</span></h2>
+      ${p(TIER_WHY[t] ?? "")}
+      <ul class="std-entry-list">${items}</ul>
+      <p class="std-note"><a href="#contents">Back to contents ↑</a></p>
+    </section>`;
   }).join("");
 
   return {
@@ -460,13 +734,24 @@ export function renderStandard(s: PublishedStandard, base: string): SitePage {
       name: s.doc.title, identifier: s.doc.standard_id, version: s.doc.version, url: canonical,
       distribution: [{ "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${canonical}/standard.json` }],
     })}</script>`,
+    // ⚠️ THE H1 IS THE SHORT NAME, AND THE ARTIFACT'S FULL TITLE IS A SUBTITLE.
+    // The artifact's `title` is a whole descriptive sentence — "… — buyer questions,
+    // assertions and evidence rules for roasted coffee product pages" — which at 30px
+    // wrapped to four tight lines and made the top of the page a wall. `shortName`
+    // already existed for exactly this reason and was not being used here. The full
+    // title is still published, immediately below, so nothing is hidden.
     bodyHtml: `<div class="std-doc">
   <nav class="std-crumb"><a href="/standards">Standards</a></nav>
-  <h1>${esc(s.doc.title)}</h1>
+  <h1>${esc(shortName(s.doc))}</h1>
+  <p class="std-subtitle">${esc(s.doc.title)}</p>
+  ${supersessionHtml(s)}
   ${postureHtml(s.doc)}
   ${frontMatter(s)}
+  <p class="std-note"><a href="${esc(canonical)}/standard.json">The full standard as JSON</a> · <a href="${esc(canonical)}/grounding">Every source this standard is grounded in</a> · <a href="/demo">A real result on a real store</a> · <a href="/methodology">How these are built and measured</a></p>
+  ${tableOfContents(s)}
   ${renderFitness(s)}
-  <p class="std-note"><a href="${esc(canonical)}/standard.json">The full standard as JSON</a> · <a href="${esc(canonical)}/grounding">Every source this standard is grounded in</a> · <a href="/methodology">How these are built and measured</a></p>
+  ${identifierSection()}
+  ${discriminationTable(s)}
   ${sections}
 </div>`,
   };
@@ -540,7 +825,12 @@ export function standardsPageFor(pathname: string, base: string): SitePage | nul
     const tail = ent[3]!;
     if (tail === "grounding") return renderGrounding(s, base);
     if (tail === "standard.json") return null;   // served as JSON, not HTML
-    const e = s.doc.entries.find((x) => x.id === tail);
+    const e = s.doc.entries.find((x) => x.id === tail)
+      // A PRIOR VERSION'S ID, ASKED OF THIS ONE. The id carries the version, so
+      // reissuing renames every entry — and someone holding a v1.0 citation who trims
+      // the URL to the current version would otherwise get a 404 for a question that
+      // is still right there. `supersedes` is the chain, and this is where it pays.
+      ?? s.doc.entries.find((x) => (x as { supersedes?: string }).supersedes === tail);
     return e ? renderEntry(s, e, base) : null;
   }
   return null;
@@ -570,12 +860,32 @@ export function standardJsonFor(pathname: string): { json: string; hash: string 
 const NAV = [
   ["/", "Home"],
   ["/standards", "Standards"],
+  ["/demo", "Example test"],
   ["/methodology", "Methodology"],
 ] as const;
 
+/**
+ * ⚠️ THE FONTS ARE LOADED BY THE HTML, NOT BY THE STYLESHEET, AND THIS DOCUMENT WAS
+ * COPYING ONLY THE STYLESHEET.
+ *
+ * `viewer/index.html` loads Inter and Space Grotesk with a `<link>`; there is no
+ * `@import` or `@font-face` anywhere in `viewer/src/theme.css`. `renderStandaloneDocument`
+ * copied the stylesheet href and nothing else — so every published standard page has
+ * been rendering `--font-display` all the way down to `-apple-system`/Segoe UI. The
+ * pages looked plausible, which is why nobody noticed: a missing webfont degrades to a
+ * system font rather than to an error, and the typography was being tuned against a
+ * face that was never on the page.
+ *
+ * Byte-identical to viewer/index.html:13-18. `test/standardsSite.test.ts` asserts the
+ * pair, because two copies of a font URL is exactly the shape that drifts.
+ */
+export const FONT_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />`;
+
 export function renderStandaloneDocument(
   page: SitePage,
-  opts: { cssHref: string | null; brand: string; base: string },
+  opts: { cssHref: string | null; brand: string; base: string; ogImage?: string | null },
 ): string {
   const nav = NAV.map(([href, label]) => `<a href="${esc(href)}">${esc(label)}</a>`).join(" · ");
   return `<!doctype html>
@@ -591,9 +901,12 @@ export function renderStandaloneDocument(
 <meta property="og:title" content="${esc(page.title)}" />
 <meta property="og:description" content="${esc(page.description)}" />
 <meta property="og:url" content="${esc(page.canonical)}" />
-<meta name="twitter:card" content="summary" />
+${opts.ogImage ? `<meta property="og:image" content="${esc(opts.ogImage)}" />` : ""}
+<meta name="twitter:card" content="${opts.ogImage ? "summary_large_image" : "summary"}" />
 <meta name="twitter:title" content="${esc(page.title)}" />
 <meta name="twitter:description" content="${esc(page.description)}" />
+${opts.ogImage ? `<meta name="twitter:image" content="${esc(opts.ogImage)}" />` : ""}
+${FONT_LINKS}
 ${opts.cssHref ? `<link rel="stylesheet" href="${esc(opts.cssHref)}" />` : ""}
 ${page.jsonLd}
 </head>
@@ -627,8 +940,10 @@ export function llmsTxt(base: string): string {
     `# ${base}`,
     ``,
     `> Versioned buying standards: the questions a competent buyer asks in a category,`,
+    // `proven`, not `pass` — the product's own result vocabulary, and the exact word
+    // the two sites had drifted apart on. See PRODUCT_DESCRIPTION in viewer/src/copy.ts.
     `> written as executable tests and run against a store's real product pages.`,
-    `> Each requirement reports pass, not proven, or requires store access, with the`,
+    `> Each requirement reports proven, not proven, or requires store access, with the`,
     `> evidence that decided it. We publish what we cannot test, and why.`,
     ``,
     `## Standards`,
@@ -637,13 +952,23 @@ export function llmsTxt(base: string): string {
     const b = `${base}/standards/${s.slug}/${s.publicVersion}`;
     const counts = tierCounts(s.doc).map(([t, n]) => `${n} ${t}`).join(", ");
     lines.push(`- [${s.doc.title}](${b}): ${s.doc.entries.length} entries (${counts}). Content hash ${s.hash}.`);
+    // A machine reader has to be told which version is current, or it cites the first
+    // one it finds. This is the same fact the HTML page states in a notice.
+    if (s.supersededBy) {
+      lines.push(`  - SUPERSEDED by v${s.supersededBy} (${base}/standards/${s.slug}/${s.supersededBy}). Served unchanged so existing citations resolve; do not cite it for new work.`);
+    }
     lines.push(`  - [JSON](${b}/standard.json) — the artifact a citation resolves against.`);
     lines.push(`  - [Grounding](${b}/grounding) — every external source, and what it establishes.`);
-    const f = s.fitness?.samples ?? [];
-    for (const x of f) {
-      lines.push(`  - Measured false-positive rate, ${x.label}: ${x.point_estimate_pct.toFixed(2)}% point estimate, ${x.bound_95_cluster_icc02_pct.toFixed(2)}% 95% upper bound (n=${x.pass_rows_audited} pass rows across ${x.stores} stores, cluster-adjusted).`);
+    // ⚠️ `fitnessOf`, NOT `s.fitness`. The THIRD place in this session where reading
+    // one of the two fitness shapes silently produced the wrong answer — and the worst
+    // of the three, because the failure was inverted: llms.txt advertised the SUPERSEDED
+    // version as measured and the CURRENT one as having no published error rate at all,
+    // to exactly the machine readers this file exists for.
+    for (const x of fitnessOf(s)?.samples ?? []) {
+      lines.push(`  - Measured false-positive rate, ${x.label}: ${x.point_estimate_pct.toFixed(2)}% point estimate, ${x.bound_95_cluster_icc02_pct.toFixed(2)}% 95% upper bound (n=${x.pass_rows_audited} pass rows across ${x.stores} stores, cluster-adjusted)${x.is_floor ? " — a FLOOR: only one defect class was re-checked, so the true rate is at least this" : ""}.`);
     }
   }
+  lines.push(``, `## A worked result`, `- [An Example test on a real store](${base}/demo) — a published standard executed against a real coffee product page, every requirement with the evidence sentence and the surface it was read from.`);
   lines.push(``, `## Method`, `- [Methodology](${base}/methodology)`);
   return lines.join("\n") + "\n";
 }

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, navigate } from "../router";
 import { trackEvent } from "../api";
 import { useConfig } from "../config";
+import { EXAMPLE_TEST_URL } from "../copy";
 
 export function ThanksPage() {
   const { contactEmail } = useConfig();
@@ -55,9 +56,10 @@ export function ThanksPage() {
           Questions? <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
         </p>
       )}
-      <Link to="/demo" className="btn btn-primary">
-        See a sample report meanwhile
-      </Link>
+      {/* Plain <a>: the Example test is a server-rendered document, not an SPA route. */}
+      <a href={EXAMPLE_TEST_URL} className="btn btn-primary">
+        See a real test result meanwhile
+      </a>
     </div>
   );
 }

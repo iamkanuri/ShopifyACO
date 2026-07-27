@@ -57,7 +57,47 @@ export const TAGLINE_SHORT =
 /** The published standards live on a server-rendered surface (src/server/standardsSite.ts),
  *  not on a viewer route — so these are plain hrefs, never the SPA <Link>. */
 export const STANDARDS_INDEX_URL = "/standards";
-export const COFFEE_STANDARD_URL = "/standards/coffee/1.0";
+/** The CURRENT version. v1.0 keeps serving its original bytes forever — that is what a
+ *  content hash promises — but the site's own links point at what it publishes today,
+ *  and v1.0's page carries a supersession notice for anyone arriving on a citation. */
+export const COFFEE_STANDARD_URL = "/standards/coffee/1.1";
+/** The Example test — also server-rendered (src/server/buyerTestDemo.ts), so also a
+ *  plain href. It shows a real Coffee Standard v1.0 result on a real coffee product
+ *  page, replayed from a frozen capture. */
+export const EXAMPLE_TEST_URL = "/demo";
+
+/**
+ * THE ONE DESCRIPTION OF THIS PRODUCT — and the reason it lives in a named constant.
+ *
+ * thirdocular.com (a separate repository, a separate host, a separate deploy) carries a
+ * product block describing AisleLens. It has already drifted once: the parent site sold
+ * "Who AI recommends instead of you, and how to fix it" for weeks after this site
+ * stopped being that product. v3.2 audited both sites and passed them — because every
+ * check it ran was an ABSENCE sweep (no banned vocabulary, no retired palette), and an
+ * absence check cannot see a paragraph that sells the wrong product. It can only see
+ * words that are gone.
+ *
+ * So the fix is a PRESENCE check over shared content, in both directions:
+ *   • this string is served at `GET /api/brand.json` (src/server/index.ts);
+ *   • thirdocular.com's build fetches it and refuses to deploy on a mismatch
+ *     (ThirdOcular: scripts/check-copy.mjs, wired into npm run build);
+ *   • test/siteCopy.test.ts asserts the served payload IS this constant.
+ *
+ * ⚠️ When the drift was measured on 2026-07-27 the two sites differed by ONE WORD:
+ * thirdocular.com said a requirement is reported as "pass, not proven, or requires
+ * store access"; this site says "proven". A one-word difference in the product's
+ * central sentence is exactly what nobody notices and exactly what a shared string
+ * makes impossible.
+ */
+export const PRODUCT_DESCRIPTION =
+  "A buying standard is the set of questions a competent buyer asks in a category, written down, versioned, and executable. AisleLens publishes them, then runs them against a store's real product pages — reporting every requirement as proven, not proven, or requires store access, with the evidence that decided it.";
+
+/** The capability line under the product description. Same shared-string rule. */
+export const PRODUCT_CAPABILITIES =
+  "Versioned standards, published in full · Run against a store's public product pages · Per-requirement results with the evidence";
+
+/** The one-line kind-of-thing label. Same shared-string rule. */
+export const PRODUCT_KIND = "Buying standards, published and run as tests";
 
 export const HERO = {
   eyebrow: "PUBLISHED BUYING STANDARDS · EXECUTABLE TESTS",
@@ -212,10 +252,15 @@ export const FAQ: ReadonlyArray<readonly [string, string]> = [
 ];
 
 export const FOOTER = {
-  /** Server-rendered, so it is a plain <a> and not the SPA <Link>. */
-  externalLinks: [[STANDARDS_INDEX_URL, "Standards"]] as ReadonlyArray<readonly [string, string]>,
+  /** Server-rendered, so these are plain <a> and not the SPA <Link>. `/demo` moved
+   *  here in v3.3: the Example test became a standalone document, and a <Link> to it
+   *  would be swallowed by the router and render "Page not found" over a page the
+   *  server serves correctly — the exact defect v3.2 shipped on /standards. */
+  externalLinks: [
+    [STANDARDS_INDEX_URL, "Standards"],
+    [EXAMPLE_TEST_URL, "Example test"],
+  ] as ReadonlyArray<readonly [string, string]>,
   links: [
-    ["/demo", "Example test"],
     ["/methodology", "Methodology"],
     ["/privacy", "Privacy"],
     ["/terms", "Terms"],
@@ -234,6 +279,9 @@ export const FOOTER = {
 export const PUBLIC_MARKETING_STRINGS: readonly string[] = [
   TAGLINE,
   TAGLINE_SHORT,
+  PRODUCT_DESCRIPTION,
+  PRODUCT_CAPABILITIES,
+  PRODUCT_KIND,
   ...Object.values(HERO),
   HERO_TEST.head,
   HERO_TEST.task,

@@ -5,6 +5,7 @@ import {
   CATEGORY_BREAK,
   COFFEE_STANDARD_URL,
   DEMONSTRATION,
+  EXAMPLE_TEST_URL,
   FAQ,
   HERO,
   HERO_TEST,
@@ -91,9 +92,10 @@ export function LandingPage() {
         </form>
         <div className="hero-micro">{HERO.micro}</div>
         <div className="hero-ctas">
-          {/* Plain <a>: /standards is server-rendered, so the SPA router must not swallow it. */}
+          {/* Plain <a>: /standards and /demo are both server-rendered documents, so the
+              SPA router must not swallow them. */}
           <a className="hero-seeapp" href={COFFEE_STANDARD_URL}>{HERO.readStandard}</a>
-          <Link className="hero-seeapp" to="/demo">{HERO.seeExample}</Link>
+          <a className="hero-seeapp" href={EXAMPLE_TEST_URL}>{HERO.seeExample}</a>
           <ConnectShopify className="as-link hero-connect" label={HERO.connect} />
         </div>
 
@@ -169,7 +171,7 @@ export function LandingPage() {
           <p className="demo-label">{DEMONSTRATION.label}</p>
         </div>
         <div style={{ textAlign: "center", marginTop: 20 }}>
-          <Link to="/demo" className="btn">{DEMONSTRATION.cta}</Link>
+          <a href={EXAMPLE_TEST_URL} className="btn">{DEMONSTRATION.cta}</a>
         </div>
       </section>
 

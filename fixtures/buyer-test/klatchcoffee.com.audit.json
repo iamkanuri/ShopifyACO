@@ -1,0 +1,33 @@
+{
+ "_comment": "OUR ADJUDICATION of this product's passing rows, from the v3.2 coffee fitness audit — the one where every pass_evidenced row in a 100-product sample was read individually against its FULL untruncated evidence. Kept beside the capture, not inside it, so the .gz stays a faithful record of what the store served. Extracted mechanically from experiments/v3-2/verdicts.json by experiments/v3-3/build_fixture.mjs; never hand-typed.",
+ "host": "klatchcoffee.com",
+ "sample": "coffee",
+ "source": "experiments/v3-2/CATEGORY_BOUND.md",
+ "auditedRows": [
+  {
+   "label": "Whole bean option is listed and purchasable",
+   "verdict": "true_pass",
+   "why": "\"Whole Bean\" heads an explicit grind list separate from the size option."
+  },
+  {
+   "label": "Espresso grind option is listed and purchasable",
+   "verdict": "true_pass",
+   "why": "\"Fine (Espresso)\" names an espresso grind size directly."
+  },
+  {
+   "label": "Filter grind option is listed and purchasable",
+   "verdict": "true_pass",
+   "why": "\"Medium Coarse (Chemex / Cone Filter)\" is a filter grind size; \"Medium (Pour Over / Auto Drip)\" corroborates."
+  },
+  {
+   "label": "A weight or measurement is stated in readable text",
+   "verdict": "true_pass",
+   "why": "The quoted variant option \"2 lb bag.\" is one of the product's own sizes (alongside 310 g and 5 lb)."
+  },
+  {
+   "label": "A dispatch or delivery window is stated",
+   "verdict": "true_pass",
+   "why": "\"All orders are processed within 2-3 business days\" states a real dispatch window, with the weekend/holiday caveat attached."
+  }
+ ]
+}

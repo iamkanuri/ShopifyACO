@@ -46,6 +46,11 @@ interface Standard {
 
 const STANDARDS: Array<{ rel: string; std: Standard }> = [
   { rel: "coffee/v1.0/standard.json", std: loadJson<Standard>("coffee/v1.0/standard.json") },
+  // ⚠️ EVERY PUBLISHED VERSION IS LISTED HERE, and this list is why. v3.2's own lesson
+  // was that "merging standards/ protected nothing until it was wired": an artifact the
+  // governance suite does not load is an artifact with no governance. A new version that
+  // is not in this array can violate every invariant below with the suite green.
+  { rel: "coffee/v1.1/standard.json", std: loadJson<Standard>("coffee/v1.1/standard.json") },
 ];
 
 /** The engine's non-public surfaces (src/server/productTest.ts:771-778 populates
@@ -288,10 +293,29 @@ for (const { rel, std } of STANDARDS) {
   });
 
   // ---- 8. discrimination is a hypothesis, never a fact ------------------
-  test(`[${label}] every executable entry predicts a band, in range, and flags it unmeasured`, () => {
+  test(`[${label}] every executable entry predicts a band, in range, and its measured flag matches reality`, () => {
     for (const e of exec) {
       const d = e.predicted_discrimination;
-      assert.equal(d.measured, false, `${e.id} claims a MEASURED discrimination rate — this standard has never been run`);
+      // ⚠️ THIS USED TO ASSERT `measured === false` UNCONDITIONALLY, with the message
+      // "this standard has never been run". That was true of every AisleLens standard
+      // until v1.0 was executed against 100 real coffee products — and an invariant
+      // that hard-codes a fact about the world goes false the day the world changes.
+      // What it should have been asserting all along is the CONSISTENCY: the flag and
+      // the evidence for it must agree in both directions. A `measured: true` with no
+      // measurement is a claim about a run that did not happen; a `measured: false`
+      // sitting next to a recorded measurement is a document understating itself, which
+      // is the exact class of error v1.1 exists to correct.
+      const meas = (e as unknown as { measured_discrimination?: { fail_rate_pct: number; asked: number; source: string } }).measured_discrimination;
+      assert.equal(
+        d.measured, meas !== undefined,
+        meas
+          ? `${e.id} carries a measured_discrimination block but predicted_discrimination.measured is false`
+          : `${e.id} claims a MEASURED discrimination rate with no measured_discrimination block to back it`,
+      );
+      if (meas) {
+        assert.ok(meas.asked > 0, `${e.id}: a measured rate over zero products asked is not a measurement`);
+        assert.ok(meas.source.length > 8, `${e.id}: a measurement with no source cannot be checked by anyone`);
+      }
       const m = /^(\d{1,3})-(\d{1,3})%$/.exec(d.predicted_fail_rate_band);
       assert.ok(m, `${e.id} has a malformed band ${d.predicted_fail_rate_band}`);
       const lo = Number(m![1]), hi = Number(m![2]);
@@ -358,8 +382,18 @@ for (const { rel, std } of STANDARDS) {
     }
   });
 
-  test(`[${label}] every changelog entry_id resolves`, () => {
+  test(`[${label}] every changelog entry_id resolves, in this version or a prior one`, () => {
+    // The changelog is a HISTORY, and an entry id carries its version — so a release
+    // block written for 1.0 names `ALS-COFFEE-1.0-…` ids, which do not exist in a 1.1
+    // document. Resolving only against the current ids would force a reissue to either
+    // rewrite its own history or drop it, and both destroy the thing a changelog is for.
+    // `supersedes` is what makes the chain resolvable: an id resolves if some entry IS
+    // it or CONTINUES it.
     const ids = new Set(std.entries.map((e) => e.id));
+    for (const e of std.entries) {
+      const sup = (e as unknown as { supersedes?: string }).supersedes;
+      if (sup) ids.add(sup);
+    }
     for (const r of std.changelog) {
       for (const c of r.changes) {
         // A `withdrawn` change legitimately names an entry that no longer exists.

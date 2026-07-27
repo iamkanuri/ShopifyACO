@@ -2,37 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "viewer",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "viewer",
-      "port": 5173
-    },
-    {
-      "name": "server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
+      "name": "aislelens",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx", "src/server/index.ts"],
       "port": 8787
-    },
-    {
-      "name": "server-hosted-cases",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
-      "port": 8787,
-      "env": {
-        "HOSTED_CASES_DIR": "experiments/stage6/out/hosted",
-        "FUNNEL_ADMIN_ENABLED": "1",
-        "ADMIN_PASSWORD": "local-verify-only-not-a-secret"
-      }
-    },
-    {
-      "name": "server-funnel-off",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
-      "port": 8787,
-      "env": {
-        "ADMIN_PASSWORD": "local-verify-only-not-a-secret"
-      }
     }
   ]
 }

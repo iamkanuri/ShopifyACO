@@ -21,8 +21,8 @@
   ],
   "properties": {
     "grammar_version": {
-      "const": "1.0",
-      "description": "The version of THIS grammar the standard is authored against. A standard is only readable against a stated grammar version."
+      "enum": ["1.0", "1.1"],
+      "description": "The version of THIS grammar the standard is authored against. A standard is only readable against a stated grammar version. 1.1 (2026-07-27) adds the `applied_by_author` status, per-entry `measured_discrimination`, per-entry `supersedes`, and the top-level `measured_fitness` block — every addition OPTIONAL, so a grammar-1.0 document validates unchanged against this schema and its content hash is untouched."
     },
     "standard_id": {
       "type": "string",
@@ -37,8 +37,8 @@
     "title": { "type": "string", "minLength": 8 },
     "status": {
       "type": "string",
-      "enum": ["draft", "published", "withdrawn"],
-      "description": "draft = authored, never applied to a real store by anyone. published = released for third-party application. withdrawn = must no longer be cited."
+      "enum": ["draft", "applied_by_author", "published", "withdrawn"],
+      "description": "draft = authored, never applied to a real store by anyone. applied_by_author = the authoring party has executed it against a real sample and published the measurement, but NO SECOND PARTY has applied it; a document in this state may be cited and must not be described as settled. published = released for third-party application; PROMOTION TO IT REQUIRES a second party to have run the document without the authoring party's involvement, which is the same bar as posture.independently_applied and must be recorded in the changelog. withdrawn = must no longer be cited. `applied_by_author` exists because v1.0 spent a day in a state where `draft` was false (it had been executed against 100 real products and published at a stable URL) and `published` would have been a lie (nobody else had touched it). A document that is wrong about itself is the failure mode this project treats as unrecoverable, and it does not become acceptable because the error is modest."
     },
     "posture": {
       "type": "object",
@@ -121,6 +121,20 @@
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/entry" }
+    },
+    "measured_fitness": { "$ref": "#/$defs/measuredFitness" },
+    "withdrawn_entries": {
+      "type": "array",
+      "description": "Entry ids from the PREVIOUS version that this one does not carry, each with a reason. A question that quietly disappears between versions is a coverage change nobody can see; every prior id must either be superseded by an entry here or appear in this list.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["entry_id", "reason"],
+        "properties": {
+          "entry_id": { "type": "string" },
+          "reason": { "type": "string", "minLength": 20 }
+        }
+      }
     }
   },
   "$defs": {
@@ -342,8 +356,92 @@
         "in_target_band": { "type": "boolean" },
         "reasoning": { "type": "string", "minLength": 40 },
         "measured": {
-          "const": false,
-          "description": "Always false in v1.0. This standard has never been run against a sample of real stores. A true value requires a recorded measurement and a changelog entry."
+          "type": "boolean",
+          "description": "FALSE while the band is a hypothesis. TRUE requires a recorded measurement, a changelog entry, and a sibling `measured_discrimination` block on the same entry. It was `const: false` under grammar 1.0, when no AisleLens standard had ever been run against real stores; loosening it is the point of grammar 1.1. THE BAND ITSELF IS NEVER REWRITTEN — a document that shows its own hypothesis failing nine times in ten is making the strongest possible case that its numbers are measured."
+        }
+      }
+    },
+    "measuredDiscrimination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fail_rate_pct", "asked", "verdict", "carries_information", "source"],
+      "description": "The MEASURED counterpart to predicted_discrimination, published BESIDE it and never in place of it. Present only on entries actually run against a recorded sample.",
+      "properties": {
+        "fail_rate_pct": {
+          "type": "number", "minimum": 0, "maximum": 100,
+          "description": "Over the products the entry was ASKED, never over the sample size. A product the applicability predicate excluded contributes nothing, and dividing by the full sample would convert 'not asked' into 'failed'."
+        },
+        "asked": { "type": "integer", "minimum": 1 },
+        "verdict": {
+          "type": "string",
+          "enum": ["held", "above_band", "below_band"],
+          "description": "above_band = the real fail rate is HIGHER than predicted, so the entry discriminates LESS: nearly every store fails it, and a row everybody fails separates nobody from anybody."
+        },
+        "carries_information": {
+          "type": "boolean",
+          "description": "Whether the MEASURED rate sits inside the 15-85% target band. This is the DISCRIMINATION question and it is separate from the CONFORMANCE question: an entry almost every store fails is useless as a discriminator and entirely legitimate as a requirement. Nothing is ever deleted for failing this."
+        },
+        "note": { "type": "string" },
+        "source": { "type": "string", "minLength": 8, "description": "The record the number came from, so a reader can go and check it." }
+      }
+    },
+    "measuredFitness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measured_at", "engine_version", "samples", "bands_held", "bands_total"],
+      "description": "THE ERROR RATE OF THE ENGINE WHILE EXECUTING THIS STANDARD, measured BEFORE this version was published and therefore carried inside the document. A measurement taken AFTER publication must go in the fitness.json sidecar instead, because standard_hash covers these bytes and a citation resolves through it — which is exactly why v1.0's measurement is a sidecar and this one is not.",
+      "properties": {
+        "measured_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "engine_version": { "type": "string", "minLength": 3 },
+        "bands_held": { "type": "integer", "minimum": 0 },
+        "bands_total": { "type": "integer", "minimum": 1 },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "label", "stores", "pass_rows_audited", "confirmed_false_positives", "point_estimate_pct", "bound_95_cluster_icc02_pct", "method", "source"],
+            "properties": {
+              "name": { "type": "string", "minLength": 2 },
+              "label": { "type": "string", "minLength": 4 },
+              "description": { "type": "string" },
+              "stores": { "type": "integer", "minimum": 1 },
+              "products_evaluated": { "type": "integer", "minimum": 1 },
+              "pass_rows_audited": { "type": "integer", "minimum": 1 },
+              "confirmed_false_positives": { "type": "integer", "minimum": 0 },
+              "borderline_counted_as_passes": { "type": "integer", "minimum": 0 },
+              "point_estimate_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+              "bound_95_naive_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+              "bound_95_cluster_icc02_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+              "rows_per_store": { "type": "number", "minimum": 0 },
+              "deff_icc02": { "type": "number", "minimum": 0 },
+              "is_floor": {
+                "type": "boolean",
+                "description": "Only PART of this sample has been re-checked, so its rate is a LOWER BOUND. A floor and a complete audit must never be compared as peers."
+              },
+              "supersedes": { "type": "string" },
+              "defect_classes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["klass", "count", "example"],
+                  "properties": {
+                    "klass": { "type": "string", "minLength": 8 },
+                    "count": { "type": "integer", "minimum": 1 },
+                    "example": { "type": "string", "minLength": 8 },
+                    "addressed_by_a_guard": {
+                      "type": "boolean",
+                      "description": "FALSE means no mechanism in the engine addresses this class at all. Publishing that is the point."
+                    }
+                  }
+                }
+              },
+              "method": { "type": "string", "minLength": 80 },
+              "source": { "type": "string", "minLength": 8 }
+            }
+          }
         }
       }
     },
@@ -534,7 +632,13 @@
             "does_not_establish": { "type": "string", "minLength": 25 }
           }
         },
-        "notes": { "type": "string" }
+        "notes": { "type": "string" },
+        "measured_discrimination": { "$ref": "#/$defs/measuredDiscrimination" },
+        "supersedes": {
+          "type": "string",
+          "pattern": "^ALS-[A-Z][A-Z0-9]*-[0-9]+\\.[0-9]+-[A-Z][A-Z0-9-]*-[0-9]{3}$",
+          "description": "The entry id in the PREVIOUS version that this entry continues. The id carries the version, so a new version renames every entry; without this field a reader cannot tell a renamed question from a new one, and the old citation's continuity is unverifiable."
+        }
       },
       "allOf": [
         {

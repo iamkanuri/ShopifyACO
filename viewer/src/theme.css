@@ -449,7 +449,10 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .funnel-cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .sharebar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 6px; }
 .sharebar-label { font-weight: 600; }
-.demo-banner { background: var(--accent-soft); color: var(--ink-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 13px; margin-bottom: 4px; }
+/* v3.3 CP-A — `.demo-banner` is GONE with the page that emitted it. It styled the
+   line "The full paid report, end to end — why AI recommends rivals over this store,
+   and the done-for-you fix drafts you'd get to reverse it", which is the retired offer.
+   The Example test is a server-rendered document now (.bt-doc). */
 
 /* ============ pills (confidence / run size) ============ */
 .pill { font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 999px; display: inline-flex; align-items: center; }
@@ -1014,9 +1017,16 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
    this and catches an off-hue red as well as the exact hex. */
 .std-page { max-width: 780px; margin: 0 auto; padding: 40px 22px 96px; }
 .std-page a { color: var(--pass); }
-.std-doc h1, .std-entry h1 { font-family: var(--font-display); font-size: 30px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -0.01em; }
-.std-doc h2, .std-entry h2 { font-family: var(--font-display); font-size: 17px; margin: 34px 0 10px; letter-spacing: -0.005em; }
-.std-doc h3, .std-entry h3 { font-size: 14px; margin: 18px 0 6px; color: var(--ink-2); }
+/* ⚠️ TYPOGRAPHY (v3.3 CP-C). The h1 was 30px against a 17px h2 — a 1.76× jump that
+   made the top of the page a wall, especially while it rendered the artifact's whole
+   descriptive SENTENCE. The h1 is now the short name (the full title is a subtitle
+   below it) and the ramp is 26/18/15/13, so a section heading reads as a section
+   heading rather than as body copy that happens to be bold. */
+.std-doc h1, .std-entry h1, .bt-doc h1 { font-family: var(--font-display); font-size: 26px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.01em; }
+.std-doc h2, .std-entry h2, .bt-doc h2 { font-family: var(--font-display); font-size: 18px; margin: 40px 0 12px; letter-spacing: -0.005em; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.std-doc h3, .std-entry h3, .bt-doc h3 { font-family: var(--font-display); font-size: 15px; margin: 22px 0 6px; color: var(--ink); }
+.std-doc h4, .std-entry h4, .bt-doc h4 { font-size: 13px; margin: 16px 0 6px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
+.std-subtitle { font-size: 14px; color: var(--ink-3); margin: 0 0 22px !important; line-height: 1.5; }
 .std-page p { line-height: 1.65; color: var(--ink-2); margin: 0 0 12px; }
 .std-page ul, .std-page ol { line-height: 1.65; color: var(--ink-2); padding-left: 20px; margin: 0 0 12px; }
 .std-page li { margin-bottom: 8px; }
@@ -1061,3 +1071,136 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
 .std-tier-group ul, .std-list { list-style: none; padding-left: 0; }
 .std-list li { border-top: 1px solid var(--border); padding-top: 16px; margin-bottom: 16px; }
 .std-grounding li { margin-bottom: 12px; }
+
+/* ============ v3.3 CP-C — navigation, and a posture that reads as a notice ============
+   The document was legible in the literal sense and unusable in every other: a giant
+   H1, four sentences of self-negation, a metadata card, then 42 entries with no way to
+   move between them. Everything below is JS-free by construction — fragment links and
+   <details> — because these pages never load the app bundle. */
+
+/* Accepted evidence: this had NO rule at all, so "what counts" rendered weaker than
+   "what does not", which is the wrong way round for a list of accepted evidence. */
+.std-accept li { margin-bottom: 10px; }
+
+/* The supersession notice. Added by the RENDERER, never by editing a frozen document. */
+.std-superseded { border: 1px solid var(--border-strong); border-radius: var(--radius);
+  padding: 14px 18px; margin: 0 0 22px; background: var(--accent-soft); }
+.std-superseded p { margin: 0 !important; font-size: 13.5px; }
+
+/* The posture reads as a STANDING NOTICE, not as the opening argument. It stays first
+   and stays verbatim — the fix is making it accurate (v1.1) and making everything below
+   it reachable, never moving it down or softening it. */
+.std-posture { border-left: 2px solid var(--border-strong); padding: 4px 0 4px 16px; margin: 0 0 26px; }
+.std-posture p { font-size: 13px !important; line-height: 1.6 !important; color: var(--ink-3) !important; }
+.std-status { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px !important; margin-bottom: 6px !important; }
+.std-status strong { color: var(--ink); }
+
+/* Table of contents — the tier split IS the jump table, so the two cannot disagree. */
+.std-toc { margin: 30px 0 8px; }
+.std-toc h2 { margin-top: 0; }
+.std-toc-tiers { list-style: none; padding-left: 0; display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 0 0 14px; }
+.std-toc-tier { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin: 0; }
+.std-toc-tier a { display: block; text-decoration: none; }
+.std-toc-tier a strong { font-family: var(--font-display); font-size: 26px; line-height: 1; color: var(--ink); }
+.std-toc-tier a span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2); margin-top: 4px; }
+.std-toc-tier p { font-size: 12.5px !important; line-height: 1.5 !important; color: var(--ink-3) !important; margin: 8px 0 0 !important; }
+.std-toc-group { margin: 18px 0; }
+.std-toc-group h3 { margin-top: 0; }
+.std-toc-group ol { padding-left: 20px; font-size: 13.5px; }
+
+/* One <details> treatment for both document types. The SPA's .report-collapse rules
+   are not reachable from .std-page, so these pages had unstyled disclosure widgets. */
+.std-page details { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; margin: 14px 0; }
+.std-page details[open] { padding-bottom: 4px; }
+.std-page summary { cursor: pointer; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--ink-2); list-style: none; }
+.std-page summary::-webkit-details-marker { display: none; }
+.std-page summary::after { content: " +"; color: var(--ink-3); }
+.std-page details[open] > summary::after { content: " –"; }
+
+/* Entry list rows. Each carries an id so a citation lands ON the line. */
+.std-entry-list li { border-top: 1px solid var(--border); padding: 14px 0 0; margin-bottom: 14px; scroll-margin-top: 16px; }
+.std-entry-list li a { text-decoration: none; }
+.std-entry-list .std-eg { display: block; margin-top: 4px; }
+
+.std-classes { margin: 14px 0; }
+
+/* The identifier worked example. The BYTES are the point, so they get monospace and a
+   scroll container rather than being wrapped into prose. */
+.std-ident-row { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin: 14px 0; }
+/* ⚠️ NEITHER OF THESE IS THE NOT-PROVEN COLOUR, and the distinction is the section's
+   whole subject. These rows are all PASSES — two of them wrongly so. Crimson means "the
+   store did not prove this"; a false pass is the opposite failure, ours rather than
+   theirs, and spending crimson on it would blur exactly the signal this page is about.
+   --attention is the palette's non-red caveat colour. */
+.std-ident-ok { border-left: 3px solid var(--slate-light, var(--border-strong)); }
+.std-ident-bad { border-left: 3px solid var(--attention); }
+.std-ident-row h4 { margin-top: 0; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); }
+.std-ident-bytes { overflow-x: auto; background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+.std-ident-bytes code { background: none; padding: 0; white-space: pre; }
+.std-discrimination td, .std-discrimination th { font-variant-numeric: tabular-nums; }
+
+/* ============ v3.3 CP-A — the Example test ============
+   A real Coffee Standard result on a real store, replayed from a frozen capture. It
+   uses the same standalone shell as a standard, so it shares .std-page's typography and
+   only needs the row treatment.
+
+   ⚠️ THE THREE STATE COLOURS ARE USED HERE FOR EXACTLY WHAT THEY ARE RESERVED FOR.
+   --pass, --not-proven (crimson) and --requires-access (tan) mean proven, not proven,
+   and requires store access. This is the one surface where they belong; the standard
+   pages and the share cards carry none of them, because nothing on a document has
+   failed. The glyph carries the signal too — colour is never alone. */
+.bt-doc .bt-kicker { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); margin: 0 0 8px !important; }
+.bt-provenance { border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin: 20px 0 28px; background: var(--surface); }
+.bt-provenance dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 20px; margin: 0 0 16px; }
+.bt-provenance dt { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 3px; }
+.bt-provenance dd { margin: 0; font-size: 13.5px; color: var(--ink); word-break: break-word; }
+.bt-provenance p { font-size: 13px !important; }
+.bt-limit { color: var(--ink) !important; }
+
+.bt-row { border-top: 1px solid var(--border); padding: 22px 0 6px; scroll-margin-top: 16px; }
+.bt-row h3 { margin-top: 6px; font-size: 17px; }
+.bt-status { display: inline-block; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; margin: 0 0 4px !important; }
+.bt-pass_evidenced .bt-status { color: var(--pass); border-color: var(--pass); }
+.bt-pass_evidenced .bt-status::before { content: "✓ "; }
+.bt-not_proven .bt-status { color: var(--not-proven); border-color: var(--not-proven); }
+.bt-not_proven .bt-status::before { content: "✕ "; }
+.bt-requires_store_access .bt-status { color: var(--requires-access); border-color: var(--requires-access); }
+.bt-requires_store_access .bt-status::before { content: "○ "; }
+.bt-pass_no_blocking .bt-status::before { content: "– "; }
+
+.bt-cite { font-size: 12.5px; margin-bottom: 10px !important; }
+.bt-cite .bt-entry { text-decoration: none; }
+/* ⚠️ NOT CRIMSON, and test/palette.test.ts is why. This marks a row whose label the
+   engine could not trace back to a published entry id — a defect in OUR rendering, not
+   a failed requirement. Crimson means "not proven" and nothing else; spending it on a
+   diagnostic would dilute the one signal this product cannot afford to dilute. */
+.bt-entry-missing { color: var(--attention); }
+.bt-label { color: var(--ink-3); }
+/* THE RECEIPT. Given real visual weight: a row whose evidence a merchant cannot read
+   is the defect this page exists to demonstrate the absence of. */
+.bt-quote { margin: 12px 0; padding: 12px 16px; border-left: 2px solid var(--pass);
+  background: var(--surface-2); font-size: 14px; line-height: 1.6; color: var(--ink); }
+.bt-surface { font-size: 12.5px !important; color: var(--ink-3) !important; word-break: break-word; }
+.bt-checked, .bt-note { font-size: 12.5px !important; color: var(--ink-3) !important; }
+.bt-audit { font-size: 12.5px !important; color: var(--ink-3) !important; border-left: 2px solid var(--border-strong); padding-left: 12px; }
+.bt-would { margin: 12px 0; }
+.bt-would ul { font-size: 13.5px; }
+.bt-eg { color: var(--ink-3); font-size: 0.92em; }
+.bt-options ul { columns: 2; column-gap: 24px; font-size: 13px; }
+.bt-legend { display: grid; gap: 12px; margin: 0 0 12px; }
+.bt-legend dt { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); margin-bottom: 3px; }
+.bt-legend dd { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+.bt-bound { border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin: 30px 0; }
+.bt-bound h2 { margin-top: 0; }
+.bt-bound-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px 20px; margin: 16px 0; }
+.bt-bound-figures dt { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 3px; }
+.bt-bound-figures dd { margin: 0; font-family: var(--font-display); font-size: 24px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .bt-options ul { columns: 1; }
+  .std-toc-tiers { grid-template-columns: 1fr; }
+}

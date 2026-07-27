@@ -100,6 +100,11 @@ test("[validator] the mutation set is not vacuous", () => {
 // globbed: a glob that matches nothing would silently validate nothing.
 const STANDARD_FILES = [
   "coffee/v1.0/standard.json",
+  // v1.1 is authored against grammar 1.1 and must validate against the SAME schema as
+  // v1.0. Every grammar-1.1 addition is optional and the status enum is a superset, so
+  // a grammar-1.0 document is untouched — which is the whole reason v1.0's bytes, and
+  // therefore its hash, and therefore every citation made against it, still hold.
+  "coffee/v1.1/standard.json",
   "accessory/v0.1-draft/standard.json",
 ];
 

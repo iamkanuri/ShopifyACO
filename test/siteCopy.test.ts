@@ -240,3 +240,60 @@ test("<title>, og:title and twitter:title are byte-identical", () => {
   assert.equal(og, title, `og:title differs from <title>:\n  title: ${title}\n  og   : ${og}`);
   assert.equal(tw, title, `twitter:title differs from <title>:\n  title: ${title}\n  tw   : ${tw}`);
 });
+
+// ===========================================================================
+// THE TWO SITES DESCRIBE THE SAME PRODUCT (v3.3 CP-D).
+//
+// thirdocular.com carries a product block describing AisleLens, from a different
+// repository, on a different host, on a different deploy. It has already drifted once:
+// the parent site went on selling "Who AI recommends instead of you, and how to fix it"
+// for weeks after this site stopped being that product.
+//
+// ⚠️ v3.2 AUDITED BOTH SITES AND PASSED THEM. Every check it ran was an ABSENCE sweep —
+// zero banned vocabulary, zero retired palette, zero crimson — and an absence check
+// cannot see a paragraph that sells the wrong product. It can only see words that are
+// gone. The replacement is a PRESENCE check over shared content, in both directions:
+//
+//   • this half asserts the payload `GET /api/brand.json` serves IS the constants;
+//   • the other half lives in ThirdOcular/scripts/check-copy.mjs, which fetches that
+//     endpoint at build time and refuses to deploy on a mismatch — including a mismatch
+//     it cannot verify, because a gate that cannot check must not pass.
+//
+// When the drift was measured on 2026-07-27 the two sites differed by THREE CHARACTERS
+// across two spans: `pass` where this site says `proven`, and two curly apostrophes
+// where the constant has ASCII. "One word" is what a reader notices; three characters is
+// what a byte comparison finds, and that gap is the whole argument for the gate.
+// ===========================================================================
+
+test("the shared product description is served EXACTLY as the constant defines it", async () => {
+  const { PRODUCT_DESCRIPTION, PRODUCT_CAPABILITIES, PRODUCT_KIND } = await import("../viewer/src/copy.js");
+  // Read from the route's own source rather than duplicating the payload shape here: a
+  // test that rebuilds the object it is checking asserts nothing about the server.
+  const index = readFileSync(join(process.cwd(), "src/server/index.ts"), "utf8");
+  assert.match(index, /app\.get\("\/api\/brand\.json"/, "the shared-copy endpoint is not registered");
+  for (const [field, value] of [
+    ["description", PRODUCT_DESCRIPTION],
+    ["capabilities", PRODUCT_CAPABILITIES],
+    ["kind", PRODUCT_KIND],
+  ] as const) {
+    // ⚠️ NOT a template literal with an escape in it. This line was first written
+    // through a shell heredoc, which ate one backslash: `\\s` reached the file as `\s`,
+    // and inside a template literal JavaScript resolved that to a plain `s`. The pattern
+    // silently became `description:s*PRODUCT_…` and the test failed against a file that
+    // plainly contained the text. Same class as the `\b` that landed in this repo as a
+    // literal 0x08. A plain string concat has no escape to eat.
+    assert.match(index, new RegExp(`${field}:` + String.raw`\s*PRODUCT_[A-Z]+`),
+      `/api/brand.json builds \`${field}\` from something other than the constant — a hand-written server copy is the drift this endpoint exists to prevent`);
+    assert.ok(value.length > 20, `${field} is too short to be the product description`);
+  }
+  // The constants are ASCII-apostrophe and single-em-dash, which is what the other repo
+  // must reproduce byte-for-byte. A curly apostrophe here would make the gate unsatisfiable
+  // by an editor that autocorrects, and the drift would look like a mystery.
+  assert.doesNotMatch(PRODUCT_DESCRIPTION, /[\u2018\u2019]/,
+    "the canonical description uses a curly apostrophe — the other site cannot match it reliably");
+  assert.doesNotMatch(PRODUCT_CAPABILITIES, /[\u2018\u2019]/);
+  // And it says `proven`, which is this product's own vocabulary — the exact word the
+  // two sites disagreed on.
+  assert.match(PRODUCT_DESCRIPTION, /proven, not proven, or requires store access/,
+    "the shared description does not use this product's own result vocabulary");
+});

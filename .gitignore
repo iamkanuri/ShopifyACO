@@ -95,3 +95,6 @@ experiments/v3-1/*
 experiments/v3-2/*
 !experiments/v3-2/*.md
 .cp[0-9]-ship*/
+!experiments/v3-3/
+experiments/v3-3/*
+!experiments/v3-3/*.md

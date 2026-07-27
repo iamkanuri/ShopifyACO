@@ -94,11 +94,15 @@ import {
 } from "./buyerTests.js";
 import { indexSsrFor, loadIndexOgModel } from "./indexSsr.js";
 import { standardsPageFor, standardJsonFor, standardsSitemapPaths, llmsTxt, renderStandaloneDocument } from "./standardsSite.js";
+import { demoPageFor } from "./buyerTestDemo.js";
+// The canonical product description, imported rather than retyped — same rule as
+// publicSsr.ts. A hand-written server copy is the "site disagrees with itself" defect.
+import { PRODUCT_DESCRIPTION, PRODUCT_CAPABILITIES, PRODUCT_KIND } from "../../viewer/src/copy.js";
 import { publicSsrFor } from "./publicSsr.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
-import { buildDefaultCardSvg, buildDemoCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, buildReportCardSvg, renderCardPng, renderOgPng } from "./ogCard.js";
+import { buildDefaultCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, buildReportCardSvg, renderCardPng, renderOgPng } from "./ogCard.js";
 import { PLANS } from "../pricing.js";
 import { MODELS, perCallMaxCostUsd } from "../engines/models.js";
 
@@ -109,12 +113,12 @@ const SUGGEST_COST_CAP_USD = 0.02;
 // asserts the pair, and lints this string with the real claim linter).
 const TAGLINE =
   "AisleLens publishes versioned buying standards — the questions a competent buyer asks in a category, written as executable tests — and runs them against your real product pages, reporting every requirement as proven, not proven, or requires store access, with the evidence.";
-// MERGE NOTE (v2.1): the DESCRIPTION is v2's (the QA repositioning). The DEMO_NOTE is main's,
-// deliberately: v2's shorter note dropped the third-party trademark attribution that main added
-// for the Sennen demo. The demo still renders those real brands, so the attribution is a legal
-// requirement, not stale copy — it must survive the reposition.
-const DEMO_NOTE =
-  "Sample data, shown for illustration. “Sennen” is a fictional brand; The Ordinary, CeraVe, La Roche-Posay and Paula's Choice are trademarks of their respective owners, referenced for illustration only and not affiliated with AisleLens.";
+// v3.3 CP-A — `DEMO_NOTE` is GONE, with the fixture it disclaimed. It read "Sample
+// data, shown for illustration. 'Sennen' is a fictional brand; The Ordinary, CeraVe…
+// are trademarks of their respective owners", which was the right disclaimer for the
+// wrong page: /demo now serves a REAL result on a REAL store, rendered server-side by
+// buyerTestDemo.ts, and its provenance block states the store, the page, the capture
+// date and what a "not proven" row is not — in the document rather than in a config key.
 const ALLOWED_EVENTS = new Set([
   "report_viewed",
   "cta_full_report",
@@ -218,6 +222,27 @@ app.get("/llms.txt", (req, res) => {
   res.type("text/plain").send(llmsTxt(baseUrl(req)));
 });
 
+// ---- the canonical product description (v3.3 CP-D) --------------------------
+//
+// thirdocular.com describes this product on a different host, from a different
+// repository, on a different deploy. It has already drifted once — the parent site
+// went on selling the retired product for weeks — and v3.2 audited both sites and
+// passed them, because every check it ran was an ABSENCE sweep and an absence check
+// cannot see a paragraph that sells the wrong thing.
+//
+// So this endpoint publishes the description as CONTENT, and thirdocular.com's build
+// fetches it and refuses to deploy on a mismatch. Presence, checked in both
+// directions, rather than the absence of a word list.
+app.get("/api/brand.json", (_req, res) => {
+  res.set("Cache-Control", "public, max-age=300").json({
+    name: ENV.publicBrandName,
+    kind: PRODUCT_KIND,
+    description: PRODUCT_DESCRIPTION,
+    capabilities: PRODUCT_CAPABILITIES,
+    tagline: TAGLINE,
+  });
+});
+
 // The standard's HTML pages, served as STANDALONE DOCUMENTS — see the block above
 // `renderStandaloneDocument`. They deliberately do not load the SPA bundle: these
 // paths are not React routes, so injecting them into the app shell made a crawler
@@ -242,6 +267,34 @@ app.get(/^\/standards(\/.*)?$/, (req, res, next) => {
   res.type("html").set("Cache-Control", "public, max-age=300").send(
     renderStandaloneDocument(page, { cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req) }),
   );
+});
+
+// ---- the Example test (v3.3 CP-A) ------------------------------------------
+//
+// A DOCUMENT, for the same reason the standard is one: it is a test RESULT, it does
+// not need the app, so it does not load the app — and it is therefore readable with
+// JavaScript off by construction rather than by luck. It used to be an SPA route
+// rendering a fictional brand's retired "AI visibility" report; that fixture and every
+// line that only served it are deleted, not left dormant.
+//
+// It runs the real engine over a committed frozen capture, so the first request pays
+// for a replay (no network, no spend) and the module caches the result thereafter.
+// Not `wrap(...)`: that helper is declared further down, and this route must be
+// registered HERE — ahead of express.static and the SPA catch-all — or it is dead code
+// that silently serves index.html with a 200, which is the failure this file already
+// documents for `/c/:token`.
+app.get(/^\/demo\/?$/, (req, res, next) => {
+  demoPageFor(req.path, baseUrl(req))
+    .then((page) => {
+      if (!page) return next();
+      res.type("html").set("Cache-Control", "public, max-age=300").send(
+        renderStandaloneDocument(page, {
+          cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req),
+          ogImage: `${baseUrl(req)}/og/default.png`,
+        }),
+      );
+    })
+    .catch(next);
 });
 
 app.get("/sitemap.xml", async (req, res) => {
@@ -490,7 +543,6 @@ app.get("/api/config", (req, res) => {
     // the listing is live → the connect CTA falls back to an App Store search for the brand.
     appStoreUrl: ENV.shopify.appStoreUrl ?? null,
     tagline: TAGLINE,
-    demoNote: DEMO_NOTE,
     plans,
     miniPrompts: MINI_PROMPTS,
     fullReportPrompts: SCAN_MODES.deep.prompts,
@@ -933,61 +985,14 @@ function ogFromCache(name: string, key: string, build: () => string): Buffer {
 const sendOg = (res: Response, png: Buffer, maxAge: number) =>
   res.type("png").setHeader("Cache-Control", `public, max-age=${maxAge}`).send(png);
 
-/** The demo sample (fictional brand) — read once per process from the built fixture.
- *  `card` carries the SAME substitution frame the demo page leads with (headline + named
- *  rivals + counts), so the share card and the page tell one story — never the retired
- *  mention-gap line. */
-interface DemoShare { preview: NonNullable<ReturnType<typeof reportPreview>>; card: import("./ogCard.js").DemoCardModel | null; frameHeadline: string | null }
-let demoShareCache: DemoShare | null | undefined;
-function demoShare(): DemoShare | null {
-  if (demoShareCache !== undefined) return demoShareCache;
-  demoShareCache = null;
-  for (const p of ["viewer/dist/sample-results.json", "viewer/public/sample-results.json"]) {
-    const abs = resolve(p);
-    if (!existsSync(abs)) continue;
-    try {
-      const raw = JSON.parse(readFileSync(abs, "utf8")) as {
-        analysis?: {
-          substitutionFrame?: { headline?: string; namedRivals?: Array<{ name?: string; recCount?: number }> };
-          mentionGap?: { recommendation?: { count?: number; total?: number } };
-        };
-      };
-      const preview = reportPreview(raw);
-      if (!preview) break;
-      const frame = raw.analysis?.substitutionFrame;
-      const rec = raw.analysis?.mentionGap?.recommendation;
-      const card: import("./ogCard.js").DemoCardModel | null = frame?.headline
-        ? {
-            brand: preview.brand,
-            category: preview.category,
-            headline: frame.headline,
-            rivals: (frame.namedRivals ?? [])
-              .filter((r): r is { name: string; recCount: number } => typeof r.name === "string" && typeof r.recCount === "number")
-              .map((r) => ({ name: r.name, recCount: r.recCount })),
-            merchantCount: typeof rec?.count === "number" ? rec.count : null,
-            total: typeof rec?.total === "number" ? rec.total : preview.basedOnResponses || null,
-          }
-        : null;
-      demoShareCache = { preview, card, frameHeadline: frame?.headline ?? null };
-    } catch {
-      demoShareCache = null;
-    }
-    break;
-  }
-  return demoShareCache;
-}
+// v3.3 CP-A — `demoShare()` and `/og/demo.png` are GONE with the fixture they read.
+// The card they built ("AI recommends Sennen in just 2 of 36 answers about skincare",
+// a rival leaderboard, a mention count) is the retired instrument, and it travelled
+// every time anyone shared /demo. The Example test's share card is the brand default;
+// the page's own title and description come from the rendered document.
 
 app.get("/og/default.png", (_req, res) => {
   sendOg(res, ogFromCache("default", "v1", () => buildDefaultCardSvg(ENV.publicBrandName, TAGLINE)), 86_400);
-});
-
-app.get("/og/demo.png", (_req, res) => {
-  const share = demoShare();
-  // The rich card needs the substitution frame; without it, fall back to the restrained
-  // report card rather than resurrect retired framing.
-  if (!share) return res.status(404).end();
-  sendOg(res, ogFromCache("demo", "v2", () =>
-    share.card ? buildDemoCardSvg(share.card, ENV.publicBrandName) : buildReportCardSvg(share.preview, ENV.publicBrandName)), 86_400);
 });
 
 app.get("/og/index.png", wrap(async (_req, res) => {
@@ -1020,14 +1025,9 @@ app.get("/api/runs/:runId/report.md", wrap(async (req, res) => {
   res.type("text/markdown").sendFile(path);
 }));
 
-// --- demo (committed fixture) ----------------------------------------------
-app.get("/api/demo", (_req, res) => {
-  for (const p of ["viewer/dist/sample-results.json", "viewer/public/sample-results.json"]) {
-    const abs = resolve(p);
-    if (existsSync(abs)) return res.sendFile(abs);
-  }
-  res.status(404).json({ error: "No demo fixture found." });
-});
+// v3.3 CP-A — `GET /api/demo` is GONE. It served viewer/public/sample-results.json,
+// the retired fictional-brand report, to a React page that no longer exists. The
+// Example test is now the server-rendered document at `/demo`.
 
 // --- AI Visibility Index (public category leaderboards) --------------------
 app.get(
@@ -1421,34 +1421,18 @@ async function serveIndex(req: Request, res: Response) {
 
   // Utility pages: correct the per-page og:url (the template default says "/", which
   // mis-canonicalizes every share of these paths). Image/title stay the brand defaults.
-  if (["/demo", "/scan", "/privacy", "/terms", "/support", "/data-deletion", "/thanks", "/pricing"].includes(req.path)) {
+  // `/demo` is deliberately absent — it is no longer an SPA route and never reaches
+  // this handler; it is a standalone document that supplies its own canonical and meta.
+  if (["/scan", "/privacy", "/terms", "/support", "/data-deletion", "/thanks", "/pricing"].includes(req.path)) {
     const u = escapeHtml(baseUrl(req) + req.path);
     html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${u}$2`);
   }
 
-  // The demo (fictional sample brand) gets the full rich treatment — it exists to sell —
-  // labeled a sample in both the text and the card. The description carries the SAME
-  // substitution frame the page leads with (never the retired mention-gap line).
-  if (req.path === "/demo" || req.path === "/demo/") {
-    const share = demoShare();
-    const p = share?.preview;
-    if (share && p && p.brand) {
-      const base = baseUrl(req);
-      const t = escapeHtml(`Sample AI Visibility Report: ${p.brand}${p.category ? ` (${p.category})` : ""} — ${ENV.publicBrandName}`);
-      const lead = share.frameHeadline ?? `Which brands AI assistants recommend in ${p.category || "this category"}.`;
-      const d = escapeHtml(`${lead} A complete sample report on a fictional brand — see exactly what a scan finds.`);
-      const img = escapeHtml(`${base}/og/demo.png`);
-      html = html
-        .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
-        .replace(/(<meta name="description" content=")[^"]*(")/, `$1${d}$2`)
-        .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${t}$2`)
-        .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${d}$2`)
-        .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${img}$2`)
-        .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
-        .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
-        .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`);
-    }
-  }
+  // v3.3 CP-A — the /demo meta block is GONE. It set the page title to "Sample AI
+  // Visibility Report: Sennen (skincare)" — the retired product's name for itself,
+  // carrying two permanently-banned words, on the site's own proof surface, in the
+  // string that travels every share. /demo is a standalone document now and writes its
+  // own title, description, canonical and JSON-LD from the result it just produced.
 
   // Per-report share card: a /report/:id link unfurls into a rich preview. DOCTRINE:
   // public artifacts are winner- or field-headlined, never loser-headlined — the merchant

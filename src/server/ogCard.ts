@@ -51,33 +51,72 @@ const BG = "#1B2131";       // navy
 const xml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
-// resvg doesn't wrap <text>: fit a single line by shrinking, and split long text onto
-// two lines when even the minimum size would overflow. ~0.53em average glyph width.
-const fitSize = (text: string, maxPx: number, max: number, min: number) =>
-  Math.max(min, Math.min(max, Math.floor(maxPx / (Math.max(1, text.length) * 0.53))));
+// resvg doesn't wrap <text>, so the wrapping is ours. ~0.53em average glyph width for
+// Inter — measured against resvg's own shaping at ≈0.486em for real sentence copy, so
+// this OVER-estimates, which is the safe direction for a width budget.
+const EM = 0.53;
+/** How many characters of `text` fit in `maxPx` at `size`. */
+const capChars = (maxPx: number, size: number) => Math.max(1, Math.floor(maxPx / (size * EM)));
 
-function splitTwo(text: string): [string, string] {
-  const words = text.split(" ");
-  let l1 = "";
-  for (const w of words) {
-    if (l1 && (l1 + " " + w).length > Math.ceil(text.length / 2)) break;
-    l1 = l1 ? `${l1} ${w}` : w;
+/**
+ * Greedy word wrap at a character budget.
+ *
+ * ⚠️ THIS REPLACES `splitTwo`, WHICH CAPPED ONLY THE SECOND LINE.
+ *
+ * The old wrapper split once at the midpoint by character count and then truncated
+ * line 2 to the width budget — line 1 was emitted verbatim, never measured against
+ * any width. On the live default card that put line 1 at ~134 characters ≈1349px
+ * inside a 920px content box on a 1200px canvas: measured with resvg's own text
+ * shaping (`Resvg.getBBox()`), the rendered card's right edge was 1378.6. So
+ * lens.thirdocular.com/og/default.png — the share image for the landing page and
+ * every utility page — has been clipping its own description mid-word ("…written as
+ * exe") in every unfurl. The tests could not see it: they assert `svg.includes(…)`
+ * on the SVG source, and a <text> element that runs to x=1489 contains exactly the
+ * same characters as one that fits.
+ */
+function greedyWrap(text: string, cap: number): string[] {
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of text.split(/\s+/).filter(Boolean)) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (next.length <= cap || !cur) { cur = next; continue; }
+    lines.push(cur);
+    cur = w;
   }
-  return [l1, text.slice(l1.length).trim()];
+  if (cur) lines.push(cur);
+  return lines;
 }
 
-/** Fit text into maxPx wide; returns 1–2 lines + the font size to render them at. */
-function fittedLines(text: string, maxPx: number, max: number, min: number): { lines: string[]; size: number } {
-  if (text.length * 0.53 * min <= maxPx) {
-    return { lines: [text], size: fitSize(text, maxPx, max, min) };
+/**
+ * Fit text into `maxPx` wide and at most `maxLines` lines, shrinking from `max` to
+ * `min` until it fits. EVERY line is inside the width budget, not just the last.
+ *
+ * `maxLines` defaults to 2 so existing callers keep their exact vertical layout; the
+ * default card opts into more, because its tagline is 273 characters and two lines at
+ * the minimum size cannot hold it without deleting words.
+ */
+function fittedLines(
+  text: string, maxPx: number, max: number, min: number, maxLines = 2,
+): { lines: string[]; size: number } {
+  // FEWEST LINES FIRST, then the largest size that achieves that count. This is the
+  // preference the old code had — it only went to two lines when one line at `min`
+  // would overflow — and preserving it matters: searching size-first instead flips
+  // short headlines from one big line to two smaller ones and silently re-lays out
+  // every existing card, which is a change nobody asked for while fixing a clipping bug.
+  for (let want = 1; want <= maxLines; want++) {
+    for (let size = max; size >= min; size--) {
+      const lines = greedyWrap(text, capChars(maxPx, size));
+      if (lines.length <= want) return { lines, size };
+    }
   }
-  const [l1, l2] = splitTwo(text);
-  const longest = Math.max(l1.length, l2.length);
-  let size = fitSize("x".repeat(longest), maxPx, max, min);
-  // Even two lines can overflow at min size for very long text → hard-truncate line 2.
-  const capChars = Math.floor(maxPx / (size * 0.53));
-  const lines = [l1, l2.length > capChars ? `${l2.slice(0, capChars - 1).trimEnd()}…` : l2];
-  return { lines, size };
+  // Even at `min` the text needs more lines than the layout has room for. Keep the
+  // first `maxLines` and mark the cut, rather than silently rendering past the canvas.
+  const cap = capChars(maxPx, min);
+  const all = greedyWrap(text, cap);
+  const kept = all.slice(0, maxLines);
+  const last = kept[maxLines - 1] ?? "";
+  kept[maxLines - 1] = `${last.slice(0, Math.max(1, cap - 1)).trimEnd()}…`;
+  return { lines: kept, size: min };
 }
 
 const textEl = (x: number, y: number, size: number, fill: string, content: string, opts: { weight?: number; spacing?: string; anchor?: string } = {}) =>
@@ -101,16 +140,56 @@ function frame(accent: string, brandName: string, headerLabel: string, inner: st
 </svg>`;
 }
 
+/**
+ * The footer on the AI-visibility card family — the report card and the two Index
+ * cards. Those surfaces really do measure across those three assistants, so naming
+ * them there is accurate.
+ *
+ * ⚠️ IT IS NOT ACCURATE ON THE DEFAULT CARD, and it was there. `/og/default.png` is
+ * the share image for the landing page and every utility page — the one that travels
+ * when anyone posts a link to this site — and it carried "ChatGPT · Gemini ·
+ * Perplexity" under a header reading "PUBLISHED BUYING STANDARDS" and a line reading
+ * "The questions a competent buyer asks, run as tests." The image contradicted itself,
+ * and it advertised the product this one replaced. v3.2 checked this site for retired
+ * vocabulary and passed: every one of those checks reads SOURCE STRINGS, and no
+ * absence sweep over source can see a phrase rendered into a PNG.
+ */
 const engineFooter = (extra?: string) =>
   textEl(MX, 578, 22, MUTED, xml(`ChatGPT · Gemini · Perplexity${extra ? ` ${extra}` : ""}`));
 
+/** The default card's footer: what this product actually is. */
+const standardFooter = () =>
+  textEl(MX, 578, 22, MUTED, xml("Published standards · Executable buyer tests · Evidence, and a measured error bound"));
+
+/** The ONE font configuration. Exported through `cardRightEdge` so a measurement can
+ *  never be taken with a different one — see the warning there. */
+const fontOpts = () => ({ fontFiles: [FONT_PATH], defaultFontFamily: "Inter", loadSystemFonts: false });
+
 function rasterize(svg: string): Buffer {
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: W },
-    font: { fontFiles: [FONT_PATH], defaultFontFamily: "Inter", loadSystemFonts: false },
-  });
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: W }, font: fontOpts() });
   return resvg.render().asPng();
 }
+
+/**
+ * The rendered right edge of a card, measured by resvg's OWN text shaping.
+ *
+ * ⚠️ IT MUST BE MEASURED WITH THE CARD'S FONT, AND THE FIRST VERSION OF THIS CHECK WAS
+ * NOT. Constructing `new Resvg(svg, { font: { loadSystemFonts: false } })` with no
+ * `fontFiles` loads NO font at all, so every <text> shapes to zero width and the bbox
+ * collapses to the background rect — exactly 1200. A width check written that way
+ * reports "nothing overflows" for every card ever built, including one whose text runs
+ * to x=1489. A two-sided canary in the test caught it; without one it would have read
+ * as a clean pass over the live defect.
+ *
+ * Lives here rather than in the test so the measurement and the render can never drift
+ * onto different fonts.
+ */
+export function cardRightEdge(svg: string): number | null {
+  const bbox = new Resvg(svg, { font: fontOpts() }).getBBox();
+  return bbox ? bbox.x + bbox.width : null;
+}
+
+export const CARD_WIDTH = W;
 
 // ---- report card (doctrine: category-framed, never loser-headlined) --------
 
@@ -147,58 +226,11 @@ export function buildReportCardSvg(p: ReportPreview, brandName: string): string 
   return frame(ACCENT, brandName, "AI VISIBILITY REPORT", reportInner(p));
 }
 
-/** Everything the demo card renders — extracted from the sample report's own
- *  substitution frame so the card and the page tell the SAME story. */
-export interface DemoCardModel {
-  brand: string;
-  category: string;
-  /** The substitution-frame lead the demo page renders (NOT the retired mention-gap line). */
-  headline: string;
-  /** Named rivals with real recommendation counts, leaderboard-style. */
-  rivals: Array<{ name: string; recCount: number }>;
-  merchantCount: number | null;
-  total: number | null;
-}
-
-/** The /demo share card — the RICHEST card of the family (fictional data built to sell;
- *  the SAMPLE badge is what licenses full disclosure). Index-card layout: substitution
- *  headline + named rivals with counts + the sample brand's own count against them. */
-export function buildDemoCardSvg(m: DemoCardModel, brandName: string): string {
-  // The merchant row is marked by the "→" and by weight, not by a failure colour:
-  // being out-recommended in a sample is not a failed requirement.
-  const OWN = ACCENT;
-  const parts: string[] = [];
-  parts.push(`<rect x="760" y="52" rx="8" width="300" height="44" fill="none" stroke="${ACCENT}" stroke-width="2"/>`);
-  parts.push(textEl(910, 81, 20, ACCENT, xml("SAMPLE · FICTIONAL BRAND"), { weight: 700, anchor: "middle" }));
-
-  parts.push(textEl(MX, 208, 44, INK, xml(`${m.brand} — ${m.category}`), { weight: 700 }));
-
-  // The substitution verdict IS the pitch — same lead as the page.
-  const head = fittedLines(m.headline, CW, 30, 20);
-  let y = 262;
-  for (const l of head.lines) {
-    parts.push(textEl(MX, y, head.size, ACCENT, xml(l), { weight: 700 }));
-    y += head.size + 10;
-  }
-
-  // Leaderboard rows: rivals + the sample brand, sorted by count, own row arrow-marked.
-  const rows: Array<{ name: string; count: number | null; own: boolean }> = [
-    ...m.rivals.map((r) => ({ name: r.name, count: r.recCount as number | null, own: false })),
-    ...(m.merchantCount != null ? [{ name: m.brand, count: m.merchantCount as number | null, own: true }] : []),
-  ].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 4);
-  let ry = Math.max(y + 30, 356);
-  for (const r of rows) {
-    const color = r.own ? OWN : INK;
-    parts.push(textEl(MX, ry, 30, color, xml(`${r.own ? "→ " : ""}${r.name}`), { weight: r.own ? 700 : 400 }));
-    if (r.count != null) {
-      parts.push(textEl(RX, ry, 30, r.own ? OWN : MUTED, xml(m.total ? `${r.count} of ${m.total}` : String(r.count)), { anchor: "end" }));
-    }
-    ry += 44;
-  }
-
-  parts.push(engineFooter(`${m.total ? `· n=${m.total} answers ` : ""}· fictional sample data`));
-  return frame(ACCENT, brandName, "SAMPLE REPORT", parts.join("\n  "));
-}
+// v3.3 CP-A — `DemoCardModel` and `buildDemoCardSvg` are GONE with the fixture that
+// fed them. The card rendered a "SAMPLE · FICTIONAL BRAND" badge over a rival
+// leaderboard headlined "AI recommends Sennen in just 2 of 36 answers about skincare"
+// — the retired instrument, travelling in an image, every time anyone shared /demo.
+// The Example test is a real result now and takes the brand default card.
 
 // ---- index cards (dominance-gated — same gate as the page) -----------------
 
@@ -270,13 +302,16 @@ export function buildDefaultCardSvg(brandName: string, tagline: string): string 
   const parts: string[] = [];
   parts.push(textEl(MX, 280, 72, INK, xml(brandName), { weight: 700 }));
   parts.push(textEl(MX, 336, 30, ACCENT, xml("The questions a competent buyer asks, run as tests."), { weight: 700 }));
-  const tag = fittedLines(tagline, CW, 26, 19);
+  // Four lines, not two: the tagline is 273 characters and is kept byte-identical to
+  // viewer/src/copy.ts, so the card has to wrap it rather than shorten it. y=410 with
+  // four lines at ≤26px ends well above the footer baseline at 578.
+  const tag = fittedLines(tagline, CW, 26, 17, 4);
   let y = 410;
   for (const l of tag.lines) {
     parts.push(textEl(MX, y, tag.size, MUTED, xml(l)));
     y += tag.size + 10;
   }
-  parts.push(engineFooter());
+  parts.push(standardFooter());
   return frame(ACCENT, brandName, "PUBLISHED BUYING STANDARDS", parts.join("\n  "));
 }
 

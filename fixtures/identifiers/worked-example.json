@@ -1,0 +1,73 @@
+{
+  "_comment": "A WORKED EXAMPLE for the identifiers requirement, built from captured bytes by experiments/v3-3/build_ident_fixture.mjs. It exists because that row renders NO QUOTE: it says 'Your structured data publishes MPN' and shows the merchant nothing to be suspicious of, so a human reading rendered evidence cannot tell a real GS1 barcode from a number the store minted about itself. Eighteen false passes hid behind that in a sample whose full read had reported zero, and correcting them moved a published bound from 0.83% to 7.80%.",
+  "requirement": "A product identifier is published in structured data",
+  "why_it_matters": "The row's promise is that a machine buyer can match this exact product to an EXTERNAL catalogue. A store-local id cannot do that — it resolves inside one shop and nowhere else — which is why the requirement names the SKU as explicitly insufficient.",
+  "honest": {
+    "host": "sputnikcoffeecompany.com",
+    "url": "https://sputnikcoffeecompany.com/products/8oz-sputnik-coffee-ground-vacuum-tin",
+    "capturedAt": "2026-07-27T11:46:04.042Z",
+    "value": "600160850004",
+    "fields": [
+      "gtin12",
+      "mpn",
+      "barcode"
+    ],
+    "verdict": "genuine external identifier",
+    "why": "A 12-digit UPC-A whose GS1 mod-10 check digit validates (recomputed: 4, published: 4), published as gtin12 and mirrored into mpn and the variant barcode. This resolves outside the store.",
+    "excerpt": "…ts/8oz-sputnik-coffee-ground-vacuum-tin?variant=46026182066429\" } ], \"gtin12\": \"600160850004\", \"productId\": \"600160850004\", \"brand\": { \"name\": \"Sputnik Coffee Company\"…",
+    "byteOffset": 26656
+  },
+  "storeLocal": [
+    {
+      "host": "glowrecipe.com",
+      "url": "https://glowrecipe.com/products/best-of-glow-hues-tinted-serum-cheek-and-lip-kit",
+      "capturedAt": "2026-07-26T22:46:42.620Z",
+      "value": "8079462006899",
+      "fields": [
+        "rid",
+        "mpn",
+        "id",
+        "data-product-id",
+        "ProductID",
+        "resourceId",
+        "productId",
+        "data-prodID",
+        "data-productid",
+        "product_id",
+        "content_ids"
+      ],
+      "verdict": "a store-local id, accepted as an external one",
+      "why": "The same value appears in 11 different fields on this page, among them Shopify's own `productId` and `data-product-id`, and alongside `gid://shopify/Product/8079462006899`. It is the store's internal product id, written into `mpn` by the theme. The store's real SKU is a different string entirely.",
+      "excerpt": "…ca548 data-product-gallery-projects=\"[]\" data-collection-gallery-projects=\"[]\" data-product-id=8079462006899 data-template-name=\"product\" data-ot-ignore data-cookieconsent=\"ignore\" > </sc…",
+      "byteOffset": 261002,
+      "alsoAppearsAs": [
+        "rid",
+        "id",
+        "data-product-id",
+        "ProductID",
+        "resourceId",
+        "productId",
+        "data-prodID",
+        "data-productid"
+      ]
+    },
+    {
+      "host": "www.stumptowncoffee.com",
+      "url": "https://www.stumptowncoffee.com/products/net-wrecker",
+      "capturedAt": "2026-07-27T04:50:00.684Z",
+      "value": "100754",
+      "fields": [
+        "sku",
+        "mpn"
+      ],
+      "verdict": "a store-local id, accepted as an external one",
+      "why": "The same six digits are published as BOTH `sku` and `mpn`, adjacent in one JSON-LD object. A SKU is the store's own part number — the requirement's own insufficient-evidence list names it — so copying it into `mpn` cannot make it resolve anywhere else.",
+      "excerpt": "…d\": \"https:\\/\\/www.stumptowncoffee.com\\/products\\/net-wrecker\", \"@type\": \"Product\",\"sku\": \"100754\",\"mpn\": \"100754\",\"brand\": { \"@type\": \"Brand\", \"name\": \"Stumptown Coffee\" }, \"description\":…",
+      "byteOffset": 1030,
+      "alsoAppearsAs": [
+        "sku"
+      ]
+    }
+  ],
+  "source": "experiments/v3-2/CATEGORY_BOUND.md; extracted mechanically by experiments/v3-3/extract_identifier_example.mjs"
+}

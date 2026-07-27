@@ -95,7 +95,19 @@ export const MINIMAL_VALID: Json = {
         predicted_fail_rate_band: "40-60%",
         in_target_band: true,
         reasoning: "A fixture has no real prediction; this text exists to satisfy the minimum length rule.",
-        measured: false,
+        measured: true,
+      },
+      // Grammar 1.1. Present in the baseline so the numeric bounds on a measurement
+      // have something to be mutated against: `fail_rate_pct` must stay a percentage
+      // and `asked` must be a real denominator. A rate over 100% or a denominator of
+      // zero is the shape a broken counter produces, and this grammar's whole posture
+      // is that a broken instrument must not read as a clean one.
+      measured_discrimination: {
+        fail_rate_pct: 50,
+        asked: 40,
+        verdict: "held",
+        carries_information: true,
+        source: "a fixture, measured against nothing",
       },
       consumer_note: "A fixture note that is long enough to satisfy the forty-character minimum length.",
       merchant_remediation: "Nothing to remediate — this entry is never applied to a real store at all.",
@@ -190,17 +202,48 @@ export const MUTATIONS: Mutation[] = [
     pathContains: "entries/0",
     mutate: (s) => { entry0(s).severity = "high"; },
   },
+  // ⚠️ THESE TWO USED TO PROVE `const`, AND GRAMMAR 1.1 DELIBERATELY LOOSENED BOTH.
+  // `grammar_version` went `const: "1.0"` → `enum: ["1.0","1.1"]` because there are now
+  // two grammar versions; `predicted_discrimination.measured` went `const: false` →
+  // `type: boolean` because a standard has now actually been measured, which is the
+  // whole point of grammar 1.1. The mutations are retargeted at the keyword that really
+  // guards each field rather than deleted — a loosened constraint that keeps its old
+  // mutation passes for the wrong reason, and one whose mutation is removed stops being
+  // proved at all.
   {
-    name: "const — grammar_version is not 1.0",
-    keyword: "const",
+    name: "enum — grammar_version names a grammar that does not exist",
+    keyword: "enum",
     pathContains: "grammar_version",
     mutate: (s) => { s.grammar_version = "2.0"; },
   },
   {
-    name: "const — predicted_discrimination.measured is claimed true",
-    keyword: "const",
+    name: "type — predicted_discrimination.measured is not a boolean",
+    keyword: "type",
     pathContains: "measured",
-    mutate: (s) => { (entry0(s).predicted_discrimination as Json).measured = true; },
+    mutate: (s) => { (entry0(s).predicted_discrimination as Json).measured = "yes"; },
+  },
+  // `const` is still load-bearing in this grammar, so it still needs a mutation of its
+  // own or the keyword quietly stops being proved. `standard_hash.canonicalisation` is
+  // the strongest place to prove it: the hash is only REPRODUCIBLE by a third party
+  // because the canonicalisation is fixed, so a document declaring a different one is
+  // a citation nobody else can verify.
+  {
+    name: "maximum — a measured fail rate exceeds 100%",
+    keyword: "maximum",
+    pathContains: "measured_discrimination/fail_rate_pct",
+    mutate: (s) => { (entry0(s).measured_discrimination as Json).fail_rate_pct = 150; },
+  },
+  {
+    name: "minimum — a measured fail rate is computed over zero products asked",
+    keyword: "minimum",
+    pathContains: "measured_discrimination/asked",
+    mutate: (s) => { (entry0(s).measured_discrimination as Json).asked = 0; },
+  },
+  {
+    name: "const — standard_hash declares a canonicalisation nobody else implements",
+    keyword: "const",
+    pathContains: "standard_hash/canonicalisation",
+    mutate: (s) => { (s.standard_hash as Json).canonicalisation = "whatever-we-felt-like"; },
   },
   {
     name: "pattern — an entry id does not match the citable id format",

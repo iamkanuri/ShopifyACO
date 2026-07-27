@@ -110,7 +110,15 @@ export const ENV = {
 
   // Public branding (NEVER ship "Shopify" in the public-facing name — trademark).
   // Set the real name + domain before launch; repo/internal names stay as-is.
-  publicBrandName: str(process.env.PUBLIC_BRAND_NAME) ?? "AI Visibility",
+  //
+  // ⚠️ THE FALLBACK WAS "AI Visibility" UNTIL v3.3, which is the retired product's name
+  // and carries a PERMANENTLY banned word. Production sets PUBLIC_BRAND_NAME, so the
+  // live title reads "AisleLens — Published buying standards…" and every vocabulary
+  // sweep this project runs passed — they lint `viewer/src/copy.ts`, not a default that
+  // only appears when the variable is missing. Unset it once, in any environment, and
+  // the site's own <title> advertises the product this one replaced. A default is a
+  // value that ships; it belongs under the same rule as the copy.
+  publicBrandName: str(process.env.PUBLIC_BRAND_NAME) ?? "AisleLens",
   // Absolute base URL for OG tags / share links. Empty => derive from the request,
   // so it works behind any custom domain with no hardcoded railway.app URLs.
   publicBaseUrl: str(process.env.PUBLIC_BASE_URL),

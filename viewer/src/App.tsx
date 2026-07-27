@@ -1,7 +1,6 @@
 import { Link, usePath } from "./router";
 import { useConfig } from "./config";
 import { LandingPage } from "./pages/LandingPage";
-import { DemoPage } from "./pages/DemoPage";
 import { ReportPage } from "./pages/ReportPage";
 import { ScanPage } from "./pages/ScanPage";
 import { ProductTestPage } from "./pages/ProductTestPage";
@@ -40,7 +39,11 @@ export function App() {
   else if (path === "/scan") page = <ScanPage />;
   else if (path === "/test") page = <ProductTestPage />;
   else if (path === "/methodology") page = <MethodologyPage />;
-  else if (path === "/demo") page = <DemoPage />;
+  // `/demo` is deliberately NOT here. The Example test is a server-rendered standalone
+  // document (src/server/buyerTestDemo.ts), like `/standards` — the app never loads on
+  // it, so there is nothing to mount and nothing to wipe. Every link to it must be a
+  // plain <a>, never the SPA <Link>: a client-side navigation would match no route
+  // here and render "Page not found" over a page the server serves correctly.
   else if (path === "/admin") page = <AdminPage />;
   else if (path === "/thanks") page = <ThanksPage />;
   else if (path === "/privacy") page = <PrivacyPage />;
@@ -68,9 +71,10 @@ export function App() {
           <div className="topbar-actions">
             {!minimalHeader && (
               <nav className="nav">
-                <Link to="/demo" className={`navlink ${active("/demo")}`}>
+                {/* A plain <a>: /demo is a server-rendered document, not an SPA route. */}
+                <a href="/demo" className="navlink">
                   Example test
-                </Link>
+                </a>
                 <Link to="/methodology" className={`navlink ${active("/methodology")}`}>
                   Methodology
                 </Link>

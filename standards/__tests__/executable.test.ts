@@ -45,6 +45,7 @@ const TEXT_KINDS = new Set(["claim", "attribute", "delivery"]);
 
 const STANDARDS = [
   { rel: "coffee/v1.0/standard.json", std: loadJson<Standard>("coffee/v1.0/standard.json") },
+  { rel: "coffee/v1.1/standard.json", std: loadJson<Standard>("coffee/v1.1/standard.json") },
   // The generalisation-test draft. Held to the SAME compile and execute gates as the
   // finished standard: a partial draft may be incomplete, never unexecutable.
   { rel: "accessory/v0.1-draft/standard.json", std: loadJson<Standard>("accessory/v0.1-draft/standard.json") },

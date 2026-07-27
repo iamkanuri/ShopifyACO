@@ -1,10 +1,222 @@
 # DEPLOY.md — ShopifyACO (Railway, single service)
 
+> **Release index.** Release blocks run **newest-first** from here down: v3.3 (pending) · v3.2
+> `24dedf0` · v3.2 CP0 `8b71433` · v2.3 `459f706` · v2.2 `50eb90a` · V2 · the repositioning
+> release. **Two sit outside that order:** `## v2.4 release` and `## v2.5 release` were appended
+> at the very END of this file, after the evergreen reference sections. They are newer than the
+> v2.3 block below and are deliberately NOT relocated here — they are `##` headings, so moving
+> them verbatim between `#` release blocks would render them as subsections of whichever release
+> preceded them, and fixing that means editing their content. Read them at the bottom.
+
 ---
 
-# ▶ RELEASE (pending): v2.3 — close the install loop, and add depth that discriminates
+# ▶ RELEASE (pending): v3.3 — a real result on /demo, and a navigable standard
 
-**Branch:** `feat/v2-3-depth` · **Base:** `main` @ `50eb90a` (v2.2, deployed 2026-07-25)
+**Branch:** working tree · **Base:** `main` @ `24dedf0` (v3.2, pushed 2026-07-27)
+**Commit:** `________` — **PENDING: fill this SHA in at merge.** Until it carries one, nothing
+below has been verified in production. Treat this block as intent, not as a measurement.
+**No migration.**
+
+## AA.1 What it carries
+
+- **`/demo` is a real Coffee Standard v1.0 result**, not a hand-written sample —
+  `klatchcoffee.com`, replayed from a **committed frozen capture**, so the page is deterministic
+  and costs no egress on every view.
+- **Coffee Standard v1.1 issued. v1.0 is byte-frozen and still served** — `standard_hash` covers
+  `standard.json`'s bytes, so every citation already made against v1.0 has to keep resolving.
+  Same rule that put `applicability.json` and `fitness.json` in sidecars.
+- **The published standard is navigable** — the 42 entry pages are reachable by browsing, not
+  only by already knowing an entry id.
+- **Two defects in the default OG card fixed:** the engine-name footer, and canvas overflow.
+- **A cross-site product-description gate.**
+- **`AGENTS.md` reduced to a pointer at `CLAUDE.md`.** It was an untracked 563-line fork that had
+  gone 490 lines stale and carried a **false** deploy fact (`npm run migrate; npm start`,
+  "non-fatal"), which an independent reviewer read and believed.
+
+## AA.2 Merge + push (run these yourself)
+
+```bash
+git fetch origin
+git rev-parse origin/main                 # must equal 24dedf0…; if not, STOP and rebase
+git checkout main && git merge --ff-only <the-v3-3-branch>
+git push origin main                      # Railway auto-builds + deploys
+```
+
+## AA.3 Railway variables — none required
+
+## AA.4 Post-deploy verification
+
+1. `/healthz` → `commit` matches the pushed SHA.
+2. `/demo` renders the `klatchcoffee.com` Coffee Standard v1.0 result, and **every green row's
+   quote plainly supports its label**. *If any pass isn't supported by its quote, roll back —
+   that is the one unrecoverable failure mode.*
+3. `/standards/coffee/1.0/standard.json` still returns the v1.0 bytes with the same
+   `X-Standard-Hash`, and a citation to an entry id under `/standards/coffee/1.0/` still resolves.
+4. `/standards/coffee/1.1` resolves and is reachable by browsing from `/standards`.
+5. The default OG card renders with no engine-name footer and nothing clipped by the canvas.
+
+## AA.5 Rollback
+
+```bash
+# Fastest: Railway → Deployments → the 24dedf0 deploy → Redeploy.
+# Or by range:
+git revert --no-edit 24dedf0..<the-sha-you-pushed>
+git push origin main
+```
+
+No migration, so a code rollback is complete and safe.
+
+---
+
+# ▶ RELEASE: v3.2 — the category bound, a published standard, and the fix that was reverted ✅ SHIPPED 2026-07-27, commit `24dedf0`
+
+**Branch:** `feat/v3-2-category` · **Base:** `main` @ `8b71433`
+**Status:** merged as a **merge commit** (`8b71433` × `1ee409b` → `24dedf0`) and pushed to
+`origin/main`; Railway auto-builds on push. `/healthz` → `commit` confirms it.
+**No migration** — `git diff --stat 8cb39a5..24dedf0 -- migrations/` is empty.
+
+> **Written retroactively on 2026-07-27**, after the fact. Everything below is reconstructed from
+> `git log` and `experiments/v3-2/CATEGORY_BOUND.md` (gitignored — pass the path explicitly),
+> not from a pre-flight plan that was checked off.
+
+## Z.1 What it carries
+
+- **Coffee Standard v1.0 is published at `/standards`** — stable, citable URLs (`/standards`,
+  `/standards/coffee/1.0`, `/standards/coffee/1.0/standard.json` with an `X-Standard-Hash`
+  header, all 42 entry pages, `/grounding`, `/llms.txt`), rendered server-side so they read with
+  JavaScript off, and listed in `sitemap.xml`. Every published number is generated from the
+  artifact; the document's own `draft` status and its posture paragraph render verbatim.
+- **The coffee category bound, measured.** 103 brands captured and deduped on registrable domain
+  BEFORE capture, 3 excluded by the G-10 predicate with reasons, **100 evaluated, 0 replay
+  misses**; all **162 `pass_evidenced` rows audited individually** against full untruncated
+  evidence, not the 180-character rendered quote; **10 confirmed false positives → 12.78%
+  cluster-adjusted (ICC 0.2)** across 77 storefronts.
+- **A correction to a number this project has published since v2.9.** The `mpn` defect is not
+  category-specific, so it was checked mechanically across the general sample too: **18 more
+  false passes, in 507 rows a previous audit had read and reported as clean.** General bound
+  **0.83% → 7.80%, and that is a FLOOR** — one class was re-checked, the other ~491 rows were
+  not. The identifier row renders **no quote**, so no audit that reads rendered evidence could
+  have caught it, however many rows it read.
+- **`product_type` now survives the page tier** — parsed (not regexed: `"type"` also appears
+  inside `variants[]`) out of Shopify's analytics bootstrap, which 43 of 44 captured pages
+  already carried, so no extra request and no invalidated snapshots. G-10 skips **15 → 2**,
+  products evaluated **29 → 42**, 0 passes lost.
+
+## Z.2 What this release deliberately does NOT ship
+
+- **The three coffee false positives are still open.** Four guards closing them were built and
+  measured, then **REVERTED** (`1fda80d`, reverted in `7aeddbc`). A replay over **216 captured
+  real stores / 1,669 rows** said they cost **0** genuine positives; two independent adversarial
+  passes over 661 chosen sentences, re-executed mechanically against the parent commit, said
+  **192**. Both ran in this repo, on the same commit, on the same day. The guards are pinned in
+  the adversarial corpus with the cost of the attempt recorded beside them; `EXPECTED_OPEN_GAPS`
+  **31 → 36**. **A real-store replay is a regression check, never an acceptance gate for a
+  matcher change.**
+- **Measured discrimination went into `standards/coffee/v1.0/fitness.json`, a sidecar** — never
+  into `standard.json`, which would change `standard_hash` and silently break every citation
+  already made against v1.0. Bands held **1 of 10** on n=100.
+
+## Z.3 Railway variables — none required
+
+## Z.4 Post-deploy verification
+
+1. `/healthz` → `commit` == `24dedf0`.
+2. `/standards/coffee/1.0/standard.json` → `200`, `application/json`, `X-Standard-Hash` present,
+   body **byte-identical** to `standards/coffee/v1.0/standard.json` on disk (a re-serialised body
+   still parses and hashes differently).
+3. Any one of the 42 `/standards/coffee/1.0/{ENTRY-ID}` pages → `200` **with its grounding
+   citations actually rendered.** An empty grounding section is the known silent-renderer failure
+   mode — it looks exactly like a section with nothing to show.
+4. No published page renders the literal string `[object Object]`.
+
+## Z.5 Rollback
+
+`24dedf0` **is a merge commit** (parents `8b71433` and `1ee409b`), so unlike the fast-forward
+releases below, `-m 1` does apply:
+
+```bash
+# Fastest: Railway → Deployments → the 8b71433 deploy → Redeploy.
+# Or by commit:
+git revert --no-edit -m 1 24dedf0
+git push origin main
+```
+
+No migration, so a code rollback is complete and safe.
+
+---
+
+# ▶ RELEASE: v3.2 CP0 — the crash fix, shipped alone ✅ SHIPPED 2026-07-27, commit `8b71433`
+
+**Branch:** isolated out of the v3.2 work · **Base:** `main` @ `8cb39a5` (what production ran)
+**Status:** fast-forward `8cb39a5 → 8b71433`, deployed ahead of the rest of v3.2 and verified
+via `/healthz` at the time.
+**No migration.**
+
+> **Written retroactively on 2026-07-27**, reconstructed from `git log` and
+> `experiments/v3-2/CATEGORY_BOUND.md` §1 (gitignored — pass the path explicitly).
+
+## Y.1 What it carries
+
+One fix. A merchant who imported a public buyer test containing a materials, measurements, care
+or identifiers row pinned a contract that **threw on every re-run**. Executed at the parent
+(`8cb39a5`):
+
+```
+TypeError: Cannot read properties of undefined (reading 'violating')
+rows returned: 0 of 5
+```
+
+At the child (`8b71433`): **5 of 5.** One row that cannot be re-asked now costs one row instead
+of the whole result.
+
+## Y.2 Why it shipped by itself
+
+It contains **no matcher change** — confirmed by diff rather than asserted: `testEvidence.ts`,
+`subject.ts` and `claimLinter.ts` are not in the diff at all. That is what let it go out ahead of
+the rest of v3.2, which did carry matcher changes (and which were later reverted — see §Z.2).
+
+⚠️ **That was true of the FIX and false of the COMMITS.** As developed it was entangled with two
+unrelated changes — its "evaluate is total" layer was co-committed with the care-guard matcher
+change (`0f47aa0`), and `d35b26e` also carried G-07 identifiers-from-catalog, which changes what
+a connected store's identifiers row answers. It had to be isolated by **hunk surgery, not
+`git cherry-pick`**. Neither of those shipped; the identifiers row on this commit still answers
+`requires_store_access`, which is production's existing behaviour and not a regression.
+
+## Y.3 Railway variables — none required
+
+## Y.4 Post-deploy verification
+
+1. `/healthz` → `commit` == `8b71433`.
+2. Re-run an imported buyer test carrying a materials / measurements / care / identifiers row.
+   It must return **all** its rows, not `0 of N`.
+
+## Y.5 Rollback
+
+`main` advanced by fast-forward, so there is **no merge commit** and `-m 1` does not apply:
+
+```bash
+# Fastest: Railway → Deployments → the 8cb39a5 deploy → Redeploy.
+# Or by commit:
+git revert --no-edit 8b71433
+git push origin main
+```
+
+No migration, so a code rollback is complete and safe.
+
+---
+
+# ▶ RELEASE: v2.3 — close the install loop, and add depth that discriminates
+
+> ⚠️ **This block said "(pending)" until v3.3, and v2.3 had long since SHIPPED.** Verified from
+> git rather than from the label: `git merge-base --is-ancestor 459f706 24dedf0` succeeds, so
+> v2.3 is in production history; `migrations/0029_shop_storefront_host.sql` is present in the
+> `24dedf0` tree; `storefront_host` is referenced throughout `src/db/shops.ts`; and the branch
+> `feat/v2-3-depth` no longer exists. A release label nothing reconciles against git ancestry
+> is a label that goes stale silently — and this one did, then got copied into the release
+> index at the top of the file as though it were current.
+
+**Shipped as:** `459f706` (first commit of the release) · **Branch:** `feat/v2-3-depth` (merged, deleted)
+**Base:** `main` @ `50eb90a` (v2.2, deployed 2026-07-25)
 **Migration:** `0029_shop_storefront_host` (additive, one nullable column)
 
 ## X.1 What it carries
@@ -576,11 +788,15 @@ Browser ──> Railway service (Express, 0.0.0.0:$PORT)
 
 - **Build:** `npm run build` (installs + builds the viewer to `viewer/dist`). No
   secrets needed at build time.
-- **Start:** `npm run migrate; npm start` (railway.json). Migrations run at startup
+- **Start:** `npm run migrate && npm start` (railway.json). Migrations run at startup
   where Railway reliably injects the service's runtime variables, then the server
-  boots (`tsx src/server/index.ts`, binds `0.0.0.0` in production). The `;` makes
-  boot resilient: a migrate hiccup degrades persistence gracefully rather than
-  crash-looping the container (check `/healthz` → `supabase`).
+  boots (`tsx src/server/index.ts`, binds `0.0.0.0` in production).
+  ⚠️ **Corrected 2026-07-27.** This used to read `npm run migrate; npm start` and claim
+  the `;` made boot resilient — "a migrate hiccup degrades persistence gracefully rather
+  than crash-looping". It is **`&&`** (verified in `railway.json`) and
+  `src/db/migrate.ts:133` exits `1` on failure, so **a failed migration fails the
+  deploy**; it does not degrade. The useful consequence: a green `/healthz` on a known
+  commit is proof every migration applied, since the app cannot start otherwise.
 - **Variables must be set on the SERVICE**, not project "Shared Variables" (those
   are not auto-injected). The build-step approach failed for exactly this reason.
 
@@ -633,7 +849,11 @@ npm run migrate          # applies pending migrations, then prints the verified 
    `railway.json` for build/start.
 2. **Variables** → paste every variable from the table above.
 3. **Volume** → add a volume, mount path **`/data`**, and set `DATA_DIR=/data`.
-4. **Deploy.** Build runs `npm run build && npm run migrate`; start runs `npm start`.
+4. **Deploy.** Build runs `npm run build`; start runs `npm run migrate && npm start` — chained,
+   so a failed migration fails the deploy. (This step described a third, different wrong form
+   until v3.3: it put migrate at BUILD time, which the section above calls "too early /
+   unreliable" because the build container has no database. `railway.json` is the authority and
+   `test/deployFacts.test.ts` now reads it.)
 5. **Networking → Generate Domain** to get the public URL.
 6. Open `/healthz` → should return `{ ok: true, supabase: true, … }`.
 
@@ -681,8 +901,10 @@ launch-target progress, and can launch standard/deep scans for paid-beta custome
 If `ADMIN_PASSWORD` is unset, `/admin` is disabled.
 
 ## Multi-process services (LIVE 2026-06-21) — web + worker + scheduler
-One image, three Railway services from the **same repo**. `railway.json` runs `npm run migrate;
-npm start` for all of them; `src/start.ts` then **dispatches on `PROCESS_MODE`**: `web`
+One image, three Railway services from the **same repo**. `railway.json` runs `npm run migrate
+&& npm start` for all of them — chained, so a failed migration fails the deploy (see the
+correction above; this line asserted the wrong `;` form until v3.3, a hundred lines below where
+it had already been corrected). `src/start.ts` then **dispatches on `PROCESS_MODE`**: `web`
 (default → Express + viewer) · `worker` (`npm run worker`) · `scheduler`. So the **only
 per-service difference is the `PROCESS_MODE` variable** — no per-service start-command or
 healthcheck overrides (Railway handles those inconsistently). `worker`/`scheduler` run a minimal

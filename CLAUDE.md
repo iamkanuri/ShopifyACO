@@ -878,6 +878,99 @@ discipline" went false the moment the numbers moved, and sat next to generated f
 contradicting it. Interpretation beside generated numbers is the "site disagrees with its
 own JSON" defect one level up.
 
+## An ABSENCE sweep cannot see a page that sells the wrong product (v3.3)
+
+v3.2 audited both public sites and passed them: zero banned vocabulary, zero crimson/tan,
+zero old-palette residue. Every one of those is a mechanical check for words that are
+GONE, and none of them can see a paragraph, an image, or a default that is simply wrong.
+v3.3 found four such things behind that green result.
+
+- **`/demo` rendered the RETIRED PRODUCT** — a fictional skincare brand's "AI buyer
+  readiness score" of 20/100, a rival leaderboard, a mention rate — on the one page whose
+  job is to prove what this product delivers. It also returned **0 characters** of body
+  text to a reader without JavaScript, while `/standards` returned 15,000.
+- **`/og/default.png`** — the share image for the landing page and every utility page —
+  rendered `ChatGPT · Gemini · Perplexity` under a header reading `PUBLISHED BUYING
+  STANDARDS`. **No sweep over source strings can read a phrase rasterised into a PNG.**
+- **`PUBLIC_BRAND_NAME`'s fallback was `"AI Visibility"`**, a permanently banned word in
+  the site's own `<title>`. Production sets the variable, so every lint passed — they lint
+  `viewer/src/copy.ts`, not a default that appears only when the variable is missing. **A
+  default is a value that ships; it belongs under the same rule as the copy.**
+- **`/methodology` carried the exact one-word drift** the cross-site gate exists to stop:
+  "reported as **pass**, not proven" on our own page while gating the other site on `proven`.
+
+The replacement for an absence sweep is a **presence check over shared content**.
+`PRODUCT_DESCRIPTION` / `PRODUCT_CAPABILITIES` / `PRODUCT_KIND` in `viewer/src/copy.ts` are
+served at `GET /api/brand.json`; `ThirdOcular/scripts/check-copy.mjs` fetches that at build
+time and refuses to deploy on a mismatch **or on a check it could not perform**. Measured
+drift when it was first run: three characters, not "one word" — `pass`/`proven` plus two
+curly apostrophes. ⚠️ **Deploy ShopifyACO first**; the gate correctly reddens the other
+repo's build until `/api/brand.json` is live.
+
+⚠️ **The width gate on the OG cards was itself broken, and only its canary said so.**
+`new Resvg(svg, { font: { loadSystemFonts: false } })` with no `fontFiles` loads no font,
+so every glyph shapes to zero width and `getBBox()` collapses to the background rect —
+exactly 1200 on a 1200px canvas. It would have reported "nothing overflows" for every card
+ever built, including the live one whose right edge measured **1378.6**. Measure text with
+`cardRightEdge()`, which shares the render's font config, and keep the two-sided canary.
+
+## A measurement's HOME depends on when it was taken, not on a habit (v3.3 CP-B)
+
+Coffee Standard **v1.1** was issued because three of v1.0's four posture clauses had gone
+false — and all three understated the work: it said it "is not published" while sitting at
+a stable URL in `sitemap.xml`, "every failure rate in it is a prediction" after ten had
+been measured on 100 real products, and "has never been applied to a real store by anyone"
+after we had applied it. What is still true, and the part that matters, is that **no second
+party has**. `independently_applied` stays `false`.
+
+- **A new version, not an edit**, because `standard_hash` is what a citation resolves
+  through. v1.0 is byte-frozen (hash pinned to a literal in
+  `standards/__tests__/version.test.ts`) and still served, with a supersession notice added
+  by the **renderer** — never by editing the document.
+- **Grammar 1.1** adds `applied_by_author`, `measured_discrimination`, `supersedes` and
+  `measured_fitness`, all optional, so a grammar-1.0 document validates unchanged.
+  `applied_by_author` exists because `draft` was false and `published` would have been a
+  lie. **The promotion rule is in the document**: `published` requires a second party.
+- ⚠️ **The sidecar rule is NOT "measurements live outside the document."** It is that a
+  measurement taken AFTER a version ships must not change its bytes. v1.0's came after, so
+  it is a sidecar; **v1.1's came before v1.1 existed, so it lives inside**, covered by the
+  hash. Same rule, opposite outcome. `applicability.json` stays a sidecar because it
+  encodes an executable reading of prose the document does not assert.
+- **Every prior entry id resolves at the new version** via `supersedes`, and the reissue
+  changed no question, assertion or evidence rule — asserted entry by entry.
+
+⚠️ **THREE NUMBERS THAT ARE NOT THE SAME NUMBER**, and a brief ran two of them together:
+`bands held 1/10` (the prediction was right) · `above predicted band 8/10` (discriminates
+LESS than predicted) · `carries information 4/10` (MEASURED rate inside the grammar's own
+15-85% band). `FORMAT-001` at 73.7% against a predicted 30-60% is above its band and
+squarely inside the informative one. **"Above its band" does not mean "carries no
+information."**
+
+⚠️ **`s.fitness` vs `measured_fitness` produced THREE different wrong pages in one
+session** — the `grounding.sources` defect again, one version later, by the same reflex.
+It printed `undefined` in four table rows; it made `/demo` announce that no error rate had
+been published, on the session whose point was publishing one; and it made `llms.txt`
+advertise the **superseded** version as measured and the **current** one as unmeasured, to
+exactly the machine readers that file serves. Nothing threw; each looked like a section
+with nothing to show. Use `fitnessOf()` / `measuredOf()`, never the raw field.
+
+## The published standard is navigable, and a citation lands on the line (v3.3 CP-C)
+
+A giant H1, four sentences of self-negation, a metadata card, then 42 entries with nothing
+to navigate them by. `src/server/standardsSite.ts` now renders a table of contents whose
+tier cards ARE the tier split (one structure, so a summary cannot disagree with a list),
+per-entry `id`s so `#ALS-COFFEE-1.1-CERT-002` scrolls, JS-free `<details>`, and
+measured-vs-predicted as a table. The H1 is `shortName()`; the artifact's full descriptive
+sentence is a subtitle. The posture stays first and verbatim — it reads as a standing
+notice because of type, not because anything was softened.
+
+⚠️ **The standalone documents never loaded the site's fonts.** They come from a `<link>`
+in `viewer/index.html`; there is no `@import` or `@font-face` in `theme.css`, and the shell
+copied only the stylesheet href. `--font-display` fell through to `-apple-system` on every
+published standard page. **A missing webfont degrades to a system font rather than to an
+error**, so the typography was being tuned against a face that was never on the page.
+`FONT_LINKS` is asserted byte-identical to the SPA's.
+
 ## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
 
 **The three coffee false positives were fixed, measured, and reverted, and the measurement is

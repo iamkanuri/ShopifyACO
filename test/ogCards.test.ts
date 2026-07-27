@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { indexOgModel } from "../src/server/indexSsr.js";
-import { buildDemoCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, buildReportCardSvg, renderCardPng } from "../src/server/ogCard.js";
+import {
+  buildDefaultCardSvg, buildIndexListCardSvg, buildIndexSlugCardSvg, buildReportCardSvg,
+  renderCardPng, cardRightEdge, CARD_WIDTH,
+} from "../src/server/ogCard.js";
+import { TAGLINE } from "../viewer/src/copy.js";
 import type { ReportPreview } from "../src/server/reportPreview.js";
 import type { CategoryIndexRow } from "../src/db/supabase.js";
 
@@ -79,28 +83,87 @@ test("report card is category-framed and NEVER headlines the merchant's score or
   assert.ok(!svg.includes("gap is demand"), "the losing gap line stays on the page, not the poster");
 });
 
-test("demo card carries the FULL substitution story — headline, named rivals, counts — and the sample label", () => {
-  const svg = buildDemoCardSvg({
-    brand: "Sennen", category: "skincare",
-    headline: "AI recommends Sennen in just 2 of 36 answers about skincare — you're barely a candidate.",
-    rivals: [{ name: "The Ordinary", recCount: 14 }, { name: "CeraVe", recCount: 9 }, { name: "La Roche-Posay", recCount: 7 }],
-    merchantCount: 2, total: 36,
-  }, "AisleLens");
-  // The substitution verdict — the same lead the demo page renders, not the retired mention-gap line.
-  assert.ok(svg.includes("barely a candidate"));
-  assert.ok(!svg.includes("mention Sennen more than"), "retired mention-gap framing must not appear");
-  // Named rivals with counts, leaderboard-style, with the sample brand's own count against them.
-  assert.ok(svg.includes("The Ordinary") && svg.includes("14 of 36"));
-  assert.ok(svg.includes("CeraVe") && svg.includes("9 of 36"));
-  assert.ok(svg.includes("→ Sennen") && svg.includes("2 of 36"));
-  // Honesty labels stay.
-  assert.ok(svg.includes("SAMPLE") && svg.includes("FICTIONAL"));
-  assert.ok(svg.includes("n=36 answers"));
+// v3.3 — the demo card's test is GONE with the card. It asserted a fictional brand's
+// rival leaderboard ("AI recommends Sennen in just 2 of 36 answers about skincare"),
+// which is the product this one replaced.
+
+test("the DEFAULT card describes THIS product, not the one it replaced", () => {
+  // ⚠️ WHY THIS TEST DID NOT EXIST BEFORE, WHICH IS THE POINT. `/og/default.png` is the
+  // share image for the landing page and every utility page, and it was the ONE card
+  // variant this file never imported. It rendered "ChatGPT · Gemini · Perplexity" under
+  // a header reading "PUBLISHED BUYING STANDARDS" — the retired positioning, in the
+  // image that travels every link to this site. v3.2 swept the site for retired
+  // vocabulary and passed, because every one of those sweeps reads source strings and
+  // no absence check over source can see a phrase rendered into a PNG.
+  const svg = buildDefaultCardSvg("AisleLens", TAGLINE);
+  assert.ok(svg.includes("PUBLISHED BUYING STANDARDS"));
+  assert.doesNotMatch(svg, /ChatGPT|Gemini|Perplexity|Copilot/,
+    "the default card names AI assistants — that is the retired product, baked into an image");
+  assert.doesNotMatch(svg, /\b(score|ranking|visibility|share of voice)\b/i,
+    "banned vocabulary on the card that travels every share of this site");
+});
+
+/** resvg's OWN text shaping with the card's OWN font — not our 0.53em character-width
+ *  model, which is the thing under test. `cardRightEdge` lives in ogCard.ts so the
+ *  measurement can never be taken with a different font from the render; measuring
+ *  without `fontFiles` shapes every glyph to zero width and reports a clean 1200. */
+function rightEdge(svg: string): number {
+  const edge = cardRightEdge(svg);
+  assert.ok(edge != null, "resvg could not measure the card — the instrument, not the card, failed");
+  return edge!;
+}
+
+test("NO CARD RENDERS PAST ITS OWN CANVAS", () => {
+  // ⚠️ THE DEFECT THIS CATCHES, MEASURED IN PRODUCTION. The old wrapper split text at
+  // the midpoint and truncated only the SECOND line; line 1 was emitted verbatim,
+  // never measured against any width. On the live default card that put line 1 at
+  // ~134 characters and the card's right edge at 1378.6 on a 1200px canvas, so
+  // lens.thirdocular.com/og/default.png clipped its own description mid-word
+  // ("…written as exe") in every unfurl since it shipped.
+  //
+  // Every previous assertion in this file is `svg.includes(…)` on the SVG SOURCE, and
+  // a <text> element that runs to x=1489 contains exactly the same characters as one
+  // that fits. Presence cannot see position. This measures.
+  const cards: Array<[string, string]> = [
+    ["default", buildDefaultCardSvg("AisleLens", TAGLINE)],
+    ["report", buildReportCardSvg(PREVIEW, "AisleLens")],
+    ["index-list", buildIndexListCardSvg([{ label: "Baby-led weaning tableware", brands: 12 }], "AisleLens")],
+    ["index-slug/crowned", buildIndexSlugCardSvg(indexOgModel(CROWNED, 90)!, "AisleLens")],
+    ["index-slug/contested", buildIndexSlugCardSvg(indexOgModel(CONTESTED, 90)!, "AisleLens")],
+  ];
+  const over = cards
+    .map(([name, svg]) => [name, rightEdge(svg)] as const)
+    .filter(([, edge]) => edge > CARD_WIDTH);
+  assert.deepEqual(over, [], `card content runs past the ${CARD_WIDTH}px canvas: ${over.map(([n, e]) => `${n} → ${e.toFixed(1)}`).join(", ")}`);
+
+  // TWO-SIDED LIVENESS. A measurement that reports "nothing overflows" is worthless if
+  // the instrument cannot detect an overflow at all, and this whole file used to be
+  // exactly that. A card built with text that MUST overflow has to measure > 1200.
+  const canary = buildIndexListCardSvg(
+    [{ label: `${"Wide".repeat(60)}`, brands: 1 }], "AisleLens".repeat(30),
+  );
+  assert.ok(rightEdge(canary) > CARD_WIDTH, "the overflow detector did not fire on deliberately oversized text — the instrument is collapsed, and a clean result from it means nothing");
+});
+
+test("the default card wraps its whole tagline instead of deleting the end of it", () => {
+  // The tagline is byte-identical to viewer/src/copy.ts (siteCopy.test.ts asserts the
+  // pair), so the card must WRAP it, never shorten it. An ellipsis here means the share
+  // image is publishing a sentence the site does not say.
+  const svg = buildDefaultCardSvg("AisleLens", TAGLINE);
+  const rendered = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]!);
+  const body = rendered.join(" ").replace(/&amp;/g, "&").replace(/&apos;/g, "'").replace(/&quot;/g, '"');
+  assert.ok(!body.includes("…"), "the default card truncated its own tagline");
+  // Every word of the tagline survives, in order, once punctuation-insensitive.
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+  assert.ok(norm(body).includes(norm(TAGLINE)), "the tagline is not rendered whole on the default card");
 });
 
 test("cards rasterize to a real 1200×630 PNG", () => {
   const png = renderCardPng(buildIndexListCardSvg([{ label: "Test Category", brands: 12 }], "AisleLens"));
-  // PNG magic bytes + IHDR dimensions.
+  // PNG magic bytes + IHDR dimensions. NOTE: these come from `fitTo: { mode: "width",
+  // value: W }`, so they are canvas constants by construction and read 1200×630 no
+  // matter how far the text runs off the edge. That is what the getBBox test above is
+  // for; this one only proves the rasterizer works at all.
   assert.deepEqual([...png.subarray(0, 4)], [0x89, 0x50, 0x4e, 0x47]);
   assert.equal(png.readUInt32BE(16), 1200);
   assert.equal(png.readUInt32BE(20), 630);
