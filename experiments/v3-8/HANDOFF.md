@@ -226,15 +226,56 @@ exactly `1000` renders `$1000.00` (levainbakery), and a GBP store renders `$135.
 
 ---
 
-## EXACT NEXT STEP
+## ALL CHECKPOINTS COMPLETE — the session is at Pause 2
 
-1. Freeze the CP-1B corpus in a commit — **before any fix code is written** (brief's structural
-   rule; its authors author no fix).
-2. Write 3a (cents/tier) and 3b (non-USD) as **separate commits**, each with its own gate:
-   independent attackers vs a frozen worktree + the frozen CP-1B corpus as a regression floor →
-   independent refuter → I re-execute every claim at both commits → mechanical A/B with the
-   calibration hosts named → natural-frequency read → contractVersion consequence stated.
-3. Merge + refute CP-1A's adjudications; re-execute every confirmed defect myself.
-4. Re-measure the general sidecar at the fixed SHA as a NEW block (only for fixes that survived).
-5. CP-4 filings + `EXPECTED_OPEN_GAPS` arithmetic per step (base **60**).
-6. **Pause 2** before pushing anything beyond CP-0's `6a3e5d7`.
+| commit | what |
+|---|---|
+| `6b4d68e` | CP-1A generation — 3,681 sentences, full coverage |
+| `9535587` | CP-0 + CP-2 — kill condition did not fire, cents guard laundered two errors |
+| `a11a594` | CP-3 infrastructure, built and validated before any fix existed |
+| `3e3af04` | **CP-3a** — tier-aware cents fix |
+| `7cc2e2c` | **CP-3b** — non-USD refusal |
+| `234ee7b` | CP-1B corpus, frozen |
+| `f5cf74f` | CP-3a follow-up — the docblock named the wrong refusal path |
+| `7ef7c79` | CP-4 — G-14 filed, P-17 updated, P-18/P-19 filed, general sample re-measured |
+
+**All eight are on `feat/v3-8-campaigns` and UNPUSHED.** `origin/main` and production are both
+`6a3e5d7` (CP-0's SHA).
+
+### The one open decision, and it is the user's
+
+**`ENGINE_VERSION` is `"v2.0.0"` and has never been bumped through v2.1–v3.7.** The price fixes
+change what 44 stores' rows report:
+- the **6** cents stores also change `contractVersion` (the cap moved), so a saved test correctly
+  409s — *"This test's contract changed since it was saved"* — which is right, because comparing
+  "under $1005" to "under $15" is not a comparison;
+- the **38** non-USD stores do **not** change `contractVersion` (the cap is unmoved), so **no 409
+  fires** and a before/after would present a `pass → not_proven` flip as if comparable. That is
+  precisely what the engine-version guard exists to prevent.
+
+Bumping 409s every merchant's saved test with an accurate message. Not bumping lets those 38 flips
+pass silently. It affects every merchant, so it is not mine to take.
+
+### If the answer is "push"
+
+```bash
+git checkout main && git merge --ff-only feat/v3-8-campaigns && git push origin main
+```
+Then, once Railway has built:
+```bash
+EXPECT_SHA=$(git rev-parse HEAD) node experiments/v3-7/verify_prod.mjs
+EXPECT_SHA=$(git rev-parse HEAD) node experiments/v3-8/verify_sections.mjs
+```
+⚠️ Both probes refuse to run against a stale deploy, by design.
+
+⚠️ **The published sidecar `standards/coffee/v1.3/fitness.json` has NOT been edited.** The
+re-measurement exists as `experiments/v3-8/out/remeasure.json` + `bound.mjs`. Writing it into the
+sidecar as a NEW block pinned to the fixed SHA (v3.7's 7.53% frozen beside it, never edited) is the
+remaining step if the fixes are pushed — and it must go in the SAME push, per Pause 1's invariant.
+
+### Filed, not fixed
+- **P-18** — non-USD price semantics; the authenticated path still says dollars.
+- **P-19** — `$0.00` as a price (11 stores); "lowest readable" that is not the page minimum (9).
+- **G-14 step 2** — the domain-collision half of `adjacent_vocabulary` for all 13 keys.
+- **CP-1B corpus → `npm test`** with its own expected-gaps constant (the brief invited it; not done).
+- **274 G-14 groups** await a pin set, chosen by the fix session to match the guard it builds.

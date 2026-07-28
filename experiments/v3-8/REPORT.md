@@ -19,11 +19,21 @@ Status legend: ✅ done · 🔄 running · ⛔ INCOMPLETE · ⚠️ finding.
    errors at all.** `minPriceUsd` is a min over per-value conversions, so a mixed set launders the
    error into a plausible number: `firelightcoffee.com` renders **$10.60** where the true floor is
    **$9.35**. Nobody would ever look twice at $10.60.
-4. **G-14 step 1: 3,681 sentences over 13 keys × 8 classes, full coverage, 0 dropped.**
-   Adjudication running.
-5. ⚠️ **Three instrument bugs in my own harnesses, every one caught by an assertion or a canary,
-   none by reading** — and one of them was found only because my count was *one lower* than a
-   figure v3.7 had already published.
+4. **G-14 step 1 is MEASURED** — 3,681 sentences, 13 keys × 8 classes, full coverage, 779/779 groups
+   adjudicated, 327 refuter verdicts. **The engine reads keywords, not sentences, on three axes**
+   (`letter_not_spirit` 93%, `tense_modality` 71%, `wrong_subject` 40%) and reads them well on three
+   (`merchant_controlled_string` 0/414, `orthography` 0/606, `violation` 1/104). Uniform across all
+   thirteen keys, so it is a property of the matcher, not of any term list. **No fixes.**
+5. **The fetch layer had never been attacked, and 49 of 60 defects were unreachable by sampling.**
+   101 chosen-input cases frozen before any fix. **0 newly opened** by either fix.
+6. **Both fixes shipped to the branch, separately gated.** 3a: 0 status changes, 6 corrected prices,
+   343 of 349 stores untouched, all six calibration hosts moved. 3b: 38 status changes, exactly the
+   measured non-USD stores, nothing else.
+7. **The general sample re-measured at the fixed SHA: 7.53% → 5.17%**, x 18 → 11, and the instrument
+   reproduces v3.7's published figure exactly before moving it.
+8. ⚠️ **Six instrument failures in my own harnesses. Four were caught by a canary, an anchor, or a
+   disagreement with a previously published number. None was caught by reading.**
+9. **Nothing is pushed beyond CP-0.** Pause 2 owns that decision.
 
 ---
 
@@ -180,9 +190,125 @@ and a second asserting the page tier is readable for at least half the corpus.
 
 ---
 
-## CP-1A — G-14 step 1 🔄
+## CP-3 — the two fixes, each independently gated ✅ BOTH SHIPPED (to the branch)
 
-Generation ✅ **VERIFIED_CLEAN**; adjudication running.
+Separate commits with separate A/B attribution, per Pause 1's rider (a).
+
+### 3a · the tier-aware cents fix — `3e3af04`
+
+`priceToUsd` was one guess for both tiers, keyed on the **magnitude** of the value. A magnitude
+cannot decide a unit. It now takes the tier, and **fails closed on `.js`**: a value that is not a
+finite non-negative integer yields `null` and no price is stated (rider c).
+
+**A/B against a real git worktree at `9535587`** — never a file swap; v3.1 measured a swap that
+silently failed to apply as *"0 regressions, 0 status changes"*, and a whole session was written on
+that number. 349 snapshots, 2,928 rows, canary live on both sides:
+
+```
+status changes  0
+detail changes  6
+label changes   6
+quote changes   0
+343 of 349 stores untouched
+all six calibration hosts moved — enforced by the differ, which exits INCOMPLETE if one does not
+```
+
+| store | was | now |
+|---|---|---|
+| `levainbakery.com` | `$1000.00` | `$10.00` |
+| `richer-poorer.com` | `$300.00` | `$3.00` |
+| `sputnikcoffeecompany.com` | `$900.00` | `$9.00` |
+| `perkyblenders.com` | `$890.00` | `$8.90` |
+| **`firelightcoffee.com`** | **`$10.60`** | **`$9.35`** |
+| **`tinker.coffee`** | **`$21.00`** | **`$7.50`** |
+
+⚠️ **THE DIFFER FOUND A BUG IN ITSELF FIRST, AND IT WAS THE FLATTERING KIND.** A price label
+*embeds* the cap, so keyed on the raw label a corrected row looks like one row vanishing and an
+unrelated row appearing — and it reported **0 status / 0 detail / 0 quote changes for a fix that
+demonstrably worked.** Money is now normalised out of the key and a label change is its own change
+type. Without the row-set check it would have read as a perfect clean diff.
+
+### 3b · the non-USD refusal — `7cc2e2c`
+
+**In isolation, against the 3a commit: 38 status changes, 0 detail-only, 0 quote, 0 label** —
+exactly the 38 measured stores, each naming its own currency, nothing else moved.
+
+The precedence was **measured, not guessed**: JSON-LD `priceCurrency` (which `extract.ts:126`
+already parses and nothing read) covers 34 of 38; `Shopify.currency.active` covers the other 4.
+`Shopify.country` is rejected — it contradicts the active currency on **8 stores** because it
+reflects the visitor's geo. `og:price:currency` is rejected — it disagrees with both other signals
+on **3 stores**.
+
+The row **states no number at all**. A converted number would invent a rate on a public instrument
+about a real merchant; the raw number behind the right symbol would be a second claim nothing here
+measured. What a price row should eventually *promise* is filed as **P-18**, not answered.
+
+### The contractVersion consequence, stated for a merchant who re-runs tomorrow
+
+The chain is real and was verified: `niceCap(minPriceUsd)` → `capUsd`, and **`capUsd` is hashed
+into `contractVersion`** (`productTest.ts:1449`).
+
+- **343 of 349 stores: nothing changes.** No contract change, no 409, identical results.
+- **6 stores (3a's): the contract genuinely changes**, because the cap moved — e.g. `Price under
+  $1005` → `Price under $15`. A saved test re-run returns **409**: *"This test's contract changed
+  since it was saved, so a before/after comparison wouldn't be valid."* **That is correct, not a
+  false alarm** — the old cap was derived from a wrong price, and comparing "under $1005" to
+  "under $15" is not a comparison.
+- **38 stores (3b's): the contract does NOT change** (the cap is unmoved); only the row's answer
+  does, from `pass_evidenced` to `not_proven`. **No 409 fires**, so a before/after would present
+  the flip as if comparable — which is exactly what the engine-version guard exists to prevent.
+
+⚠️ **`ENGINE_VERSION` is still `"v2.0.0"` and has never been bumped through v2.1–v3.7.** Bumping it
+409s *every* merchant's saved test with an accurate message; not bumping it lets those 38 flips pass
+silently into a before/after. **This affects every merchant, so it is a Pause 2 call rather than
+mine**, and it is presented there with these numbers.
+
+---
+
+## CP-1A — G-14 step 1 ✅ MEASURED
+
+Full detail is filed in `standards/ENGINE_GAPS.md` under G-14. Headline:
+
+```
+sentences executed  3,681  (hostile 3,500 · controls 181)   dropped by cap 0
+groups                779  adjudicated 779/779, missing 0, duplicates 0
+real evaluate() vs the proven mirror: 0 disagreements
+controls meeting their expected outcome: 181/181
+confirmed false passes 1,137 · correct 1,464 · generator artefacts 735 · false fails 164
+```
+
+| class | confirmed false passes / hostile |
+|---|---|
+| `letter_not_spirit` | **260/280** (93%) |
+| `tense_modality` | **439/621** (71%) |
+| `wrong_subject` | **368/914** (40%) |
+| `denial` | 69/461 (15%) |
+| `violation` | 1/104 |
+| `merchant_controlled_string` | **0/414** |
+| `orthography` | **0/606** |
+| `adjacent_vocabulary` | ~0/100 — **HALF-RUN, see below** |
+
+**The three sentences a stranger needs.** (1) The engine reads keywords, not sentences, on three
+axes and reads them well on three others. (2) `letter_not_spirit` is the worst rate and
+`tense_modality` the worst count — nothing in the engine reads tense, modality or condition, so
+*"We hope to move this batch to a Fragrance-Free product next season."* is credited as proof the
+product is fragrance-free today. (3) The defect is **uniform across all thirteen keys**, so it is a
+property of the matcher and no amount of editing `CLAIM_TERMS` addresses it.
+
+⚠️ **`generator_artifact` is a THIRD STATE and it is 735 sentences.** `"Our carton is Contains
+Aluminum."` is not English; the engine's answer to it carries no information either way. Counting
+artefacts as defects would have inflated this campaign by two-thirds; counting them as correct would
+hide real coverage loss.
+
+⚠️ **`adjacent_vocabulary` 0/100 is NOT a measurement of that class.** Only the mechanisable half
+ran. `DEFAULT_CONTEXT.adjacentDomains` is empty, so the domain-collision half was never attempted
+for any of the thirteen keys — and that is where two of this repo's known confirmed defects live
+(`organic` in its soil-science sense; homographs like `REACH`).
+
+**Nothing was pinned and `EXPECTED_OPEN_GAPS` stays at 60**, because 274 groups would move it to the
+high hundreds in a session whose brief said *"No fixes. Not one."*
+
+### Generation ✅ VERIFIED_CLEAN
 
 ```
 keys lifted from the engine's source BYTES : 13   (== ENGINE_CLAIM_KEYS, asserted)
@@ -249,14 +375,96 @@ The must-not-regress direction is not a separate class: it is built in as `contr
 
 ---
 
-## CP-1B — the fetch-layer corpus 🔄
+## CP-1B — the fetch-layer corpus ✅ 101 CASES, FROZEN IN `234ee7b`
 
-Running. Recon over the real path → six authors (currency · cents boundary · zero/null/negative ·
-tier disagreement · malformed money · transport/truncation) → completeness critic. Authors return
-**semantic case specs**, not bytes; a mechanical synthesizer turns them into real HTTP bodies, so no
-agent writes HTML and no agent touches `src/`. **The corpus is frozen in a commit before any fix
-design exists, and its authors author no fix** — the brief's structural answer to the
-corpus-author/fix-author tension.
+```
+wrong-NUMBER defects in the SHIPPED engine    60
+  of which UNREACHABLE by a real-store sample   49   <-- THE CAMPAIGN HEADLINE
+closed by 3a + 3b                             15
+residual at HEAD                              45
+NEWLY OPENED by either fix                     0
+```
+
+The `unreachable_by_real_store_sample` flag is **the case authors' own**, set before any result was
+seen, and the headline is computed over the wrong-number class only — the one nobody can argue with.
+
+⚠️ **A flag is not a defect.** Nine currency cases differ from the engine only in **promise**: their
+authors expected a non-USD store to receive a pass reporting its own currency, and v3.8 shipped a
+refusal. Counted separately, never folded in, filed as P-18. That is a documented disagreement
+between the corpus and a shipped decision, not a defect in either.
+
+**Residual classes nobody had named**, all upstream of every matcher this project has attacked:
+
+| shape | what happens |
+|---|---|
+| `p > 1000` is a **signed** comparison | no negative magnitude satisfies it, so `-200000` passes unconverted |
+| `toFixed` abandons fixed notation at 1e21 | evidence renders `$1.0000000000000001e+23` |
+| **zero-decimal currencies** (JPY) | ¥1250 becomes ¥12.50 |
+| **three-decimal currencies** (KWD) | subdivided into 1000, so /100 is wrong the other way |
+| comma decimal separator | `"12,50"` → `"1250"` → **×100** |
+| European thousands separator | `"1.299,00"` → **1.299**, which INVERTS the minimum selection |
+| a currency code in the price field | `Number("")` is **0** and `Number.isFinite(0)` is true — a price of zero |
+| `parseOffer` | commits to the FIRST offer object, never a minimum |
+
+**Now permanently expressible**: everything the `store` spec describes — all four classes v3.7
+recorded as inexpressible. **Still structurally inexpressible**: anything below the response body —
+TLS fingerprinting, mid-stream resets, the byte cap interacting with chunked transfer. The
+synthesizer hands the engine a *complete* recorded response, so a body that never finishes arriving
+cannot be modelled by it.
+
+⚠️ **The recon found a SECOND price producer nobody had connected to P-17.**
+`src/server/authenticatedTest.ts` builds its own `PublicProduct` with `priceUsd: v.price` raw — no
+`priceToUsd`, no cents guard, no currency — feeding the same `evaluate`. Filed as P-18.
+
+---
+
+## The sidecar re-measurement — GENERAL ONLY, and that was verified
+
+Pause 1's rule: a fix and the re-measurement of every figure it moves ship in the same push.
+**Verified rather than assumed** — coffee's `PRICE-001` is `unbound` at v1.2/v1.3 and no v1.3 entry
+binds `req_kind: price_under` (the ten bindings are claim ×3, variant_option ×4, delivery,
+identifiers, attribute), so the coffee sample holds **zero price rows** and cannot move.
+
+| | v3.7 published | v3.8 at the fixed SHA |
+|---|---|---|
+| pass rows `n` | 488 | **483** |
+| confirmed `x` | 18 | **11** |
+| point estimate | 3.69% | **2.28%** |
+| Wilson 95% | 2.35 – 5.75% | **1.28 – 4.03%** |
+| cluster-adjusted 95% (ICC 0.2) | **7.53%** | **5.17%** |
+
+**7 of the 18 closed** — 5 currency rows now refuse, and `levainbakery`/`richer-poorer` keep passing
+with a *corrected* price. 11 survive: the `$0.00` class, the availability defaults, `fieldcompany`'s
+aggregation, `askinosie`'s sibling-SKU quantity. None is addressed by either fix.
+
+⚠️ **The instrument reproduces v3.7's published 7.53% EXACTLY before moving it**, which is the only
+thing that makes the two numbers comparable. And **x = 11 is past the end of `general_bound.mjs`'s
+hand-typed Poisson table**, whose fallback would have returned **19.501** against an exact
+**18.208** — so the exact CDF inversion is imported from `v3-7/perkind.mjs` and anchored against the
+published table at x = 0..10.
+
+⚠️ **Two instrument bugs here, both caught by disagreeing with a published number.** Filtering the
+A/B rows by HOST pooled `deathwishcoffee.com`'s coffee-set product into the general sample and gave
+**491** rows where v3.7 published **488**; the probe now records the URL. And **"still a pass row" is
+not "still a false pass"** — `levainbakery` and `richer-poorer` keep passing with a corrected price,
+and counting them as survivors reported two closed defects as open.
+
+---
+
+## GATES — all green
+
+| gate | result |
+|---|---|
+| `npm test` (pure) | **946 pass, 0 fail** |
+| DB-gated (`RUN_DB_TESTS=1`, stack probed first) | **1007 pass, 0 fail** |
+| typecheck — root · standards project | clean · clean |
+| acceptance runner | **hostile 4/37 · must-not-regress 19/19** |
+| matcher files changed only in CP-3's commits | `3e3af04`, `7cc2e2c`, `f5cf74f` — named per commit |
+| `standards/acceptance/subject-tense/` untouched | byte-identical |
+| `EXPECTED_OPEN_GAPS` | **60**, unmoved — no pins added, and why is recorded |
+| all four `standard.json` byte-frozen · no v1.4 | empty diff vs `origin/main` · no directory |
+| production verified at CP-0's SHA | `/healthz` = `6a3e5d7` |
+| nothing pushed beyond CP-0 | `origin/main` = `6a3e5d7`, HEAD unpushed |
 
 ---
 
@@ -276,3 +484,47 @@ corpus-author/fix-author tension.
 - ⚠️ **P-17's four upstream classes are right, but the fourth is bigger than its v3.7 write-up.**
   "min-of-readable-is-page-max" is 9 stores, not 1, once the analytics bootstrap is parsed — and 4
   of them are untouched by any cents fix.
+- ⚠️ **CP-1B's "the agents who author it do not author any fix" was honoured; "freeze in a commit
+  before any fix design exists" was honoured in substance and not in commit order.** The six authors
+  returned before a line of fix code was written, and the design came from the census, which is what
+  CP-3a itself mandates ("designed from the census, not from the source-reading"). But the corpus
+  commit (`234ee7b`) lands *after* `3e3af04`/`7cc2e2c`, because the completeness critic was still
+  running when the fixes were written. The independence property holds; the ordering does not, and
+  saying so is cheaper than pretending otherwise.
+- ⚠️ **G-14's own heading in `ENGINE_GAPS.md` says "the six-class treatment" and says the
+  templatizer "generates six of them".** Both are wrong: there are **eight** classes and it generates
+  all eight. Left as written, because that is the heading citations resolve through.
+
+---
+
+## Every default taken
+
+| # | default | reason |
+|---|---|---|
+| 1 | **Followed the templatizer's 8 classes over the brief's 6** | the brief's own instruction when they differ |
+| 2 | **Ran G-14 uncapped (3,681) rather than capped** | the cap dropped 1,056 sentences and forced INCOMPLETE cells for no benefit |
+| 3 | **Batched class-major round-robin** | v3.7 batched by kind and recorded the cost: errors inside a batch are correlated by construction |
+| 4 | **Excluded `v3-5/revert/synth_snaps` from the census** | synthetic bytes in a natural-frequency read make every rate a statement about what we invented |
+| 5 | **Did NOT bump `ENGINE_VERSION`** | it affects every merchant's saved test; presented at Pause 2 instead |
+| 6 | **Added no adversarial-corpus pins** | 274 groups in a session whose brief said "No fixes. Not one." |
+| 7 | **Did not commit `tier2a_merchant_facts_design_2026-07-03.md`** | untracked before the session; v3.7 took the same call |
+| 8 | **Everything committed and UNPUSHED beyond CP-0** | protocol rule; Pause 2 owns the push |
+
+## Instrument failures this session — six, and not one was found by reading
+
+1. `evaluate`'s argument order is `(product, requirement)`; reversed it returns `undefined` **rather
+   than throwing**, which would have scored a *perfect* hostile sweep.
+2. The engine has **no `contradicted` status**; contrary evidence is `not_proven` plus a detail
+   sentence. Checking the status reported 13 real terms as broken.
+3. A control of a **violating** term expects `contradicted`, not `pass` — 13 more false alarms.
+4. The census anchored tier lookup on `snap.url`'s origin, so every apex→`www` store found
+   **nothing**; `.json`/`.js` counts were 93/85 instead of **134/119**. Caught only by reporting one
+   *fewer* non-USD store than v3.7 published.
+5. `ab_diff.mjs` keyed on the raw label, so a corrected price row looked like one row vanishing and
+   another appearing — **0/0/0 for a fix that worked**.
+6. The re-measurement filtered by host, pooling another sample's rows: **491 where v3.7 published
+   488**. And "still a pass row" was treated as "still a false pass", reporting two closed defects
+   as open.
+
+Four of the six were caught by a **canary, an anchor, or a disagreement with a previously published
+number**. None was caught by reading the code.
