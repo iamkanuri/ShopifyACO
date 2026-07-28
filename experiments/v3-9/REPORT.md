@@ -333,4 +333,119 @@ domains, which is exactly what the class was authored to probe.
 
 ---
 
-*Sections 8 (the staged block), 9 (filings and arithmetic) follow.*
+## 8. ⚠️ THE REFUTATION STEP WAS WRONG 85% OF THE TIME — and the verdicts survived it
+
+The completeness critic's heterogeneity finding was chased, and the diagnosis is worse and more
+useful than the symptom.
+
+**All 71 kills were blind-re-examined.** Suspect kills (refuters at 0.85–0.92) and control
+kills (0.20–0.29) were interleaved into the same batches so the re-examiner could not tell
+them apart. 6 agents, 0 errors.
+
+```
+kills of DEFECT claims           48    41 reinstated   85.4%
+  from SUSPECT refuters          26    21 reinstated   80.8%
+  from CONTROL refuters          22    20 reinstated   90.9%
+kills of HONEST-CARRIER flags    23     3 reinstated   13.0%
+```
+
+**The control refuters were wrong MORE often than the suspect ones.** So it is not "harsh
+refuters over-killed" — the error rate is uniform and high, and only the VOLUME of killing
+varied. The instruction *"default to refuted=true when uncertain"* was simply wrong for
+defect claims. The 13% on honest-carrier flags is the two-sided check that rules out "the
+re-examiner is just permissive".
+
+The asymmetry, now filed as **P-21**: a confirmation is re-executed against the bytes; a
+refutation is verified by nothing — and the unverified side is the one that DELETES findings.
+
+Corrected: CP-1A defects **15 → 18**, carriers **15 → 18**, CP-1B **78 → 116**. 17 kills the
+re-examination could not reach stay dead and are counted, so every figure is a **floor** and
+the run resolves INCOMPLETE, not clean.
+
+**And every verdict held.** Under three readings — strict, raw/unrefuted, re-examined —
+`letter_not_spirit` owns 0 defects alone in all three, `tense_modality` 0 in all three,
+`wrong_subject` 6/8/8. *A conclusion resting on structure survived an 85% correction to its
+inputs; a conclusion resting on a count would not have.*
+
+⚠️ **v3.8's `274` was produced under the same pattern** and has never been re-examined.
+`ADJUDICATED_V38` is left exactly as v3.8 recorded it — a frozen record is not edited on an
+inference — with the exposure noted in its docblock and filed.
+
+⚠️ **The blinding aliased on the first attempt.** Interleaving suspect/control and assigning
+by `i % 6` put every even slot in an odd batch: **batches 1/3/5 came out 100% suspect.** Three
+re-examiners would have judged nothing but suspect kills while the design claimed blinding.
+Caught by printing per-batch composition, not by reading the code.
+
+## 9. CP-3 — suite 2.0, and one dropped case that found a shipped defect
+
+`standards/acceptance/subject-tense/suite2.json`. **25 cases, every one a real merchant
+sentence** with host, URL and adjudication unit.
+
+- **8 hostile**, `wrong_subject` only — the sole axis with sole-attributed defects.
+- **17 must-not-regress**, from all three axes, **15 of them multi-axis** — the hardest cases,
+  because a referent guard breaks those collaterally.
+- **Descope citations** for `letter_not_spirit` and `tense_modality` inside the artifact.
+- Baseline **recorded at creation, not targeted**: hostile **0/8**, must-not-regress **17/17**.
+- Authorship: all 32 agents and this orchestrator named as **excluded from the v4.0 guard**.
+- Suite 1.0 verified **byte-frozen**; its gate re-measured **hostile 4/37, must-not-regress 19/19**.
+- 6 new tests + a **drift tripwire** asserting every carried term is still the engine's.
+  **Mutation-proved 9/9**, baseline green before and after.
+
+⚠️ **`hc-08` was dropped, and finding out why found a shipped defect — now P-22.** The engine
+matches against the full evidence text but renders a quote **truncated at ~180 characters**;
+on that row the truncation cut off the word `organic`. So the row is green and its quoted
+proof does not contain the term it proves. Measured: **2 of 69 quoted rows omit their term**,
+one of them a row a merchant is actually shown; 16 of 69 are truncated at all. This is v3.2's
+quoteless-row finding one step worse — *a quote that argues for nothing reads as more credible
+than no quote.*
+
+## 10. GATES AND ARITHMETIC
+
+| gate | result |
+|---|---|
+| `npm test` | **1,039 tests · 963 pass · 0 fail · 76 skipped** (957 + 6) |
+| `npm run typecheck` | clean |
+| matcher files changed | **only in CP-4's commit** (`src/server/productTest.ts`) |
+| `ENGINE_VERSION` | **v2.1.0 → v2.2.0**, tripwire fired first (1 failure of 1,033), hash re-pinned |
+| suite 1.0 | byte-frozen; **hostile 4/37, must-not-regress 19/19** |
+| suite 2.0 | baseline recorded, not gated to a target |
+| G-14 standing gate | **104 cells green**, mutation-proved 7/7 |
+| all four standard hashes | frozen — no change under `standards/coffee/` |
+| production | **untouched** |
+
+**`EXPECTED_OPEN_GAPS` = 60, unchanged. Arithmetic per step:**
+
+| step | movement | reason |
+|---|---|---|
+| CP-1A | **+0** | a measurement, no new corpus case |
+| CP-1B (116 confirmed) | **+0** | recorded as per-cell constants in the standing gate, not pinned individually — merging the two would destroy the register's meaning |
+| CP-2 | **+0** | asserted in a `[gaps]` test that states this reason |
+| CP-3 | **+0** | suite 2.0 is its own artifact with its own baseline |
+| CP-4 | **+0** | **shipped, not reverted** — a reverted fix would have pinned |
+| P-21, P-22 | **+0** | numbered gaps in `ENGINE_GAPS.md`, not corpus cases |
+
+## 11. WHERE THIS BRIEF WAS WRONG, AND WHAT v4.0 IS LICENSED TO DO
+
+**The brief was wrong in four places, all minor and all corrected from execution:**
+1. *"fifteen strata"* — there are **21** (15 hostile + 6 must-not-regress).
+2. *"274 is an unverified number"* — it **verifies exactly** (`confirmedCount` = array length =
+   unique ids = 274). Its `tally` does over-count by 55, which is exactly `refutedAway`.
+3. *"CP-4 … a currency code"* — the class is **wider**: any string with no digits becomes
+   `$0.00`, and two shapes with digits become a *differently-wrong number*.
+4. *"the cases land in the fetch corpus before the fix is designed"* — they were **already
+   there**, frozen by v3.8 at `234ee7b`. No authoring was needed.
+
+**And one place I was wrong, corrected the same way:** I compared the brief's four capability
+figures against the RAW engine-answer table, got 0/4, and nearly reported the brief as wrong.
+It reads the ADJUDICATED table, against which all four match exactly.
+
+**What v4.0 is now licensed to do:**
+- Build a guard for **`wrong_subject` / referent (G-15) and nothing else.** The other two axes
+  are closed by measurement, with precedent cited, under three independent readings.
+- Measure against **suite 1.0 (floor) + suite 2.0 (real sentences)**, neither authored by the
+  guard's author.
+- Use the **G-14 standing gate** as the before/after instrument: any cell that moves fails
+  `npm test` by name.
+- Expect to pay **2.13–5.13 true rows per defect only the referent axis closes.** The upper end
+  is within reach of the arithmetic that removed `origin`. That is the number to beat, and it
+  is the reason G-15 remains the highest-risk item on the register.

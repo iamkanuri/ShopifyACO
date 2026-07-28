@@ -2638,3 +2638,210 @@ all four runs of test #8 fall inside six minutes of one walkthrough session.
 inspected from here, so the honest statement is: *on inspectable data the dead guard cost nothing,
 and production is unknown.* It is recorded this way rather than as "no harm done", which is the
 claim the data does not support.
+
+---
+
+## P-21 · A REFUTER IS NEVER VERIFIED, AND THE UNVERIFIED SIDE FAILS FLATTERING
+
+**Filed at v3.9 CP-1A. This is a measurement-instrument defect, not an engine defect, and it
+affects every adjudicated figure this repo has published — including v3.8's `274`.**
+
+### The asymmetry, stated precisely
+
+This project's adjudication discipline is *parallel adjudicators → refuter → re-execute every
+confirmed one against the bytes*. Read carefully, that verifies exactly one side:
+
+| step | verified how | direction of an error |
+|---|---|---|
+| a **confirmation** | re-executed against the captured bytes | a wrong confirmation is caught |
+| a **refutation** | **nothing** | a wrong refutation silently DELETES a real defect |
+
+And the refuter is instructed to *"default to refuted=true when uncertain"*, which points the
+unverified side at the flattering answer by construction.
+
+### The measurement
+
+v3.9 blind-re-examined **all 71** of its own kills. Suspect kills (from refuters at 0.85–0.92) and
+control kills (0.20–0.29) were interleaved into the same batches so the re-examiner could not tell
+them apart; exactly-once verified; 6 agents, 0 errors.
+
+```
+kills of DEFECT claims           48    41 reinstated   85.4%
+  from SUSPECT refuters          26    21 reinstated   80.8%
+  from CONTROL refuters          22    20 reinstated   90.9%
+kills of HONEST-CARRIER flags    23     3 reinstated   13.0%
+```
+
+**The control refuters were wrong MORE often than the suspect ones.** So the diagnosis is not "harsh
+refuters over-killed" — the error rate is uniform and high, and only the VOLUME of killing varied.
+The heterogeneity that prompted the investigation (χ² = 23.55 on 4 df, p < 0.0001) was a **symptom
+that led to the diagnosis, not the disease.**
+
+The 13% on honest-carrier flags is the two-sided check: the same refuters were accurate on a
+different question, which rules out "the re-examiner is simply more permissive than everyone".
+
+v3.9's own counts moved **15 → 18** and **78 → 116** on the correction.
+
+### What it does NOT move, and why that matters
+
+Every pivot verdict was recomputed under three readings — strict, raw/unrefuted, and re-examined —
+and **all three agree**. `letter_not_spirit` owns 0 defects alone in all three; `tense_modality` owns
+0 in all three; `wrong_subject` owns 6/8/8. A conclusion that survives an 85% correction to its
+inputs is load-bearing in a way a count is not. **Prefer verdicts that rest on structure (sole
+attribution) over verdicts that rest on a count.**
+
+### Exposure
+
+**v3.8's `274` was produced under the same pattern**, recorded `refutedAway: 55`, and has never been
+re-examined. `ADJUDICATED_V38` in `standards/__tests__/g14.table.test.ts` is therefore very likely an
+undercount of unknown size. It is left EXACTLY as v3.8 recorded it — a frozen record is not edited on
+an inference — with the exposure noted in its docblock. Re-examining those 55 is the obvious follow-up
+and is not done here.
+
+### Protocol change, from the user at Pause 1
+
+1. **Sample refuted findings for re-execution**, weighted toward high-kill refuters, every campaign.
+2. **Seed blind gold cases into every refuter batch** (the v3.2 calibration pattern) so a refuter's
+   accuracy is measured rather than assumed.
+3. **Emit per-refuter kill rates and the heterogeneity statistic as standard campaign output**, beside
+   the finding count.
+4. **NOT paired refuters.** Two refuters averaging their bias hides it; the point is to MEASURE it.
+5. Every adjudicated figure is published as a **soft floor** and said to be one.
+
+⚠️ **And one procedural trap, recorded because it nearly destroyed this measurement.** The blinding
+was built by interleaving suspect/control and assigning by `i % N`. The interleave has period 2, and
+2 divides 6, so every even slot landed in an odd batch: **batches 1/3/5 came out 100% suspect.** Three
+re-examiners would have judged nothing but suspect kills while the design claimed they were blinded.
+Caught by printing the per-batch composition rather than by reading the code. Assign each origin group
+round-robin independently; never rely on a stride being coprime by luck.
+
+---
+
+## P-22 · THE RENDERED QUOTE CAN OMIT THE TERM IT PROVES
+
+**Filed at v3.9 CP-3, found while building acceptance suite 2.0 — not by looking for it.**
+
+`evaluate` matches against the full evidence text and renders a quote **truncated at ~180
+characters**. When the matched term sits beyond the cut, the merchant and any AI shopping agent are
+shown a green row whose quoted proof does not contain the claimed term.
+
+```
+quoted claim rows examined                  69
+  truncated at all                          16
+  quote does NOT contain the proving term    2
+    of those, rows a merchant is shown       1   (pilgrimscoffee.com, single_origin)
+```
+
+The second is `thursdayboots.com` / `organic`, where the tail cut was `…80% Organic Cotton`.
+
+**This is v3.2's finding one step worse.** There it was *"a row that renders NO QUOTE is invisible to
+a human audit"*. Here the row renders a quote, and the quote argues for nothing — which reads as
+**more** credible than a quoteless row, not less. An auditor scanning rendered evidence sees a
+sentence, checks that a sentence is present, and moves on.
+
+It also has a second cost, paid immediately: such a row **cannot be used as a sentence-level test
+case**, because its own text cannot reproduce its own verdict. `hc-08` was dropped from suite 2.0 for
+exactly this reason, with the reason recorded in the artifact.
+
+**Not fixed here.** The obvious repair — extend the quote window until it contains the match, or
+centre the window on the match — is a rendering change on a path with its own linting, and this
+session's matcher budget was spent on CP-4. *Where work implies a change elsewhere, write it down as
+a proposal rather than make it.*
+
+⚠️ **Do not "fix" this by suppressing the row.** The row is TRUE; only its evidence display is
+broken. Suppressing it would trade a presentation defect for a false negative.
+
+---
+
+## G-14 — STATUS UPDATE, 2026-07-28 (v3.9): step 1 and the collisions are BOTH measured
+
+**Date:** 2026-07-28 · **SHA:** `3dbef7c` (base) → this branch · **Table:**
+`standards/__tests__/g14.table.test.ts`, asserted on every `npm test`.
+
+| | v3.8 | v3.9 |
+|---|---|---|
+| sentences executed | 3,681 | **3,913** |
+| `adjacent_vocabulary` RAW | 3/100 | **181/332** |
+| `adjacent_vocabulary` adjudicated | 0/100 — *never run* | **116 confirmed false passes** |
+
+**Step 2 is done.** The 36 authored domain collisions were never lost: they sat in
+`experiments/v3-8/out/g14_adjudications.json` under a `domains` key that `g14_merge.mjs` and
+`g14_table.mjs` never reference. The key was loaded into memory and dropped on the floor, so
+`adjacent_vocabulary` read as fragment-probes-only and looked *attacked and clean*. They now live at
+`standards/attack/contexts/generic-collisions.json`, which the generator reaches.
+
+122 authored strings execute as **232 rows** — `generate.ts:177` emits one per *(term, sentence)*
+pair, so a domain colliding with several terms of one key contributes its sentences once per term.
+
+Confirmed false passes by key: `organic` 23 · `single_origin` 20 · `vegan` 20 ·
+`third_party_tested` 18 · `fair_trade` 14 · `baking_soda_free` 11 · `fragrance_free` 7 ·
+`cruelty_free` 3 · **`aluminum_free` 0 · `bpa_free` 0 · `sulfate_free` 0**. The three zeros are the
+keys whose collisions are chemical or regulatory rather than semantic; the engine reads those right.
+
+**`EXPECTED_OPEN_GAPS` moves by +0 for G-14.** The 274 groups and this session's 116 are recorded as
+per-cell constants in a standing suite that fails when any cell moves — not pinned individually into
+the adversarial corpus's register, which means *a debt with a receipt*. Merging the two would destroy
+the register's meaning. The arithmetic is asserted in a `[gaps]` test that states this reason.
+
+### Two term-list defects that no matcher change can fix
+
+Recorded here because they were found by the collision author and would otherwise die with a
+gitignored file:
+
+1. **The vocabulary imports two of its own collisions.** `plant-based` / `plant based` are listed as
+   SUPPORTING terms for `vegan`; `unscented` is supporting for `fragrance_free`. Both equivalences
+   are false in the industries that own the terms. These are **term-list defects, not matcher
+   defects** — no narrowing reaches them.
+2. **Bare unframed violating terms fire CONTRADICTED on honest, compliant copy** — `with aluminum`,
+   `contains wheat`, `contains parabens`, `added fragrance`, `tested on animals`. 52 of the 232
+   collision rows execute to `contradicted`, consistent with the author's own count.
+
+---
+
+## G-15 — PRECONDITION STATUS, 2026-07-28 (v3.9)
+
+G-15's stated precondition was: *"suite 1.0 cannot serve as the gate. It needs a **1.1** derived from
+the adjudicated real instances… and the session that builds the guard must not be the session that
+authors it."*
+
+⚠️ **Naming: this section says 1.1; the v3.9 brief said 2.0. The artifact ships as
+`suite2.json`, `suite_version: "2.0"`.** Same thing, and the version number is now the artifact's,
+not this paragraph's.
+
+| precondition | status |
+|---|---|
+| a suite derived from adjudicated REAL instances | ✅ **MET** — `standards/acceptance/subject-tense/suite2.json`, 25 cases, every one a sentence a real merchant wrote, with host, URL and adjudication unit |
+| expected outcome = the recorded adjudication | ✅ MET |
+| provenance per case | ✅ MET |
+| additive to a byte-frozen 1.0 | ✅ MET — 1.0 verified unmodified; its gate re-measured **hostile 4/37, must-not-regress 19/19** |
+| authored by a session that will not build the guard | ✅ MET — the 13 adjudicators, 13 refuters, 6 re-examiners and the v3.9 orchestrator are all named in the artifact as excluded |
+| a pinned matched-term per case with a dictionary-hash tripwire | ⚠️ **PARTIAL** — terms are carried per claim key, lifted from the engine's source bytes, but the drift tripwire is stated in the artifact and **not yet asserted in `acceptance.test.ts`**. That assertion is owed. |
+| a frequency read on the axes | ✅ **MET, and it changed the target** — see below |
+
+### The frequency read narrowed G-15's target from three axes to one
+
+| axis | attacks on chosen input | owns defects ALONE | verdict |
+|---|---|---|---|
+| `letter_not_spirit` | 260/280 = 92.9% | **0** | DESCOPE |
+| `tense_modality` | 439/621 = 70.7% | **0** | DESCOPE |
+| `wrong_subject` | 368/914 = 40.3% | **8**, over 7 stores | **GUARD-WORTHY** |
+
+Stable across strict, raw/unrefuted and re-examined readings. `wrong_subject` **is** G-15's referent
+axis, so the read licenses G-15 and closes the other two by measurement.
+
+⚠️ **The cost side did not improve, and is the reason this is still the highest-risk item on the
+page.** The referent axis costs **2.13 true rows per defect only it closes** on the strict reading and
+**5.13** on the raw one. The upper end is within reach of the arithmetic that removed `origin`
+(17 lost, 0 gained). 17 honest carriers are pinned in suite 2.0, **15 of them carrying markers for
+more than one axis** — those are the cases a referent guard will break collaterally, and they are
+where it will be decided.
+
+### What remains before a v4.0 guard session is fully licensed
+
+1. **The dictionary-hash tripwire for suite 2.0** asserted in `acceptance.test.ts` (above).
+2. **P-21's exposure on suite 2.0's own inputs.** Its 8 hostile cases survived an 85%-error
+   refutation step *and* a blinded re-examination, which is stronger than any prior suite's
+   provenance — but the 17 kills the re-examination could not reach stay dead, so the case set is a
+   **floor**.
+3. **Nothing else.** The frequency read, the standing gate and the derived suite are the three
+   preconditions this file named, and two are met outright.

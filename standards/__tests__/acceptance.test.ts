@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import {
   loadSuite, renderRun, runSuite, suiteProblems,
   type AcceptanceSuite,
@@ -219,4 +220,121 @@ test("[acceptance] an unreadable suite file is INCOMPLETE, not an empty pass", (
   assert.equal(run.state, "incomplete");
   assert.equal(run.failedCount, null);
   assert.match(renderRun(run, null), /INCOMPLETE/);
+});
+
+// ===========================================================================
+// SUITE 2.0 — the REAL-SENTENCE suite, and its drift tripwire.
+//
+// 2.0's cases are sentences real merchants wrote, matched against the ENGINE's own
+// `CLAIM_TERMS` rather than against a pinned vocabulary. That makes a silent drift
+// possible in a way 1.0 is immune to: if the engine narrows a claim key's term list, a
+// hostile case can start "passing" because the term moved, not because a guard worked.
+//
+// So every term the suite carries is asserted to still be the engine's. If this fails the
+// engine's vocabulary moved and the suite must be RE-DERIVED — it is not a licence to edit
+// the assertion.
+// ===========================================================================
+
+const SUITE2_PATH = join(STANDARDS_DIR, "acceptance", "subject-tense", "suite2.json");
+const loaded2 = loadSuite(SUITE2_PATH);
+
+/** The engine's `CLAIM_TERMS`, lifted from its source bytes. It has no `export`, and a
+ *  regex would also match the copy in `vocabulary.engine.test.ts` and could not tell them
+ *  apart — so the lift is anchored on the typed declaration and brace-balanced. */
+function engineClaimTerms(): Record<string, { support: string[]; violating: string[] }> {
+  const src = readFileSync(join(STANDARDS_DIR, "..", "src", "server", "productTest.ts"), "utf8");
+  const anchor = "const CLAIM_TERMS: Record<string, ClaimTerms> = {";
+  const start = src.indexOf(anchor);
+  assert.ok(start >= 0, "CLAIM_TERMS' typed declaration is gone from productTest.ts — repair this test, do not run it");
+  const open = start + anchor.length - 1;
+  let depth = 0, end = -1;
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}") { depth--; if (depth === 0) { end = i + 1; break; } }
+  }
+  assert.ok(end > 0, "CLAIM_TERMS is not brace-balanced — refusing to guess");
+  // eslint-disable-next-line no-new-func
+  return new Function(`return ${src.slice(open, end)};`)() as never;
+}
+
+test("[acceptance-2.0] the suite parses with zero problems", () => {
+  assert.deepEqual(loaded2.problems, [], "a suite that half-loads runs a subset and reports a small number of failures");
+  assert.ok(loaded2.suite, "suite 2.0 did not load");
+});
+
+test("[acceptance-2.0] DRIFT TRIPWIRE — every carried term is still the engine's", () => {
+  const s = loaded2.suite! as AcceptanceSuite & {
+    terms_by_claim_key: Record<string, { support: string[]; violating: string[] }>;
+  };
+  const engine = engineClaimTerms();
+  const drift: string[] = [];
+  for (const [key, carried] of Object.entries(s.terms_by_claim_key)) {
+    const real = engine[key];
+    if (!real) { drift.push(`${key}: the engine no longer has this claim key`); continue; }
+    for (const t of carried.support) {
+      if (!real.support.includes(t)) drift.push(`${key}: supporting term ${JSON.stringify(t)} is no longer the engine's`);
+    }
+    for (const t of real.support) {
+      if (!carried.support.includes(t)) drift.push(`${key}: the engine GAINED supporting term ${JSON.stringify(t)}, which the suite does not carry`);
+    }
+  }
+  assert.deepEqual(drift, [], "the engine's claim vocabulary moved. Suite 2.0 must be RE-DERIVED from the new terms; do not edit this assertion.");
+});
+
+test("[acceptance-2.0] every case names a claim key the suite carries terms for", () => {
+  const s = loaded2.suite! as AcceptanceSuite & { terms_by_claim_key: Record<string, unknown> };
+  for (const c of s.cases as Array<{ id: string; claim_key?: string }>) {
+    assert.ok(c.claim_key, `case ${c.id} has no claim_key — it would silently fall back to the suite-level union`);
+    assert.ok(c.claim_key in s.terms_by_claim_key, `case ${c.id} names claim_key '${c.claim_key}' with no terms carried`);
+  }
+});
+
+test("[acceptance-2.0] every case carries PROVENANCE back to a real store", () => {
+  const s = loaded2.suite!;
+  for (const c of s.cases as Array<{ id: string; provenance?: Record<string, unknown> }>) {
+    assert.ok(c.provenance, `case ${c.id} has no provenance`);
+    assert.ok(c.provenance!.host, `case ${c.id} has no host — a suite of "real" sentences whose cases cannot be traced is a hand-built suite wearing a costume`);
+    assert.ok(c.provenance!.url, `case ${c.id} has no url`);
+    assert.ok(c.provenance!.adjudication_unit, `case ${c.id} has no adjudication unit id`);
+  }
+});
+
+test("[acceptance-2.0] the baseline is RECORDED and the must-not-regress half still holds", () => {
+  const s = loaded2.suite! as AcceptanceSuite & {
+    baseline_at_creation: { hostile_met: string; must_not_regress_met: string; measured_at_commit: string | null };
+  };
+  assert.ok(s.baseline_at_creation, "no baseline recorded at creation");
+  assert.ok(s.baseline_at_creation.measured_at_commit, "the baseline names no commit");
+
+  const run = runSuite(loaded2.suite, loaded2.problems);
+  const mnr = run.results.filter((r) => r.direction === "must_not_regress");
+  const met = mnr.filter((r) => r.met);
+  // ⚠️ THE LIVE CONSTRAINT. These are rows that are TRUE on real stores today. The hostile
+  // half is expected to fail — those are open defects — so it is recorded, not asserted.
+  assert.equal(
+    `${met.length}/${mnr.length}`, s.baseline_at_creation.must_not_regress_met,
+    `a must-not-regress case stopped holding: ${mnr.filter((r) => !r.met).map((r) => r.id).join(", ")}. ` +
+    `These are true rows real merchants publish; something started suppressing them.`,
+  );
+  assert.ok(mnr.length >= 17, "the must-not-regress half shrank");
+});
+
+test("[acceptance-2.0] the DESCOPED axes carry a citation and NO hostile cases", () => {
+  const s = loaded2.suite! as AcceptanceSuite & {
+    descoped: Record<string, { verdict: string; measured: string; precedent: string }>;
+  };
+  for (const axis of ["letter_not_spirit", "tense_modality"]) {
+    const d = s.descoped?.[axis];
+    assert.ok(d, `${axis} has no descope citation — an axis that is simply absent reads as an oversight`);
+    assert.match(d.verdict, /DESCOPE/, `${axis}'s verdict is not a descope`);
+    assert.ok(d.precedent.length > 40, `${axis}'s descope cites no precedent`);
+  }
+  // and the honest carriers for those axes ARE present, because a wrong_subject guard can
+  // break them collaterally — that is the whole reason they were kept.
+  const carriers = (s.cases as Array<{ direction: string; provenance?: { carrier_axes?: string[] } }>)
+    .filter((c) => c.direction === "must_not_regress");
+  const axesSeen = new Set(carriers.flatMap((c) => c.provenance?.carrier_axes ?? []));
+  for (const axis of ["letter_not_spirit", "tense_modality", "wrong_subject"]) {
+    assert.ok(axesSeen.has(axis), `no honest carrier carries ${axis} markers — the collateral-damage half of the suite is incomplete`);
+  }
 });
