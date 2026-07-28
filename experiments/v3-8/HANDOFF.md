@@ -226,7 +226,37 @@ exactly `1000` renders `$1000.00` (levainbakery), and a GBP store renders `$135.
 
 ---
 
-## ALL CHECKPOINTS COMPLETE — the session is at Pause 2
+## ✅ SESSION COMPLETE — v3.8 IS LIVE IN PRODUCTION AT `80504ee`
+
+Pause 2 answered: **push, with the sidecar written first**, and **bump `ENGINE_VERSION` to
+`v2.1.0` with a tripwire**. Both done.
+
+```
+git push origin main            6a3e5d7..80504ee
+GET /healthz                    commit 80504ee…
+verify_prod.mjs                 VERIFIED_CLEAN — 21/21, 0 failures
+verify_sections.mjs             VERIFIED_CLEAN — 15/15, 0 failures
+served bytes at /standards/coffee/1.3   483 · 2.28% · 5.17%, with 488 named beside them
+```
+
+**Pause 2's riders, all honoured:**
+- The `488 → 483` denominator is itemised **row by row** in the sidecar
+  (`denominator_change`): `488 − 5 + 0 = 483`, every departing row named with what it now says.
+- Both blocks carry point **and** cluster-adjusted forms, each pinned to its own engine SHA —
+  frozen at `7085b34` (488/18/3.69%/7.53%), current at `f5cf74f` (483/11/2.28%/5.17%).
+- Coffee noted unaffected, with the reason: `PRICE-001` is `unbound` and no v1.3 entry binds
+  `price_under`, so the coffee sample holds zero price rows.
+- `ENGINE_VERSION` → `v2.1.0`; `test/engineVersion.test.ts` pins it against a content hash of the
+  four row-deciding files, **mutation-proved in both directions** (949/1 mutated, 950/0 reverted).
+- 409 copy now says *"an earlier engine version"* rather than naming a tag that spanned a dozen
+  engines.
+- P-20 filed with the 6 / 38 / 305 store split.
+- The dead guard's cost measured: no saved before/after straddles a matcher change — on the LOCAL
+  dev stack, which is stated as the limit rather than glossed.
+
+---
+
+## The record of how it got there
 
 | commit | what |
 |---|---|
