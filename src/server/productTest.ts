@@ -831,8 +831,60 @@ interface ShopifyProductJson {
   options?: Array<{ name?: string; values?: string[] }>;
   variants?: Array<{ title?: string; price?: string | number; available?: boolean; option1?: string; option2?: string; option3?: string; options?: string[] }>;
 }
-const priceToUsd = (p: string | number | undefined): number | null => {
-  if (typeof p === "number") return Number.isFinite(p) ? (p > 1000 && Number.isInteger(p) ? p / 100 : p) : null; // cents-guard
+/** Which tier a price value came from. The two tiers serve DIFFERENT UNITS, and
+ *  the unit is NOT inferable from the value — which is the whole defect below. */
+type PriceTier = "json" | "js";
+
+/**
+ * Read a variant price, in the units the tier that served it actually uses.
+ *
+ * ⚠️ WHAT THIS REPLACES, AND WHY THE OLD SHAPE COULD NOT WORK. It was
+ * `p > 1000 && Number.isInteger(p) ? p / 100 : p` — a single guess applied to
+ * both tiers, keyed on the MAGNITUDE of the value. A magnitude cannot decide a
+ * unit: `1000` is $10.00 from `.js` and $1000.00 from a tier serving dollars,
+ * and the guard has no way to tell. Measured cost on 349 deduped real-store
+ * snapshots (experiments/v3-8/census.ts + blast.mjs), per STORE:
+ *
+ *   4 stores rendered at exactly 100x — levainbakery.com's $10.00 mug published
+ *     as $1000.00 (its `.js` price is `1000`, and `1000 > 1000` is FALSE, so the
+ *     strict comparison let the boundary through untouched);
+ *   2 stores where the error was LAUNDERED INTO A PLAUSIBLE NUMBER, which is the
+ *     worse half. `minPriceUsd` is a `Math.min` over PER-VALUE conversions, so a
+ *     store whose variants straddle the boundary gets its minimum taken across
+ *     two different units: firelightcoffee.com renders $10.60 for a product whose
+ *     cheapest variant is $9.35, because 1060 converted and 935 did not. Nobody
+ *     looks twice at $10.60 — not an auditor, not a merchant, not a status diff.
+ *
+ * THE TIER IS THE ANSWER, and it was measured before it was written. Over the
+ * same 349 snapshots, with zero exceptions:
+ *   `/products/{handle}.json` — 134 tiers answered; 931 price strings, every one
+ *     matching `^\d+\.\d+$`; 0 numeric, 0 integer-valued strings, 0 carrying a
+ *     symbol or separator. Decimal DOLLARS.
+ *   `/products/{handle}.js`   — 119 tiers answered; every value a NUMBER, none a
+ *     string. Integer CENTS.
+ * The confirmation is available inside a single store: firelightcoffee.com
+ * publishes the same 28 variants in both tiers, `.json` as `9.35` and `.js` as
+ * `935`.
+ *
+ * ⚠️ AND IT FAILS CLOSED ON THE `.js` TIER. A `.js` value that is not a finite
+ * non-negative integer is a value whose unit we have not established, and
+ * dividing an unestablished unit by 100 is the CATASTROPHIC direction — a $50
+ * product published as $0.50. Measured today: `understated_100x` occurs on 0 of
+ * 349 stores, and that is the invariant this function exists to keep. Refusing
+ * yields `null`, the price row reports `requires_store_access`, and no number is
+ * stated. A wrong price may never become a differently-wrong price; the only
+ * acceptable failure direction is refusing to state one.
+ */
+const priceToUsd = (p: string | number | undefined, tier: PriceTier): number | null => {
+  if (tier === "js") {
+    if (typeof p !== "number" || !Number.isFinite(p) || !Number.isInteger(p) || p < 0) return null;
+    return p / 100;
+  }
+  // The `.json` tier serves string dollars. A number here is a shape no captured
+  // store produces; it is read as dollars rather than refused because that is what
+  // the endpoint's contract says, and because refusing would be a behaviour change
+  // measured on zero stores in either direction.
+  if (typeof p === "number") return Number.isFinite(p) ? p : null;
   if (typeof p === "string") { const n = Number(p.replace(/[^0-9.]/g, "")); return Number.isFinite(n) ? n : null; }
   return null;
 };
@@ -1218,8 +1270,15 @@ export async function fetchPublicProduct(
   const tags = Array.isArray(js?.tags) ? js!.tags! : typeof js?.tags === "string" ? js!.tags!.split(",").map((t) => t.trim()).filter(Boolean) : [];
   const optionNames = (js?.options ?? []).map((o) => o.name ?? "").filter(Boolean);
   const optionValues = [...new Set((js?.options ?? []).flatMap((o) => o.values ?? []))].filter((v) => v && !/^(default|title)/i.test(v));
+  // PROVENANCE IS EXACT, not inferred. When the `.js` tier answers, its variants
+  // REPLACE the `.json` ones wholesale (`js = { ...js, variants: dotJs.variants }`
+  // above) and `usedJsEndpoint` is set in the same branch — so this flag is a
+  // precise statement about where EVERY price in `variants` came from. If the `.js`
+  // fetch was attempted and failed to parse, the flag stays false and the prices
+  // are still the `.json` ones. There is no mixed case to get wrong.
+  const priceTier: PriceTier = usedJsEndpoint ? "js" : "json";
   const variants: PublicVariant[] = (js?.variants ?? []).map((v) => ({
-    title: v.title ?? "", priceUsd: priceToUsd(v.price), available: v.available !== false,
+    title: v.title ?? "", priceUsd: priceToUsd(v.price, priceTier), available: v.available !== false,
     options: v.options ?? [v.option1, v.option2, v.option3].filter((o): o is string => Boolean(o)),
   }));
   const prices = variants.map((v) => v.priceUsd).filter((p): p is number => p != null);
