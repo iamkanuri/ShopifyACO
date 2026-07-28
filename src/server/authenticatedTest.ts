@@ -218,6 +218,19 @@ export function snapshotFromCatalog(p: NormalizedProduct, ctx: AuthenticatedCont
     // The catalog carries no JSON-LD; availability comes from the (complete,
     // authenticated) variant list instead, which is strictly better.
     ldAvailability: null,
+    // v3.8 — null, i.e. UNDECIDABLE, for the same reason `storefrontObjectId` is:
+    // this path never fetched page HTML, and the synced catalog carries no currency
+    // field. So the non-USD refusal in the `price_under` row cannot fire here.
+    //
+    // ⚠️ THAT IS A REAL RESIDUAL, NOT A NON-ISSUE, and it is stated rather than left
+    // to be discovered: a merchant on a GBP store who INSTALLS the app is told a
+    // dollar figure by the very path that was supposed to know their store better
+    // than the public one. The public path is where the 38 measured stores live and
+    // where this session's evidence is, so that is what it fixes. The authenticated
+    // path's currency is genuinely available — Shopify's `shop.currencyCode` — but
+    // wiring it needs a catalog-sync change, which is a change elsewhere, so it is
+    // written down as a proposal rather than made (ENGINE_GAPS P-18).
+    declaredCurrency: null,
     // v3.5 CP2b rule D — null, i.e. UNDECIDABLE, because this path never fetched page
     // HTML and so never saw the analytics bootstrap. Null disqualifies nothing, which
     // is the fail-open direction; and this path maps `barcode`->gtin and never

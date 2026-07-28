@@ -743,6 +743,25 @@ export interface PublicProduct {
    *  UNDECIDABLE (bootstrap absent/unparseable, or this path never had page HTML),
    *  and every reader must treat null as "nothing is disqualified". */
   storefrontObjectId: string | null;
+  /**
+   * v3.8 — the currency the STORE ITSELF declares, ISO-4217, or `null` when the
+   * page declares none.
+   *
+   * ⚠️ `minPriceUsd` IS MISNAMED AND ALWAYS HAS BEEN. It is `Math.min(...variant
+   * prices)`, and a Shopify storefront serves those in the store's own currency —
+   * so on a GBP store it is a GBP number that every surface renders with a `$`.
+   * Measured across 349 deduped real-store snapshots: **38 stores declare a
+   * non-USD currency** (GBP, CAD, AUD, EUR) and `missoma.com`'s £135.00 necklace
+   * was published to its own merchant as `Lowest readable price is $135.00.`
+   *
+   * The field is named `declaredCurrency`, not `currency`, because it is a
+   * statement about what the PAGE SAYS rather than about what the price IS. Null
+   * means "the store declared nothing", which is not the same as USD — 1 store in
+   * 349 is in that position, and the price row deliberately still answers for it
+   * (see the `price_under` branch) because the brief's scope is a positive non-USD
+   * declaration, not an absence.
+   */
+  declaredCurrency: string | null;
   /** Sentence-level, chrome-free product evidence — the ONLY text we may match or
    *  quote. Raw page text is deliberately excluded (see testEvidence.ts). */
   evidence: EvidenceSentence[];
@@ -1014,6 +1033,48 @@ export function shopifyMetaProductType(html: string): string | null {
 }
 
 /**
+ * v3.8 — THE STOREFRONT'S ACTIVE CURRENCY, from the page's own bootstrap.
+ *
+ * Shopify emits `Shopify.currency = {"active":"GBP","rate":"1.0"};`. This is the
+ * SECOND source in the currency precedence, behind the JSON-LD `priceCurrency`
+ * that `extractPage` already parses — and it exists because the JSON-LD one is
+ * not always there. Measured across 349 deduped real-store snapshots
+ * (experiments/v3-8/census.ts): of 38 stores declaring a non-USD currency, 34 are
+ * reachable by JSON-LD alone and **4 are known only to this bootstrap**
+ * (hismileteeth.com, anarchycoffeeroasters.com, banffroastingcompany.com,
+ * littlesistercoffeemaker.ca). Availability across the whole corpus is 340/349
+ * here versus 298/349 for the JSON-LD field.
+ *
+ * ⚠️ TWO OTHER SIGNALS WERE MEASURED AND DELIBERATELY REJECTED.
+ *   `Shopify.country` — 8 stores publish `country=US` while serving GBP or CAD.
+ *     It reflects the VISITOR's geo at fetch time, not the store's currency, so
+ *     reading it would refuse eight correct stores and misclassify others.
+ *   `og:price:currency` — disagrees with both other signals on 3 stores
+ *     (origincoffee.co.uk says USD/USD/GBP; rocanini.com says -/USD/CAD). A
+ *     third opinion that contradicts the other two is not a tiebreaker.
+ * Zero stores in the corpus have JSON-LD saying USD while this field says
+ * otherwise, so the precedence is never exercised against a contradiction — a
+ * fact recorded here because a future store WILL contradict it, and the reader
+ * should know the ordering was never tested against that case.
+ */
+export function shopifyActiveCurrency(html: string): string | null {
+  // Parsed from the assignment, not grepped for any three-letter token: "active"
+  // also appears inside unrelated theme JSON, and a bare regex would return the
+  // first one it met.
+  const at = html.search(/\bShopify\.currency\s*=\s*\{/);
+  if (at === -1) return null;
+  const open = html.indexOf("{", at);
+  const close = html.indexOf("}", open);
+  if (open === -1 || close === -1) return null;
+  try {
+    const o = JSON.parse(html.slice(open, close + 1)) as { active?: unknown };
+    return typeof o.active === "string" && /^[A-Za-z]{3}$/.test(o.active) ? o.active.toUpperCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * v3.5 CP2b — THE STOREFRONT'S OWN KEY FOR THIS PRODUCT, from the same bootstrap.
  *
  * Shopify emits `var meta = {"product":{"id":8079462006899,…}}`, and that integer is
@@ -1169,6 +1230,7 @@ export async function fetchPublicProduct(
   let ldCategory: string | null = null;
   let pageProductType: string | null = null;
   let pageStorefrontObjectId: string | null = null;
+  let pageActiveCurrency: string | null = null;
   let saw404 = false;
   let sawNonJson = false;
 
@@ -1194,6 +1256,9 @@ export async function fetchPublicProduct(
         // v3.5 CP2b — same bytes, same walk: the storefront's own key for this
         // product, which rule D compares the published `mpn` against.
         pageStorefrontObjectId = shopifyStorefrontObjectId(r.body);
+        // v3.8 — same bytes again: the storefront's active currency, the fallback
+        // for the 4 non-USD stores whose JSON-LD carries no `priceCurrency`.
+        pageActiveCurrency = shopifyActiveCurrency(r.body);
         if (extracted.product?.name || extracted.product?.offer) diagnostics.answeredBy = "page";
       }
     } catch { /* the JSON tier is the fallback */ }
@@ -1311,6 +1376,13 @@ export async function fetchPublicProduct(
       descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,
       storefrontObjectId: pageStorefrontObjectId,
+      // PRECEDENCE, measured rather than guessed (see `shopifyActiveCurrency`):
+      // the JSON-LD `priceCurrency` `extractPage` already parses covers 34 of the
+      // 38 non-USD stores; the analytics bootstrap covers the other 4. Neither
+      // `Shopify.country` nor `og:price:currency` is consulted, both for recorded
+      // reasons. Normalised to upper case so "gbp" and "GBP" cannot differ.
+      declaredCurrency: ((ld?.offer as { currency?: string | null } | null | undefined)?.currency
+        ?? pageActiveCurrency ?? null)?.toUpperCase() ?? null,
       policyStatus: "not_fetched",
       fetched: { json: Boolean(js), page: Boolean(extracted), js: usedJsEndpoint, policy: false },
       diagnostics,
@@ -1859,6 +1931,37 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const checked = ["variant prices", "structured data"];
       if (p.minPriceUsd == null) {
         return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "No public price is exposed on this product.") };
+      }
+      // v3.8 — THE NON-USD REFUSAL, and it comes BEFORE any number is rendered.
+      //
+      // The cap in `req.label` is a US-dollar cap; `p.minPriceUsd` is a number in
+      // the STORE's currency. When the store's own bytes declare that currency is
+      // not USD, the only honest answer is that we cannot decide: we do not convert
+      // currencies, and comparing 135 GBP against a $140 cap is not a comparison.
+      // Measured: 38 of 349 real stores declare non-USD, 5 of them inside the
+      // published general sample, and every one was being told its price was a
+      // dollar figure — `missoma.com`'s £135.00 necklace rendered as
+      // `Lowest readable price is $135.00.`
+      //
+      // ⚠️ IT STATES NO NUMBER AT ALL. Rendering the raw figure behind the right
+      // symbol would be a SECOND claim — that the number we read is a price in that
+      // currency — and nothing here measured that. A CONVERTED number is forbidden
+      // outright: it would invent a rate, on a public instrument, about a real
+      // merchant. What a price row should eventually PROMISE for a non-USD store is
+      // a genuine open question, filed rather than answered (ENGINE_GAPS P-18).
+      // This is only the removal of a false statement, which is the whole of its
+      // claim: a false statement about a real store is the unrecoverable direction,
+      // and `not_proven` is the recoverable one.
+      //
+      // ⚠️ AN ABSENT DECLARATION IS NOT A NON-USD DECLARATION. `declaredCurrency`
+      // null means the page declared nothing — 1 store in 349 — and the row still
+      // answers exactly as before. Refusing on silence would be a wider change than
+      // anything measured here, and it is filed rather than taken.
+      if (p.declaredCurrency && p.declaredCurrency !== "USD") {
+        return {
+          label: req.label, status: "not_proven", surfacesChecked: checked,
+          detail: `Your store publishes prices in ${p.declaredCurrency}, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data.`,
+        };
       }
       if (p.minPriceUsd < req.capUsd!) {
         return { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: `Lowest readable price is $${p.minPriceUsd.toFixed(2)}.`, evidenceSurface: "variant prices" };

@@ -384,7 +384,10 @@ const mk = (surface: QuotableSurface, text: string, productType = "Thing"): Publ
   origin: "https://store.example", handle: "p", title: "Thing", vendor: "Acme", productType,
   tags: [], descriptionText: "", variants: [{ title: "Default", priceUsd: 12, available: true, options: ["Default"] }],
   minPriceUsd: 12, optionNames: [], optionValues: [], extracted: null,
-  evidence: buildEvidence([{ surface, text }]), ldAvailability: null, storefrontObjectId: null, policyStatus: "not_fetched",
+  evidence: buildEvidence([{ surface, text }]), ldAvailability: null, storefrontObjectId: null,
+  // v3.8 — null: this fixture declares no currency, so the non-USD price refusal
+  // cannot fire and every attack expectation here is unchanged by it.
+  declaredCurrency: null, policyStatus: "not_fetched",
   fetched: { json: true, page: false, js: false, policy: false },
   diagnostics: { attempted: [], answeredBy: "json", throttled: [], degraded: false, robots: "ok", throttleSource: null },
 } as PublicProduct);

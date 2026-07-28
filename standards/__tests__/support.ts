@@ -49,6 +49,9 @@ export interface MkOptions {
   variants?: PublicProduct["variants"];
   minPriceUsd?: number | null;
   ldAvailability?: string | null;
+  /** v3.8 — the currency the store declares. Left null by default so no existing
+   *  conformance case changes; set it to exercise the non-USD refusal. */
+  declaredCurrency?: string | null;
   policyStatus?: PublicProduct["policyStatus"];
   extracted?: PublicProduct["extracted"];
   evidence?: PublicProduct["evidence"];
@@ -75,6 +78,10 @@ export function mkProduct(o: MkOptions = {}): PublicProduct {
     // A conformance fixture that set this would be asserting a storefront key it
     // never read.
     storefrontObjectId: null,
+    // v3.8: same rule, same reason. A fixture declares no currency unless a case
+    // deliberately gives it one, so the non-USD refusal never fires by accident and
+    // every existing conformance expectation is unchanged.
+    declaredCurrency: o.declaredCurrency ?? null,
     policyStatus: o.policyStatus ?? "not_fetched",
     fetched: { json: true, page: false, js: false, policy: false },
     diagnostics: {
