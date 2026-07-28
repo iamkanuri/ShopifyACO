@@ -5,9 +5,17 @@ deliverable, not an appendix: **a standard whose assertions the engine cannot ex
 document**, so the honest half of authoring a standard is writing down precisely what is missing.
 
 Each gap states: the assertions it blocks, why the current mechanism is insufficient, what would be
-required, and **the risk of building it** — especially against the **36** defects pinned open in
+required, and **the risk of building it** — especially against the **55** defects pinned open in
 `test/adversarialCorpus.test.ts`. Be sceptical of every "this is easy" instinct here; three of
 these gaps have already been attempted in some form and reverted.
+
+> ⚠️ **That number was `36` until v3.5 and it is worth knowing why it moved**, because reading it as
+> "the engine got worse" is exactly backwards. `+2` at CP2b: identifier defects had **no field to be
+> recorded in** until CP2a added one, which is how a whole class (v3.2 CP3's 18 false passes) sat
+> inside a corpus reporting 36. `+4` at CP2c: recall gaps deliberately reinstated when the CP2a GTIN
+> widening was reverted. `+13` net at CP2d: the residuals an independent adversarial pass measured
+> against rule D, minus one entry whose `correct` field turned out to be the thing that was wrong.
+> **A class nobody can count is not progress.**
 
 Read alongside [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md), which is where the current capability is
 recorded. **Line references are to commit `9843cb6`** (`main`, == production `/healthz`), verified by
@@ -1360,6 +1368,22 @@ Express each built-in as a vocabulary artifact, generate the attack set, execute
 
 Opened at v3.4 CP-2. Each row names the file, the change, the argument, and **who decides**.
 
+**P-06 … P-14 were filed at v3.5 CP2d**, out of one independent adversarial pass over the identifier
+row — 78 cases, 234 executions across three worktrees, 0 failures. They are not nine unrelated
+observations; they cluster, and the clustering is the useful part:
+
+| rows | the one thing they are about | who has to move first |
+|---|---|---|
+| **P-06 · P-07 · P-12** | *which value on the page is this product's GTIN* | P-12 is a DOCUMENT question and the other two presume its answer |
+| **P-08 · P-11** | *when are two different strings the same identifier* | the standard — there is no normalisation rule at all |
+| **P-09 · P-10 · P-14** | *how far rule D reaches* | the engine, except P-14's first half |
+| **P-13** | *are GS1 reserved prefixes acceptable evidence* | the standard; low priority, and it says so |
+
+⚠️ **Two of these are not "future work" in the ordinary sense.** **P-11** records a mechanical,
+one-character bypass of a guard that shipped days ago. **P-12** records a merchant who marks their
+page up *correctly* and is told they publish no identifier. Both are pinned as executable corpus
+cases, so neither can go quiet — but neither is waiting on a discovery, only on a decision.
+
 ## P-01 · Three coffee entries are `blocked_by` a gap that is now CLOSED
 
 | | |
@@ -1510,3 +1534,253 @@ this file's header describes. `unbound` should be added as a member — and, sin
 carries **no `binding` by construction**, `compileStandard` must skip it exactly as it skips
 `blocked`, never attempt to compile it, and **report it as skipped with a reason** (G-10's rule: a
 list that drops entries silently is worse than one that runs them all).
+
+## P-06 · The narrowed GTIN descent — measured only against the set that failed the wide one
+
+| | |
+|---|---|
+| **file** | `src/crawler/extract.ts` (`selectGtin`) |
+| **change** | descend into `offers[]` / `hasVariant[]` / `isVariantOf[]` **only when exactly one distinct publishable GTIN is reachable across all of them**; otherwise report the product node's value, as today |
+| **decides** | the owner of the engine |
+| **status** | **NOT SHIPPED.** Proposed by the v3.5 adjudicator; withheld for the reason below |
+
+**What it would buy, measured.** 32 of 338 captured real stores publish a check-digit-valid GTIN
+only in a nested node and are told they publish no identifier at all. The adjudicated cases are
+`G-03`, `G-06`, `R07` (a single offer or variant with one barcode) and `R09`–`R12`, `G-05`, `G-08`,
+`G-10`, `R19`. The corpus pins four of them as open gaps in `ld-selection`.
+
+**Why it is not shipped, and the reason is the method, not the rule.** The predicate was derived
+from the same 78 adversarial cases that the wide descent failed. Validating a fix against the test
+set that produced it is fitting; this project has been caught by that six times and wrote the rule
+down after the fifth. The proposal is plausible and it is **unmeasured against anything it has not
+already seen**.
+
+**What it would have to clear before shipping.** The v3.5 CP-2 spec's own list, unchanged: a fresh
+adversarial pass by attackers who did not author the predicate; mechanical A/B attribution against
+the parent commit in full `git worktree` checkouts with a two-sided liveness canary; a natural-
+frequency read of how many real merchants it newly passes and whether they are right; and a stated
+answer to the question the wide rule got wrong — **what "exactly one distinct" means when the same
+GTIN appears on four variants** (adjudicated `R08`, an attack the standard records as
+`survived_unchanged`, so duplication must still pass) versus when three variants disagree
+(`conflict_rules[1]`, which the standard declares blocked).
+
+⚠️ **And a narrowing does not reach `R13`.** There the page publishes exactly ONE distinct nested
+GTIN and it is the storefront's own product key. A uniqueness predicate passes it, names it as the
+merchant's GTIN, and hands the merchant the exact value rule D rejects one field over. Whatever
+ships must carry the P-11 value test as well, or it re-opens the class CP2b closed.
+
+## P-07 · `selectGtin` returns the first NON-EMPTY key, not the first PUBLISHABLE one
+
+| | |
+|---|---|
+| **file** | `src/crawler/extract.ts` (`selectGtin`) |
+| **change** | on the product node only, return the first of the five keys whose value passes `isPublishableGtin`, falling back to the first non-empty one when none does |
+| **decides** | the owner of the engine |
+
+`{"gtin13": "4006381333930", "gtin12": "036000291452"}` reports the malformed `gtin13` and the row
+answers *"your product structured data publishes no GTIN or MPN"* to a store publishing a valid
+GTIN-12 on the same node. **No nested node is involved**, so this carries none of P-06's risk: the
+value still comes from the product node, and the fallback keeps `product.gtin` exactly what it is
+today whenever nothing validates.
+
+⚠️ **It is separable from P-06 and should be decided separately.** CP2a bundled the two and the
+bundle was reverted whole for byte-identity with `af6d387`, so this correction was lost to a
+decision that was not about it. Pinned as an open gap at `ld-selection`'s
+*"an INVALID gtin13 hides a VALID gtin12 on the SAME node"*.
+
+⚠️ **Nobody has attacked it.** It appears in none of the 78 adversarial cases, so "carries none of
+P-06's risk" is an argument from the shape of the change, not a measurement. It needs its own
+adversarial pass, small as it looks.
+
+## P-08 · The standard has no NORMALISATION rule, so a decorated key defeats a byte comparison
+
+| | |
+|---|---|
+| **files** | `standards/coffee/…/standard.json` (`IDENT-001`), then `src/server/productTest.ts` (rule D) |
+| **change** | state which decorated forms of a value count as the same value, then implement the stated rule |
+| **decides** | the coffee standard's owner, THEN the engine owner — in that order |
+
+Rule D compares `mpn` to `meta.product.id` byte for byte. Two adjudicated residuals sit on either
+side of one gap:
+
+| case | `meta.product.id` | published `mpn` | outcome |
+|---|---|---|---|
+| `EVA-03` | `8079462006899` | `gid://shopify/Product/8079462006899` | passes |
+| `D-06` | `gid://shopify/Product/7215488761946` | `7215488761946` | passes |
+
+In `EVA-03` the object rule D **already parsed** publishes `product.gid` carrying the very string in
+the `mpn`. Nothing has to be guessed at; the engine has both forms in bytes it holds. But
+"which decorations of a key are the key" is a rule about VALUES, and `IDENT-001` states none — its
+`insufficient_evidence` clause says only "the value the storefront also uses as its own product or
+variant key". A byte comparison is one reading of that; `gid://shopify/Product/<id>` being the same
+key is another. **The engine must not invent the answer**, which is why this is filed against the
+document first.
+
+⚠️ **Scope it, or it becomes a fuzzy match.** The failure mode is the one this repo names elsewhere:
+"byte-identical, not looks like". A normalisation rule that strips a *known, enumerated* Shopify
+GID prefix is decidable; one that strips "any prefix ending in a slash" fails merchants whose real
+part numbers contain slashes. Both directions need a corpus case.
+
+## P-09 · v1.3's clause names the VARIANT key; rule D was scored on the PRODUCT key alone
+
+| | |
+|---|---|
+| **file** | `src/server/productTest.ts` (rule D) |
+| **change** | compare `mpn` against `meta.product.variants[].id` as well as `meta.product.id` |
+| **decides** | the owner of the engine |
+
+`ALS-COFFEE-1.3-IDENT-001`'s `insufficient_evidence` reads "its own product **or variant** key".
+Rule D reads the product key. Adjudicated `D-05`, `EVA-13`, `EVA-14` — the last of which has no
+`product.id` in the bootstrap at all, so the variant list is the only key on the page.
+
+**The measurement that argued against shipping it, and it is a weak argument in one direction.**
+Variant-key-in-`mpn` occurs **0 times in 338 captured real stores**, so widening rule D would ship
+an unmeasured rule to close a class the corpus does not exhibit. That is a real reason to wait and
+it is *not* evidence the class is rare — a 338-store sample containing zero instances bounds the
+rate at roughly 1 in 113 (rule of three), which is not "never".
+
+⚠️ **The negative control is load-bearing and must survive any widening.** The existing corpus case
+*"the product key is read past `variants[]` that come FIRST"* exists because a bare regex over the
+first `"id"` returns a VARIANT's key on a theme that reorders keys. If variant keys become
+disqualifying, that case stops distinguishing a parser from a regex and a **replacement** control is
+owed in the same commit.
+
+## P-10 · Rule D reads ONE emitter in ONE shape, and `pass_means` promises "somewhere legible"
+
+| | |
+|---|---|
+| **files** | `src/server/productTest.ts` (`shopifyMetaObject`, `shopifyStorefrontObjectId`) |
+| **change** | strip HTML comments before the scan; recognise `window.ShopifyAnalytics.meta =`, `const`/`let meta =`, and a `JSON.parse("…")` wrapper; consider `data-product-id` |
+| **decides** | the owner of the engine |
+
+Nine adjudicated residuals, one sentence: the storefront's key is legible on the page and rule D
+does not read it. Every one **fails open**, so the merchant keeps their pass — the recoverable
+direction — but `pass_means` says the disqualification is decidable wherever the storefront
+publishes its key "somewhere legible", and decidability is a property of the PAGE.
+
+| class | cases | what the reader sees |
+|---|---|---|
+| the key is outside the bootstrap | `EVA-07`, `D-10` | no bootstrap, or a single-quoted JS object; the key sits in `data-product-id` and `rid` |
+| the bootstrap is in another shape | `EVA-08`, `EVA-09`, `EVA-11`, `EVA-12` | `window.ShopifyAnalytics.meta =`, `const meta =`, a comment inside the literal, a `JSON.parse` wrapper |
+| something shadows the bootstrap | `D-11`, `EVA-10`, `EVA-22` | an HTML comment, or **merchant-typed description text**, carrying an earlier `var meta = {` |
+
+⚠️ **`D-11` is the one to read first, and it is not a fail-open case.** An HTML-commented theme demo
+before the live bootstrap makes `shopifyStorefrontObjectId` return **`"DEMO-0001"`** — not null. The
+engine is not undecided there; it is confidently wrong, and it fails open on a value it should never
+have read. **Stripping HTML comments before the scan is the smallest change here and the only one
+that fixes a wrong READ rather than a missing one**; it should be decided on its own.
+
+⚠️ **`EVA-22` is a merchant steering the parser that judges them.** The JSON-LD `description` is
+store-authored and precedes the analytics script, so `var meta = {}` inside a sentence about theme
+installation decides what the engine reads about that store. Whether it is deliberate is beside the
+point — this corpus has a named class for merchant-controlled text reaching a matcher, and this is
+it, in the bootstrap reader.
+
+⚠️ **Widening the reader widens the attack surface in the same motion.** Accepting more shapes means
+accepting more places a page can put something that looks like a bootstrap. Any change here needs
+the both-directions corpus rule: for every new shape ACCEPTED, a case where a lookalike must be
+REFUSED.
+
+## P-11 · Rule D is scoped to one FIELD, and the value moves — including a one-character bypass
+
+| | |
+|---|---|
+| **files** | `standards/coffee/…/standard.json` (`IDENT-001`), then `src/server/productTest.ts` |
+| **change** | make the internal-object-id disqualification a test on the VALUE in any identifier field, with a stated normalisation for zero-padded GTIN forms |
+| **decides** | the coffee standard's owner, THEN the engine owner |
+
+**⚠️ ESCALATED — `EVA-21` is a mechanical, decidable bypass, not a reach limit, and it is the only
+one of the fifteen residuals that is.** Executed against the shipped engine:
+
+```
+meta.product.id  8079462006891
+mpn              "8079462006891"    → rule D fires; the MPN is disqualified
+gtin14           "08079462006891"   → ACCEPTED; the row passes and names it
+rendered         "Your structured data publishes a GTIN (08079462006891)."
+```
+
+**Padding a valid GTIN-13 with a leading zero always yields a valid GTIN-14** — the check digit is
+computed right-aligned, so a leading zero changes nothing. Therefore **any store whose object id
+satisfies the GS1 check digit has a one-field, one-character bypass of rule D**, and the rendered
+evidence names the padded key as the merchant's GTIN.
+
+`EVA-15` is the same gap without the padding: the key published verbatim in `gtin13`, passing on the
+arithmetic. `IDENT-001`'s own `why_not` for this clause says the reason "is field-agnostic: it is a
+statement about the VALUE, not about which key carries it", and the neighbouring clause already
+refuses an internal SKU in the GTIN field — so the document contains the logic and scopes it to the
+MPN branch, which is precisely the defect v1.3 was issued to fix, one field over.
+
+⚠️ **The adjudicator REJECTED `EVA-21` as an attacker claim, on normalisation grounds** — the padded
+value is literally not the key, and no rule in v1.3 says it counts as the key. That ruling is about
+the attacker's claim and is correct. **It is not a ruling about the mechanism**, which is real,
+decidable, and recorded nowhere else in this repo. Both facts belong in the record.
+
+⚠️ **This row and P-08 are the same missing thing seen twice**: the standard has no rule for when two
+different strings are the same identifier. Decide that once.
+
+## P-12 · The document owes a NODE SELECTION rule, and a correctly-marked-up merchant fails today
+
+| | |
+|---|---|
+| **files** | `standards/coffee/…/standard.json` (`IDENT-001`), `src/crawler/extract.ts` (`extractProduct`) |
+| **change** | state which JSON-LD node answers for the page when several are present, then implement it |
+| **decides** | the coffee standard's owner, THEN the engine owner |
+| **status** | PRE-EXISTING — present at `af6d387`, unchanged by CP2a, CP2b or CP2c |
+
+`extractProduct` takes the FIRST node of type `Product` or `ProductGroup` in document order.
+Adjudicated `G-09`: a merchant doing the schema.org `ProductGroup`/`hasVariant` split **correctly**
+emits the group node first, it carries no GTIN, and the row answers `not_proven` to a store
+publishing a check-digit-valid GTIN on the node that describes the item. `R19` is the same mechanism
+through a recommendation rail.
+
+`IDENT-001` is silent: `accepted_evidence` says "a GTIN in JSON-LD" and names no node.
+`applicability.signal` says only "presence of a JSON-LD Product node". Every argument about whether
+the engine may read a nested value (P-06) presumes an answer to *which node is the product*, and
+there isn't one.
+
+⚠️ **This is the gap P-06 keeps colliding with, and it is the one worth solving first.** A node
+selection rule ("the node whose `@id`/`url` matches the canonical URL", say) would make several of
+P-06's cases decidable *without* descending into variant lists at all — the merchant's own markup
+would say which node answers, instead of the engine picking one and hedging in the copy.
+
+## P-13 · GS1 restricted-circulation (`2xx`) and coupon (`99xx`) prefixes are accepted as product GTINs
+
+| | |
+|---|---|
+| **file** | `src/server/productTest.ts` (`isPublishableGtin`) — and `IDENT-001` first |
+| **change** | state whether a GTIN in a reserved prefix range is acceptable evidence, then implement |
+| **decides** | the coffee standard's owner, THEN the engine owner |
+
+Adjudicated `R10` (restricted-circulation prefix) and `R11` (coupon EAN). Both were ruled **CLOSED —
+correctly accepted** by the adjudicator, on the ground that the document names no prefix ranges at
+all: `insufficient_evidence` lists placeholders, all-zeros, wrong check digits and internal SKUs, and
+nothing else. So today they pass, and that is what the standard says.
+
+**Whether they SHOULD pass is a different question and nobody has answered it.** GS1 reserves `02`
+and `2xx` for restricted circulation within a company — an in-store weighed-item barcode, which
+resolves to nothing in any external catalogue and is therefore in exactly the class the row's
+question is about. `99xx` is a coupon, not a product.
+
+⚠️ **Low priority, and stated so.** No captured real store publishes one; both cases are constructed.
+It is filed because "the document names no ranges" is a reason the current behaviour is *correct*,
+not a reason the question is *settled* — and the next person to notice a `2xx` GTIN should find this
+row rather than re-derive it.
+
+## P-14 · `offers[].mpn` is never read, in either direction
+
+| | |
+|---|---|
+| **files** | `src/crawler/extract.ts` (`extractProduct`), `src/server/productTest.ts` (rule D) |
+| **change** | decide whether an MPN published on an offer is acceptable evidence — and if it is, run rule D against it too |
+| **decides** | the coffee standard's owner, THEN the engine owner |
+
+`extractProduct` reads `mpn` from the product node only; there is no MPN equivalent of the GTIN key
+ladder. Adjudicated `EVA-23`: a page publishing a real manufacturer part number only on its offer is
+told it publishes no identifier.
+
+⚠️ **The asymmetry is the point, and it cuts both ways.** CP2a widened where a GTIN is looked for and
+never touched the MPN — so a widening argued on recall grounds was applied to one field and not the
+other, with no stated reason. And if `offers[].mpn` ever becomes readable, **rule D must be extended
+in the same commit**, or the widening re-opens exactly the class CP2b closed: a storefront key
+published on an offer instead of the product node would walk straight past a guard that only reads
+`info.mpn`.

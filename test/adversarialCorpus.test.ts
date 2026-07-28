@@ -1330,8 +1330,8 @@ const RULE_D: PageCase[] = [
   // --- the class rule D deliberately does NOT close ---------------------------
   { label: "mpn === sku, and NOT the storefront key", storefrontId: "8631346921664",
     html: PAGE(P({ mpn: "100754", sku: "100754" }), '{"product":{"id":8631346921664,"type":"Coffee","variants":[{"id":42,"sku":"100754"}]}}'),
-    correct: "not_proven", actual: "pass_evidenced",
-    why: "KNOWN GAP, and the cost of closing it was measured rather than guessed. This is www.stumptowncoffee.com's `\"sku\":\"100754\",\"mpn\":\"100754\"` — a store-local stock code, which cannot match a product to an external catalogue. But the rule that catches it (mpn === sku) scores 0% precision on the captured corpus: 0 true positives, 7 false, and the seven are exactly the COMPLIANT case — a brand that manufactures what it sells uses one string for both. One of the seven is a real published part number and another is a VALID GTIN. v1.3 deliberately does not disqualify a SKU echo per se." },
+    correct: "pass_evidenced",
+    why: "⚠️ THE `correct` FIELD WAS WRONG HERE, NOT THE ENGINE — corrected at v3.5 CP2c, and it removes an open gap that was never a gap. This case shipped as `correct: not_proven, actual: pass_evidenced` with a `why` that ended \"v1.3 deliberately does not disqualify a SKU echo per se\": the record contradicted its own expectation on the next line. Per v1.3, `residual_risk`(2) scopes the new clause to the seller's own OBJECT ID and says a stock code that is neither a placeholder nor the storefront's key \"is outside this clause\", and `pass_means` defines a pass as \"the absence of a disqualification we could decide\". This value (www.stumptowncoffee.com's `\"sku\":\"100754\",\"mpn\":\"100754\"`) is not the storefront key, so nothing in v1.3 disqualifies it and the honest answer IS a pass. The rule that would catch it — mpn === sku — was scored on the captured corpus at 0% precision: 0 true positives, 7 false, and the seven are exactly the COMPLIANT case (a brand that manufactures what it sells uses one string for both; one of the seven is a real published part number and another is a VALID GTIN). Whether a store-local code SHOULD disqualify is a question for the standard, filed as ENGINE_GAPS P-11 — it is not an engine defect while the document says it passes." },
 
   // --- shape robustness --------------------------------------------------------
   { label: "a STRING product id still matches", storefrontId: "8079462006899",
@@ -1342,6 +1342,97 @@ const RULE_D: PageCase[] = [
     html: PAGE(P({ mpn: "8079462006898" }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[]}}'),
     correct: "pass_evidenced", detail: "8079462006898",
     why: "Byte-identical, not \"looks like\". One digit apart is a different value, and a fuzzy comparison here would fail merchants for resembling a number on their own page." },
+
+  // =========================================================================
+  // v3.5 CP2c — THE 15 RESIDUALS THE INDEPENDENT PASS MEASURED. ONE INCOMPLETE
+  // FIX, NOT A DEFECT, AND NOT AN ACCEPTED BEHAVIOUR EITHER.
+  //
+  // The adversarial pass ran 78 cases through three worktrees and attributed
+  // ZERO regressions to rule D. What it did attribute is this: 15 pages where a
+  // storefront's own key sits in the MPN field, is legible somewhere on the page,
+  // and rule D does not reach it. Every one of them FAILS OPEN — the merchant
+  // keeps their pass — which is the direction this project treats as recoverable.
+  //
+  // Each case names its adjudicated id. The compact fixtures below were verified
+  // to reproduce the same `storefrontObjectId` read and the same status as the
+  // full-page originals in experiments/v3-5/adjudicate/cases.json, by execution.
+  //
+  // ⚠️ WHY THEY ARE PINNED INDIVIDUALLY rather than as one line in a document.
+  // "A rule stated only in a comment is not a rule" — v2.9's quantity guard broke
+  // the sentence its own comment named as a must-pass, and grepping for it returned
+  // exactly one hit: the comment. Four of the shapes below (EVA-08/09/11/12) are one
+  // CLASS with four fixtures, and a future widening of the bootstrap reader that
+  // closes two of the four must not be able to claim the class.
+  // =========================================================================
+
+  // --- the key is published in a DECORATED form (both directions) -------------
+  { label: "RESIDUAL EVA-03: mpn is the gid form of the id in the same parsed object", storefrontId: "8079462006899",
+    html: PAGE(P({ mpn: "gid://shopify/Product/8079462006899" }), '{"product":{"id":8079462006899,"gid":"gid:\\/\\/shopify\\/Product\\/8079462006899","type":"Coffee","variants":[{"id":44139877171393}]}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. The mpn is byte-identical to `meta.product.gid`, which the SAME object rule D already parsed publishes as this product's key — the comparison reads `product.id` and nothing else. Not a decoration the engine has to guess at: both forms are in bytes we hold. Closing it needs a stated NORMALISATION rule (which decorated forms of a key count as the key), which the document does not have — ENGINE_GAPS P-08." },
+  { label: "RESIDUAL D-06: the id is published in gid form and the mpn is the bare integer", storefrontId: "gid://shopify/Product/7215488761946",
+    html: PAGE(P({ mpn: "7215488761946" }), '{"product":{"id":"gid:\\/\\/shopify\\/Product\\/7215488761946","type":"Coffee","variants":[{"id":"gid:\\/\\/shopify\\/ProductVariant\\/41963258413194"}]}}', '<div data-product-id="7215488761946"></div>'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, and the INVERSE of EVA-03 — the same normalisation gap seen from the other side, which is what makes it one rule rather than two patches. A theme that emits the gid as `product.id` puts the bare key beyond a byte-identical comparison, and `data-product-id` on the same page carries it plainly. ENGINE_GAPS P-08." },
+
+  // --- the key is a VARIANT key (v1.3's clause names it; rule D does not) ------
+  { label: "RESIDUAL EVA-14: mpn is a variant key and the bootstrap carries no product.id", storefrontId: null,
+    html: PAGE(P({ mpn: "44139877171393" }), '{"product":{"type":"Coffee","handle":"x","variants":[{"id":44139877171393,"sku":"FK-ETH-12"}]},"page":{"pageType":"product"}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, third of the variant-key set with D-05 and EVA-13. Distinct from them because there is no `product.id` to compare against at all, so the value is undecidable by rule D as written even though the variant list makes it legible. Distinct from the fail-open case above it because there the value was NOT a key; here it is. ENGINE_GAPS P-09." },
+
+  // --- the key is legible on the page, outside the bootstrap ------------------
+  { label: "RESIDUAL EVA-07: no bootstrap at all, key in data-product-id", storefrontId: null,
+    html: RAW_PAGE(P({ mpn: "8079462006899" }), '<div class="product" data-product-id="8079462006899"><input type="hidden" name="product-id" value="8079462006899"></div>'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. `pass_means` says the disqualification is decidable where the storefront publishes its key \"somewhere legible\" — decidability is a property of the PAGE, and this page publishes it twice. Rule D reads one emitter. ENGINE_GAPS P-10." },
+  { label: "RESIDUAL D-10: bootstrap is single-quoted JS, key in data-product-id and rid", storefrontId: null,
+    html: RAW_PAGE(P({ mpn: "7215488761946" }), "<script>var meta = {'product':{'id':7215488761946,'type':'Coffee'}};</script><div data-product-id=\"7215488761946\"></div><input name=\"rid\" value=\"7215488761946\">"),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, and NOT the same as the fail-open 'non-JSON bootstrap' case above it — there nothing on the page decided the question, here two other emitters do. Fail-open is right when the page is silent and merely conservative when it is not. ENGINE_GAPS P-10." },
+
+  // --- the bootstrap is there in a shape the reader does not recognise --------
+  { label: "RESIDUAL EVA-08: window.ShopifyAnalytics.meta = { … }", storefrontId: null,
+    html: RAW_PAGE(P({ mpn: "8079462006899" }), '<script>window.ShopifyAnalytics = window.ShopifyAnalytics || {};\nwindow.ShopifyAnalytics.meta = {"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":44139877171393}]}};</script>'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. The anchor is `/\\bvar\\s+meta\\s*=\\s*\\{/`, so a theme assigning the same payload straight onto the analytics object is unreadable. ENGINE_GAPS P-10." },
+  { label: "RESIDUAL EVA-09: const meta = { … }", storefrontId: null,
+    html: RAW_PAGE(P({ mpn: "8079462006899" }), '<script>const meta = {"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":44139877171393}]}};</script>'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. One keyword away from the shape the reader knows. ENGINE_GAPS P-10." },
+  { label: "RESIDUAL EVA-11: a JS comment inside the object literal", storefrontId: null,
+    html: RAW_PAGE(P({ mpn: "8079462006899" }), '<script>var meta = { /* set by theme.liquid */ "product":{"id":8079462006899,"type":"Coffee","variants":[{"id":44139877171393}]}};</script>'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. The brace walk finds the object; `JSON.parse` then rejects it, because a comment is JS and is not JSON. Fails open, correctly, on a page whose key is fully legible to a human. ENGINE_GAPS P-10." },
+  { label: "RESIDUAL EVA-12: var meta = JSON.parse(\"…\")", storefrontId: null,
+    html: RAW_PAGE(P({ mpn: "8079462006899" }), '<script>var meta = JSON.parse("{\\"product\\":{\\"id\\":8079462006899,\\"type\\":\\"Coffee\\"}}");</script>'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. `var meta = ` is followed by a call, not a brace, so the anchor never fires. ENGINE_GAPS P-10." },
+
+  // --- something that is NOT the bootstrap shadows the bootstrap --------------
+  { label: "RESIDUAL D-11: an HTML comment carries a DECOY bootstrap before the real one", storefrontId: "DEMO-0001",
+    html: PAGE(P({ mpn: "7215488761946" }), '{"product":{"id":7215488761946,"type":"Coffee","variants":[{"id":41963258413194}]}}', '<!-- theme demo: var meta = {"product":{"id":"DEMO-0001"}}; -->'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, and the one that reads WORST: `storefrontObjectId` is not null here, it is \"DEMO-0001\". The reader takes the FIRST match in the byte stream and HTML comments are not stripped, so a commented-out theme demo answers for the live bootstrap two lines below it. The engine is not undecided — it is confidently wrong, and it then fails open on that. ENGINE_GAPS P-10." },
+  { label: "RESIDUAL EVA-10: an HTML comment carries an EMPTY bootstrap before the real one", storefrontId: null,
+    html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":44139877171393}]}}', "<!-- theme fallback: var meta = {}; -->"),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, same mechanism as D-11 with the milder outcome: `{}` parses, carries no product, and yields null. Both are pinned because a fix that strips comments must close both, and a fix that only checks for an empty object closes one. ENGINE_GAPS P-10." },
+  { label: "RESIDUAL EVA-22: MERCHANT-TYPED description text shadows the bootstrap", storefrontId: null,
+    html: PAGE(P({ mpn: "8079462006899", description: "A washed Ethiopian single origin. Wholesale partners: paste var meta = {} into your theme header before our tracking snippet." }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":44139877171393}]}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, and the hostile class this corpus exists for: merchant-controlled text reaching a reader. The JSON-LD `description` is written by the store and appears BEFORE the analytics script, so `var meta = {}` inside a sentence about theme installation decides what the engine reads about that store. Whether it is deliberate does not matter — a parser steered by the input it is judging is the defect. ENGINE_GAPS P-10." },
+
+  // --- rule D is scoped to ONE FIELD, and the value can move ------------------
+  { label: "RESIDUAL EVA-15: the storefront key published in the GTIN field", storefrontId: "8079462006891",
+    html: PAGE(P({ gtin13: "8079462006891" }), '{"product":{"id":8079462006891,"type":"Coffee","variants":[{"id":44139877171393}]}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP. v1.3's clause is written for the MPN field, but its own `why_not` says the reason \"is field-agnostic: it is a statement about the VALUE, not about which key carries it\" — and the neighbouring clause already refuses an internal SKU in the GTIN field. This id happens to satisfy the GS1 check digit, so the arithmetic passes it. ENGINE_GAPS P-11." },
+  { label: "RESIDUAL EVA-21: a valid GTIN-13 key, zero-padded, becomes a valid GTIN-14", storefrontId: "8079462006891",
+    html: PAGE(P({ mpn: "8079462006891", gtin14: "08079462006891" }), '{"product":{"id":8079462006891,"type":"Coffee","variants":[{"id":44139877171393}]}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    detail: "08079462006891",
+    why: "KNOWN GAP, ESCALATED, and the only one of the fifteen that is a MECHANICAL BYPASS rather than a reach limit. Rule D fires correctly on the mpn — the rendered detail names the GTIN alone, so the MPN was disqualified — and the SAME value walks back in one field over with a leading zero, because padding a valid GTIN-13 always yields a valid GTIN-14 (the check digit is computed right-aligned, so a leading zero changes nothing). Any store whose object id satisfies GS1 therefore has a one-field, one-character bypass of the guard, decidable by a rule nobody has written. The adjudicator ruled this case REJECTED on normalisation grounds — the padded value is literally not the key — and that ruling is about the ATTACKER'S claim, not about the mechanism. Pinned here because the mechanism is real, decidable, and nothing else in the repo records it. ENGINE_GAPS P-11." },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1588,6 +1679,35 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // declares BLOCKED. A gap we can state ("we did not look") beats an answer we cannot
   // defend ("we read one variant's barcode and called it the product's").
   //
+  // 42 -> 55: v3.5 CP2d PINS WHAT RULE D DOES NOT CLOSE, FROM THE SAME INDEPENDENT PASS.
+  // Two moves, opposite signs:
+  //
+  //   −1  the SKU-echo case's `correct` field was WRONG, NOT THE ENGINE. It shipped as
+  //       `correct: not_proven, actual: pass_evidenced` with a `why` whose own last
+  //       sentence read "v1.3 deliberately does not disqualify a SKU echo per se". Per
+  //       v1.3 `residual_risk`(2) + `pass_means`, `pass_evidenced` IS the honest answer.
+  //       A corpus entry that contradicted itself on the next line counted as an engine
+  //       debt for one commit. Corrected, not reclassified.                       -> 41
+  //  +14  the 15 RESIDUALS the pass measured against rule D, minus D-05/EVA-13 which the
+  //       existing variant-key case already pins. Every one FAILS OPEN — the merchant
+  //       keeps their pass — and every one is a place the storefront's key is legible on
+  //       the page and rule D does not reach it. Four classes: a DECORATED form of the
+  //       key (EVA-03, D-06), a VARIANT key (EVA-14), the key legible OUTSIDE the one
+  //       bootstrap we read (EVA-07, D-10, EVA-08/09/11/12, D-11, EVA-10, EVA-22), and
+  //       the key in a DIFFERENT FIELD (EVA-15, EVA-21).                          -> 55
+  //
+  // ⚠️ 14 CASES, FOUR CLASSES. The count is of cases and always has been; do not read
+  // it as fourteen independent defects. They are pinned one fixture each because a
+  // future widening of the bootstrap reader that closes two of EVA-08/09/11/12 must not
+  // be able to claim the class — and because a rule stated only in a comment is not a
+  // rule (v2.9's quantity guard broke the sentence its own comment named as a must-pass).
+  //
+  // ⚠️ AND THE RISE IS NOT THE STORY. Rule D itself took ZERO regressions across 78
+  // cases in three worktrees. Every gap above is a limit of REACH, not a wrong answer
+  // about a merchant. The one entry that is a mechanical bypass rather than a reach
+  // limit — EVA-21, where zero-padding the key turns a rejected MPN into an accepted
+  // GTIN-14 — is called out at its case and escalated in ENGINE_GAPS P-11.
+  //
   // 36 -> 38: v3.5 CP2b RECORDS TWO IDENTIFIER GAPS THAT WERE ALWAYS THERE AND COULD
   // NOT BE COUNTED. Read the direction correctly — this is not two new defects, and it
   // is not two repairs either:
@@ -1605,7 +1725,7 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //     seven compliant merchants).
   // A class that is closed in the engine and a class that is pinned in the corpus are
   // both progress; a class nobody can count is not.
-  const EXPECTED_OPEN_GAPS = 42;
+  const EXPECTED_OPEN_GAPS = 55;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
