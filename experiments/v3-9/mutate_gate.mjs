@@ -27,8 +27,11 @@ const MUTATIONS = [
     "const EXPECTED_HOSTILE_TOTAL = 3732;", "const EXPECTED_HOSTILE_TOTAL = 3731;"],
   ["the control total moved",
     "const EXPECTED_CONTROL_TOTAL = 181;", "const EXPECTED_CONTROL_TOTAL = 180;"],
+  // ⚠️ ANCHOR UPDATED at v3.9's re-examination (1137 -> 1282). The drift was caught by this
+  // harness's own "did not APPLY" check rather than by reading — a mutation whose anchor no
+  // longer matches proves nothing and must never be counted as killed.
   ["the confirmed-false-pass sum moved",
-    "]) => n + fp, 0), 1137,", "]) => n + fp, 0), 1136,"],
+    "]) => n + fp, 0), 1282,", "]) => n + fp, 0), 1281,"],
 ];
 
 function run(file) {

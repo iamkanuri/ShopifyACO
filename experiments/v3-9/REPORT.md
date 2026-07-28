@@ -449,3 +449,72 @@ It reads the ADJUDICATED table, against which all four match exactly.
 - Expect to pay **2.13–5.13 true rows per defect only the referent axis closes.** The upper end
   is within reach of the arithmetic that removed `origin`. That is the number to beat, and it
   is the reason G-15 remains the highest-risk item on the register.
+
+## 12. POST-PAUSE-2: v3.8's 55 KILLS RE-EXAMINED — P-21's FIRST USE
+
+Run under the new protocol: **6 blind gold cases**, one per batch, each engine-verified before
+use, with per-re-examiner rates emitted as standard output.
+
+```
+GOLD          6 seeded · 6 correct · accuracy 1.00 · 0 batches discounted
+REAL         55 units · 55 adjudicated · 0 missing · 0 indeterminate
+             42 reinstated (76.4%) · 13 upheld
+```
+
+**The gold check earned its place before the run even started:** three candidate gold cases
+were discarded because the engine already refuses them (`"The outer carton is vegan"`, the
+bundled-item and review-quote shapes). A gold case the engine does not pass makes the question
+incoherent, and only execution could tell.
+
+### Axis triage (rider a), and it is decisive
+
+| class | in set | reinstated |
+|---|---|---|
+| `wrong_subject` | 17 | **17 — 100%** |
+| `denial` | 20 | 18 |
+| `violation` | 8 | 7 |
+| `orthography` | 10 | **0** |
+| `letter_not_spirit` | **0** | — |
+| `tense_modality` | **0** | — |
+
+- **`orthography` 0 of 10** is the two-sided evidence: the original refuter was entirely right
+  on that class, so the re-examiners were discriminating rather than reinstating on reflex.
+- **Rider (b) turns out to be moot, not merely satisfied.** Zero of the 55 kills were in
+  `letter_not_spirit` or `tense_modality`, so the descope verdicts could not have moved. They
+  rest on real-copy consequence in any case.
+
+### The correction (rider c) — in place, with a per-group trail
+
+| class | before | after | Δ |
+|---|---|---|---|
+| `wrong_subject` | 368/914 | **441/914** | +73 |
+| `denial` | 69/461 | **134/461** | +65 |
+| `violation` | 1/104 | **8/104** | +7 |
+| **confirmed groups** | **274** | **316** | +42 |
+| **sum** | **1137** | **1282** | **+145 = 73 + 65 + 7** |
+
+Applied **in place, not displaced** — this completes the verification of one measurement whose
+refutation half was never checked (`488 → 483` is the precedent), and there is only one
+measurement here. The trail reconciles exactly against the per-group deltas.
+
+⚠️ **The mutation harness caught its own anchor drift.** Changing 1137 → 1282 stale-ed a
+mutation anchor, and the run reported `did not APPLY` rather than counting it killed — the
+check that exists because a mutation whose anchor no longer matches proves nothing.
+Re-proved 7/7 after the anchor was updated.
+
+### Rider (a): where the 17 go, and where they do NOT
+
+All 17 reinstated `wrong_subject` groups are `comparative` (10) and `review_quote` (7),
+carrying **73 false passes**.
+
+⚠️ **They are recorded as a named `v4_capability_target` beside suite 2.0 — NOT added as
+cases.** 2.0's contract is *every case is a sentence a real merchant wrote*, asserted by a
+test requiring host, URL and adjudication unit; these are templatizer output, and adding them
+would make that assertion false and turn 2.0 into what 1.0 already is. **Two targets, two
+instruments, neither pretending to be the other** — the G-14 gate's `wrong_subject` cell is
+what measures whether a v4.0 guard closed them.
+
+And the two target sets point at **different shapes**, which is worth knowing before v4.0
+picks a design: the capability target is `comparative` + `review_quote`, and v3.6 measured
+those as among the *rarest* shapes in real copy (34 and 3 sentences respectively), while the
+real-copy target is supplier/company/regional generality.

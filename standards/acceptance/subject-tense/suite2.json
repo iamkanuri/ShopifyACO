@@ -836,5 +836,154 @@
     "note": "RECORDED, NOT TARGETED. The hostile cases are expected to FAIL — they are defects the engine has not fixed, and a suite whose hostile half passed at creation would be measuring nothing. The must-not-regress half is the live constraint: those rows are true today and a guard must not take them.",
     "hostile_met": "0/8",
     "must_not_regress_met": "17/17"
+  },
+  "v4_capability_target": {
+    "what": "GENERATED attack groups a v4.0 referent guard must close, recovered by re-examining v3.8's refutations under P-21. These are NOT suite cases and are deliberately not added as such: every case in this suite is a sentence a real merchant wrote, asserted by a test, and these are templatizer output. They are a second target with a second instrument.",
+    "instrument": "the G-14 standing gate (`standards/__tests__/g14.table.test.ts`). Its `wrong_subject` adjudicated cell reads 441/914 after this correction, up from 368/914; a guard that closes these moves that cell and the gate reports it by name.",
+    "provenance": "blind re-examination of all 55 of v3.8's refutedAway groups, 6 gold cases seeded one per batch, gold accuracy 6/6, 42 of 55 overturned. Per-group trail in experiments/v3-9/out/v38_correct.json.",
+    "groups_reinstated": 17,
+    "false_passes_reinstated": 73,
+    "by_subclass": {
+      "comparative": 10,
+      "review_quote": 7
+    },
+    "groups": [
+      {
+        "groupId": "wrong_subject|comparative|vegan",
+        "subclass": "comparative",
+        "claimKey": "vegan",
+        "sentences": 6,
+        "false_passes_reinstated": 6,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|fragrance_free",
+        "subclass": "comparative",
+        "claimKey": "fragrance_free",
+        "sentences": 6,
+        "false_passes_reinstated": 5,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|fragrance_free",
+        "subclass": "review_quote",
+        "claimKey": "fragrance_free",
+        "sentences": 5,
+        "false_passes_reinstated": 5,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|aluminum_free",
+        "subclass": "comparative",
+        "claimKey": "aluminum_free",
+        "sentences": 10,
+        "false_passes_reinstated": 5,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|baking_soda_free",
+        "subclass": "comparative",
+        "claimKey": "baking_soda_free",
+        "sentences": 6,
+        "false_passes_reinstated": 5,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|third_party_tested",
+        "subclass": "comparative",
+        "claimKey": "third_party_tested",
+        "sentences": 5,
+        "false_passes_reinstated": 5,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|bpa_free",
+        "subclass": "comparative",
+        "claimKey": "bpa_free",
+        "sentences": 5,
+        "false_passes_reinstated": 5,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|baking_soda_free",
+        "subclass": "review_quote",
+        "claimKey": "baking_soda_free",
+        "sentences": 5,
+        "false_passes_reinstated": 5,
+        "confidence": "high"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|third_party_tested",
+        "subclass": "review_quote",
+        "claimKey": "third_party_tested",
+        "sentences": 5,
+        "false_passes_reinstated": 5,
+        "confidence": "high"
+      },
+      {
+        "groupId": "wrong_subject|comparative|cruelty_free",
+        "subclass": "comparative",
+        "claimKey": "cruelty_free",
+        "sentences": 5,
+        "false_passes_reinstated": 4,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|bpa_free",
+        "subclass": "review_quote",
+        "claimKey": "bpa_free",
+        "sentences": 4,
+        "false_passes_reinstated": 4,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|vegan",
+        "subclass": "review_quote",
+        "claimKey": "vegan",
+        "sentences": 4,
+        "false_passes_reinstated": 4,
+        "confidence": "high"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|fair_trade",
+        "subclass": "review_quote",
+        "claimKey": "fair_trade",
+        "sentences": 3,
+        "false_passes_reinstated": 3,
+        "confidence": "high"
+      },
+      {
+        "groupId": "wrong_subject|comparative|gluten_free",
+        "subclass": "comparative",
+        "claimKey": "gluten_free",
+        "sentences": 5,
+        "false_passes_reinstated": 3,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|sulfate_free",
+        "subclass": "comparative",
+        "claimKey": "sulfate_free",
+        "sentences": 5,
+        "false_passes_reinstated": 3,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|comparative|fair_trade",
+        "subclass": "comparative",
+        "claimKey": "fair_trade",
+        "sentences": 3,
+        "false_passes_reinstated": 3,
+        "confidence": "medium"
+      },
+      {
+        "groupId": "wrong_subject|review_quote|cruelty_free",
+        "subclass": "review_quote",
+        "claimKey": "cruelty_free",
+        "sentences": 4,
+        "false_passes_reinstated": 3,
+        "confidence": "high"
+      }
+    ]
   }
 }

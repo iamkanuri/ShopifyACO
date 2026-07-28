@@ -188,29 +188,43 @@ const EXPECTED_CONTROL_TOTAL = 181;
  * v3.9 CP-1B executed them: the raw column above is now 181/332, of which 178 are
  * collision passes, and 116 of those are adjudicated false passes. Do not quote the 0.
  *
- * ⚠️ AND EVERY FIGURE IN THIS BLOCK IS A FLOOR, FOR A REASON MEASURED IN v3.9.
- * These counts are `confirmed − refuted`, and the refutation step was instructed to
- * "default to refuted when uncertain". v3.9 blinded-re-examined all 71 of its own kills and
- * found that instruction wrong on **41 of 48 defect claims — 85.4%**. The error rate was
- * uniform across refuters (control 90.9%, suspect 80.8%); only the VOLUME of killing
- * varied. The same refuters were accurate on honest-carrier flags (13% overturned), which
- * is what rules out "the re-examiner is simply more permissive".
+ * ⚠️ THESE NUMBERS WERE CORRECTED IN v3.9, AND THE CORRECTION IS THE POINT.
+ * The counts are `confirmed − refuted`, and the refutation step was instructed to "default
+ * to refuted when uncertain" — an instruction nothing ever verified. **P-21** is the finding
+ * that a confirmation is re-executed against the bytes while a refutation is checked by
+ * nothing, so the unverified side is the one that silently DELETES real defects.
  *
- * v3.9's own counts moved 15 → 18 and 78 → **116** on that correction. v3.8 recorded
- * `refutedAway: 55` under the same pattern and has NOT been re-examined, so
- * `ADJUDICATED_V38` below is very likely an undercount of unknown size. It is left exactly
- * as v3.8 recorded it — a frozen record is not edited on an inference — and the exposure is
- * filed as a numbered gap rather than applied here.
+ * All 55 of v3.8's refutedAway groups were blind-re-examined under P-21's protocol (its
+ * first use): 6 blind GOLD cases seeded one per batch and engine-verified beforehand, per-
+ * re-examiner rates emitted. **Gold accuracy 6/6, so no batch's verdicts are discounted.**
+ * **42 of 55 kills were overturned (76.4%)**, 0 missing, 0 indeterminate.
+ *
+ * This is a CORRECTION, not a displaced second measurement — it completes the verification
+ * of one measurement whose refutation half was never checked, the way `488 → 483` did. The
+ * per-group trail is `experiments/v3-9/out/v38_correct.json`; the class deltas reconcile
+ * against it exactly (145 = 73 + 65 + 7).
+ *
+ *   wrong_subject   368/914 → 441/914   (+73)
+ *   denial           69/461 → 134/461   (+65)
+ *   violation         1/104 →   8/104   (+7)
+ *   confirmed groups    274 → 316
+ *
+ * ⚠️ `letter_not_spirit` and `tense_modality` DID NOT MOVE — zero of the 55 kills were in
+ * either class. So the v3.9 descope verdicts for those two axes are untouched by this, and
+ * they rest on real-copy consequence rather than on these capability counts in any case.
+ * ⚠️ `orthography` did not move either: 0 of its 10 kills were overturned. The original
+ * refuter was entirely right there, which is the two-sided evidence that the re-examiners
+ * were discriminating rather than reinstating on reflex.
  */
 const ADJUDICATED_V38: Record<string, [number, number]> = {
   letter_not_spirit: [260, 280],
   adjacent_vocabulary: [0, 100],
-  wrong_subject: [368, 914],
+  wrong_subject: [441, 914],
   merchant_controlled_string: [0, 414],
   orthography: [0, 606],
-  violation: [1, 104],
+  violation: [8, 104],
   tense_modality: [439, 621],
-  denial: [69, 461],
+  denial: [134, 461],
 };
 
 // ---------------------------------------------------------------------------
@@ -398,8 +412,11 @@ test("[gaps] G-14 moves EXPECTED_OPEN_GAPS by +0, and this is the reason", () =>
   const cellsWithADefectDirection = Object.values(ADJUDICATED_V38).filter(([fp]) => fp > 0).length;
   assert.ok(cellsWithADefectDirection >= 4,
     "the adjudicated record no longer carries a defect direction for any class — it has been zeroed");
+  // 1137 before v3.9's re-examination; 1282 after, +145 = 73 (wrong_subject) + 65 (denial)
+  // + 7 (violation), reconciled against the per-group trail in
+  // `experiments/v3-9/out/v38_correct.json`.
   assert.equal(
-    Object.values(ADJUDICATED_V38).reduce((n, [fp]) => n + fp, 0), 1137,
+    Object.values(ADJUDICATED_V38).reduce((n, [fp]) => n + fp, 0), 1282,
     "the total confirmed-false-pass count across classes changed; re-derive it from the " +
       "merge artifacts rather than editing this number",
   );
