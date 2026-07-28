@@ -1,12 +1,65 @@
 # DEPLOY.md — ShopifyACO (Railway, single service)
 
-> **Release index.** Release blocks run **newest-first** from here down: **v3.4 `af6d387`** ·
+> **Release index.** Release blocks run **newest-first** from here down: **v3.5 `fee1ff3`** · v3.4 `af6d387` ·
 > v3.3 `9843cb6` · v3.2 `24dedf0` · v3.2 CP0 `8b71433` · v2.3 `459f706` · v2.2 `50eb90a` · V2 ·
 > the repositioning release. **Two sit outside that order:** `## v2.4 release` and `## v2.5 release` were appended
 > at the very END of this file, after the evergreen reference sections. They are newer than the
 > v2.3 block below and are deliberately NOT relocated here — they are `##` headings, so moving
 > them verbatim between `#` release blocks would render them as subsections of whichever release
 > preceded them, and fixing that means editing their content. Read them at the bottom.
+
+---
+
+# ▶ RELEASE: v3.5 — the identifiers row, and the guard that did not survive its own pass ✅ SHIPPED 2026-07-27, commit `fee1ff3`
+
+**Branch:** `feat/v3-5-identifiers` · **Base:** `main` @ `af6d387` (v3.4)
+**Status:** merged **fast-forward** and pushed. `/healthz` → `fee1ff3`. **No migration.**
+
+## CC.1 What it carries
+
+- **Coffee Standard v1.3.** `IDENT-001` contradicted itself — every field that DECIDES the row
+  promised only *publication*, every field a human reads promised *catalogue matching*. v1.3
+  applies a clause the document already contained (`insufficient_evidence`'s internal-code rule)
+  to the field where the defect actually lives.
+- **Rule D in the engine**: an `mpn` byte-identical to the storefront's own object id is
+  disqualified. **23 real stores lose a pass they should never have had**, 23/23 confirmed wrong
+  by a mechanism other than the guard.
+- **THE GTIN WIDENING WAS REVERTED** — see CC.2. It is the headline, not a footnote.
+- Recomputed bounds, in a **sidecar** `standards/coffee/v1.3/fitness.json` (measured after v1.3
+  shipped, so it must not touch v1.3's bytes): coffee **12.78% → 10.97%**, general **8.81% → x=0**.
+
+## CC.2 ⚠️ THE FIRST MATCHER CHANGE SINCE v3.2's REVERSAL, AND HALF OF IT WAS REVERTED
+
+A **338-store replay reported 32 clean gains and zero other changes.** An adversarial pass — three
+independent attackers, 78 chosen cases, three worktrees, 234 executions — found **11 regressions,
+all in the GTIN widening**. Rule D took zero.
+
+The widening descended into `offers[]`/`hasVariant[]` and took the first publishable value, which is
+verbatim `conflict_rules[1]`'s `when`, whose resolution is *"the engine reads the product-level node
+only"*. **It answered, from an `executable` row, a question the same published document declares
+`blocked`.** Reverted in `ed198db`, proved byte-equivalent to base over 1,193 values — with a
+sensitivity check (base-vs-widened reports 157 differences) so the zero is a measurement, not a
+silence.
+
+**Two of the eleven were invisible to a status diff** — identical `pass_evidenced`, only the
+rendered quote changing. A real-store replay is a REGRESSION CHECK, never an acceptance gate.
+
+⚠️ **Do not re-widen it**, and do not ship `ENGINE_GAPS.md` **P-06**'s narrowing without a fresh
+adversarial pass: it is measured only against the same 78 cases that failed the current guard, and
+it keeps just **13 of 32** gains. Solve **P-12** (node selection) first.
+
+## CC.3 Post-deploy verification — RUN IT
+
+`npx tsx experiments/v3-5/verify_prod.mjs` → **21/21 `VERIFIED_CLEAN`** on 2026-07-27.
+All four versions served, every route rendering with JavaScript off, **all four hashes agreeing
+four ways** (disk, served bytes, `X-Standard-Hash`, recomputed-from-served), `llms.txt` naming v1.3
+CURRENT and v1.0/v1.1/v1.2 SUPERSEDED, the landing page linking v1.3.
+
+## CC.4 Rollback
+
+```bash
+# Railway → Deployments → the af6d387 deploy → Redeploy. No migration; a code rollback is complete.
+```
 
 ---
 
