@@ -36,7 +36,11 @@ What's shipped end-to-end (verified in prod):
   was committed a release before anything served it). Stable citable URLs per entry, readable with
   JavaScript off, and a v1.0 id resolves four hops forward. `/demo` runs a real result on a real
   store, against the current version. Measured error is in
-  `standards/coffee/v1.3/fitness.json` — **10.97%** cluster-adjusted on the coffee sample.
+  `standards/coffee/v1.3/fitness.json` — **9.99%** cluster-adjusted on the coffee sample
+  (7 confirmed over 160 audited pass rows) and **7.53%** on the general DTC sample (18 over 488).
+  ⚠️ **Both samples now have every passing row adjudicated individually, and at equal depth they
+  are statistically indistinguishable** — Wilson 2.14–8.75% vs 2.35–5.75%. **No spread between
+  them is published, and the renderer refuses to state one** (v3.7).
 - **The product-test engine** (`src/server/productTest.ts`) — public-data assertion engine behind
   `/test`, and what a standard compiles down to.
 - **Measurement engine** → **detection** → **analysis** → **report** (CLI + server share it).
@@ -54,7 +58,8 @@ What's shipped end-to-end (verified in prod):
 - **Abuse/spend protection.** Kill switch: `DAILY_SPEND_CAP_USD=0`.
 - **Tests:** `npm test` runs **63 files** — `test/*.test.ts` (53) **and**
   `standards/__tests__/*.test.ts` (10), which is why an engine change cannot break a standard
-  with the gate green. **948 tests pass** with `RUN_DB_TESTS=1` + the local Supabase stack
+  with the gate green. **1,007 tests pass** with `RUN_DB_TESTS=1` + the local Supabase stack
+  (946 without it, the remainder DB-gated and skipped)
   (Docker + `npx supabase start`; without it the DB-gated suite **HANGS** rather than failing,
   which reads as a slow suite rather than a missing dependency). The detection
   suite alone is `test/detection.test.ts` — **26** cases, not 16.
@@ -740,6 +745,15 @@ break every standard with both gates green. Both now run the standards project; 
 was *proved* by renaming an engine export that root `tsc` accepts and the second half
 catches. **Do not un-wire it.**
 
+> ⛔ **RETIRED AT v3.7 — READ THE NOTICE BEFORE THE TABLE.** The claim below is that a
+> category sample and a general sample give different error rates. It does not survive the
+> general sample being audited to the same depth: at 488 rows each read individually the two
+> are **statistically indistinguishable** (coffee 4.38% [2.14, 8.75], general 3.69% [2.35,
+> 5.75]). Its own sentence — *"same audit discipline"* — was the false premise, and it was
+> false in the row below reading `0` under a 507-row audit that had checked one class. The
+> argument is kept because its *reasoning* is still the right reasoning; only its conclusion
+> is withdrawn. See "The spread was audit depth" below.
+>
 > ⚠️ **THE INSTRUMENT FINDING, and v3.1 turned it into two numbers that cannot both be
 > right about the same product.** Same engine, same day, same audit discipline:
 >
@@ -1407,6 +1421,95 @@ for `MODIFIED_SUBJECT`). Keep those anchors.
 > - The **Grep tool renders a leading `//` as `\`** in some context lines. It mimics the
 >   0x08 corruption exactly. Confirm at the byte level (`experiments/v2-4/ctlsweep.mjs`)
 >   before believing source is corrupt — it was not.
+
+## The spread was audit depth, and the biggest defect class is arithmetic (v3.7)
+
+**The general sample's published figure was `0` confirmed over 488 pass rows. Every row is now
+adjudicated individually and it is `18`.** The zero was honest about the one class anyone had ever
+mechanically re-checked (`identifiers`, still **0 of 29** — rule D really did close it); it was
+never an error rate. `experiments/v3-7/`, and the branch is `feat/v3-7-perkind`.
+
+| | published | v3.7 |
+|---|---|---|
+| audit | one class, mechanically | **every row, individually** |
+| confirmed | **0** (`is_floor`, `INCOMPLETE`) | **18** (13 borderline, counted as passes) |
+| cluster-adjusted 95% | **0.85%** | **7.53%** · Wilson **2.35–5.75%** · per-store **10.06%** |
+
+> ⚠️ **THE SPREAD BETWEEN A CATEGORY SAMPLE AND A GENERAL ONE DOES NOT SURVIVE EQUAL AUDIT DEPTH.**
+> Coffee is 4.38% [2.14, 8.75]; general is 3.69% [2.35, 5.75]. The general interval lies **inside**
+> the coffee one. v2.8 said the problem was sample SIZE. v3.0 said sample SHAPE. v3.2 said AUDIT
+> METHOD. **It was audit method all the way down**, and the published sequence 0.83% → 7.80% →
+> 8.81% → 0.85% was a sequence of audit depths wearing percent signs. `renderComparison` now
+> refuses a ratio on **interval overlap** rather than on an `is_floor` flag — necessary, not
+> decorative, because closing the audit gap removed the floor and put *"higher by about 1.3×"* and
+> *"the number that matters to a merchant is the one measured on their own category"* straight back
+> in reach. That sentence has now been retired three times and revived by a fix twice.
+
+⚠️ **14 of the 18 are `price_under`, a kind no audit here had ever examined, and NOT ONE of them is
+a language defect.** The cap is generated by rounding the product's own price up, so the comparison
+always passes and the row looked like a tautology. What there is to check is whether the **number
+and the sentence** are true, and four mechanisms say no (all in `ENGINE_GAPS` **P-17**):
+
+- **No code path reads a currency.** `minPriceUsd` is `Math.min(...variant prices)`, served in the
+  STORE's currency, and both the label and the evidence render a `$`. `missoma.com` publishes
+  `priceCurrency: GBP`, `Shopify.currency.active = GBP`, `Shopify.country = GB` and
+  `og:price:currency GBP`, and is told its £135 necklace is under $140. Also CAD, AUD, EUR, AUD.
+- **`priceToUsd`'s cents guard is `p > 1000 && Number.isInteger(p)`.** `levainbakery.com`'s `.js`
+  price is `1000` — a strict `>` on the exact boundary — so a **$10.00 mug publishes as $1000.00**.
+  `richer-poorer.com`'s `300` becomes `$300.00`. Every product at or under $10.00 whose variants
+  come from the `.js` tier is rendered at **100×**.
+- **`$0.00` is a price** on five stores that publish none, one titled `SYDNEY TEST PRODUCT`.
+- **"Lowest readable price" can be the page's MAXIMUM** when the JSON-LD offer is the only source.
+
+⚠️ **The adversarial corpus could only be extended by 3 of the 7 classes** (`EXPECTED_OPEN_GAPS`
+57 → **60**, arithmetic per step). The other four happen in `fetchPublicProduct` / `priceToUsd`,
+**upstream of `evaluate`**, where `PublicProduct` has no currency field and a missing `available`
+flag has already become a stated `true`. The real finding is that **the fetch and normalisation
+layer has never been attacked** by any of this project's five adversarial passes. Filed, not fixed.
+
+⚠️ **A PER-KIND TABLE DOES NOT SUPPORT A SPREAD, and that was measured rather than assumed.** Over
+every pair: coffee **1 of 10** separates (0.45pp, erased by its own cluster adjustment), general
+**1 of 21** (0.17pp). The decomposition is published as **counts with intervals** plus the pairwise
+test, never as six rates. Two further refusals are rendered rather than smoothed: a Poisson-upper/n
+figure **above 100%** is refused, not clamped (coffee `identifiers` at x=3/n=4 returns 193.85%), and
+a "cluster adjustment" where rows-per-store is exactly 1 is not an adjustment — which is **six of
+seven** general cells, because both samples take one product per store.
+
+⚠️ **THREE INSTRUMENTS FAILED IN THIS SESSION AND ALL THREE WERE CAUGHT BY A CANARY OR AN ANCHOR,
+NOT BY READING.**
+- The defect verifier's availability check read only the `/products/{handle}.json` tier and **fired
+  on four adjudicated TRUE passes** whose `available` flags live in the `.js` tier. Four extra
+  defects would have shipped, indistinguishable from the eighteen real ones. **The two-sided canary
+  is the only reason.**
+- The pairwise separation test read a field the table does not emit and reported **"0 pairs tested,
+  0 separated"** — indistinguishable from "nothing separates", which is the question it exists to
+  answer. It now throws on an empty set, and `pairs_tested` is published beside `pairs_separated`.
+- **The Poisson upper limit was a hand-typed table with a silent approximation past its end**
+  (`x + 1.96·√x + 2`). Every bound ever published used x ≤ 10, so the fallback had never fired; at
+  **x = 18 it returns 28.31 where the exact limit is 26.74**. Replaced with an exact CDF inversion
+  that reproduces the table where the table was used, so no existing bound moves.
+
+⚠️ **`www.stumptowncoffee.com` is re-scored as a TRUE pass and the coffee count is 8 → 7 (10.97% →
+9.99%).** The v1.3 sidecar counted it as a defect the engine deliberately does not catch; against
+v1.3's **actual text** it is not a defect, so there is nothing to catch. `IDENT-001`'s
+`residual_risk` (2): *"a stock code that is neither a placeholder nor the storefront's key is
+outside this clause."* Checked from the bytes — the storefront's product key is `9516469289128` and
+its variant key `55754751967400`; `100754` is the SKU. **A tension inside the entry is recorded
+rather than resolved silently**: its `why_not` reasons field-agnostically while its `form` and
+`residual_risk` do not, and `form` is the operative text.
+
+⚠️ **A test that reads its fixture off the LIVE artifact dies when the artifact moves — and one line
+looser it would have gone green while testing nothing.** The x=0-floor guard did
+`f.samples.find(x => x.is_floor)`; completing the general audit made that `undefined`. It is now
+exercised on **constructed** samples with an anti-vacuity anchor requiring a genuinely separated
+pair to still produce a ratio.
+
+**G-15 (referent) is filed as a numbered gap with no design** — 17 false passes in 71 live claim
+rows, REF hostile 17/17, sole hostile dimension 14/17, 9 of 17 unreachable by any subject frame.
+Its precondition is that the acceptance suite tests the wrong sentences: `competitor`'s cases are
+rivals and **0 of 25** real instances is one, while `site_wide`'s cases are all quantified and the
+two rows that actually cost something carry no quantifier and were classified `trade_form`. **Suite
+1.1 is its own attended session and must not be the session that writes the guard.**
 
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
