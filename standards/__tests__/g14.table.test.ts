@@ -186,7 +186,21 @@ const EXPECTED_CONTROL_TOTAL = 181;
  * domain-collision half was never executed, because `DEFAULT_CONTEXT.adjacentDomains` was
  * empty and the 36 authored collisions sat in a subagent return value no consumer read.
  * v3.9 CP-1B executed them: the raw column above is now 181/332, of which 178 are
- * collision passes awaiting adjudication. Do not quote the 0 as a clean cell.
+ * collision passes, and 116 of those are adjudicated false passes. Do not quote the 0.
+ *
+ * ⚠️ AND EVERY FIGURE IN THIS BLOCK IS A FLOOR, FOR A REASON MEASURED IN v3.9.
+ * These counts are `confirmed − refuted`, and the refutation step was instructed to
+ * "default to refuted when uncertain". v3.9 blinded-re-examined all 71 of its own kills and
+ * found that instruction wrong on **41 of 48 defect claims — 85.4%**. The error rate was
+ * uniform across refuters (control 90.9%, suspect 80.8%); only the VOLUME of killing
+ * varied. The same refuters were accurate on honest-carrier flags (13% overturned), which
+ * is what rules out "the re-examiner is simply more permissive".
+ *
+ * v3.9's own counts moved 15 → 18 and 78 → **116** on that correction. v3.8 recorded
+ * `refutedAway: 55` under the same pattern and has NOT been re-examined, so
+ * `ADJUDICATED_V38` below is very likely an undercount of unknown size. It is left exactly
+ * as v3.8 recorded it — a frozen record is not edited on an inference — and the exposure is
+ * filed as a numbered gap rather than applied here.
  */
 const ADJUDICATED_V38: Record<string, [number, number]> = {
   letter_not_spirit: [260, 280],
