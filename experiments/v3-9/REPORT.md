@@ -216,5 +216,121 @@ any fix existed.
 
 ---
 
-*Sections 6 (adjudicated consequence + honest-carrier), 7 (suite 2.0 or descope), 8 (the
-staged capability × frequency block), 9 (filings and arithmetic) follow as they land.*
+## 6. CP-1A — CONSEQUENCE, AND THE PIVOT VERDICTS
+
+27 agents, 0 errors, 0 empty returns. **71/71 and 178/178 adjudicated, exactly-once verified
+in both directions, 0 missing, 0 duplicates.**
+
+**All 15 confirmed defects were re-executed by me against the captured bytes** through the
+real `runProductTest` with a pinned contract (the G-09 seam, so FORCED claims are asked
+too). Two-sided canary live. **15/15 REPRODUCED** — every one still `pass_evidenced` with
+the adjudicated sentence as its quote. 0 do-not-reproduce, 0 incomplete.
+
+### ⚠️ OCCURRENCE UNDERCOUNTS CONSEQUENCE BY ALMOST 4×, and that overturns the easy reading
+
+**11 of the 15 confirmed defects fired NO v3.6 hostile detector at all.** Only 4 did.
+
+So the occurrence column is not just "a floor" in the abstract sense v3.6 warned about — it
+is a *low* floor, and **a descope argued from occurrence alone would be arguing from the
+smaller number.** This is why the verdicts below rest on adjudicated consequence, not on
+marker frequency. It also independently reproduces G-15's *"9 of 17 are unreachable by any
+subject frame."*
+
+### The decisive cut is SOLE attribution, not attribution
+
+A defect co-attributed to two axes would be closed by *either* axis's guard. Only a defect
+an axis owns **alone** is evidence that a guard for that axis buys anything. (G-15 makes the
+same cut with its *"REF the SOLE hostile dimension — 14/17"* row.)
+
+| axis | capability | occurrence | defects (any) | **defects SOLE** | honest carriers | verdict |
+|---|---|---|---|---|---|---|
+| `letter_not_spirit` | 92.9% | 3/71 | 9 | **0** | 7 | **DESCOPE** |
+| `tense_modality` | 70.7% | 0/71 | 1 | **0** | 11 | **DESCOPE** |
+| `wrong_subject` | 40.3% | 11/71 | 14 | **6** over 6 stores | 14 | **GUARD-WORTHY** |
+
+Defect attribution shape over the 15: `wrong_subject` alone **6** ·
+`letter_not_spirit + wrong_subject` **8** · `letter_not_spirit + tense_modality` **1** ·
+unattributed **0**.
+
+- **`letter_not_spirit` — DESCOPE WITH PRECEDENT.** It attacks best of the three (92.9%) and
+  owns **not one defect alone**: all 9 of its attributions are shared with `wrong_subject`
+  (8) or `tense_modality` (1). A guard for it closes nothing another axis does not already
+  close, and costs honest carriers. Its principal real-copy stratum `enquiry_evaluation` has
+  **0 instances in 3,349 sentences**. Precedent: the `origin` tombstone, and v3.6's declined
+  guards for `enquiry_evaluation` and `review_quote` on measured zero instances.
+- **`tense_modality` — DESCOPE WITH PRECEDENT.** Zero occurrence, zero sole defects, **11
+  honest carriers**. Its one attribution is a co-attribution on a `letter_not_spirit`
+  defect. This is the `origin` arithmetic exactly: true statements lost for zero gain. And
+  it is corroborated by a second instrument — G-15's own **TIME hostile 0/17**.
+- **`wrong_subject` — GUARD-WORTHY, and it is G-15.** 6 defects it alone closes, over 6
+  named stores: `littlewaves.coffee` (supplier attribute) · `trafficcoffee.com` (third-party
+  subject) · `equator.ca` (company-level generality) · `unionroasted.com` (regional
+  generality) · `necessaire.com` (bundled component) · `ozonecoffee.co.uk` (region/industry
+  generality).
+
+**The net: v4.0 is licensed to work on ONE axis, and it is the referent axis G-15 already
+scopes. Two of the three open axes are closed by measurement rather than by a guard.**
+
+### The calibration the brief demanded — it passes
+
+The known defects fall out of this read without being looked for:
+`blossomcoffeeroasters.com` *"our Cold Brew Blend features a washed single-origin from
+Guatemala"* — the exact sentence G-15 names. `equator.ca` *"Equator Coffee Roasters
+specializes in roasting and delivering fresh organic coffee"* — the exact company-level case
+G-15 names. `hydrangea.coffee` and `brashcoffee.com` — the soil-science sense of `organic`,
+v3.2's confirmed coffee defect. `thewestbean.com` *"Composed of three single-origin, estate
+grown beans"* — single-origin-in-a-blend.
+
+### ⚠️ THE COMPLETENESS CRITIC FOUND A REAL INSTRUMENT DEFECT, AND I TESTED IT RATHER THAN ACCEPTING IT
+
+Its headline ("no verdicts exist on disk") was **true when it ran and is now stale** — it
+executed concurrently with the merge. Three findings did not depend on that:
+
+1. **Quoteless units — warranted, and the instrument behaved.** `A029` (`glowrecipe.com`)
+   and `A036` (`kosas.com`) carry `sentence: null`; an adjudicator was asked whether a proof
+   sentence misleads and handed none. **Both returned `indeterminate`/`not_applicable` and
+   neither is counted in the 15.** Two independent passes have now found exactly 2 such
+   rows — G-15 records *"2 not adjudicable because the row renders no quote."*
+2. **Refuter scoping — refuted.** The critic read the varying coverage as "no recorded
+   rule". There is one and **it holds in all 13 batches**: refuter-seen (193) equals
+   adjudicator-flagged (193), exactly. The 56 unseen units are precisely those no
+   adjudicator flagged. The rule was implicit in the workflow script rather than documented,
+   which is why it was not visible to a reader.
+3. **Refutation-rate heterogeneity — CONFIRMED, and it is the real finding.** CP-1A
+   χ² = 23.55 on 4 df (p < 0.0001); CP-1B χ² = 23.07 on 7 df. Kill rates run **0.20 (A1, A4)
+   to 0.917 (A5)** on compositionally matched batches. **At the pooled rate, 30 rows would
+   survive where 15 did.** The confirmed count is sensitive to refuter assignment at roughly
+   2×, and that is a property of the instrument, not of the stores.
+
+   **So I recomputed every verdict under both bounds** — STRICT (refutation applied, 15
+   defects) and RAW (adjudicator verdicts only, 19 defects). **All three verdicts agree
+   under both.** `letter_not_spirit` 0 sole either way; `tense_modality` 0 sole either way;
+   `wrong_subject` 6 sole (strict) / 8 sole (raw). The heterogeneity moves the counts and
+   **not the conclusions**.
+
+   ⚠️ It does move the cost ratio, and this belongs in any v4.0 brief: `wrong_subject` costs
+   **2.33 true rows per sole defect closed under the strict reading and 5.13 under the raw
+   one.** The upper end is within reach of the arithmetic that removed `origin`.
+
+## 7. CP-1B — the collisions adjudicated
+
+**78 confirmed false passes** of 178 candidates (47 correct, 52 refuted away, 1
+indeterminate).
+
+| key | n | false pass | | key | n | false pass |
+|---|---|---|---|---|---|---|
+| `organic` | 27 | **18** | | `third_party_tested` | 22 | **11** |
+| `vegan` | 26 | **17** | | `fair_trade` | 14 | **10** |
+| `single_origin` | 22 | **12** | | `baking_soda_free` | 12 | **5** |
+| `cruelty_free` | 17 | 3 | | `fragrance_free` | 19 | 2 |
+| `aluminum_free` | 10 | **0** | | `bpa_free` | 6 | **0** |
+| `sulfate_free` | 3 | **0** | | | | |
+
+The three keys with zero false passes are the ones whose collisions are chemical/regulatory
+rather than semantic — the engine reads them correctly. The four worst (`organic`, `vegan`,
+`single_origin`, `fair_trade`) are the terms with genuine established senses in other
+domains, which is exactly what the class was authored to probe.
+
+---
+
+*Sections 8 (the staged block), 9 (filings and arithmetic) follow.*
