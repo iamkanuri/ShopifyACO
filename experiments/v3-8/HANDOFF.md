@@ -177,11 +177,64 @@ nothing about parsing may be reimplemented.
 
 ---
 
+## PAUSE 1 — HELD, AND ITS OUTCOMES ARE BINDING
+
+| call | outcome |
+|---|---|
+| ship list | **BOTH** — 3a cents/tier fix + 3b non-USD refusal |
+| sidecar | **re-measure tonight, but only AFTER the gates settle** |
+| stumptown | **re-score STANDS** |
+
+**Riders on the ship list, from the user, all binding:**
+1. **3a and 3b are SEPARATE COMMITS with SEPARATE A/B attribution** — the v3.5 2a/2b precedent.
+2. **`firelightcoffee.com` and `tinker.coffee` are the cents fix's CALIBRATION CASES.** The pass
+   must flip *exactly* those. `ab_diff.mjs --expect-hosts=` enforces it and exits INCOMPLETE if a
+   named host did not move.
+3. **The cents fix FAILS CLOSED**: a `.js` value that does not parse as an integer → refuse to
+   state a price. **Never divide.**
+
+**Riders on the sidecar:**
+- The re-measurement is a **NEW measurement block pinned to the fixed SHA**. v3.7's 7.53% stays
+  **frozen beside it, never edited** — the same rule as v1.0's fitness.
+- **Standing invariant going forward: a matcher fix and the re-measurement of every published
+  figure it moves ship in the SAME push**, so Pause 2 presents one self-consistent unit. If both
+  fixes revert, nothing moves and nothing goes stale.
+- ✅ **VERIFIED, and it is general-only.** Coffee's `PRICE-001` is `unbound` at v1.2 and v1.3, and
+  **no v1.3 entry binds `req_kind: price_under`** (the ten bindings are claim ×3, variant_option
+  ×4, delivery, identifiers, attribute). The coffee sample contains **zero price rows**, so neither
+  fix can move a coffee figure.
+
+**Rider on stumptown:** record in the sidecar that reversing would score coffee under a rule
+(`mpn === sku`) the general sample was explicitly scored *without* — cross-sample consistency is
+the point, per v3.7's audit-depth finding. The reseller residual is covered by v1.3's honesty
+clause; nothing further to file.
+
+---
+
+## CP-3 INFRASTRUCTURE — BUILT AND VALIDATED, BEFORE ANY FIX EXISTS
+
+| file | what |
+|---|---|
+| `experiments/v3-8/ab_probe_tpl.ts` | copied INTO a worktree and run there, so imports resolve to *that* tree's `src/`. Two-sided liveness canary; records status **and detail and quote**. |
+| `experiments/v3-8/ab_diff.mjs` | mechanical A/B. Fails if the row sets differ, and fails if a named calibration host did NOT move. |
+| `experiments/v3-8/fetch_harness.ts` | CP-1B's synthesizer + executor. Semantic case spec → real HTTP bodies → the REAL fetch path. |
+| `.v38-pre/` | git **worktree** at `9535587` (never a file swap — v3.1 measured a swap that silently failed to apply as "0 regressions"). |
+| `experiments/v3-8/out/ab_before.jsonl` | the baseline: **349 snapshots, 2,928 rows**, canary live. |
+
+The fetch harness is validated by reproducing two REAL defects from chosen input: a `.js` price of
+exactly `1000` renders `$1000.00` (levainbakery), and a GBP store renders `$135.00` (missoma).
+
+---
+
 ## EXACT NEXT STEP
 
-1. Launch CP-1A adjudication over `experiments/v3-8/batches/g14_b{1..10}.json`
-   (parallel adjudicators → independent refuter → I re-execute every confirmed defect myself).
-2. Author `adjacent_vocabulary` domain collisions for the 13 keys (the non-mechanisable half).
-3. Write `experiments/v3-8/verify_sections.mjs` and close CP-0's remaining obligation.
-4. CP-2 census — **and the kill condition is the gate on the whole cents fix**: if ANY captured
-   `.json` tier serves a NUMERIC price, the tier-aware fix divides correct stores by 100.
+1. Freeze the CP-1B corpus in a commit — **before any fix code is written** (brief's structural
+   rule; its authors author no fix).
+2. Write 3a (cents/tier) and 3b (non-USD) as **separate commits**, each with its own gate:
+   independent attackers vs a frozen worktree + the frozen CP-1B corpus as a regression floor →
+   independent refuter → I re-execute every claim at both commits → mechanical A/B with the
+   calibration hosts named → natural-frequency read → contractVersion consequence stated.
+3. Merge + refute CP-1A's adjudications; re-execute every confirmed defect myself.
+4. Re-measure the general sidecar at the fixed SHA as a NEW block (only for fixes that survived).
+5. CP-4 filings + `EXPECTED_OPEN_GAPS` arithmetic per step (base **60**).
+6. **Pause 2** before pushing anything beyond CP-0's `6a3e5d7`.
