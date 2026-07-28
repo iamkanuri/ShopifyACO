@@ -384,7 +384,7 @@ const mk = (surface: QuotableSurface, text: string, productType = "Thing"): Publ
   origin: "https://store.example", handle: "p", title: "Thing", vendor: "Acme", productType,
   tags: [], descriptionText: "", variants: [{ title: "Default", priceUsd: 12, available: true, options: ["Default"] }],
   minPriceUsd: 12, optionNames: [], optionValues: [], extracted: null,
-  evidence: buildEvidence([{ surface, text }]), ldAvailability: null, policyStatus: "not_fetched",
+  evidence: buildEvidence([{ surface, text }]), ldAvailability: null, storefrontObjectId: null, policyStatus: "not_fetched",
   fetched: { json: true, page: false, js: false, policy: false },
   diagnostics: { attempted: [], answeredBy: "json", throttled: [], degraded: false, robots: "ok", throttleSource: null },
 } as PublicProduct);

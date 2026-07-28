@@ -222,6 +222,11 @@ export function snapshotFromCatalog(p: NormalizedProduct, ctx: AuthenticatedCont
     // The catalog carries no JSON-LD; availability comes from the (complete,
     // authenticated) variant list instead, which is strictly better.
     ldAvailability: null,
+    // v3.5 CP2b rule D — null, i.e. UNDECIDABLE, because this path never fetched page
+    // HTML and so never saw the analytics bootstrap. Null disqualifies nothing, which
+    // is the fail-open direction; and this path maps `barcode`->gtin and never
+    // populates `mpn` at all, so rule D has nothing to judge here in the first place.
+    storefrontObjectId: null,
     policyStatus: ctx.policyText ? "readable" : "not_fetched",
     fetched: { json: true, page: false, js: false, policy: Boolean(ctx.policyText) },
     // The authenticated run reads the synced catalog over the Admin API — it makes no

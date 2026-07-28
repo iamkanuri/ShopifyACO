@@ -20,7 +20,7 @@
 // ===========================================================================
 
 import {
-  evaluate, buildBuyerTask,
+  evaluate, buildBuyerTask, shopifyStorefrontObjectId,
   type PublicProduct, type Requirement, type AssertionStatus, type Assertion,
 } from "../../src/server/productTest.js";
 import { buildEvidence, type QuotableSurface } from "../../src/server/testEvidence.js";
@@ -41,6 +41,8 @@ export interface MkOptions {
   minPriceUsd?: number | null;
   variants?: PublicProduct["variants"];
   ldAvailability?: string | null;
+  /** v3.5 CP2b — the storefront's own record key. `null` = undecidable (fail open). */
+  storefrontObjectId?: string | null;
   policyStatus?: PublicProduct["policyStatus"];
   degraded?: boolean;
   extracted?: PublicProduct["extracted"];
@@ -72,6 +74,7 @@ export function mkProduct(o: MkOptions = {}): PublicProduct {
     extracted: o.extracted ?? null,
     evidence,
     ldAvailability: o.ldAvailability ?? null,
+    storefrontObjectId: o.storefrontObjectId ?? null,
     policyStatus: o.policyStatus ?? "not_fetched",
     fetched: { json: true, page: false, js: false, policy: false },
     diagnostics: {
@@ -176,6 +179,24 @@ export function verdictOfLd(node: Record<string, unknown>): {
     gtinSource: extracted.product?.gtinSource ?? null,
     signalGtin: extracted.signals.gtin,
   };
+}
+
+/**
+ * The identifiers row driven by a WHOLE PAGE (v3.5 CP2b).
+ *
+ * Assembles exactly what `fetchPublicProduct` assembles from page bytes — the JSON-LD
+ * extraction AND the analytics-bootstrap read — so this is the only judge that can see
+ * a rule-D parser bug. Handing the storefront id in directly would test the comparison
+ * and skip the part that is actually hard: `"id"` occurs inside `variants[]` on every
+ * real page, so a regex returns a variant's key and nothing downstream could tell.
+ */
+export function verdictOfPage(html: string): {
+  status: AssertionStatus; detail: string; storefrontObjectId: string | null; gtin: string | null;
+} {
+  const extracted = extractPage(html);
+  const storefrontObjectId = shopifyStorefrontObjectId(html);
+  const a = evaluate(mkProduct({ description: "A thing.", extracted, storefrontObjectId }), idsReq());
+  return { status: a.status, detail: a.detail, storefrontObjectId, gtin: extracted.product?.gtin ?? null };
 }
 
 /** The requirement ids a product would actually be asked — for gating probes

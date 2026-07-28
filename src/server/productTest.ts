@@ -735,6 +735,11 @@ export interface PublicProduct {
   origin: string; handle: string; title: string | null; vendor: string | null; productType: string | null;
   tags: string[]; descriptionText: string; variants: PublicVariant[]; minPriceUsd: number | null;
   optionNames: string[]; optionValues: string[]; extracted: ExtractedPage | null;
+  /** v3.5 CP2b — the storefront's OWN record key for this product, read from the
+   *  page's Shopify analytics bootstrap (`shopifyStorefrontObjectId`). `null` means
+   *  UNDECIDABLE (bootstrap absent/unparseable, or this path never had page HTML),
+   *  and every reader must treat null as "nothing is disqualified". */
+  storefrontObjectId: string | null;
   /** Sentence-level, chrome-free product evidence — the ONLY text we may match or
    *  quote. Raw page text is deliberately excluded (see testEvidence.ts). */
   evidence: EvidenceSentence[];
@@ -912,7 +917,17 @@ export function jsonLdProductCategory(html: string): string | null {
 // cannot end it early) and `JSON.parse`d, which also handles the `\/` and `&`
 // escapes Shopify emits. Bounded so a pathological page cannot make this expensive.
 const META_SCAN_LIMIT = 400_000;
-export function shopifyMetaProductType(html: string): string | null {
+
+/**
+ * The bootstrap object itself. ONE walk, and every reader goes through it.
+ *
+ * v3.5 CP2b needed a second field out of this payload (`product.id`, for rule D).
+ * Writing a second walk is how the two drift — the identical mistake this repo
+ * documents for the CLI/dashboard score and for `isPublishableGtin`. `shopifyMetaProductType`
+ * is now a thin reader over this and its behaviour is unchanged, which its existing
+ * tests assert.
+ */
+export function shopifyMetaObject(html: string): Record<string, unknown> | null {
   const at = html.search(/\bvar\s+meta\s*=\s*\{/);
   if (at === -1) return null;
   const open = html.indexOf("{", at);
@@ -928,10 +943,47 @@ export function shopifyMetaProductType(html: string): string | null {
   }
   if (end === -1) return null;                    // truncated or unbalanced: no guess
   try {
-    const meta = JSON.parse(html.slice(open, end)) as { product?: { type?: unknown } };
-    const t = meta?.product?.type;
-    return typeof t === "string" && t.trim() ? t.trim() : null;
+    const parsed = JSON.parse(html.slice(open, end)) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
   } catch { return null; }
+}
+
+const metaProduct = (html: string): Record<string, unknown> | null => {
+  const p = shopifyMetaObject(html)?.product;
+  return p && typeof p === "object" && !Array.isArray(p) ? (p as Record<string, unknown>) : null;
+};
+
+export function shopifyMetaProductType(html: string): string | null {
+  const t = metaProduct(html)?.type;
+  return typeof t === "string" && t.trim() ? t.trim() : null;
+}
+
+/**
+ * v3.5 CP2b — THE STOREFRONT'S OWN KEY FOR THIS PRODUCT, from the same bootstrap.
+ *
+ * Shopify emits `var meta = {"product":{"id":8079462006899,…}}`, and that integer is
+ * the record id the storefront uses internally — the same value the page also emits as
+ * `product.id`, `source_product_id`, `rid` and `data-product-id`. Themes republish it
+ * in the JSON-LD `mpn` field. Measured across 338 captured real stores, 23 products
+ * publish exactly that: an identifier that resolves to nothing outside the one store
+ * that minted it, in the field whose row promises an external catalogue match.
+ *
+ * ⚠️ PARSED, NOT REGEXED. `"id"` occurs inside `variants[]` on every one of these
+ * pages, so a bare regex returns a variant's key on any theme that orders keys
+ * differently — and nothing downstream could tell.
+ *
+ * ⚠️ RETURNS null LIBERALLY, AND THAT IS THE POINT. Bootstrap absent, truncated,
+ * unparseable, `product` missing, `id` of the wrong type — every one of those is
+ * "we could not decide", and the caller must treat it as NOT DISQUALIFIED. A guard
+ * that fires on unknown suppresses real merchants, which is the direction this
+ * project treats as unrecoverable. Measured: the bootstrap parsed on 327 of 338
+ * captured pages, so 11 pages are undecidable and stay undisqualified.
+ */
+export function shopifyStorefrontObjectId(html: string): string | null {
+  const id = metaProduct(html)?.id;
+  if (typeof id === "number" && Number.isFinite(id)) return String(id);
+  if (typeof id === "string" && id.trim()) return id.trim();
+  return null;
 }
 
 export interface FetchDeps {
@@ -1061,6 +1113,7 @@ export async function fetchPublicProduct(
   let ldDescription: string | null = null;
   let ldCategory: string | null = null;
   let pageProductType: string | null = null;
+  let pageStorefrontObjectId: string | null = null;
   let saw404 = false;
   let sawNonJson = false;
 
@@ -1083,6 +1136,9 @@ export async function fetchPublicProduct(
         // v3.2 CP2 — the merchant's own `product_type`, which otherwise dies here:
         // when the page answers, the `.json` tier never runs and this value is lost.
         pageProductType = shopifyMetaProductType(r.body);
+        // v3.5 CP2b — same bytes, same walk: the storefront's own key for this
+        // product, which rule D compares the published `mpn` against.
+        pageStorefrontObjectId = shopifyStorefrontObjectId(r.body);
         if (extracted.product?.name || extracted.product?.offer) diagnostics.answeredBy = "page";
       }
     } catch { /* the JSON tier is the fallback */ }
@@ -1192,6 +1248,7 @@ export async function fetchPublicProduct(
       vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? pageProductType ?? ldCategory, tags,
       descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,
+      storefrontObjectId: pageStorefrontObjectId,
       policyStatus: "not_fetched",
       fetched: { json: Boolean(js), page: Boolean(extracted), js: usedJsEndpoint, policy: false },
       diagnostics,
@@ -1881,7 +1938,31 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       const info = p.extracted.product;
       const gtinRaw = (info?.gtin ?? "").trim();
       const mpnRaw = (info?.mpn ?? "").trim();
-      const realMpn = !isPlaceholderIdentifier(mpnRaw);
+      // v3.5 CP2b — RULE D. An `mpn` that is byte-identical to the storefront's own
+      // record key for this product is disqualified. Licensed by Coffee Standard v1.3,
+      // which added the clause; the standard defines the requirement, the engine
+      // implements it, in that order.
+      //
+      // Why THIS rule and not the obvious one: four candidate discriminators were
+      // scored over the 36 mpn-publishing products in the captured corpus.
+      //   A  mpn === sku                         0% precision, 0 TP, 7 compliant merchants FAILED
+      //   B  same value in ANY id-shaped field   88.5%, 3 FP
+      //   B′ same value in a STRONG id field     95.8%, 1 FP
+      //   C  all-digits 10-14, fails check digit 100% / 95.7% — but its clean sheet is
+      //                                          luck: it misses necessaire.com, whose
+      //                                          key satisfies GS1 by coincidence, and
+      //                                          MPN is not GTIN
+      //   D  mpn === bootstrap product id        100% / 100%, 0 compliant merchants failed
+      // Rule A is the one an earlier writeup pointed at ("sku":"100754","mpn":"100754"
+      // adjacent). It convicts exactly the COMPLIANT case: a brand that manufactures
+      // what it sells legitimately uses one string for both, and one of the seven is a
+      // real published part number while another is a VALID GTIN.
+      //
+      // ⚠️ FAILS OPEN. `storefrontObjectId` is null whenever we could not decide, and
+      // null disqualifies nothing.
+      const storefrontId = p.storefrontObjectId;
+      const mpnIsStorefrontKey = mpnRaw.length > 0 && storefrontId != null && mpnRaw === storefrontId;
+      const realMpn = !isPlaceholderIdentifier(mpnRaw) && !mpnIsStorefrontKey;
       // Separator normalisation, check digit and the all-zeros rejection all live in
       // `isPublishableGtin` so the authenticated path can select a variant barcode by
       // the SAME rule this row judges it by (v3.0 CP3 / G-07).
@@ -1901,6 +1982,21 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
             `Your structured data publishes ${listPhrase(bare)}, but we can't reproduce the value here — it contains wording our reporting standard doesn't allow us to repeat.${caveat}`,
           ),
           evidenceSurface: "structured data",
+        };
+      }
+      // ⚠️ THE DISQUALIFICATION HAS TO BE VISIBLE. Falling through to the generic
+      // "publishes no GTIN or MPN" would be FALSE about a store that publishes an MPN,
+      // and it would hide the decision from exactly the audit that has to catch it: a
+      // row whose rendered evidence names nothing is a row nobody can check. This
+      // branch names the value AND the reason, under the same per-ROW lint gate as the
+      // pass copy — a merchant's own string must never fail their whole report.
+      if (mpnIsStorefrontKey && !realGtin) {
+        return {
+          label: req.label, status: "not_proven", surfacesChecked: checked,
+          detail: renderIdentifierDetail(
+            `The only identifier in your product structured data is an MPN (${mpnRaw}), and that is the id your own storefront uses for this product — it resolves to nothing outside your store, so a machine buyer can't match this product to a catalogue entry.`,
+            `The only identifier in your product structured data is an MPN that is the id your own storefront uses for this product — it resolves to nothing outside your store, so a machine buyer can't match this product to a catalogue entry.`,
+          ),
         };
       }
       return {

@@ -71,6 +71,10 @@ export function mkProduct(o: MkOptions = {}): PublicProduct {
     extracted: o.extracted ?? null,
     evidence: o.evidence ?? buildEvidence([{ surface: "product_description", text: description }]),
     ldAvailability: o.ldAvailability ?? null,
+    // v3.5 CP2b rule D: null is UNDECIDABLE, and undecidable disqualifies nothing.
+    // A conformance fixture that set this would be asserting a storefront key it
+    // never read.
+    storefrontObjectId: null,
     policyStatus: o.policyStatus ?? "not_fetched",
     fetched: { json: true, page: false, js: false, policy: false },
     diagnostics: {

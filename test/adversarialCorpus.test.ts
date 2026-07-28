@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AssertionStatus, Requirement } from "../src/server/productTest.js";
 import {
-  statusOf, verdictOf, requirementsFor, mkExtracted, verdictOfIds, verdictOfLd,
+  statusOf, verdictOf, requirementsFor, mkExtracted, verdictOfIds, verdictOfLd, verdictOfPage,
   attr, claimReq, deliveryReq, idsReq, type HostileClass, type MkOptions,
 } from "./support/adversarial.js";
 
@@ -1189,6 +1189,101 @@ const LD_SELECTION: LdCase[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// v3.5 CP2b — RULE D: an `mpn` that is the STOREFRONT'S OWN RECORD KEY.
+//
+// Licensed by Coffee Standard v1.3, which added the disqualification; the standard
+// defines the requirement, the engine implements it, in that order. Measured over 338
+// captured real stores: 23 products publish the integer their own storefront uses to
+// key this product record in the MPN field — a value that resolves to nothing outside
+// the store that minted it, in the field whose row promises an external catalogue match.
+//
+// These run WHOLE PAGES through `extractPage` + `shopifyStorefrontObjectId`, because
+// the hard part is not the comparison, it is the READ: `"id"` occurs inside
+// `variants[]` on every real page, so a regex returns a variant's key.
+// ---------------------------------------------------------------------------
+const PAGE = (ld: Record<string, unknown> | null, meta: string | null): string =>
+  "<html><head>" +
+  (ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : "") +
+  (meta == null ? "" : `<script>var meta = ${meta};\nfor (var attr in meta) { window.ShopifyAnalytics.meta[attr] = meta[attr]; }</script>`) +
+  "</head><body><p>A thing.</p></body></html>";
+
+interface PageCase {
+  label: string; html: string; correct: AssertionStatus; why: string;
+  actual?: AssertionStatus;
+  /** Substring the rendered detail must contain. */
+  detail?: string;
+  /** What `shopifyStorefrontObjectId` must have read — a guard that fires for the
+   *  wrong reason is not a guard, and status alone cannot see which id it compared. */
+  storefrontId: string | null;
+}
+
+const RULE_D: PageCase[] = [
+  // --- the class it exists to close -------------------------------------------
+  { label: "mpn IS the storefront's product key", storefrontId: "8079462006899",
+    html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"id":8079462006899,"vendor":"Acme","type":"Skincare","variants":[{"id":44139877171393,"public_title":"30ml"}]},"page":{"pageType":"product"}}'),
+    correct: "not_proven", detail: "8079462006899",
+    why: "glowrecipe.com, verbatim: the same value the page also emits as `rid`, `source_product_id`, `product.id` and `data-product-id`. It is not a placeholder, so the row passed and reported a published product identifier, while the value identifies nothing to anyone outside that one store." },
+  { label: "the disqualification NAMES the reason, not just the value", storefrontId: "7649496858737",
+    html: PAGE(P({ mpn: "7649496858737" }), '{"product":{"id":7649496858737,"type":"Coffee","variants":[{"id":42,"public_title":"12oz"}]}}'),
+    correct: "not_proven", detail: "id your own storefront uses for this product",
+    why: "Falling through to the generic \"publishes no GTIN or MPN\" would be FALSE about a store that publishes an MPN, and it would hide the decision from the only audit that can catch it. This class hid for two versions precisely because the row rendered nothing to be suspicious of." },
+
+  // --- PARSED, NOT REGEXED — both directions ----------------------------------
+  { label: "the product key is read past variants[] that come FIRST", storefrontId: "123456789",
+    html: PAGE(P({ mpn: "123456789" }), '{"product":{"variants":[{"id":8079462006899,"public_title":"12oz"},{"id":8079462006900}],"id":123456789,"type":"Coffee"}}'),
+    correct: "not_proven", detail: "123456789",
+    why: "THE POSITIVE CONTROL for the parser. Shopify emits `product.id` before `variants` today; a theme that reorders keys makes a bare /\"id\"\\s*:\\s*(\\d+)/ return a VARIANT's key. This page puts variants first, so a regex reads 8079462006899, fails to match the mpn, and this case fails." },
+  { label: "a VARIANT key in mpn is NOT disqualified (measured limit)", storefrontId: "123456789",
+    html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"variants":[{"id":8079462006899,"public_title":"12oz"}],"id":123456789,"type":"Coffee"}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, deliberate. v1.3's clause says \"the value the storefront also uses as its own product OR VARIANT key\"; rule D was scored on the PRODUCT key alone (23 TP / 0 FP / 0 FN over 36 mpn-publishing products) and variant-key matching occurs 0 times in 338 captured stores — so widening it would ship an unmeasured rule to close a class nothing in the corpus exhibits. It doubles as the NEGATIVE control for the parser: a regex taking the first \"id\" would disqualify here and this case would fail." },
+
+  // --- FAILS OPEN, which is the direction that matters ------------------------
+  { label: "no analytics bootstrap: nothing is disqualified", storefrontId: null,
+    html: PAGE(P({ mpn: "8079462006899" }), null),
+    correct: "pass_evidenced", detail: "8079462006899",
+    why: "A guard that fires on \"unknown\" suppresses real merchants, which this project treats as unrecoverable. 11 of 338 captured pages have no parseable bootstrap. v1.3 states this outcome in the document itself: a pass is the absence of a disqualification we could DECIDE, never evidence of one we could not." },
+  { label: "truncated bootstrap: nothing is disqualified", storefrontId: null,
+    html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"id":8079462006899,"type":"Coffee"'),
+    correct: "pass_evidenced",
+    why: "An unbalanced object must not be guessed at. Same fail-open rule as the absent case — this is the shape a byte-capped fetch produces on a large page." },
+  { label: "non-JSON bootstrap: nothing is disqualified", storefrontId: null,
+    html: PAGE(P({ mpn: "8079462006899" }), "{not json at all}"),
+    correct: "pass_evidenced",
+    why: "Third failure mode of the read. All three must land on the same side." },
+  { label: "bootstrap present but no product.id", storefrontId: null,
+    html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"type":"Coffee","variants":[]},"page":{"pageType":"product"}}'),
+    correct: "pass_evidenced",
+    why: "A bootstrap that parses is not a bootstrap that answered. Missing `id` is undecidable, not licence to compare against something else." },
+
+  // --- the two-sided canary: it must NOT fire on a real MPN -------------------
+  { label: "a real MPN on a store WITH a bootstrap still passes", storefrontId: "8079462006899",
+    html: PAGE(P({ mpn: "PW-CP-09" }), '{"product":{"id":8079462006899,"type":"Instruments","variants":[{"id":42}]}}'),
+    correct: "pass_evidenced", detail: "PW-CP-09",
+    why: "daddario.com's real published part number. A guard that disqualified every mpn on every page with a bootstrap would satisfy the cases above and destroy the row; a one-sided corpus cannot tell the difference." },
+  { label: "a valid GTIN still passes even when the mpn is the storefront key", storefrontId: "8079462006899",
+    html: PAGE(P({ mpn: "8079462006899", offers: [{ "@type": "Offer", gtin13: "4006381333931" }] }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":42}]}}'),
+    correct: "pass_evidenced", detail: "4006381333931",
+    why: "Rule D disqualifies one FIELD, not the row. Measured: 0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD, so this interaction was never exercised by the real-store replay and only a constructed case can hold it." },
+
+  // --- the class rule D deliberately does NOT close ---------------------------
+  { label: "mpn === sku, and NOT the storefront key", storefrontId: "8631346921664",
+    html: PAGE(P({ mpn: "100754", sku: "100754" }), '{"product":{"id":8631346921664,"type":"Coffee","variants":[{"id":42,"sku":"100754"}]}}'),
+    correct: "not_proven", actual: "pass_evidenced",
+    why: "KNOWN GAP, and the cost of closing it was measured rather than guessed. This is www.stumptowncoffee.com's `\"sku\":\"100754\",\"mpn\":\"100754\"` — a store-local stock code, which cannot match a product to an external catalogue. But the rule that catches it (mpn === sku) scores 0% precision on the captured corpus: 0 true positives, 7 false, and the seven are exactly the COMPLIANT case — a brand that manufactures what it sells uses one string for both. One of the seven is a real published part number and another is a VALID GTIN. v1.3 deliberately does not disqualify a SKU echo per se." },
+
+  // --- shape robustness --------------------------------------------------------
+  { label: "a STRING product id still matches", storefrontId: "8079462006899",
+    html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"id":"8079462006899","type":"Coffee","variants":[]}}'),
+    correct: "not_proven", detail: "8079462006899",
+    why: "Shopify emits a number; a theme can emit the same value quoted. The comparison is on the string form, so both shapes reach the same answer — a JSON type must not decide whether a merchant is told the truth." },
+  { label: "a near-miss id does NOT match", storefrontId: "8079462006899",
+    html: PAGE(P({ mpn: "8079462006898" }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[]}}'),
+    correct: "pass_evidenced", detail: "8079462006898",
+    why: "Byte-identical, not \"looks like\". One digit apart is a different value, and a fuzzy comparison here would fail merchants for resembling a number on their own page." },
+];
+
+// ---------------------------------------------------------------------------
 // RUN
 // ---------------------------------------------------------------------------
 const ALL: Array<[string, Case[]]> = [
@@ -1246,6 +1341,29 @@ for (const c of LD_SELECTION) {
     // be true for a value the row would refuse: two parts of the engine answering
     // differently about the same page is the defect this project names one level up.
     assert.equal(v.signalGtin, c.gtin != null, `signals.gtin must track the selected value — ${c.why}`);
+  });
+}
+
+for (const c of RULE_D) {
+  const gap = c.actual !== undefined;
+  test(`[rule-d]${gap ? " KNOWN GAP —" : ""} ${c.label}`, () => {
+    const v = verdictOfPage(c.html);
+    // WHICH id was read, asserted before the verdict: a guard that reaches the right
+    // answer from the wrong value is not the guard the corpus thinks it is pinning.
+    assert.equal(v.storefrontObjectId, c.storefrontId, `storefront id read — ${c.why}`);
+    assert.equal(
+      v.status, c.actual ?? c.correct,
+      gap
+        ? `KNOWN GAP CHANGED. Corpus records actual=${c.actual} (honest answer: ${c.correct}). Got ${v.status}. ` +
+          `If this gap is now FIXED, delete its \`actual\` and decrement openGaps. Why: ${c.why}`
+        : `REGRESSION. Expected ${c.correct}, got ${v.status}. Why: ${c.why}`,
+    );
+    if (c.detail !== undefined) {
+      assert.ok(
+        v.detail.includes(c.detail),
+        `the rendered detail must contain ${JSON.stringify(c.detail)} but was ${JSON.stringify(v.detail)}. Why: ${c.why}`,
+      );
+    }
   });
 }
 
@@ -1308,6 +1426,7 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
     // exactly the debts recorded deliberately.
     ...IDENTIFIERS.filter((i) => i.actual !== undefined).map((i) => `identifiers: ${i.label}`),
     ...LD_SELECTION.filter((c) => c.actual !== undefined).map((c) => `ld-selection: ${c.label}`),
+    ...RULE_D.filter((c) => c.actual !== undefined).map((c) => `rule-d: ${c.label}`),
   ];
   // Measured 2026-07-25 by executing every case. Each is a confirmed defect that
   // was independently re-executed by an adversarial verifier. Lowering this number
@@ -1375,7 +1494,25 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // clean win. Both new gaps are FALSE FAILS accepted to close FALSE PASSES, and both
   // are named at their case: a care instruction in the sentence AFTER its pointer, and
   // a delivery window whose only match in production was a substring accident.
-  const EXPECTED_OPEN_GAPS = 36;
+  //
+  // 36 -> 38: v3.5 CP2b RECORDS TWO IDENTIFIER GAPS THAT WERE ALWAYS THERE AND COULD
+  // NOT BE COUNTED. Read the direction correctly — this is not two new defects, and it
+  // is not two repairs either:
+  //   • CP2a gave the identifier arrays an `actual` field. Before it, an identifier
+  //     defect was structurally invisible to this assertion, which is how a whole class
+  //     (v3.2 CP3's 18 false passes) could sit inside a corpus that reported 36 gaps.
+  //     Adding the mechanism surfaced NO pre-existing gap: every case already written
+  //     still agrees with `correct`.
+  //   • CP2b closed the measured class (`mpn` === the storefront's product key, 23 of
+  //     338 captured stores, 100% precision and recall on the 36 mpn-publishing
+  //     products) and pinned the two neighbouring classes it deliberately did NOT
+  //     close, each with the measurement that decided it: a VARIANT key (v1.3's wording
+  //     covers it; 0 occurrences in 338, so widening would be unmeasured) and an `mpn`
+  //     that echoes the `sku` (the rule that catches it scores 0% precision and fails
+  //     seven compliant merchants).
+  // A class that is closed in the engine and a class that is pinned in the corpus are
+  // both progress; a class nobody can count is not.
+  const EXPECTED_OPEN_GAPS = 38;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
