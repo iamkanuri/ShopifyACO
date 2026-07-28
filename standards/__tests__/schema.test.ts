@@ -112,6 +112,14 @@ const STANDARD_FILES = [
   // `category_fitness`, the rich measurement shape and an `unbound` tier, every one of
   // which the same schema FORBIDS at 1.0/1.1, while v1.0 and v1.1 above still pass.
   "coffee/v1.2/standard.json",
+  // v1.3 is a STANDARD version bump at the SAME grammar (1.2), which is the case this
+  // list had not yet seen and the one most likely to slip past it. Every version-specific
+  // rule in schema.json is gated on `grammar_version` being exactly "1.2" — the forbidden
+  // `predicted_discrimination`, the rich measurement shape, `not_discriminating` requiring
+  // a measurement, the publication gate. A document that renamed its grammar for a content
+  // change would satisfy none of those `if`s and would validate against a schema that had
+  // silently stopped asking it anything. v1.3 keeps 1.2 and therefore keeps every gate.
+  "coffee/v1.3/standard.json",
   "accessory/v0.1-draft/standard.json",
 ];
 
