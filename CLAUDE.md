@@ -4,33 +4,59 @@ Guidance for future sessions working in this repo.
 
 ## Product vision
 
-ShopifyACO tells e-commerce merchants whether AI assistants (ChatGPT, Gemini,
-Perplexity, later Claude/Copilot) **recommend their products to shoppers**, measures
-their **share of voice vs competitors**, and will eventually **help them fix it**. As
-shoppers increasingly ask AI assistants "what should I buy", being invisible to those
-assistants is the new being-on-page-2-of-Google. We measure that visibility, then
-close the gap.
+> ⚠️ **THIS BLOCK WENT FOUR SESSIONS WITHOUT AN UPDATE AND IT IS THE PART EVERY SESSION READS
+> FIRST.** Corrected 2026-07-27 (v3.5 CP-4), every figure re-measured rather than re-typed. The
+> file was bifurcated — a current tail and a stale head — which is the worst possible arrangement,
+> because the head is read first and the tail is what is true.
+
+**What this product now is:** it publishes **buying standards** — the questions a competent buyer
+asks in a category, written down, versioned, content-hashed, and **executable against a real
+product page**. The live site's own title is *"Published buying standards, run as executable
+tests"*. A merchant gets a per-requirement verdict with the evidence sentence and the surface it
+was read from; a shopper or agent gets a citable contract that still resolves a year later.
+
+**What it grew out of, and what is still live:** the original product measured whether AI
+assistants (ChatGPT, Gemini, Perplexity) **recommend a merchant's products** and their **share of
+voice vs competitors**. That funnel is still running — `/scan`, `/report/:id` and the public
+**AI Visibility Index** — and it is the acquisition path. The centre of gravity moved from
+*measuring what assistants say about you* to *testing what your page actually proves*, because the
+second is checkable from public data and the first is not.
 
 ## Current production state (live)
 
 **Live:** https://lens.thirdocular.com · public brand **AisleLens** (`PUBLIC_BRAND_NAME`;
-repo/internal name stays `ShopifyACO`) · one Railway service · Supabase Postgres ·
+repo/internal name stays `ShopifyACO`) · **one** deployed Railway service · Supabase Postgres ·
 custom domain on Cloudflare (DNS-only/grey-cloud). See `DEPLOY.md`.
+`src/start.ts` also implements `PROCESS_MODE=worker|scheduler`, but **those are built modes, not
+deployed services** — the durable queue stays dormant until a worker service exists (D2).
 
 What's shipped end-to-end (verified in prod):
+- **Published buying standards** at `/standards` — **Coffee Standard v1.0, v1.1 and v1.2**, all
+  three served, byte-frozen, with hashes pinned to literals. v1.2 is current. Stable citable URLs
+  per entry, readable with JavaScript off. `/demo` runs a real result on a real store.
+- **The product-test engine** (`src/server/productTest.ts`) — public-data assertion engine behind
+  `/test`, and what a standard compiles down to.
 - **Measurement engine** → **detection** → **analysis** → **report** (CLI + server share it).
 - **Public funnel:** landing `/`, `/scan` (email-gated mini scan, 5 prompts × 3 engines,
-  $0.50 cap), `/report/:id`, `/demo`, `/privacy`, `/thanks`.
-- **AI Visibility Index** (the growth engine): public per-category leaderboards at
-  `/index` + `/index/:slug`, built by admin from one multi-brand scan. 5 categories live.
+  $0.50 cap), `/report/:id`, `/demo`, `/privacy`, `/thanks`, `/methodology`.
+- **AI Visibility Index:** public per-category leaderboards at `/index` + `/index/:slug`,
+  server-rendered and dominance-gated. **7 categories live** (verified via `GET /api/index`).
+- **Embedded Shopify app** at `/app` — dashboard, Evidence, Fix Studio, Experiments, Monitoring.
+  OAuth + token exchange, `write_products` in scope.
 - **Real Stripe payments** (Payment Links + webhook): $29 full report, $49/mo monitoring,
-  $99 founder beta. **Currently TEST mode** — live activation pending Stripe KYC. A paid
-  test order was recorded end-to-end (button → checkout → webhook → `orders` row → `/thanks`).
+  $99 founder beta, plus the entitlements/billing lifecycle. **TEST mode** — live activation
+  pending Stripe KYC. *(Not re-verified this session; no evidence it changed.)*
 - **Admin cockpit** `/admin`: today metrics, funnel, runs/leads/**orders**/errors, launch
   targets, manual standard/deep scans, category-index builder, order fulfillment.
-- **Abuse/spend protection** + **detection test suite** (`npm test`, 16 cases).
-- **DB tables:** `leads`, `runs`, `events`, `orders`, `category_index` (migrations
-  `0001`–`0005`). Result files on the Railway volume (`DATA_DIR`).
+- **Abuse/spend protection.** Kill switch: `DAILY_SPEND_CAP_USD=0`.
+- **Tests:** `npm test` runs **63 files** — `test/*.test.ts` (53) **and**
+  `standards/__tests__/*.test.ts` (10), which is why an engine change cannot break a standard
+  with the gate green. **948 tests pass** with `RUN_DB_TESTS=1` + the local Supabase stack
+  (Docker + `npx supabase start`; without it the DB-gated suite **HANGS** rather than failing,
+  which reads as a slow suite rather than a missing dependency). The detection
+  suite alone is `test/detection.test.ts` — **26** cases, not 16.
+- **DB:** migrations **`0001`–`0030`** (not `0005`). Result files on the Railway volume
+  (`DATA_DIR`).
 
 **Everything deferred (security/hardening) and every planned feature now lives in
 [`TODO.md`](TODO.md). Read it before starting new work.**
