@@ -48,6 +48,7 @@ looks different from an open one until someone executes against the code.
 | **G-07** — `identifiers` broken in the authenticated path | 🟡 **PLUMBING CLOSED, GAP REDEFINED** | `0faac0d` | `extractedFromCatalog` populates `gtin`/`sku`. The entry now records a **different and worse** defect in the same row — see G-07 |
 | **G-06 §1, §3, §4** — the claim dictionary is closed | 🔴 **OPEN** | — | no registry, no `acceptedSurfaces`, `normalize` still does not strip `®`/`™` |
 | G-01 · G-02 · G-03 · G-04 · G-05 · G-11 · G-12 · G-13 · G-14 | 🔴 **OPEN** | — | unchanged |
+| **G-15** — REFERENT: the term's governing NP does not denote this product | 🔴 **OPEN, MEASURED, SCOPED ONLY** | — | **NEW at v3.7 CP-4.** The residual G-06's own conclusion named as staying open, now carrying a number: 17 false passes in 71 live claim rows, REF hostile 17/17 and the sole hostile dimension in 14. Filed as a gap, with no design, because its acceptance suite tests the wrong sentences |
 
 **A closed gap's record is NOT deleted.** Its argument is the material for the next one: G-09's
 "the pure evaluator is shared, so this is plumbing, not design" is exactly the diagnosis that made
@@ -74,6 +75,11 @@ predicate will need. Each closed section keeps its full text with a closure noti
 
 `G-14` is not on this list because it is not a build — it is a measurement campaign, and it must be
 scheduled rather than squeezed in. See its own trigger.
+
+`G-15` is not on this list either, and for a different reason: it is the largest measured live defect
+class in the engine and it is still **not** the next thing to build. Its precondition — an acceptance
+suite whose cases are the sentences merchants actually write — is an attended session on its own, and
+that session must not be the one that writes the guard. See G-15's own precondition section.
 
 > **G-14 is not like the others.** Every gap G-01 to G-13 is a capability the engine lacks. G-14 is a
 > **measurement** the engine has never had: the thirteen claim keys that run for every merchant today
@@ -1490,6 +1496,138 @@ Express each built-in as a vocabulary artifact, generate the attack set, execute
   not — and an independent refuter then found a false claim in the committed review record: a class
   reported as 5 of 5 closed was 13 of 13 still failing. Generating 1,500 sentences changes the cost
   of coverage and changes nothing about that.
+---
+
+## G-15 — REFERENT: the term's governing noun phrase does not denote this product
+
+> **Filed at v3.7 CP-4 as a NUMBERED GAP, and deliberately not as a proposal or a design.** v3.6
+> measured this residual and reached its own conclusion in one sentence: *"The measurement licenses
+> SCOPING the residual as a numbered gap; it does not license shipping a guard for it."* This section
+> is that scoping. It contains no rule, no term list and no frame, on purpose.
+>
+> **It is NOT on the priority list.** G-06 §1+§3 stays item 1. G-15 has a precondition (below) that
+> is itself an unscheduled attended session, and every subject-shaped change this repo has measured
+> has come back worse than the code it replaced.
+
+**Blocks:** nothing in any standard's tier — every affected row runs and returns an answer. What is
+broken is **truth on rows that run**, which is why this is a gap and not a coverage item. It is the
+largest measured live defect class in the engine and it reaches every merchant the product has.
+
+### The measurement
+
+335 deduplicated real stores (166 coffee / 169 general), one product each, 3,349 prose sentences,
+replayed through `fetchPublicProduct` → `buildBuyerTask` → `evaluate` with only the transport
+swapped; 335/335 readable, 0 replay misses, resolves COMPLETE. All **71 passing claim rows** over 54
+stores read individually with no unadjudicated remainder. Records: `experiments/v3-6/freq/` and
+`experiments/v3-6/collapse/`.
+
+```
+71 passing claim rows   →  41 true · 17 FALSE PASSES over 14 stores
+                           2 wrong-evidence-but-incidentally-true · 9 marginal
+                           2 not adjudicable because the row renders no quote
+as a merchant SEES it   →  34 rows, 10 false, 6 attributable to a named stratum
+```
+
+| | of the 17 confirmed false passes |
+|---|---|
+| **REF hostile** — the term's governing NP does not denote this product | **17 / 17** |
+| **REF the SOLE hostile dimension** | **14 / 17** |
+| TIME hostile (the property is not asserted as holding now) | **0 / 17** |
+| SPKR hostile | 1 / 17 |
+| FORCE hostile (the predicate is not an assertion) | 2 / 17 |
+
+**One capability, not eight.** The classes G-06 lists as staying open — sibling product, bundled
+item, competitor, cross-sell, gift set, subscription rotation, shipment, packaging, review
+pull-quote — are not nine problems. `sibling_product` · `bundled_item` · `competitor` ·
+`cross_sell` account for 9 of the 13 attributable rows and **one referent resolution moves all
+four**, because in each the term's governing NP denotes something other than the product under
+test. `site_wide` (2) · `subscription` (1) · `industry_generic` (1) complete the 13. Four of the 17
+sit outside all 21 strata — two are `single-origin` inside a sentence describing a *blend*, two are
+the soil-science sense of `organic` — and both shapes are **structurally REF instances too**, so
+the same capability partially subsumes a class currently filed under G-14.
+
+**And it is not the SUBJECT.** 8 of the 17 have no surface subject at all (imperatives, NP lists,
+participial fragments); 1 more has *this product* as its subject and is still false
+(`blossomcoffeeroasters.com`, *"our Cold Brew Blend features a washed single-origin from
+Guatemala"*); and five must-not-regress cases share `xsl-01`'s exact subject `We`. **9 of 17 are
+unreachable by any subject frame before a single collision is counted.** Executed: the engine
+returns an identical outcome *and an identical matched term* on 17/17 minimal pairs, so it reads
+none of this today.
+
+**The cost side, which is 10–60× the benefit side and is why nothing ships on this number alone:**
+`first_person` is **180 of 335 stores — 53.73%, exact, not a projection**, because that detector is
+presence of *we/our/us*; `trade_form` is projected at **90–211 of 335 (27–63%)**; `plain_present`
+91–175; `spec_block` 66–144. And **2 of 16 sampled `already_refused` hits are `without X` used as
+the claim itself, on live passing rows today.**
+
+### ⚠️ PRECONDITION — the acceptance suite tests the wrong sentences, and a guard validated against it is validated against nothing
+
+This is the part of G-15 that must be read before any design, and it was sharpened at v3.7 CP-4 by
+re-executing the adjudications against `standards/acceptance/subject-tense/suite.json` rather than
+by reading the v3.6 writeup.
+
+- **`competitor`: the suite's cases are RIVALS; the real instances never are.** `cmp-01` and `cmp-02`
+  are both *"Northbank Coffee …"* — a named competing roaster. Of 25 adjudicated real occurrences,
+  **0 are a rival.** Every confirmed one is a **supplier, farm or co-operative**
+  (`tinyarms.co`, `spyhousecoffee.com`, `pilgrimscoffee.com`). A referent rule tuned to separate
+  "our product" from "a competitor's product" is tuned against a sentence merchants do not write.
+
+- **`site_wide`: the suite's cases are QUANTIFIED; the two that actually cost something are not —
+  and the site_wide detector never fired on either.** `sit-01` (*"All of our decafs use the Swiss
+  Water Process."*) and `sit-02` (*"Every decaf we stock is a Mountain Water Decaf."*) both lead with
+  a quantifier, and so do **9 of the 10** detector-confirmed real occurrences. But the two
+  consequence rows — the passing rows a site-wide reading makes false — are
+  `brooklyncandlestudio.com` *"Shop for vegan luxury products crafted in Brooklyn."* and `equator.ca`
+  *"Equator Coffee Roasters specializes in roasting and delivering fresh organic coffee."* **Neither
+  carries a quantifier, neither appears in `hits/site_wide.jsonl` at all, and the detector classified
+  both as `trade_form`.** The shape that causes the damage is *the store as an entity does X*, with no
+  quantifier and often no finite predication of the product — and it exists in the suite in **neither
+  direction**.
+  ⚠️ Do not restate this as "site_wide's real instances carry no quantifier" without the
+  occurrence/consequence split. Read over occurrences it is false (9 of 10 carry one); read over
+  consequences it is true (0 of 2). Two different populations, opposite answers, one stratum name.
+
+- **So suite 1.0 cannot serve as the gate.** It needs a **1.1 derived from the adjudicated real
+  instances** — expected outcome = the recorded adjudication, provenance per case, a pinned
+  matched-term per case with a dictionary-hash tripwire, **additive to a byte-frozen 1.0**.
+
+⚠️ **AND THE SESSION THAT BUILDS THE GUARD MUST NOT BE THE SESSION THAT AUTHORS SUITE 1.1.** A guard
+measured against a gate its own author wrote is v2.6's failure mode, and it is the disguised form of
+the rule this repo has now recorded seven times: re-running the attacker's own sentences after the
+fix feels independent and is not. Suite 1.1 is **its own attended session, derivation-only** — no
+guard, no matcher, no frame.
+
+### ⚠️ One case in the 17 is arguably not a false pass at all, and the real shape is absent from the suite
+
+`sub-01` has **no hostile dimension on any of the four axes**. Carrying it in the 17 is defensible
+only as "the evidence is about a subscription rather than about the product", which is a referent
+claim the case's own labelling does not support — so the 17 should be read as **16 firm + 1
+contested**, and any design that reports closing 17 of 17 has miscounted its own target.
+
+The real-world subscription failure is different in kind and the suite contains it in **neither**
+direction: a **disjunctive purchase option** — *"Available as a one-time purchase or on
+subscription"* — where the product genuinely can be bought either way, so a rule that treats any
+subscription mention as hostile produces a false **fail** on a compliant merchant. `subscription` was
+also v3.6's **highest-precision detector** (12 of 13 sampled hits confirmed), which makes it the most
+tempting stratum to write a rule against and the one where a wrong rule is most likely to ship.
+
+### Risk of building it
+
+**Highest on this page, and the history is the argument.** Every subject- or scope-shaped change this
+repo has measured has come back worse than the code it replaced: v2.6's negation-scope rewrite;
+v2.8's `origin` narrowing, reverted after four attempts and now a tombstone; v3.2's four aboutness
+guards, reverted when two independent attackers found **192 regressions** where a 216-store replay
+found **0 real positives lost**. G-15's blast radius is measured and enormous — `first_person` alone
+is 53.73% of stores — and the 17 rows it would fix are 17.
+
+**What would make it safe, in order:** (1) suite 1.1, authored by a different session, from the
+adjudicated real instances; (2) a fail-open design, because the ordinary subject-less sentence that
+fills a Shopify description must keep passing (`nonProductSubject`'s rule, for the same reason);
+(3) an independent adversarial pass as the **gate**, not as an autopsy — v3.5 ran one as a gate for
+the first time and it paid for itself immediately, refusing a change a 338-store replay had approved;
+(4) an A/B against the parent commit comparing **the rendered quote**, not the status, because two of
+v3.5's eleven regressions were invisible to a status diff.
+
 ---
 
 # STANDING PROPOSAL REGISTER
