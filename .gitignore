@@ -98,3 +98,6 @@ experiments/v3-2/*
 !experiments/v3-3/
 experiments/v3-3/*
 !experiments/v3-3/*.md
+!experiments/v3-8/
+experiments/v3-8/*
+!experiments/v3-8/*.md
