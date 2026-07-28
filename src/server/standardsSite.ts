@@ -209,6 +209,12 @@ export interface EntryDiscrimination {
   verdict?: string;
   note?: string;
   instrument_bias?: Array<{ source?: string; direction?: string; magnitude_pp?: number }>;
+  /** What a LATER measurement displaced, DERIVED from the document — only `why` is
+   *  authored, by the sidecar, since it is the only party that knows why it exists.
+   *  Rendered beside the new figure rather than instead of it: a rate that moved is a
+   *  fact about the engine, and the displaced record carries declared instrument biases
+   *  that dropping it would delete from the page. */
+  supersedes?: EntryDiscrimination & { why?: string };
 }
 export interface FitnessDoc {
   measured_at: string; engine_version?: string;
@@ -218,6 +224,16 @@ export interface FitnessDoc {
    *  bands are hypotheses written before the standard had ever run, and rewriting
    *  them inside standard.json would change its hash and break every citation. */
   entry_discrimination?: { n_products?: number; bands_held?: number; entries?: EntryDiscrimination[] };
+  /** DERIVED, never authored: set by `fitnessOf` when a sidecar re-measures a version
+   *  that already carries a measurement INSIDE the document. Both exist and they
+   *  disagree, so the page has to say which is later and why — showing the sidecar
+   *  silently would be the "site disagrees with its own JSON" defect with the JSON
+   *  one click away at `/standard.json`. */
+  supersededInDocument?: {
+    field: string; reason?: string;
+    label: string; pass_rows_audited: number; confirmed_false_positives: number;
+    bound_95_cluster_icc02_pct: number; measured_on?: string;
+  };
 }
 
 /**
@@ -243,6 +259,28 @@ export interface EmbeddedFitness {
  * Falling back to an empty paragraph would be the `grounding.sources` failure in its
  * mildest form — the section would render, look complete, and say nothing.
  */
+/**
+ * The completion state, spelled out — THREE states, never two.
+ *
+ * ⚠️ THE `else` BRANCH USED TO SAY "Every scheduled unit returned and every candidate was
+ * adjudicated" FOR ANYTHING THAT WAS NOT `DEFECTS_FOUND`, which makes `INCOMPLETE` render
+ * as a clean bill of health — the exact inversion `src/measure/completion.ts` exists to
+ * prevent, in the one place a reader looks for it. It became reachable the moment a
+ * sample declared itself INCOMPLETE: the general DTC floor, whose count is 0 only because
+ * one class of many was ever adjudicated.
+ */
+function completionSentence(x: FitnessSample): string {
+  const n = x.confirmed_false_positives;
+  switch (x.completion_state) {
+    case "DEFECTS_FOUND":
+      return `${n} confirmed false passes. A measurement that did not finish resolves to INCOMPLETE and may never be summed into a defect total or read as a pass — zero is the most dangerous number a broken instrument returns, because it is also what a healthy one returns.`;
+    case "INCOMPLETE":
+      return `${n} confirmed false passes IN THE PART OF THIS SAMPLE THAT WAS ADJUDICATED, which is not the same statement as ${n} false passes. Rows nobody adjudicated force INCOMPLETE, and an incomplete measurement may never be summed into a defect total or read as a pass.`;
+    default:
+      return "Every scheduled unit returned and every candidate was adjudicated.";
+  }
+}
+
 function methodOf(x: FitnessSample): string {
   if (x.method) return x.method;
   const a = x.audit;
@@ -275,7 +313,17 @@ function methodOf(x: FitnessSample): string {
  * Never invents a measurement — an absent one stays absent.
  */
 export function fitnessOf(s: PublishedStandard): FitnessDoc | null {
-  if (s.fitness?.samples?.length) return s.fitness;
+  if (s.fitness?.samples?.length) {
+    // ⚠️ v1.3 IS THE FIRST VERSION WITH BOTH, and "sidecar wins" alone is not enough.
+    // v1.0 had a sidecar because it had no in-document block to conflict with. v1.3
+    // carries `category_fitness` (inherited from v1.2, measured before rule D) AND a
+    // sidecar measured after rule D shipped. Returning only the sidecar would put a
+    // number on the page that the artifact one click away contradicts, with nothing
+    // saying which is later. So the displaced measurement is carried, derived from the
+    // document rather than restated in the sidecar.
+    const displaced = displacedInDocument(s);
+    return displaced ? { ...s.fitness, supersededInDocument: displaced } : s.fitness;
+  }
 
   const inDoc = (s.doc as { measured_fitness?: EmbeddedFitness }).measured_fitness;
   if (inDoc?.samples?.length) {
@@ -324,6 +372,39 @@ export function fitnessOf(s: PublishedStandard): FitnessDoc | null {
 }
 
 /**
+ * The measurement a SIDECAR displaces, read off the document itself.
+ *
+ * Returns null when the document carries no measurement of its own — which is v1.0's
+ * case and the reason "sidecar wins" was sufficient for two years of this file's life.
+ * The `reason` comes from the sidecar (it is the only party that knows why it exists);
+ * every FIGURE comes from the document, so the two can never drift apart.
+ */
+function displacedInDocument(s: PublishedStandard): FitnessDoc["supersededInDocument"] {
+  const said = (s.fitness as { supersedes_in_document?: { field?: string; reason?: string } } | null)?.supersedes_in_document;
+  const cf = (s.doc as { category_fitness?: CategoryFitness }).category_fitness;
+  if (cf?.bounds) {
+    return {
+      field: said?.field ?? "category_fitness", reason: said?.reason,
+      label: `${cf.sample?.category_standard_id ?? s.doc.standard_id} category sample`,
+      pass_rows_audited: cf.pass_rows_audited,
+      confirmed_false_positives: cf.confirmed_false_positives,
+      bound_95_cluster_icc02_pct: cf.bounds.cluster_adjusted_95_upper_pct,
+      measured_on: cf.measured_on,
+    };
+  }
+  const mf = (s.doc as { measured_fitness?: EmbeddedFitness }).measured_fitness;
+  const first = mf?.samples?.[0];
+  if (!first) return undefined;
+  return {
+    field: said?.field ?? "measured_fitness", reason: said?.reason,
+    label: first.label, pass_rows_audited: first.pass_rows_audited,
+    confirmed_false_positives: first.confirmed_false_positives,
+    bound_95_cluster_icc02_pct: first.bound_95_cluster_icc02_pct,
+    measured_on: mf?.measured_at,
+  };
+}
+
+/**
  * The measured discrimination for one entry, from wherever this version keeps it.
  *
  * Three sources, and the 1.1 and 1.2 blocks share a FIELD NAME while meaning different
@@ -335,6 +416,30 @@ export function fitnessOf(s: PublishedStandard): FitnessDoc | null {
  *   1.0 — the sidecar's `entry_discrimination.entries[]`.
  */
 export function measuredOf(s: PublishedStandard, e: StandardEntry): EntryDiscrimination | null {
+  // ⚠️ THE SIDECAR IS CHECKED FIRST, AND ONLY BECAUSE IT IS LATER — not because sidecars
+  // outrank documents. v1.3's IDENT-001 record says in its own words that its 94.7368%
+  // is a FLOOR, measured against the v1.2 wording because "no run has been made against
+  // the v1.3 wording, and no engine change ships with it". Rule D is that engine change
+  // and the sidecar is that run. A renderer that kept preferring the document would keep
+  // publishing a figure the document itself calls provisional, forever.
+  //
+  // The displaced record is CARRIED, not dropped. It holds the declared instrument
+  // biases for that row, and a page that silently swaps one rate for another deletes
+  // them — which would make the new figure look better supported than the old one.
+  const later = s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id);
+  if (later) {
+    const prior = inDocumentMeasurement(e);
+    return {
+      ...later,
+      kind: later.interval ? "discrimination" : "band_calibration",
+      supersedes: prior ? { ...prior, why: later.supersedes?.why } : later.supersedes,
+    };
+  }
+  return inDocumentMeasurement(e);
+}
+
+/** The measurement the DOCUMENT carries for one entry, in whichever grammar wrote it. */
+function inDocumentMeasurement(e: StandardEntry): EntryDiscrimination | null {
   const md = (e as { measured_discrimination?: Record<string, unknown> }).measured_discrimination;
   if (md && typeof md === "object") {
     if ("n_adjudicated" in md) {
@@ -361,8 +466,7 @@ export function measuredOf(s: PublishedStandard, e: StandardEntry): EntryDiscrim
       verdict: m.verdict, note: m.note,
     };
   }
-  const side = s.fitness?.entry_discrimination?.entries?.find((x) => x.id === e.id);
-  return side ? { ...side, kind: "band_calibration" } : null;
+  return null;
 }
 
 /**
@@ -407,9 +511,16 @@ const PUBLISHED: ReadonlyArray<{ slug: string; publicVersion: string; dir: strin
   // ORDER MATTERS: the LAST entry for a slug is the current one. v1.0 keeps serving,
   // byte-for-byte, forever — that is what a content hash promises — and gains only a
   // supersession notice, added by this RENDERER and never by editing the document.
+  //
+  // ⚠️ v1.3 SAT UNSERVED FOR A WHOLE RELEASE. It was reissued, hashed, tested and
+  // committed, and this list stopped at v1.2 — so `/standards` went on calling v1.2
+  // current, `llms.txt` told machine readers to cite it, and the tightened IDENT-001
+  // clause the engine had already implemented was readable nowhere. A reissue nobody can
+  // read is not a reissue. Publishing is this array; nothing else does it.
   { slug: "coffee", publicVersion: "1.0", dir: "standards/coffee/v1.0", supersededBy: "1.1" },
   { slug: "coffee", publicVersion: "1.1", dir: "standards/coffee/v1.1", supersededBy: "1.2" },
-  { slug: "coffee", publicVersion: "1.2", dir: "standards/coffee/v1.2" },
+  { slug: "coffee", publicVersion: "1.2", dir: "standards/coffee/v1.2", supersededBy: "1.3" },
+  { slug: "coffee", publicVersion: "1.3", dir: "standards/coffee/v1.3" },
 ];
 
 /** The CURRENT version of a slug: the last registry entry for it. Every place that has
@@ -542,6 +653,23 @@ function renderComparison(samples: FitnessSample[]): string {
   if (samples.length < 2) return "";
   const complete = samples.filter((s) => !s.is_floor);
   const floors = samples.filter((s) => s.is_floor);
+
+  // ⚠️ A FLOOR WITH ZERO CONFIRMED IS NOT A NUMBER TO COMPARE AGAINST, and this branch
+  // exists because the arithmetic quietly produced the very claim the paragraph below it
+  // was written to retire. Once rule D closed every identifier defect in the general
+  // sample, x went to 0 and the rule-of-three bound came out at 0.85% against a coffee
+  // bound of 10.97% — a ratio of nearly 13, which this function would have rendered as
+  // "by an order of magnitude": the exact sentence v3.2 corrected, revived by a fix.
+  //
+  // x=0 over an audit that examined ONE class is not an estimate of the error rate. It is
+  // an estimate of what the audit thought to look for, which is precisely how a published
+  // 0.83% survived eighteen false passes. So no ratio is drawn at all.
+  const emptyFloors = floors.filter((s) => s.confirmed_false_positives === 0);
+  if (emptyFloors.length) {
+    return `<p class="std-limit"><strong>No comparison is drawn between these samples, and the reason is the more useful finding.</strong> The ${
+      esc(emptyFloors.map((s) => s.label).join(" and the "))} now records ZERO confirmed false passes — in the one defect class that has ever been mechanically re-checked. Every other class in that sample is unexamined. That is not a low error rate; it is the same epistemic position that produced a 0.83% figure this project published for weeks and then found eighteen errors inside. A ratio between a complete row-by-row audit and an x=0 floor would be arithmetic, not a measurement, so none is stated.</p>`;
+  }
+
   const hi = [...samples].sort((a, b) => b.bound_95_cluster_icc02_pct - a.bound_95_cluster_icc02_pct)[0]!;
   const lo = [...samples].sort((a, b) => a.bound_95_cluster_icc02_pct - b.bound_95_cluster_icc02_pct)[0]!;
   const ratio = lo.bound_95_cluster_icc02_pct > 0 ? hi.bound_95_cluster_icc02_pct / lo.bound_95_cluster_icc02_pct : 0;
@@ -952,10 +1080,17 @@ interface IdentifierRow {
   host: string; url: string; capturedAt: string; value: string;
   fields: string[]; verdict: string; why: string; excerpt: string; byteOffset: number;
   alsoAppearsAs?: string[];
+  /** WHAT THE ENGINE DOES TODAY, executed against these same captured bytes by
+   *  `experiments/v3-5/publish/stamp_ident_fixture.ts` — never typed. Two of these three
+   *  rows passed when the section was written and one no longer does, and the paragraph
+   *  saying "all three passing" stayed true-sounding and false through every sweep the
+   *  site runs, because nothing in it is a banned word. */
+  engine_now?: { status: string; detail: string };
 }
 interface IdentifierExample {
   requirement: string; why_it_matters: string; source: string;
   honest: IdentifierRow; storeLocal: IdentifierRow[];
+  engine_checked_at?: string; engine_commit?: string;
 }
 let identCache: IdentifierExample | null | undefined;
 function identifierExample(): IdentifierExample | null {
@@ -968,10 +1103,25 @@ function identifierExample(): IdentifierExample | null {
   return identCache;
 }
 
+/** `pass_evidenced` today, or not. Unstamped rows are `null` — "we did not check" is a
+ *  third answer and must not render as either of the other two. */
+const stillPasses = (r: IdentifierRow): boolean | null =>
+  r.engine_now ? r.engine_now.status === "pass_evidenced" : null;
+
 function identifierRowHtml(r: IdentifierRow, honest: boolean): string {
-  return `<div class="std-ident-row ${honest ? "std-ident-ok" : "std-ident-bad"}">
+  const now = stillPasses(r);
+  // The verdict LABEL is about the value; the STATE is about the engine. They came apart
+  // the moment rule D shipped — a value can still be store-local while the row that used
+  // to accept it no longer does — so they are rendered as two facts, not one.
+  const state = now === null
+    ? ""
+    : now
+      ? `<p class="std-note"><strong>The engine passes this row today.</strong> ${esc(r.engine_now!.detail)}</p>`
+      : `<p class="std-note"><strong>The engine no longer passes this row.</strong> ${esc(r.engine_now!.detail)}</p>`;
+  return `<div class="std-ident-row ${honest ? "std-ident-ok" : now === false ? "std-ident-closed" : "std-ident-bad"}">
   <h4>${esc(r.host)} — <code>${esc(r.value)}</code></h4>
-  <p><strong>${esc(honest ? "Honest pass" : "False pass")}:</strong> ${esc(r.why)}</p>
+  <p><strong>${esc(honest ? "Honest pass" : now === false ? "Was a false pass; now refused" : "False pass, still live")}:</strong> ${esc(r.why)}</p>
+  ${state}
   <pre class="std-ident-bytes"><code>${esc(r.excerpt)}</code></pre>
   <p class="std-note">From the page captured on ${esc(r.capturedAt.slice(0, 10))}, at byte ${r.byteOffset}. Published in: ${
     r.fields.map((f) => `<code>${esc(f)}</code>`).join(", ")}.</p>
@@ -981,15 +1131,33 @@ function identifierRowHtml(r: IdentifierRow, honest: boolean): string {
 function identifierSection(): string {
   const ex = identifierExample();
   if (!ex) return "";
+  const rows = [ex.honest, ...ex.storeLocal];
+  const stamped = rows.filter((r) => r.engine_now);
+  const passing = rows.filter((r) => stillPasses(r) === true).length;
+  const closed = ex.storeLocal.filter((r) => stillPasses(r) === false).length;
+  const live = ex.storeLocal.filter((r) => stillPasses(r) === true).length;
+  // ⚠️ EVERY COUNT IN THE PROSE IS COUNTED. The sentence this replaced said "all three
+  // passing that row", which was measured once and then went false when the engine
+  // changed under it. A hand-written count beside generated rows is the same defect as a
+  // hand-written comparison beside generated bounds.
+  const lede = stamped.length !== rows.length
+    ? p(`${rows.length} real stores, from the captured bytes of their own pages. What the engine currently answers for them has not been checked, so it is not stated.`)
+    : p(`${rows.length} real stores, from the captured bytes of their own pages. All ${rows.length} passed this row when the example was built; ${passing} still ${passing === 1 ? "does" : "do"}. One of them always deserved to.`);
+  const closing = closed && live
+    ? `<p class="std-limit"><strong>${closed} of these ${ex.storeLocal.length} is closed and ${live} is still live, and the difference is the honest part.</strong> The engine now refuses an MPN that is byte-identical to the storefront's own product object id. It does NOT refuse one that is a copy of the store's own SKU: the rule that would (“an MPN equal to the SKU”) was scored over every MPN-publishing product in the corpus at 0 true positives and 7 false, and the seven are the compliant case — a brand that manufactures what it sells legitimately uses one string for both. Closing three sentences is not closing a class.</p>`
+    : closed
+      ? `<p class="std-limit"><strong>The engine now refuses every value shown here as a false pass.</strong> That closes the class this example was built to demonstrate; it does not close the audit method problem behind it.</p>`
+      : `<p class="std-limit"><strong>This is why the general figure moved.</strong> An audit that reads rendered evidence — however many rows it reads — is structurally unable to see this class, because there is no rendered evidence to read.</p>`;
   return `<section class="std-ident" id="identifier-example">
   <h2>Worked example: the row that shows you nothing</h2>
   ${p(`“${ex.requirement}” is the one requirement in this standard whose result renders NO QUOTE. It reports that your structured data publishes an identifier; it cannot show you the identifier, so the row reads the same whether the value is a real barcode or a number the store made up about itself.`)}
   ${p(ex.why_it_matters)}
-  ${p("Three real stores, all three passing that row, from the captured bytes of their own pages. One of them deserved to.")}
+  ${lede}
   ${identifierRowHtml(ex.honest, true)}
   ${ex.storeLocal.map((r) => identifierRowHtml(r, false)).join("")}
-  <p class="std-limit"><strong>This is why the general figure moved.</strong> An audit that reads rendered evidence — however many rows it reads — is structurally unable to see this class, because there is no rendered evidence to read. The two false passes above sat inside a sample of 507 rows that had been read individually and reported zero errors. One mechanical check against the captured bytes found eighteen.</p>
-  <p class="std-note">Record: ${esc(ex.source)}</p>
+  <p class="std-limit"><strong>This is the class an audit cannot see.</strong> There is no rendered evidence to be suspicious of, so a reader checking every row learns nothing from any of them. The store-local values above sat inside a sample of 507 rows that had been read individually and reported zero errors; one mechanical check against the captured bytes found eighteen, and the published bound moved from 0.83% to 7.80%.</p>
+  ${closing}
+  <p class="std-note">Record: ${esc(ex.source)}${ex.engine_checked_at ? ` · engine behaviour re-executed ${esc(ex.engine_checked_at)}${ex.engine_commit ? ` at ${esc(ex.engine_commit)}` : ""}` : ""}</p>
 </section>`;
 }
 
@@ -1009,10 +1177,7 @@ export function renderFitness(s: PublishedStandard): string {
   // `grounding.sources`, merely quieter.
   const methods = f.samples.map((x) => {
     const completion = x.completion_state
-      ? `<p class="std-limit"><strong>Completion state: ${esc(x.completion_state)}.</strong> ${esc(
-        x.completion_state === "DEFECTS_FOUND"
-          ? `${x.confirmed_false_positives} confirmed false passes. A measurement that did not finish resolves to INCOMPLETE and may never be summed into a defect total or read as a pass — zero is the most dangerous number a broken instrument returns, because it is also what a healthy one returns.`
-          : "Every scheduled unit returned and every candidate was adjudicated.")}</p>`
+      ? `<p class="std-limit"><strong>Completion state: ${esc(x.completion_state)}.</strong> ${esc(completionSentence(x))}</p>`
       : "";
     const spread = x.per_store_pct !== undefined
       ? p(`Per-store rate: ${x.per_store_pct.toFixed(2)}%${x.icc !== undefined ? `, clustered at ICC ${x.icc}` : ""} — pass rows are not independent, because rows from one store share that store's copy conventions.`)
@@ -1037,9 +1202,18 @@ export function renderFitness(s: PublishedStandard): string {
   // sentence beside generated numbers is the "site disagrees with its own JSON" defect
   // one level up — it went false once already, on the paragraph below this one.
   const rowByRow = f.samples.every((x) => x.audit?.row_by_row !== false);
+  // ⚠️ THE DOCUMENT'S OWN NUMBER IS NAMED, NOT QUIETLY REPLACED. `standard.json` is one
+  // click away and carries a different figure; a page that shows only the later one and
+  // says nothing is the "site disagrees with its own JSON" defect with the JSON linked
+  // from the paragraph above.
+  const d = f.supersededInDocument;
+  const displaced = d
+    ? `<p class="std-limit"><strong>This supersedes the measurement inside the document, and the document is not edited.</strong> <code>${esc(d.field)}</code> in <code>standard.json</code> records ${d.confirmed_false_positives} confirmed false passes over ${d.pass_rows_audited} audited rows — a ${d.bound_95_cluster_icc02_pct.toFixed(2)}% bound${d.measured_on ? `, measured ${esc(d.measured_on)}` : ""}. Its bytes are what a citation resolves through, so a measurement taken after publication goes beside the document rather than into it. ${d.reason ? esc(d.reason) : ""}</p>`
+    : "";
   return `<section class="std-fitness" id="measured-error">
   <h2>Measured error</h2>
   ${p(`${rowByRow ? "Every row this standard passed was audited individually against its full evidence. " : ""}The bound is a 95% upper bound, cluster-adjusted at ICC 0.2 because pass rows are not independent — rows from one store share that store's copy conventions, and the bare rule of three would overstate the precision.`)}
+  ${displaced}
   <table class="std-bounds"><caption>False-positive rate by sample</caption>
     <thead><tr><th scope="col">Sample</th><th scope="col">Stores</th><th scope="col">Pass rows audited</th><th scope="col">Confirmed false positives</th><th scope="col">Point estimate</th><th scope="col">95% upper bound</th></tr></thead>
     <tbody>${rows}</tbody></table>
@@ -1092,6 +1266,22 @@ export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string
   // deliberately carries no prediction, that single line is false twice over. `predictionOf`
   // returns `band: undefined` at 1.2, so the row is omitted rather than emptied.
   const bias = measured?.instrument_bias ?? [];
+  // THE DISPLACED MEASUREMENT, in full, including the biases declared on it. A later run
+  // does not make the earlier record wrong about its own conditions, and folding the two
+  // into one number would hide that the rate moved because the ENGINE changed rather than
+  // because more stores were read.
+  const prior = measured?.supersedes;
+  const supersededHtml = prior
+    ? `<details class="std-superseded-measure"><summary>This rate replaces an earlier one: ${prior.fail_pct.toFixed(1)}% (${
+      prior.fail_count ?? "?"} of ${prior.adjudicated ?? prior.asked})</summary>
+    ${prior.why ? p(prior.why) : ""}
+    ${prior.verdict ? p(`Its verdict was ${VERDICT_LABEL[prior.verdict] ?? prior.verdict}${measured!.verdict === prior.verdict ? ", which is unchanged" : `, and the current verdict is ${VERDICT_LABEL[measured!.verdict ?? ""] ?? measured!.verdict}`}.`) : ""}
+    ${(prior.instrument_bias ?? []).length
+      ? `<p>The biases declared on that record, published unedited:</p><ul>${(prior.instrument_bias ?? []).map((b) => `<li><strong>${esc(String(b.direction ?? "").replace(/_/g, " "))}${b.magnitude_pp !== undefined ? `, ${b.magnitude_pp}pp` : ", UNQUANTIFIED"}</strong><br /><span class="std-why">${esc(b.source ?? "")}</span></li>`).join("")}</ul>`
+      : ""}
+    ${prior.note ? p(prior.note) : ""}
+  </details>`
+    : "";
   const measuredHtml = measured
     ? `<p><strong>Measured fail rate:</strong> ${measured.fail_pct.toFixed(1)}%${
       measured.fail_count !== undefined && measured.adjudicated !== undefined
@@ -1114,6 +1304,7 @@ export function renderEntry(s: PublishedStandard, e: StandardEntry, base: string
         }</ul></div>`
         : "")
       + (measured.note ? p(measured.note) : "")
+      + supersededHtml
     : "";
   const predictedHtml = !measured && pd?.band
     ? `<p><strong>Predicted fail rate:</strong> ${esc(pd.band)} <span class="std-eg">(predicted, not yet measured)</span></p>`
@@ -1523,7 +1714,7 @@ export function llmsTxt(base: string): string {
     }
     for (const x of f?.samples ?? []) {
       lines.push(`  - Measured false-positive rate, ${x.label}: ${x.point_estimate_pct.toFixed(2)}% point estimate, ${x.bound_95_cluster_icc02_pct.toFixed(2)}% 95% upper bound (n=${x.pass_rows_audited} pass rows across ${x.stores} stores, cluster-adjusted)${x.is_floor ? " — a FLOOR: only one defect class was re-checked, so the true rate is at least this" : ""}.`);
-      if (x.completion_state) lines.push(`    - Completion state: ${x.completion_state}. ${x.confirmed_false_positives} confirmed false passes, all enumerated in the artifact.`);
+      if (x.completion_state) lines.push(`    - Completion state: ${x.completion_state}. ${completionSentence(x)}`);
       // The limits are the artifact's own statement of what the number does NOT cover —
       // including, at grammar 1.2, the general-sample comparison and the word FLOOR that
       // keeps it from being read as a peer of a complete audit. Verbatim, never summarised.

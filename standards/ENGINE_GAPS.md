@@ -813,7 +813,32 @@ differ* — is still open; for coffee it is live, since a 12 oz bag and a 5 lb b
 
 ---
 
-### Part 2 — 🔴 **OPEN, and it is a FLOOR: the row passes on store-local identifiers**
+### Part 2 — 🟡 **MOSTLY CLOSED by rule D (`66a80a4`), and the residue is deliberate**
+
+> 🟡 **RULE D SHIPPED, THE BOUND WAS RE-MEASURED, AND ONE OF THE THREE NAMED STORES SURVIVES.**
+> `mpn` is now disqualified when it is byte-identical to the storefront's own product object id,
+> read from the analytics bootstrap. Executed on the current tree over the captured corpus:
+>
+> | sample | pass rows | confirmed | cluster-adjusted 95% bound | |
+> |---|---|---|---|---|
+> | coffee, before | 162 | 10 | **12.78%** | |
+> | coffee, after | 160 | 8 | **10.97%** | both the numerator and the denominator fall |
+> | general, before | 509 | 21 | **8.81%** (18 → 8.81 recomputes to 7.80 at x=18) | |
+> | general, after | 488 | **0** | ~~0.85%~~ | **a FLOOR, and NOT a rate — see below** |
+>
+> ⚠️ **THE GENERAL FIGURE IS THE TRAP, AND IT IS THE POINT OF THE RE-MEASUREMENT.** Closing all 21
+> returns that sample to **x = 0 over one examined class** — the exact epistemic state that produced
+> the retired **0.83%**. The arithmetic returns **0.85%**, which is 0.83% again to within two
+> hundredths of a point, for the same reason it was wrong the first time. It is published as
+> `INCOMPLETE` with the count scoped to the one class ever re-checked, the site refuses to draw any
+> ratio against it, and no page states it as a low error rate. Figures:
+> `standards/coffee/v1.3/fitness.json`; instruments: `experiments/v3-2/bound.mjs` and
+> `general_bound.mjs`, unmodified.
+>
+> **`www.stumptowncoffee.com` still passes**, and that is a decision rather than an oversight: its
+> `mpn` copies its own SKU, not its object id, and rule A (`mpn === sku`) scored **0 true positives
+> and 7 false** over all 36 MPN-publishing products, convicting exactly the compliant case. Items 1
+> and 3 below are therefore still open; item 2 is what rule D implements.
 
 **This defect corrected a published error bound that this project had been citing since v2.9.**
 
@@ -1385,6 +1410,12 @@ observations; they cluster, and the clustering is the useful part:
 **P-15 was filed at v3.5 CP3**, and it belongs with the first row: it is what P-12's absence makes
 the engine *say*, measured on 34 stores.
 
+**P-16 was filed at v3.5 CP5** and belongs to none of them: it is not about identifiers at all. It
+records that the 338-file snapshot corpus every bound in this repo is computed over holds **334
+distinct merchants**, and that no published figure moves for it — which is a fact about the
+INSTRUMENT, and the only reason it is here rather than lost is that a bound was recomputed and
+somebody counted first.
+
 ⚠️ **Two of these are not "future work" in the ordinary sense.** **P-11** records a mechanical,
 one-character bypass of a guard that shipped days ago. **P-12** records a merchant who marks their
 page up *correctly* and is told they publish no identifier — and as of v3.5 CP3 it is no longer a
@@ -1773,6 +1804,25 @@ selection rule ("the node whose `@id`/`url` matches the canonical URL", say) wou
 P-06's cases decidable *without* descending into variant lists at all — the merchant's own markup
 would say which node answers, instead of the engine picking one and hedging in the copy.
 
+### 🟡 THE SITE'S OWN WORKED EXAMPLE IS AN INSTANCE, found at v3.5 CP5
+
+The "honest pass" row published on every standard page is `sputnikcoffeecompany.com`, and the page
+now states what the engine read for it: *"Your structured data publishes an MPN (600160850004)."*
+The fixture's own text, extracted from the captured bytes, says the same value is a **valid UPC-A
+published as `gtin12`**. Both are true, and the reason is P-12. Read back from the snapshot:
+
+```
+node (root) @type=Product   mpn=600160850004,  sku=""      <- selected: first in document order
+node (root) @type=Product   gtin12=600160850004, sku=null   <- not selected
+```
+
+Two top-level `Product` nodes, the same string in both, and `extractProduct` takes the first. The
+verdict is right and the **stated basis is weaker than the merchant's markup**: the store publishes
+a check-digit-valid GTIN and is told it publishes an MPN. Nothing was changed for this — the row is
+correct, and rewriting the copy would paper over the gap rather than close it — but it belongs in
+the record, because the example this project uses to *teach* identifier discipline understates the
+one store in it that did everything right.
+
 ### 🔴 SIX NAMED REAL MERCHANTS — the strongest evidence in this register, and it is not flattering
 
 Every other case above is constructed. These are stores, measured from their captured bytes
@@ -1877,6 +1927,45 @@ rewritten `detail` on 223 rows instead of 23 and put a measured, verified proof 
 one. This repo's own rule applies — *where work implies a change elsewhere, write it down as a
 proposal rather than make it* (v3.4) — so here it is, with the number, rather than in a commit
 message nobody greps.
+
+## P-16 · The 338-snapshot corpus is 334 merchants, and nothing on disk says so
+
+| | |
+|---|---|
+| **files** | `experiments/v2-9/snaps`, `experiments/v3-1/snaps_coffee`, `experiments/v3-2/snaps_coffee` (all gitignored); recorded in `standards/coffee/v1.3/fitness.json` under the coffee sample's `provenance.notes` |
+| **change** | none to code. This row exists so the next bound computed over these snapshots knows before it counts |
+| **decides** | whoever computes the next fitness bound |
+| **status** | **MEASURED, NO PUBLISHED FIGURE AFFECTED** |
+
+The three snapshot sets were captured in separate sessions and overlap. Counted mechanically at
+v3.5 CP5:
+
+```
+files                                 338      (general 172 · coffee 44 · coffee 122)
+distinct registrable domains          334
+distinct product URLs                 335
+```
+
+- `onyxcoffeelab.com` and `vervecoffee.com` — the **same product URL** captured in both the general
+  and the coffee-44 set.
+- `deathwishcoffee.com` power-surge pods — captured **twice inside coffee-44**, at the apex host and
+  at `www.`.
+
+**Why it changes nothing today, checked rather than assumed.** Neither published sample pools across
+sets, and each is internally clean: the general sample is 172 files / 172 registrable domains / 172
+distinct URLs, and the coffee audit is 77 hosts / 77 domains / 77 URLs. The coffee run's own harness
+(`experiments/v3-2/run_standard.ts`) collapses on registrable domain and reports what it collapsed —
+which is where the `www.deathwishcoffee.com` copy went. **Before and after deduplication, every
+figure in `fitness.json` is identical.**
+
+⚠️ **Why it must be written down anyway.** The coffee sample's method note says the capture was
+"deduplicated on registrable domain before capture", which is true *within* that set and false
+*across the union*. A future bound computed over the union — the obvious way to get a bigger n — would
+double-count without any instrument complaining. And the harm is worse than a duplicate row: two
+files of one product are **perfectly correlated, not merely clustered**, so they inflate n while
+contributing no information, and the cluster adjustment (which models within-store correlation at
+ICC 0.2) would understate the design effect rather than correct for it. **Dedupe on registrable
+domain AND on normalised product URL before computing any n over more than one set.**
 
 ## P-13 · GS1 restricted-circulation (`2xx`) and coupon (`99xx`) prefixes are accepted as product GTINs
 

@@ -29,18 +29,24 @@ import { lintStrings } from "../src/server/claimLinter.js";
 const BASE = "https://lens.example";
 
 /** The result the v3.2 coffee audit adjudicated, row by row. Written out rather than
- *  computed, because computing it from the same run it is checking would assert nothing. */
+ *  computed, because computing it from the same run it is checking would assert nothing.
+ *
+ *  ⚠️ THE IDS MOVED TO v1.3 AND NOT ONE STATUS DID, which is the only reason the rename
+ *  was safe to make. Re-pinning a list of ids is a mechanical edit; re-pinning a list of
+ *  STATUSES is a decision about what a public page says about a named business. The two
+ *  were checked separately: the ten statuses were read off the current engine before the
+ *  ids were touched and are byte-identical to the v1.1 pins. */
 const EXPECTED: Array<[string, string]> = [
-  ["ALS-COFFEE-1.1-FORMAT-001", "pass_evidenced"],
-  ["ALS-COFFEE-1.1-FORMAT-002", "not_proven"],
-  ["ALS-COFFEE-1.1-GRIND-001", "pass_evidenced"],
-  ["ALS-COFFEE-1.1-GRIND-002", "pass_evidenced"],
-  ["ALS-COFFEE-1.1-WEIGHT-001", "pass_evidenced"],
-  ["ALS-COFFEE-1.1-CERT-001", "not_proven"],
-  ["ALS-COFFEE-1.1-CERT-002", "not_proven"],
-  ["ALS-COFFEE-1.1-SOURCE-001", "not_proven"],
-  ["ALS-COFFEE-1.1-IDENT-001", "not_proven"],
-  ["ALS-COFFEE-1.1-DELIV-001", "pass_evidenced"],
+  ["ALS-COFFEE-1.3-FORMAT-001", "pass_evidenced"],
+  ["ALS-COFFEE-1.3-FORMAT-002", "not_proven"],
+  ["ALS-COFFEE-1.3-GRIND-001", "pass_evidenced"],
+  ["ALS-COFFEE-1.3-GRIND-002", "pass_evidenced"],
+  ["ALS-COFFEE-1.3-WEIGHT-001", "pass_evidenced"],
+  ["ALS-COFFEE-1.3-CERT-001", "not_proven"],
+  ["ALS-COFFEE-1.3-CERT-002", "not_proven"],
+  ["ALS-COFFEE-1.3-SOURCE-001", "not_proven"],
+  ["ALS-COFFEE-1.3-IDENT-001", "not_proven"],
+  ["ALS-COFFEE-1.3-DELIV-001", "pass_evidenced"],
 ];
 
 test("the Example test is a REAL result — every row pinned, from the frozen capture", async () => {
@@ -89,7 +95,7 @@ test("THE RECEIPT IS UNTRUNCATED, and names the surface it actually came from", 
   // "Organic" in a store's SEO title was credited as a product claim. v3.2's audit found
   // rows attributing variant-option values to "product copy": truthful, and useless as a
   // receipt, because the merchant looks in their description and finds nothing.
-  const deliv = d.rows.find((r) => r.entryId === "ALS-COFFEE-1.1-DELIV-001")!;
+  const deliv = d.rows.find((r) => r.entryId === "ALS-COFFEE-1.3-DELIV-001")!;
   assert.equal(deliv.evidenceSurface, "shipping policy",
     "the delivery row must name the shipping policy, not product copy");
   assert.equal(deliv.evidenceUrl, "https://www.klatchcoffee.com/policies/shipping-policy",
@@ -101,7 +107,7 @@ test("THE RECEIPT IS UNTRUNCATED, and names the surface it actually came from", 
   assert.match(deliv.fullSentence!, /2-3 business days/);
 
   // The weight row's receipt is a VARIANT OPTION and says so — not "product copy".
-  const weight = d.rows.find((r) => r.entryId === "ALS-COFFEE-1.1-WEIGHT-001")!;
+  const weight = d.rows.find((r) => r.entryId === "ALS-COFFEE-1.3-WEIGHT-001")!;
   assert.equal(weight.evidenceSurface, "variant options");
   assert.equal(weight.fullSentence, "2 lb bag.");
 });
@@ -221,12 +227,35 @@ test("THE FIXTURE IS A FAITHFUL RECORD, and the audit sidecar is clean", () => {
   }
 });
 
+test("THE EXAMPLE TEST CITES THE CURRENT VERSION, and its version label is DERIVED", async () => {
+  // ⚠️ THE PIN SAID "the current version" IN A COMMENT AND NAMED v1.1, two reissues
+  // behind. Nothing was false — a superseded document keeps serving its own bytes and
+  // renders a supersession notice — so no lint, no banned-word sweep and no hash pin
+  // could see it. Beside it, two paragraphs said "Coffee Standard v1.0" in a page whose
+  // every entry link pointed at v1.1: a hardcoded version label disagreeing with the
+  // artifact it describes, which is the defect v3.4 found one surface over.
+  const { currentOf } = await import("../src/server/standardsSite.js");
+  const d = await runDemo();
+  const current = currentOf("coffee")!;
+  assert.equal(String(d.standard.doc.version), current.publicVersion,
+    "the Example test executes a superseded version — every entry link lands on a supersession notice");
+  const page = renderDemo(d, BASE);
+  assert.ok(page.bodyHtml.includes(`/standards/coffee/${current.publicVersion}`), "the page does not link the current version");
+  // No OTHER coffee version may be linked from the page: a stale href is the whole defect.
+  for (const v of ["1.0", "1.1", "1.2"]) {
+    assert.ok(!page.bodyHtml.includes(`/standards/coffee/${v}`), `the Example test still links /standards/coffee/${v}`);
+  }
+  // And no hardcoded version label anywhere in the prose that disagrees with the artifact.
+  const stale = /Coffee Standard v(?!1\.3\b)[0-9.]+/.exec(page.bodyHtml);
+  assert.equal(stale, null, `the page names a version that is not the one it executed: ${stale?.[0]}`);
+});
+
 test("the page's own chrome passes the REAL claim linter", () => {
   // Imported, never reimplemented: the site selling claim discipline has to pass the
   // same check the product runs on merchants.
   const r = lintStrings([
     "Example test",
-    "ALS-COFFEE v1.1, executed against a real coffee product page",
+    "ALS-COFFEE v1.3, executed against a real coffee product page",
     "How often is this engine wrong?",
     "What a “not proven” row is not.",
     "Reproduce it",

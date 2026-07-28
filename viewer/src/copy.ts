@@ -70,7 +70,7 @@ export const STANDARDS_INDEX_URL = "/standards";
  *  notice — so no test and no lint could see it. `test/standardsSite.test.ts` now
  *  asserts this string equals `currentOf("coffee")`, which fails the build on the next
  *  reissue rather than quietly costing every reader one hop. */
-export const COFFEE_STANDARD_URL = "/standards/coffee/1.2";
+export const COFFEE_STANDARD_URL = "/standards/coffee/1.3";
 /** The Example test — also server-rendered (src/server/buyerTestDemo.ts), so also a
  *  plain href. It shows a real Coffee Standard v1.0 result on a real coffee product
  *  page, replayed from a frozen capture. */

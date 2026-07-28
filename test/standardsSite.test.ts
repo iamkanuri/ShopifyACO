@@ -30,6 +30,11 @@ const FROZEN_HASHES: Record<string, string> = {
   "1.0": "334389c4eb6145112deec621e667f11142fb204c66bedd314fc12662d09acec5",
   "1.1": "f8ec2780f60c38931913e5b6cd37506500c8462709209de7180ba6691d6137e7",
   "1.2": "fe199a864d3d4d565986851f9bfae9e108d55e4c86af18b1f8027f3d23486b58",
+  // v1.3 is CURRENT and is pinned exactly like the superseded ones. A hash is what a
+  // citation resolves through from the day a version is published, not from the day it
+  // is replaced — and v1.3's own measurement now lives in a SIDECAR precisely so that
+  // this literal never has to move.
+  "1.3": "ba2050578ed0274885fd6213967c230b2a57dd2b7c1d3fba8c5e1633027d4cf7",
 };
 
 /** Every page a version publishes. Used by the blanket assertions, which have to cover
@@ -71,9 +76,15 @@ test("the JSON route serves EVERY version's artifact BYTE-FOR-BYTE, so a citatio
   }
 });
 
-test("ALL THREE VERSIONS SERVE, and every entry id at every version resolves to its own page", () => {
+test("ALL FOUR VERSIONS SERVE, and every entry id at every version resolves to its own page", () => {
   const list = loadPublishedStandards();
-  assert.deepEqual(list.map((s) => `${s.slug}/${s.publicVersion}`), ["coffee/1.0", "coffee/1.1", "coffee/1.2"],
+  // ⚠️ THE LITERAL IS THE POINT, and it is what caught v1.3 not being served. v1.3 was
+  // reissued, hashed, tested and committed a release before it appeared in `PUBLISHED`,
+  // and every other gate stayed green: the artifact was valid, its hash was pinned, its
+  // 42 entries all parsed. Nothing checks that a document on disk is REACHABLE except
+  // this list, so the enumeration is written out rather than derived from the registry —
+  // deriving it would make the assertion agree with whatever the registry happens to say.
+  assert.deepEqual(list.map((s) => `${s.slug}/${s.publicVersion}`), ["coffee/1.0", "coffee/1.1", "coffee/1.2", "coffee/1.3"],
     "the published set changed — the version-continuity assertions below are written against it");
   let resolved = 0;
   for (const s of list) {
@@ -86,7 +97,7 @@ test("ALL THREE VERSIONS SERVE, and every entry id at every version resolves to 
       resolved++;
     }
   }
-  assert.equal(resolved, 126, `${resolved} entries resolved, expected 42 x 3`);
+  assert.equal(resolved, 168, `${resolved} entries resolved, expected 42 x 4`);
 });
 
 test("A PRIOR VERSION'S ENTRY ID RESOLVES ACROSS THE WHOLE CHAIN, not one hop", () => {
@@ -117,16 +128,28 @@ test("A PRIOR VERSION'S ENTRY ID RESOLVES ACROSS THE WHOLE CHAIN, not one hop", 
       }
     }
   }
-  assert.equal(mapped, 42 * 3, `${mapped} chained resolutions, expected 42 across each of the three ordered pairs`);
+  // Four published versions make six ordered pairs, and the LONGEST walk is now four
+  // hops. A three-version chain could be satisfied by a two-hop walk on the pair that
+  // happened to be adjacent; the v1.0 -> v1.3 leg cannot.
+  assert.equal(mapped, 42 * 6, `${mapped} chained resolutions, expected 42 across each of the six ordered pairs`);
+
+  // THE LONGEST LEG, ASSERTED BY NAME rather than left inside the loop's arithmetic.
+  // A citation written against v1.0 — the first version anyone could have cited — has to
+  // land on the same question at v1.3, four reissues later.
+  const v13 = standardsPageFor("/standards/coffee/1.3/ALS-COFFEE-1.0-IDENT-001", BASE);
+  assert.ok(v13, "a v1.0 entry id does not resolve at v1.3 — the four-hop walk is broken");
+  assert.ok(v13!.bodyHtml.includes("ALS-COFFEE-1.3-IDENT-001"),
+    "the v1.0 id at v1.3 did not render its v1.3 successor");
 
   // An id that belongs to NO version still 404s — the alias must not become a fuzzy
   // matcher that resolves anything shaped like an id.
   assert.equal(standardsPageFor("/standards/coffee/1.1/ALS-COFFEE-1.0-NOSUCH-001", BASE), null);
-  assert.equal(standardsPageFor("/standards/coffee/1.2/ALS-COFFEE-1.0-NOSUCH-001", BASE), null);
-  // And the walk is FORWARD ONLY. A v1.2 id asked of v1.0 must 404: that question did not
+  assert.equal(standardsPageFor("/standards/coffee/1.3/ALS-COFFEE-1.0-NOSUCH-001", BASE), null);
+  // And the walk is FORWARD ONLY. A v1.3 id asked of v1.0 must 404: that question did not
   // exist in that version, and answering it would make the version in a citation cosmetic.
   assert.equal(standardsPageFor("/standards/coffee/1.0/ALS-COFFEE-1.2-FORMAT-001", BASE), null);
-  assert.equal(standardsPageFor("/standards/coffee/1.1/ALS-COFFEE-1.2-FORMAT-001", BASE), null);
+  assert.equal(standardsPageFor("/standards/coffee/1.1/ALS-COFFEE-1.3-FORMAT-001", BASE), null);
+  assert.equal(standardsPageFor("/standards/coffee/1.2/ALS-COFFEE-1.3-FORMAT-001", BASE), null);
 });
 
 test("EVERY SUPERSEDED VERSION KEEPS SERVING, UNCHANGED, WITH A NOTICE ADDED AT RENDER TIME", () => {
@@ -147,7 +170,7 @@ test("EVERY SUPERSEDED VERSION KEEPS SERVING, UNCHANGED, WITH A NOTICE ADDED AT 
     assert.match(page.bodyHtml, /byte for byte/i, "the notice does not explain why nothing was edited");
     assert.ok(!s.rawJson.includes(`Superseded by v${s.supersededBy}`), `the rendered notice leaked into v${s.publicVersion}'s artifact`);
   }
-  assert.equal(currentOf("coffee")!.publicVersion, "1.2", "the current version is not the last registry entry");
+  assert.equal(currentOf("coffee")!.publicVersion, "1.3", "the current version is not the last registry entry");
 });
 
 test("v1.0 IS STILL WRONG ABOUT ITSELF, VERBATIM — which is what the later versions correct", () => {
@@ -474,8 +497,8 @@ test("the sitemap carries EVERY version's routes and EVERY entry, and llms.txt p
       assert.ok(paths.includes(`${b}/${e.id}`), `${e.id} is not in the sitemap`);
     }
   }
-  // 3 versions x (1 standard + 1 json + 1 grounding + 42 entries) + /standards
-  assert.equal(paths.length, 1 + 3 * 45, `the sitemap carries ${paths.length} standards paths`);
+  // 4 versions x (1 standard + 1 json + 1 grounding + 42 entries) + /standards
+  assert.equal(paths.length, 1 + 4 * 45, `the sitemap carries ${paths.length} standards paths`);
   assert.equal(new Set(paths).size, paths.length, "the sitemap repeats a path");
   // Every sitemap path must actually resolve — a listed URL that 404s is worse than an
   // unlisted one, and this is what caught the one-hop chain bug's blast radius.
@@ -914,6 +937,129 @@ test("THE IDENTIFIER WORKED EXAMPLE publishes real bytes from real stores", () =
     assert.ok(page.bodyHtml.includes(esc(r.excerpt)), `${r.host}'s captured excerpt is not published verbatim`);
   }
   assert.ok(ex.storeLocal.length >= 2, "one counter-example is an anecdote; the argument needs the contrast");
+});
+
+// ===========================================================================
+// v3.5 CP5 — A SIDECAR THAT RE-MEASURES A DOCUMENT THAT ALREADY CARRIES A MEASUREMENT.
+//
+// v1.0 had a sidecar and no in-document block, so "the sidecar wins" was sufficient for
+// as long as that was the only case. v1.3 has BOTH: `category_fitness` inherited from
+// v1.2 and measured before rule D, and a sidecar measured after. Showing only the later
+// one is the "site disagrees with its own JSON" defect with the JSON linked from the
+// paragraph above it.
+// ===========================================================================
+test("v1.3's BOUND COMES FROM THE SIDECAR, and the figure it displaces is NAMED, not hidden", () => {
+  const s = findStandard("coffee", "1.3")!;
+  const f = fitnessOf(s)!;
+  const cf = (s.doc as unknown as { category_fitness: { pass_rows_audited: number; confirmed_false_positives: number; bounds: { cluster_adjusted_95_upper_pct: number } } }).category_fitness;
+  assert.ok(s.fitness?.samples.length, "v1.3 has no sidecar — then there is nothing to supersede with");
+
+  // The published figure is the LATER one, and it is genuinely different from the
+  // document's. If these ever coincide the test is asserting nothing.
+  const coffee = f.samples.find((x) => x.name === "coffee")!;
+  assert.notEqual(coffee.bound_95_cluster_icc02_pct, cf.bounds.cluster_adjusted_95_upper_pct,
+    "the sidecar and the document agree — this test can no longer see a renderer that reads the wrong one");
+  assert.equal(coffee.bound_95_cluster_icc02_pct, s.fitness!.samples[0]!.bound_95_cluster_icc02_pct);
+
+  // And the displaced measurement is DERIVED from the document, never restated in the
+  // sidecar: a second copy of a published number is how two numbers stop agreeing.
+  const d = f.supersededInDocument!;
+  assert.ok(d, "the in-document measurement is displaced and not declared");
+  assert.equal(d.pass_rows_audited, cf.pass_rows_audited);
+  assert.equal(d.confirmed_false_positives, cf.confirmed_false_positives);
+  assert.equal(d.bound_95_cluster_icc02_pct, cf.bounds.cluster_adjusted_95_upper_pct);
+
+  const html = renderFitness(s);
+  assert.ok(html.includes(`${cf.bounds.cluster_adjusted_95_upper_pct.toFixed(2)}%`),
+    "the page publishes the new bound and hides the one the artifact carries");
+  assert.ok(html.includes(`${coffee.bound_95_cluster_icc02_pct.toFixed(2)}%`), "the sidecar bound is not published");
+  assert.match(html, /supersedes the measurement inside the document/i,
+    "the page shows two different numbers without saying which is later");
+  // v1.0 has a sidecar and NO in-document block; it must not grow a supersession notice.
+  assert.equal(fitnessOf(findStandard("coffee", "1.0")!)!.supersededInDocument, undefined);
+});
+
+test("AN x=0 FLOOR IS NOT A LOW ERROR RATE, and no ratio is drawn against one", () => {
+  // ⚠️ THE HONESTY TRAP THIS RELEASE WALKED INTO. Rule D closed every confirmed defect in
+  // the general sample, so x went to 0 and the rule of three returned 0.85% — against a
+  // retired 0.83% that was wrong by an order of magnitude for exactly the same reason:
+  // x=0 over an audit that examined ONE class estimates what the audit looked for, not
+  // the error rate. The derived comparison would have rendered "by an order of
+  // magnitude", reviving the sentence v3.2 corrected, off the back of a fix.
+  const s = findStandard("coffee", "1.3")!;
+  const f = fitnessOf(s)!;
+  const floor = f.samples.find((x) => x.is_floor)!;
+  assert.ok(floor, "the general sample is not labelled a floor");
+  assert.equal(floor.confirmed_false_positives, 0, "this test is written for the x=0 case");
+
+  const html = renderFitness(s);
+  assert.doesNotMatch(html, /order of magnitude/i, "the page draws an order-of-magnitude claim off an x=0 floor");
+  assert.doesNotMatch(html, /is higher than the .* bound by/i, "the page draws a ratio against an x=0 floor");
+  assert.match(html, /No comparison is drawn/i, "the page neither compares nor says why not");
+  assert.match(html, /not a low error rate/i, "the page presents zero-confirmed as a low error rate");
+
+  // A one-class check over a many-class sample is INCOMPLETE, and INCOMPLETE must never
+  // render as "every candidate was adjudicated" — the inversion completion.ts exists for.
+  assert.equal(floor.completion_state, "INCOMPLETE",
+    "a sample whose other defect classes were never adjudicated is not VERIFIED_CLEAN");
+  assert.ok(html.includes("INCOMPLETE"), "the incomplete state is not published");
+  const txt = llmsTxt(BASE);
+  const block = txt.slice(txt.indexOf("/standards/coffee/1.3)"));
+  assert.ok(block.includes("Completion state: INCOMPLETE"), "llms.txt hides the incomplete state from a machine reader");
+  assert.ok(!/Completion state: INCOMPLETE\. .*every candidate was adjudicated/i.test(block),
+    "INCOMPLETE is described as a completed audit");
+});
+
+test("A RE-MEASURED ENTRY PUBLISHES BOTH RATES, and the displaced record keeps its declared biases", () => {
+  const s = findStandard("coffee", "1.3")!;
+  const e = s.doc.entries.find((x) => x.id === "ALS-COFFEE-1.3-IDENT-001")!;
+  const m = measuredOf(s, e)!;
+  const inDoc = (e as unknown as { measured_discrimination: { fail_rate_pct: number; fail_count: number; instrument_bias?: unknown[] } }).measured_discrimination;
+
+  assert.notEqual(m.fail_pct, inDoc.fail_rate_pct, "the sidecar re-measurement is not being read");
+  assert.equal(m.supersedes?.fail_pct, inDoc.fail_rate_pct, "the displaced rate is not derived from the document");
+  assert.equal(m.supersedes?.instrument_bias?.length, (inDoc.instrument_bias ?? []).length,
+    "the displaced record's declared biases were dropped when its rate was replaced");
+
+  const page = standardsPageFor("/standards/coffee/1.3/ALS-COFFEE-1.3-IDENT-001", BASE)!;
+  assert.ok(page.bodyHtml.includes(`${m.fail_pct.toFixed(1)}%`), "the re-measured rate is not published");
+  assert.ok(page.bodyHtml.includes(`${inDoc.fail_rate_pct.toFixed(1)}%`), "the rate it replaced is not published");
+  // The document's own declared bias — "no run has been made against the v1.3 wording" —
+  // is now answered rather than left standing, and both halves are on the page.
+  assert.match(page.bodyHtml, /replaces an earlier one/i, "the page swaps one rate for another silently");
+
+  // Nine of ten entries were NOT re-measured, and must still read from the document.
+  const other = s.doc.entries.find((x) => x.id === "ALS-COFFEE-1.3-WEIGHT-001")!;
+  const om = measuredOf(s, other)!;
+  assert.equal(om.supersedes, undefined, "an entry with no re-measurement claims one");
+  assert.equal(om.fail_pct, (other as unknown as { measured_discrimination: { fail_rate_pct: number } }).measured_discrimination.fail_rate_pct);
+});
+
+test("THE WORKED EXAMPLE STATES WHAT THE ENGINE DOES TODAY, and no page claims all three still pass", () => {
+  // ⚠️ AN ABSENCE SWEEP CANNOT SEE A PARAGRAPH THAT IS SIMPLY WRONG. This section said
+  // "Three real stores, all three passing that row" — measured once, then made false by
+  // rule D, and invisible to every banned-word check, hash pin and [object Object] guard,
+  // because it contains no forbidden token. It is a true sentence about last week.
+  const ex = JSON.parse(fs.readFileSync(path.join(process.cwd(), "fixtures/identifiers/worked-example.json"), "utf8")) as {
+    honest: { host: string; engine_now?: { status: string } };
+    storeLocal: Array<{ host: string; engine_now?: { status: string } }>;
+    engine_checked_at?: string;
+  };
+  const rows = [ex.honest, ...ex.storeLocal];
+  for (const r of rows) assert.ok(r.engine_now?.status, `${r.host} carries no executed verdict — the stamp is stale`);
+  // TWO-SIDED, or the stamp proves nothing: the honest value must still pass and at least
+  // one store-local value must now be refused.
+  assert.equal(ex.honest.engine_now!.status, "pass_evidenced", "the honest identifier no longer passes");
+  const refused = ex.storeLocal.filter((r) => r.engine_now!.status !== "pass_evidenced");
+  assert.ok(refused.length > 0, "no store-local value is refused — rule D is not reaching this fixture");
+  assert.ok(refused.length < ex.storeLocal.length, "every store-local value is refused — the contrast the section rests on is gone");
+
+  for (const s of loadPublishedStandards()) {
+    const html = standardsPageFor(`/standards/coffee/${s.publicVersion}`, BASE)!.bodyHtml;
+    assert.doesNotMatch(html, /all three passing/i, `v${s.publicVersion} still claims all three rows pass`);
+    assert.match(html, /engine no longer passes this row/i, `v${s.publicVersion} does not say which row the engine now refuses`);
+    assert.ok(html.includes(esc(ex.engine_checked_at!)), `v${s.publicVersion} publishes engine behaviour with no date it was executed`);
+  }
 });
 
 test("the applicability of an entry is published as its actual fields, not stringified", () => {

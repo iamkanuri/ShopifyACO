@@ -31,9 +31,12 @@ custom domain on Cloudflare (DNS-only/grey-cloud). See `DEPLOY.md`.
 deployed services** — the durable queue stays dormant until a worker service exists (D2).
 
 What's shipped end-to-end (verified in prod):
-- **Published buying standards** at `/standards` — **Coffee Standard v1.0, v1.1 and v1.2**, all
-  three served, byte-frozen, with hashes pinned to literals. v1.2 is current. Stable citable URLs
-  per entry, readable with JavaScript off. `/demo` runs a real result on a real store.
+- **Published buying standards** at `/standards` — **Coffee Standard v1.0, v1.1, v1.2 and v1.3**,
+  all four served, byte-frozen, with hashes pinned to literals. **v1.3 is current** (v3.5 CP5; it
+  was committed a release before anything served it). Stable citable URLs per entry, readable with
+  JavaScript off, and a v1.0 id resolves four hops forward. `/demo` runs a real result on a real
+  store, against the current version. Measured error is in
+  `standards/coffee/v1.3/fitness.json` — **10.97%** cluster-adjusted on the coffee sample.
 - **The product-test engine** (`src/server/productTest.ts`) — public-data assertion engine behind
   `/test`, and what a standard compiles down to.
 - **Measurement engine** → **detection** → **analysis** → **report** (CLI + server share it).
@@ -1200,6 +1203,74 @@ brief scoped this change to one sentence and *where work implies a change elsewh
 as a proposal rather than make it.* And the same conflation was found inside the corpus itself: a
 `why` reading *"0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD"* — true of
 the node the ENGINE reads, false of the merchant's markup, in the very file that pins the defect.
+
+### A version that is committed is not a version that is PUBLISHED (v3.5 CP5)
+
+Coffee Standard **v1.3** was reissued, hashed, gated, corpus-pinned and committed — and
+`PUBLISHED` in `src/server/standardsSite.ts` stopped at v1.2, so nothing served it. `/standards`
+went on calling v1.2 current, `llms.txt` told machine readers to cite it, `viewer/src/copy.ts`
+linked it, and `/demo` executed it. **Every gate was green**, because each one checks the artifact:
+the hash matched, the entries parsed, the compile succeeded. Nothing in the repo asserts that a
+document on disk is REACHABLE. `v1.3`'s own verifier had the tripwire and reported the honest
+thing — *"not yet on the published site — HANDOFF, not a pass"* — which reads like a pass in a
+list of passes. **A reissue nobody can read is not a reissue.**
+
+⚠️ **`/demo`'s pin said "THE CURRENT VERSION" in a comment and named v1.1, two reissues back.** A
+superseded document keeps serving its own bytes, so nothing was false and no lint could see it; the
+page merely sent every reader who followed an entry link into a supersession notice. Beside it, two
+paragraphs read *"Coffee Standard v1.0"* on a page executing v1.1. **Staleness has no vocabulary to
+grep for** — the replacement is a presence check against the registry, so `runDemo` now throws if
+its pin is not `currentOf`, and both labels are derived.
+
+### Closing a defect class returns you to the state that hid it (v3.5 CP5)
+
+Rule D closed the store-local-MPN class, so both published bounds were re-measured on the current
+tree — the coffee sample by reconstructing the recorded 103-brand run and requiring it to reproduce
+**972 rows with every status delta on IDENT-001 and nowhere else**, the general sample by replaying
+all 172 snapshots. Statistics from `experiments/v3-2/bound.mjs` and `general_bound.mjs`, unmodified.
+
+| sample | before | after |
+|---|---|---|
+| coffee | 162 rows · 10 confirmed · **12.78%** | 160 rows · 8 confirmed · **10.97%** |
+| general | 509 rows · 21 confirmed · **8.81%** | 488 rows · **0 confirmed** |
+
+⚠️ **THE GENERAL FIGURE IS THE FINDING, AND IT IS NOT 0.85%.** Closing all 21 returns that sample to
+**x = 0 over the single class anyone ever mechanically re-checked** — the exact position that
+produced the retired **0.83%**. The arithmetic returns **0.85%**: the same number, one fix later, for
+the same reason it was wrong the first time. So it ships as `INCOMPLETE` with the count scoped, the
+renderer **refuses to draw any ratio against an x=0 floor** (the derived comparison would have said
+*"by an order of magnitude"* — v3.2's retired sentence, revived by a fix), and no surface states it
+as a low error rate. **Two of the three named coffee defects closed; `www.stumptowncoffee.com`
+survives on purpose**, because rule A (`mpn === sku`) scores 0 true positives and 7 false and
+convicts the compliant case.
+
+⚠️ **The measurement lives in `standards/coffee/v1.3/fitness.json`, a SIDECAR, and v1.3 is the first
+version with BOTH.** Its `category_fitness` was inherited from v1.2 and measured before rule D;
+`standard_hash` covers it, so it cannot be edited. "Sidecar wins" was sufficient only while v1.0 was
+the only sidecar — with two measurements in play the page must say which is later, or it publishes a
+number the JSON one click away contradicts. `fitnessOf` now derives the displaced figure **from the
+document** and names it; `measuredOf` does the same per entry, carrying the displaced record's
+declared instrument biases rather than deleting them with its rate.
+
+⚠️ **An absence sweep still could not see it, one release after that rule was written down.** The
+identifier worked example — on every published standard page — said *"Three real stores, all three
+passing that row"*. Rule D made a third of that false, and it survived every banned-word check, hash
+pin and `[object Object]` guard, because it contains no forbidden token: it is a true sentence about
+last week's engine. The verdicts are now **executed** per store against the same captured bytes
+(`experiments/v3-5/publish/stamp_ident_fixture.ts`, two-sided canary) and the prose is counted.
+
+⚠️ **The corpus is 338 files and 334 merchants** — `onyxcoffeelab.com` and `vervecoffee.com` are the
+same product in two sets, `deathwishcoffee.com` is captured at apex and `www.` inside one. **No
+published figure moves**: neither sample pools across sets and both are internally clean, verified
+rather than assumed. Filed as `ENGINE_GAPS` **P-16** because the obvious way to get a bigger n is to
+union the sets, and two files of one product are *perfectly correlated, not merely clustered* — they
+inflate n while adding no information, and the ICC-0.2 adjustment would understate the design effect
+rather than correct for it.
+
+⚠️ **`experiments/v3-5/bound.mjs` has a syntax error and has never executed** (`(a ? b : c) = m`).
+The 8.81% figure attributed to it in `CP1_DECISION.md` came from `experiments/v3-2/bound.mjs`'s
+method, which is the instrument every published bound in this repo actually came out of. Use the
+v3-2 pair.
 
 ## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
 

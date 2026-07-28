@@ -447,6 +447,14 @@ export function checkCategoryFitness(std: Json): RuleError[] {
   // bound: only one class has been re-checked mechanically, so the two samples
   // are not audited to the same depth and their ratio is not itself a
   // measurement. The direction is the finding; the magnitude is not.
+  //
+  // ⚠️ BOTH FIGURES MOVED AGAIN AT v3.5, AND THE RULE SURVIVES BY GETTING SHARPER, not
+  // by the numbers holding still. Rule D closed the store-local-MPN class: coffee is
+  // 10.97% over 160 rows with 8 confirmed, and the general sample is x=0 —
+  // `standards/coffee/v1.3/fitness.json`. An x=0 floor is not a bound and may not be
+  // compared with a complete audit at all, which is the same rule this one states with
+  // the comparison removed entirely rather than weakened. The current figures live in
+  // the v1.3 SIDECAR; the numbers named above are v1.0's and are cited as history.
   if (sample?.category_scope === "this_category") {
     const owner = sample.category_standard_id;
     if (owner !== std.standard_id) {

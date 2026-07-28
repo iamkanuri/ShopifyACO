@@ -15,7 +15,11 @@
     "verdict": "genuine external identifier",
     "why": "A 12-digit UPC-A whose GS1 mod-10 check digit validates (recomputed: 4, published: 4), published as gtin12 and mirrored into mpn and the variant barcode. This resolves outside the store.",
     "excerpt": "…ts/8oz-sputnik-coffee-ground-vacuum-tin?variant=46026182066429\" } ], \"gtin12\": \"600160850004\", \"productId\": \"600160850004\", \"brand\": { \"name\": \"Sputnik Coffee Company\"…",
-    "byteOffset": 26656
+    "byteOffset": 26656,
+    "engine_now": {
+      "status": "pass_evidenced",
+      "detail": "Your structured data publishes an MPN (600160850004)."
+    }
   },
   "storeLocal": [
     {
@@ -49,7 +53,11 @@
         "productId",
         "data-prodID",
         "data-productid"
-      ]
+      ],
+      "engine_now": {
+        "status": "not_proven",
+        "detail": "The only identifier we can use on your product's own structured-data node is an MPN (8079462006899), and that is the id your own storefront uses for this product — it resolves to nothing outside your store. We read that node only, so a GTIN published beneath it on an offer or a variant is not counted here."
+      }
     },
     {
       "host": "www.stumptowncoffee.com",
@@ -66,8 +74,14 @@
       "byteOffset": 1030,
       "alsoAppearsAs": [
         "sku"
-      ]
+      ],
+      "engine_now": {
+        "status": "pass_evidenced",
+        "detail": "Your structured data publishes an MPN (100754)."
+      }
     }
   ],
-  "source": "experiments/v3-2/CATEGORY_BOUND.md; extracted mechanically by experiments/v3-3/extract_identifier_example.mjs"
+  "source": "experiments/v3-2/CATEGORY_BOUND.md; extracted mechanically by experiments/v3-3/extract_identifier_example.mjs",
+  "engine_checked_at": "2026-07-28",
+  "engine_commit": "132d085"
 }

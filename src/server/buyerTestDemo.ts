@@ -52,7 +52,7 @@ import { __resetCaches } from "./productTestCache.js";
 import { compileStandard, duplicateLabels, type Standard } from "../../standards/compile.js";
 import { hashMatches } from "../../standards/hash.js";
 import { applyApplicability, type Sidecar, type ApplicabilityReport } from "../../standards/applicability.js";
-import { findStandard, esc, fitnessOf, type PublishedStandard, type StandardEntry, type SitePage } from "./standardsSite.js";
+import { findStandard, esc, fitnessOf, shortName, currentOf, type PublishedStandard, type StandardEntry, type SitePage } from "./standardsSite.js";
 
 const repoRoot = path.resolve(
   path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..", "..",
@@ -67,11 +67,14 @@ const DEMO = {
   // THE CURRENT VERSION, not the one the audit happened to run under. A result cites the
   // exact contract it executed, so an Example test pinned to a superseded version would
   // send every reader who follows an entry link into a document with a supersession
-  // notice on it. v1.1 asks byte-identical questions with byte-identical assertions and
-  // evidence rules — `standards/__tests__/version.test.ts` asserts that, entry by entry
+  // notice on it — which is exactly where this pin had drifted to: it said "the current
+  // version" and named v1.1, two reissues behind, because the comment states the rule and
+  // nothing enforced it. `test/buyerTestDemo.test.ts` now asserts it against `currentOf`.
+  // Every reissue since has asked byte-identical questions with byte-identical assertions
+  // and evidence rules — `standards/__tests__/version.test.ts` asserts that entry by entry
   // — so the result is the same result; only the ids it cites move forward.
-  standardVersion: "1.1",
-  standardDir: "standards/coffee/v1.1",
+  standardVersion: "1.3",
+  standardDir: "standards/coffee/v1.3",
   fixtureDir: "fixtures/buyer-test",
 } as const;
 
@@ -197,6 +200,17 @@ export async function runDemo(): Promise<DemoResult> {
 
   const published = findStandard(DEMO.standardSlug, DEMO.standardVersion);
   if (!published) throw new Error(`the Example test cites ${DEMO.standardSlug} v${DEMO.standardVersion}, which is not published`);
+  // ⚠️ THE PIN'S OWN RULE, ENFORCED WHERE IT IS STATED. `DEMO.standardVersion` said "the
+  // current version" in a comment and named a version two reissues behind, because a
+  // superseded document keeps serving — nothing is broken, the page merely cites stale
+  // ids and sends every reader who follows one into a supersession notice. Staleness has
+  // no vocabulary to grep for; it needs a check against the registry.
+  const current = currentOf(DEMO.standardSlug);
+  if (current && current.publicVersion !== DEMO.standardVersion) {
+    throw new Error(
+      `the Example test is pinned to ${DEMO.standardSlug} v${DEMO.standardVersion} but v${current.publicVersion} is current. ` +
+      `Every entry link on the page would land on a superseded document. Update DEMO.standardVersion and DEMO.standardDir.`);
+  }
   const standard = JSON.parse(published.rawJson) as Standard;
   const h = hashMatches(standard);
   if (!h.ok) throw new Error("standard hash mismatch — a result that cannot name the exact text it tested against is not citable");
@@ -369,7 +383,7 @@ function boundSection(d: DemoResult): string {
 
   return `<section class="bt-bound" id="error-rate">
   <h2>How often is this engine wrong?</h2>
-  ${p(`Published, because a test result you cannot calibrate is a number without a unit. Coffee Standard v1.0 was executed against ${sample.products_evaluated ?? sample.stores} real coffee products across ${sample.stores} storefronts, and every one of the ${sample.pass_rows_audited} requirements it reported as proven was read individually against the store's full page text. ${sample.confirmed_false_positives} of those passes were wrong.`)}
+  ${p(`Published, because a test result you cannot calibrate is a number without a unit. ${esc(shortName(d.standard.doc))} v${esc(String(d.standard.doc.version))} was executed against ${sample.products_evaluated ?? sample.stores} real coffee products across ${sample.stores} storefronts, and every one of the ${sample.pass_rows_audited} requirements it reported as proven was read individually against the store's full page text. ${sample.confirmed_false_positives} of those passes were wrong.`)}
   <dl class="bt-bound-figures">
     <div><dt>Passing rows audited</dt><dd>${sample.pass_rows_audited}</dd></div>
     <div><dt>Confirmed wrong</dt><dd>${sample.confirmed_false_positives}</dd></div>
@@ -487,7 +501,7 @@ export function renderDemo(d: DemoResult, base: string): SitePage {
 
   <section class="bt-scope">
     <h2>What was asked, and why exactly these ${d.rows.length}</h2>
-    ${p(`The questions come from the published standard, not from us guessing what matters. Coffee Standard v1.0 carries ${d.standard.doc.entries.length} entries; ${d.applicability.requirements.length} of them both are executable against a public product page and apply to this product. The applicability rules were written before this test ran and are published beside the standard.`)}
+    ${p(`The questions come from the published standard, not from us guessing what matters. ${esc(shortName(d.standard.doc))} v${esc(String(d.standard.doc.version))} carries ${d.standard.doc.entries.length} entries; ${d.applicability.requirements.length} of them both are executable against a public product page and apply to this product. The applicability rules were written before this test ran and are published beside the standard.`)}
     ${(() => {
       const skipped = d.applicability.decisions.filter((x) => !x.asked);
       return skipped.length

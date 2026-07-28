@@ -1,0 +1,167 @@
+{
+  "_comment": "MEASURED FITNESS FOR v1.3, kept BESIDE the standard. `standard_hash` covers standard.json's bytes (ba2050578ed0…) and every citation resolves through it, so a measurement taken AFTER v1.3 shipped must not change them — the same reason v1.0's measurement is a sidecar and v1.1's is inside the document. A measurement's home depends on WHEN it was taken. v1.3's in-document `category_fitness` was carried across from v1.2 and was measured on the PRE-rule-D engine; this sidecar supersedes it, and the page says so rather than quietly showing one number over the other.",
+  "measured_at": "2026-07-27",
+  "engine_version": "v3.5 rule D",
+  "engine_commit": "132d085",
+  "supersedes_in_document": {
+    "field": "category_fitness",
+    "reason": "v1.3's in-document block was carried across from v1.2 unchanged and records the engine as it was before rule D: 162 pass rows, 10 confirmed, 12.78% cluster-adjusted. Rule D disqualifies an MPN that is the storefront's own product object id, which removes two of those ten and the two rows that carried them. The document is not edited; this sidecar is the later measurement."
+  },
+  "samples": [
+    {
+      "name": "coffee",
+      "label": "Coffee category sample",
+      "description": "The same 103 brands, deduplicated on registrable domain before capture, 3 refused by the G-10 applicability predicate with recorded reasons, 100 evaluated — re-executed on the current engine. Reconstructed from the recorded run's own output and required to reproduce it: 972 assertion rows, entry for entry, with every status difference on IDENT-001 and nowhere else.",
+      "stores": 77,
+      "products_evaluated": 100,
+      "pass_rows_audited": 160,
+      "confirmed_false_positives": 8,
+      "borderline_counted_as_passes": 7,
+      "point_estimate_pct": 5,
+      "bound_95_naive_pct": 9.02,
+      "bound_95_cluster_icc02_pct": 10.97,
+      "per_store_pct": 10.39,
+      "icc": 0.2,
+      "rows_per_store": 2.08,
+      "deff_icc02": 1.22,
+      "completion_state": "DEFECTS_FOUND",
+      "audit": {
+        "row_by_row": true,
+        "untruncated_evidence": true,
+        "borderline_recorded": true,
+        "borderline_count": 7
+      },
+      "method": "Every one of the 162 pass rows the published measurement audited was individually adjudicated against its FULL untruncated evidence. Those adjudications are carried forward here unchanged; what moved is which rows the engine still passes. Rule D removed 2 of them, both adjudicated as confirmed false positives, so both the numerator AND the denominator fall — a correction that removed only the numerator would flatter the rate. The 95% upper bound is a Poisson upper limit inflated by a design effect for clustering within store (ICC 0.2), because rows from one store share that store's copy conventions.",
+      "supersedes": "12.78% over 162 pass rows with 10 confirmed, measured before rule D",
+      "defects": [
+        {
+          "entry_id": "ALS-COFFEE-1.3-WEIGHT-001",
+          "evidence": "deathwishcoffee.com — CAFFEINE CONTENT: Power Surge Single-Serve Pods contain approximately 210mg of caffeine (20% more than our Dark Roast) based on a standard 6oz serving when brewed following…",
+          "why_wrong": "The only numbers are a caffeine dose (210mg) and a brewed serving size (\"a standard 6oz serving\") — both explicitly not the product's own weight or capacity.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-WEIGHT-001",
+          "evidence": "groundsforchange.com — The essential concept is to brew double-strength coffee directly onto ice: What you need Drip cone with filter Equal amounts (by weight) filtered hot water (200-205 degrees) and…",
+          "why_wrong": "Every quantity in the evidence belongs to a Japanese-iced-coffee brewing recipe (water/ice ounces, 1/4 cup of grounds, 200-205 degrees), not to the product's own size.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-CERT-001",
+          "evidence": "hydrangea.coffee — The farm’s volcanic soils are described as rich in organic matter, while narrow canyons channel warm winds through the surrounding landscape—the feature that gave Brisa Eterna its…",
+          "why_wrong": "\"soils are described as rich in organic matter\" is the soil-science sense of the word and makes no claim that the coffee is organic.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-IDENT-001",
+          "evidence": "www.stumptowncoffee.com — (the row renders no quote)",
+          "why_wrong": "The JSON-LD emits \"sku\":\"100754\",\"mpn\":\"100754\" adjacent in the same object -- the mpn is a byte-identical echo of the store-local SKU, which the requirement explicitly excludes, and no gtin field exists.",
+          "category_specific": false,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-SOURCE-001",
+          "evidence": "blossomcoffeeroasters.com — Dark roasted to perfection, our Cold Brew Blend features a washed single-origin from Guatemala and a natural from Ethiopia, creating the perfect balance between clean and sweet.",
+          "why_wrong": "The evidence says the opposite of the claim: 'our Cold Brew Blend features a washed single-origin from Guatemala and a natural from Ethiopia' describes a BLEND of two coffees — 'single-origin' modifies one component lot, not this product, which is by construction not single-origin.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-CERT-001",
+          "evidence": "brashcoffee.com — Since 1890, coffee has flourished at Aquiares, where organic soils and abundant rainfall have created an ideal terroir for aromatic coffee.",
+          "why_wrong": "'where organic soils and abundant rainfall have created an ideal terroir' uses 'organic' in the soil-science sense (organic matter in the soil at the Aquiares farm) — it makes no organic-certification or organic-coffee claim about this product.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-WEIGHT-001",
+          "evidence": "myalmacoffee.com — For a fun and refreshing cup, try this recipe : 15g medium ground coffee 250ml water at 203°F 1:16.5 ratio From the farmers who nurtured this coffee in Ethiopia to our roasters…",
+          "why_wrong": "The matched text is a BREWING RECIPE — \"try this recipe : 15g medium ground coffee 250ml water at 203F 1:16.5 ratio\" — a dose of grounds and a volume of water, not the product's own size; this is the exact excluded class, and the merchant is shown the recipe as proof.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        },
+        {
+          "entry_id": "ALS-COFFEE-1.3-SOURCE-001",
+          "evidence": "thewestbean.com — Composed of three single-origin, estate grown beans.",
+          "why_wrong": "\"Composed of three single-origin, estate grown beans\" says this product is a BLEND of three separate origins — the term is present but the sentence asserts the opposite of the requirement; the store does not state this coffee is single-origin.",
+          "category_specific": true,
+          "status": "pinned_known_gap"
+        }
+      ],
+      "limits": [
+        "ONE of the three identifier defects survives, and it is not an oversight. `www.stumptowncoffee.com` publishes \"sku\":\"100754\",\"mpn\":\"100754\" — the MPN is a byte copy of the store's own SKU, not of its Shopify object id, so rule D does not reach it. The rule that would (`mpn === sku`) was scored over all 36 MPN-publishing products in the corpus at 0 true positives and 7 false, and the seven are the COMPLIANT case: a brand that manufactures what it sells legitimately uses one string for both. It was deliberately not implemented.",
+        "The comparison with the general DTC sample is a FLOOR, not a bound, and the two are NOT audited to the same depth. The general sample now records ZERO confirmed false passes — in the ONE defect class anyone has ever mechanically re-checked. Every other class in it is unexamined, which is precisely the state that produced a published 0.83% before this class was looked at.",
+        "The bound covers the engine's false PASSES only. False fails are not in it, and rule D creates them: six real merchants in the captured corpus publish a check-digit-valid GTIN on a Product node the extractor does not select, and are now told they publish no usable identifier (`ENGINE_GAPS` P-12)."
+      ],
+      "provenance": {
+        "sample_id": "experiments/v3-5/publish/out/std_head_v10.jsonl",
+        "category_scope": "this_category",
+        "category_standard_id": "ALS-COFFEE",
+        "stores": 77,
+        "products": 100,
+        "selection": "first_applicable_product",
+        "deduplicated_by_brand": true,
+        "applicability_gate_enforced": true,
+        "unclassifiable_refused": 1,
+        "excluded_out_of_category": 2,
+        "captured_on": "2026-07-27",
+        "notes": "The 103-brand run is deduplicated on registrable domain, and the audit's store count is lower than the run's because 23 storefronts produced no passing row at all. ⚠️ A DUPLICATION IN THE WIDER CORPUS THAT DOES NOT REACH THIS NUMBER, recorded so a future bound does not inherit it: the three snapshot sets this project holds (172 general, 44 coffee, 122 coffee) total 338 files but only 334 registrable domains and 335 distinct product URLs — `onyxcoffeelab.com` and `vervecoffee.com` are the SAME product in the general and coffee sets, and `deathwishcoffee.com` appears at both apex and www within one coffee set. Neither published sample pools across sets and both are internally deduplicated (general: 172 files, 172 domains, 172 URLs; this audit: 77 hosts, 77 domains, 77 URLs), so no figure here moves. Any bound computed over the UNION of the sets must dedupe first: two files of one product are perfectly correlated, not merely clustered, and would inflate n while adding no information."
+      }
+    },
+    {
+      "name": "general",
+      "label": "General DTC sample",
+      "description": "172 products over 172 stores captured without regard to category — the shape a broad fitness sweep produces.",
+      "stores": 169,
+      "products_evaluated": 172,
+      "pass_rows_audited": 488,
+      "confirmed_false_positives": 0,
+      "point_estimate_pct": 0,
+      "bound_95_naive_pct": 0.61,
+      "bound_95_cluster_icc02_pct": 0.85,
+      "rows_per_store": 2.89,
+      "deff_icc02": 1.38,
+      "is_floor": true,
+      "completion_state": "INCOMPLETE",
+      "audit": {
+        "row_by_row": false
+      },
+      "method": "⚠️ READ THE ZERO BEFORE READING THE PERCENTAGE. Rule D closed every one of this sample's 21 confirmed false passes, so the count is now 0 over 488 pass rows — and x=0 over an audit that checked ONE class is exactly the epistemic state that produced this project's retired 0.83%. The arithmetic here returns 0.85%, which is 0.83% again to within two hundredths of a point, for the same reason it was wrong the first time: the number estimates what the audit thought to look for, not the error rate. Only the identifier class has ever been mechanically re-checked in this sample. The 507-row read that preceded it looked at every rendered row and found nothing, because the identifier row renders no quote. Every other class here is in exactly that position today.",
+      "supersedes": "8.81% (x=21) before rule D, itself correcting 0.83% (x=0) published before the identifier class was checked at all",
+      "limits": [
+        "THIS IS NOT A LOW ERROR RATE. It is zero confirmed in the single defect class anyone has mechanically re-checked, over pass rows whose other classes are unexamined. A general sample also estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes.",
+        "The ratio between this figure and the category figure is NOT a measurement, and with x=0 on this side it is not even a comparison. The two samples are not audited to the same depth: one had every passing row read individually, the other had one class checked by machine."
+      ]
+    }
+  ],
+  "entry_discrimination": {
+    "_comment": "ONE ENTRY, because rule D moved exactly one. The other nine entries' rates are unchanged and are read from the document, where v1.3 published them. IDENT-001's in-document record states in its own words that 94.7368% is a FLOOR because it was measured against the v1.2 wording and 'no run has been made against the v1.3 wording, and no engine change ships with it'. Rule D is that engine change; this is that run. Computed through the shipped `verdictFor` in standards/discrimination.ts.",
+    "n_products": 100,
+    "entries": [
+      {
+        "id": "ALS-COFFEE-1.3-IDENT-001",
+        "asked": 76,
+        "adjudicated": 76,
+        "fail_count": 74,
+        "fail_pct": 97.3684,
+        "interval": {
+          "lower_pct": 90.9034,
+          "upper_pct": 99.2753
+        },
+        "target_band": {
+          "lower_pct": 15,
+          "upper_pct": 85
+        },
+        "decision_rule": "wilson95_vs_target_band",
+        "verdict": "not_discriminating",
+        "supersedes": {
+          "why": "It was measured against the v1.2 wording on an engine that did not implement it, and the document declares it a FLOOR in those words. Rule D is the engine change that record says had not shipped; this is the run against the v1.3 wording it says had not been made."
+        },
+        "note": "Re-measured against the v1.3 wording on an engine that implements it. 74 of 76 adjudicated rows fail, against 72 of 76 before — the two rows that moved are the two whose MPN is the storefront's own product object id. The verdict is unchanged at not_discriminating, and it may still not be acted on as a retirement: it is above the band, and every bias declared on the in-document record still applies."
+      }
+    ]
+  }
+}

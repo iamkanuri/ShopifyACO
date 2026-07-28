@@ -469,15 +469,18 @@ console.log("\nF. IT COMPILES, AND THE SIDECAR COVERS EXACTLY WHAT RUNS");
     `${IDENT} compiles to ${String((identReq as { kind?: unknown } | undefined)?.kind)}, not \`identifiers\` — if the engine changed, this version's measurement scope must be revisited`);
 }
 {
-  // ⚠️ THE PUBLISHING TRIPWIRE. `src/server/standardsSite.ts` serves a HARDCODED
-  // list of versions, so v1.3 is not on the site today and nothing renders it. The
-  // day it is added, the same defect this repo has hit three times applies: a
-  // renderer reading a field that does not exist produces NOTHING, and nothing looks
-  // exactly like a section that legitimately has nothing to show.
+  // ⚠️ THE PUBLISHING TRIPWIRE, AND IT FIRED. `src/server/standardsSite.ts` serves a
+  // HARDCODED list of versions, and for a whole release v1.3 was not on it: reissued,
+  // hashed, tested, committed, and unreadable. This block took the "not yet published"
+  // branch and reported `ok` — correctly, because a document nothing renders cannot
+  // render half-empty — which is why the branch says HANDOFF rather than PASS. It is now
+  // on the other branch, where the live risk lives: a renderer reading a field that does
+  // not exist produces NOTHING, and nothing looks exactly like a section that
+  // legitimately has nothing to show. Both branches are kept for the next reissue.
   const site = fs.readFileSync(path.join(REPO, "src/server/standardsSite.ts"), "utf8");
   const published = /standards\/coffee\/v1\.3/.test(site);
   if (!published) {
-    ok("v1.3 is not yet on the published site — nothing can render it half-empty (handoff, not a defect)");
+    ok("v1.3 is not yet on the published site — nothing can render it half-empty (HANDOFF, not a pass: a reissue nobody can read is not a reissue)");
     const supersededMarked = /publicVersion: "1\.2"[^}]*supersededBy: "1\.3"/.test(site);
     supersededMarked
       ? bad("v1.2 is marked superseded by a version the site does not serve", "the site would link 1.2 -> 1.3 and 404")
