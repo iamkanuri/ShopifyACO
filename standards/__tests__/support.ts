@@ -86,7 +86,10 @@ export function mkExtracted(over: { gtin?: string | null; mpn?: string | null } 
   return {
     jsonLdTypes: ["Product"],
     hasProductSchema: true,
-    product: { name: null, brand: null, sku: null, gtin, mpn, offer: null, rating: null, reviewCount: null },
+    // `gtinSource` (v3.5 CP2a) is null here: these fixtures set `gtin` directly rather
+    // than going through `selectGtin`, and the row reads a missing source as the
+    // unqualified phrasing, which is what a conformance fixture wants.
+    product: { name: null, brand: null, sku: null, gtin, gtinSource: null, mpn, offer: null, rating: null, reviewCount: null },
     title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true,
     headings: { h1: [], h2: [] }, faqs: [],
     signals: {

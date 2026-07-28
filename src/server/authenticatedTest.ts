@@ -141,7 +141,11 @@ function extractedFromCatalog(p: NormalizedProduct): PublicProduct["extracted"] 
   const { gtin, sku } = identifiersFromCatalog(p);
   return {
     jsonLdTypes: [], hasProductSchema: true,
-    product: { name: p.title, brand: p.vendor, sku, gtin, mpn: null, offer: null, rating: null, reviewCount: null },
+    // `gtinSource` is null BY CONSTRUCTION on this path: the value came from
+    // `identifiersFromCatalog`, not from `selectGtin`'s JSON-LD precedence walk, and
+    // claiming a source we did not derive would be inventing provenance. The row reads
+    // a missing source as the unqualified phrasing, so this path's copy is unchanged.
+    product: { name: p.title, brand: p.vendor, sku, gtinSource: null, gtin, mpn: null, offer: null, rating: null, reviewCount: null },
     title: p.title, metaDescription: p.seoDescription, canonicalUrl: p.onlineUrl, robotsIndex: true,
     headings: { h1: [], h2: [] }, faqs: [],
     signals: {

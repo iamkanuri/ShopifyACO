@@ -24,6 +24,7 @@ import {
   type PublicProduct, type Requirement, type AssertionStatus, type Assertion,
 } from "../../src/server/productTest.js";
 import { buildEvidence, type QuotableSurface } from "../../src/server/testEvidence.js";
+import { extractPage, type GtinSource } from "../../src/crawler/extract.js";
 
 // ---- product construction ---------------------------------------------------
 
@@ -80,13 +81,15 @@ export function mkProduct(o: MkOptions = {}): PublicProduct {
   } as PublicProduct;
 }
 
-/** An `extracted` page carrying only the structured-data identifier fields. */
-export function mkExtracted(over: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean } = {}): NonNullable<PublicProduct["extracted"]> {
-  const { gtin = null, mpn = null, sku = null, productSchema = true } = over;
+/** An `extracted` page carrying only the structured-data identifier fields.
+ *  `gtinSource` defaults to null — the unqualified rendering — so an identifier case
+ *  only exercises the provenance clause when it deliberately sets one. */
+export function mkExtracted(over: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean; gtinSource?: GtinSource | null } = {}): NonNullable<PublicProduct["extracted"]> {
+  const { gtin = null, mpn = null, sku = null, productSchema = true, gtinSource = null } = over;
   return {
     jsonLdTypes: productSchema ? ["Product"] : [],
     hasProductSchema: productSchema,
-    product: { name: null, brand: null, sku, gtin, mpn, offer: null, rating: null, reviewCount: null },
+    product: { name: null, brand: null, sku, gtin, gtinSource, mpn, offer: null, rating: null, reviewCount: null },
     title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true,
     headings: { h1: [], h2: [] }, faqs: [],
     signals: {
@@ -140,11 +143,39 @@ export function verdictOf(sentence: string, requirement: Requirement, o: MkOptio
 
 /** The identifiers row, driven only by structured-data values. The product copy is
  *  irrelevant to it, so the sentence is fixed and only the identifier varies. */
-export function verdictOfIds(ids: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean }): {
-  status: AssertionStatus; detail: string;
-} {
-  const a = evaluate(mkProduct({ description: "A thing.", extracted: mkExtracted(ids) }), idsReq());
+export function verdictOfIds(
+  ids: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean; gtinSource?: GtinSource | null },
+  over: MkOptions = {},
+): { status: AssertionStatus; detail: string } {
+  const a = evaluate(mkProduct({ description: "A thing.", ...over, extracted: mkExtracted(ids) }), idsReq());
   return { status: a.status, detail: a.detail };
+}
+
+/**
+ * The identifiers row driven by REAL JSON-LD, run through the production
+ * `extractPage` (v3.5 CP2a).
+ *
+ * `verdictOfIds` sets `product.gtin` directly, so it structurally CANNOT see a
+ * selection bug — which is the whole of what CP2a changed. This judge builds a page
+ * whose only structured data is the supplied node, extracts it exactly as the fetch
+ * path does, and returns the selection alongside the verdict: a row that passes on
+ * the WRONG value is a different answer, and status alone cannot see it.
+ */
+export function verdictOfLd(node: Record<string, unknown>): {
+  status: AssertionStatus; detail: string;
+  gtin: string | null; gtinSource: GtinSource | null; signalGtin: boolean;
+} {
+  const html =
+    `<html><head><script type="application/ld+json">${JSON.stringify(node)}</script>` +
+    `</head><body><p>A thing.</p></body></html>`;
+  const extracted = extractPage(html);
+  const a = evaluate(mkProduct({ description: "A thing.", extracted }), idsReq());
+  return {
+    status: a.status, detail: a.detail,
+    gtin: extracted.product?.gtin ?? null,
+    gtinSource: extracted.product?.gtinSource ?? null,
+    signalGtin: extracted.signals.gtin,
+  };
 }
 
 /** The requirement ids a product would actually be asked — for gating probes

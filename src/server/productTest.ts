@@ -1,6 +1,6 @@
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
-import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extract.js";
+import { extractPage, extractJsonLd, isPublishableGtin, type ExtractedPage, type GtinSource } from "../crawler/extract.js";
 import { htmlToText, htmlToBlockText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
@@ -8,7 +8,6 @@ import {
   SURFACE_LABEL, type EvidenceSentence, type SupportedEvidence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
-import { isValidGtin } from "../feeds/validate.js";
 import {
   getCachedResult, storeResult, reserveHostSlot, getCachedRobots, storeRobots,
   reserveEgressSlot, withEgressSlot, markHostThrottled, hostThrottleCooldownMs,
@@ -658,27 +657,58 @@ const PLACEHOLDER_TOKEN = "na|tbd|none|null|nil|unknown|unspecified|notapplicabl
 const PLACEHOLDER_CORE = new RegExp(`^(?:${PLACEHOLDER_TOKEN})+\\d*(?:see\\w*|onrequest|tbc|comingsoon)?$`, "i");
 
 /**
- * True when a raw GTIN string is a real, publishable GTIN.
- *
- * Extracted in v3.0 CP3 so the AUTHENTICATED path can pick a variant barcode using
- * the identical rule the `identifiers` row judges it by. ENGINE_GAPS G-07 is explicit
- * that these guards must apply to catalog values exactly as they do to JSON-LD ones —
- * "an Admin API value is no more trustworthy than a JSON-LD one. Reuse, do not
+ * Extracted in v3.0 CP3 so the AUTHENTICATED path can pick a variant barcode using the
+ * identical rule the `identifiers` row judges it by. ENGINE_GAPS G-07 is explicit that
+ * these guards must apply to catalog values exactly as they do to JSON-LD ones — "an
+ * Admin API value is no more trustworthy than a JSON-LD one. Reuse, do not
  * reimplement." A second copy of this arithmetic is how the two paths drift.
  *
- * Merchants publish GTINs with the separators printed on the barcode ("0-36000-29145-2",
- * "400 638 133 3931"). Those are the same number, and rejecting them told stores that DO
- * publish an identifier that they don't. Normalised HERE rather than in `isValidGtin`,
- * which is shared with the feed validator — there the spec genuinely requires a
- * digits-only value, so loosening it would weaken a different, correct check.
- *
- * All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the commonest
- * "I had to put something in the field" value there is.
+ * ⚠️ THE DEFINITION MOVED to `src/crawler/extract.ts` in v3.5 CP2a, because the
+ * extractor now SELECTS a GTIN by this same rule and importing it the other way round
+ * would be a cycle. Re-exported here so every existing import site — and the one
+ * public name this module has always owned — is unchanged.
  */
-export function isPublishableGtin(raw: string): boolean {
-  const digits = raw.trim().replace(/[\s-]/g, "");
-  return isValidGtin(digits) && !/^0+$/.test(digits);
+export { isPublishableGtin };
+
+/**
+ * v3.5 CP2a — THE IDENTIFIERS ROW NOW NAMES THE VALUE IT PASSED ON.
+ *
+ * It used to render "Your structured data publishes MPN." and no quote at all. v3.2
+ * CP3 measured what that costs: one mechanical check of one class found 18 false
+ * passes inside a general sample whose 507 rendered rows had already been read
+ * individually and pronounced clean. A row that renders no value is invisible to
+ * every audit that reads rendered evidence, however many rows it reads.
+ *
+ * ⚠️ AN IDENTIFIER IS MERCHANT-CONTROLLED TEXT REACHING A LINTED OUTPUT — a pinned
+ * hostile class. `lintStrings` runs over `detail` as a BLOCKING gate in
+ * `runProductTest`, so an `mpn` of "GUARANTEE-001" would return the whole report as
+ * `unreachable` for a store we read perfectly well. That is the exact failure the
+ * `warranty` requirement was dropped for in v2.3. Fail closed per ROW: a value we
+ * cannot reproduce is replaced by a sentence saying we cannot reproduce it, which
+ * still names the reason. Measured 0 of 338 captured real stores hit this.
+ *
+ * Which families a single-token identifier can actually reach was MEASURED, not
+ * assumed: 15 of the linter's 17 rules require whitespace, so only `guarantee` and
+ * `price-is-always-public` are reachable. "RANK-HIGHER-2" was the obvious second
+ * example and it lints CLEAN — the ranking rule needs a space. Both directions are
+ * pinned in the corpus.
+ */
+function renderIdentifierDetail(withValue: string, withoutValue: string): string {
+  return lintStrings([withValue]).ok ? withValue : withoutValue;
 }
+
+/** The honesty clause for a GTIN that was NOT on the product node. Keyed on
+ *  `GtinSource`; the caller supplies `"product"` when the source is unknown, which is
+ *  the unqualified (and weakest-claim) rendering. */
+const GTIN_SOURCE_CLAUSE: Record<GtinSource, string> = {
+  product: "",
+  offer:
+    " That GTIN sits on this product's offer list rather than on the product itself, so on a" +
+    " multi-variant product it identifies one variant, not all of them.",
+  variant:
+    " That GTIN sits on the first variant listed rather than on the product itself, so it" +
+    " identifies that variant, not the product as a whole.",
+};
 
 /** True when this identifier value cannot identify anything. */
 export function isPlaceholderIdentifier(raw: string): boolean {
@@ -1856,11 +1886,21 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // `isPublishableGtin` so the authenticated path can select a variant barcode by
       // the SAME rule this row judges it by (v3.0 CP3 / G-07).
       const realGtin = isPublishableGtin(gtinRaw);
-      const have = [realGtin ? "GTIN" : null, realMpn ? "MPN" : null].filter(Boolean) as string[];
-      if (have.length) {
+      const named: string[] = [];
+      const bare: string[] = [];
+      if (realGtin) { named.push(`a GTIN (${gtinRaw})`); bare.push("a GTIN"); }
+      if (realMpn) { named.push(`an MPN (${mpnRaw})`); bare.push("an MPN"); }
+      if (named.length) {
+        // v3.5 CP2a — the pass now says WHERE the GTIN came from when that is not the
+        // product node itself, because those are different claims (see `selectGtin`).
+        const caveat = realGtin ? GTIN_SOURCE_CLAUSE[info?.gtinSource ?? "product"] : "";
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
-          detail: `Your structured data publishes ${listPhrase(have)}.`, evidenceSurface: "structured data",
+          detail: renderIdentifierDetail(
+            `Your structured data publishes ${listPhrase(named)}.${caveat}`,
+            `Your structured data publishes ${listPhrase(bare)}, but we can't reproduce the value here — it contains wording our reporting standard doesn't allow us to repeat.${caveat}`,
+          ),
+          evidenceSurface: "structured data",
         };
       }
       return {
