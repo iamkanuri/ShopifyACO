@@ -1,0 +1,840 @@
+{
+  "suite_id": "subject-tense",
+  "suite_version": "2.0",
+  "title": "Referent acceptance — REAL adjudicated merchant sentences",
+  "what_this_measures": "Whether a referent guard closes the wrong-subject instances measured on real stores WITHOUT suppressing the true rows those same stores publish. Every case is a sentence a real merchant wrote, that the engine renders today, adjudicated individually and blind-re-examined.",
+  "what_this_does_not_measure": "Frequency. 2.0 is derived from the 71 passing claim rows across 54 stores in a 335-store sample; it is not a population. It also does not measure the two DESCOPED axes, which have no hostile cases here on purpose — see `descoped`.",
+  "descoped": {
+    "letter_not_spirit": {
+      "verdict": "DESCOPE-WITH-PRECEDENT",
+      "measured": "Attacks best of the three on chosen input (260/280 = 92.9%) and owns ZERO defects alone: all 9 of its attributions are shared with wrong_subject (8) or tense_modality (1). Its principal real-copy stratum `enquiry_evaluation` has 0 instances in 3,349 sentences across 335 stores. Stable under strict, raw and re-examined readings.",
+      "precedent": "The `origin` tombstone — a class with zero natural instances, removed after four attempts — and v3.6's declined guards for `enquiry_evaluation` and `review_quote` on measured zero instances. Descoping on frequency is established practice here.",
+      "consequence": "No hostile case is authored for it. Its honest carriers ARE carried, because a wrong_subject guard can break them collaterally."
+    },
+    "tense_modality": {
+      "verdict": "DESCOPE-WITH-PRECEDENT",
+      "measured": "Zero occurrence in the passing population (0/71) with all three detectors proven live (they fire 135 times at corpus scale), zero defects alone, and 13 honest carriers. Its one attribution is a co-attribution on a letter_not_spirit defect. Corroborated independently by G-15's own TIME hostile = 0/17.",
+      "precedent": "Same as above. 13 true rows lost for zero gain is the `origin` arithmetic.",
+      "consequence": "No hostile case is authored for it. Its honest carriers ARE carried."
+    }
+  },
+  "frequency_caveat": {
+    "statement": "2.0 INVERTS 1.0's caveat and does not replace it. 1.0 measures capability on hand-built sentences; 2.0 measures whether a guard survives contact with sentences real merchants wrote. Passing 2.0 still does not establish that a guard is worth shipping — it establishes that it does not break the specific true rows these 54 stores publish.",
+    "precedent": "v3.2's four aboutness guards: a 216-store replay found 0 real positives lost while two independent attackers found 192 regressions. A sample cannot arbitrate a matcher change.",
+    "second_precedent": "v2.6 measured 16/16 on its own set and was a net regression when someone else measured it.",
+    "consequence": "2.0 is a REGRESSION FLOOR and an evidence base. The gate for a v4.0 guard remains an adversarial pass by agents who did not author the guard OR this suite."
+  },
+  "authorship": {
+    "derived_by": "v3.9 CP-3, from adjudications produced by workflow wf_2a19827b-bd2 and blind re-examination wf_60adde8d-d47.",
+    "excluded_from_authoring_the_v4_guard": [
+      "wf_2a19827b-bd2 — all 13 adjudicator agents and all 13 refuter agents",
+      "wf_60adde8d-d47 — all 6 blinded re-examiner agents",
+      "the v3.9 session orchestrator, which selected and framed these cases"
+    ],
+    "why": "A guard measured against a gate its own author wrote is v2.6's failure mode, and the disguised form of the rule this repo has recorded seven times: re-running the attacker's own sentences after the fix feels independent and is not. G-15's precondition states it directly — the session that builds the guard must not be the session that authors the suite."
+  },
+  "relationship_to_1_0": {
+    "suite_1_0": "BYTE-FROZEN. Not edited, not superseded, still gated at hostile 4/37 and must-not-regress 19/19.",
+    "floor_not_ceiling": "1.0's 19 must-not-regress cases remain the floor. 2.0 adds real ones on top; a guard must pass BOTH. 2.0's own baseline is RECORDED AT CREATION and is not a target — the hostile cases are expected to FAIL today, because they are defects the engine has not fixed."
+  },
+  "terms": {
+    "note": "2.0's cases span many claim keys, so terms are carried PER KEY rather than as one list. Each is lifted from the engine's own `CLAIM_TERMS` source bytes, never retyped.",
+    "derived_from": "src/server/productTest.ts CLAIM_TERMS",
+    "derived_from_hash": "see terms_hash",
+    "drift_tripwire": "`acceptance.test.ts` must assert every key's term list still matches the engine's. If it fails, the engine's vocabulary moved and this suite must be RE-DERIVED — it is not a licence to edit the assertion.",
+    "support": [
+      "100% vegan",
+      "certified organic",
+      "cruelty free",
+      "cruelty-free",
+      "fair trade",
+      "fair-trade",
+      "fairtrade",
+      "fragrance free",
+      "fragrance-free",
+      "gluten free",
+      "gluten-free",
+      "leaping bunny",
+      "no added fragrance",
+      "no fragrance",
+      "no gluten",
+      "no parabens",
+      "not tested on animals",
+      "organic",
+      "paraben free",
+      "paraben-free",
+      "plant based",
+      "plant-based",
+      "single estate",
+      "single farm",
+      "single origin",
+      "single-estate",
+      "single-origin",
+      "unscented",
+      "usda organic",
+      "vegan",
+      "without parabens"
+    ],
+    "violating": [
+      "added fragrance",
+      "contains animal",
+      "contains gluten",
+      "contains parabens",
+      "contains wheat",
+      "non-vegan",
+      "tested on animals"
+    ]
+  },
+  "terms_by_claim_key": {
+    "cruelty_free": {
+      "support": [
+        "cruelty-free",
+        "cruelty free",
+        "not tested on animals",
+        "leaping bunny"
+      ],
+      "violating": [
+        "tested on animals"
+      ]
+    },
+    "fair_trade": {
+      "support": [
+        "fair trade",
+        "fair-trade",
+        "fairtrade"
+      ],
+      "violating": []
+    },
+    "fragrance_free": {
+      "support": [
+        "fragrance-free",
+        "fragrance free",
+        "unscented",
+        "no added fragrance",
+        "no fragrance"
+      ],
+      "violating": [
+        "added fragrance"
+      ]
+    },
+    "gluten_free": {
+      "support": [
+        "gluten-free",
+        "gluten free",
+        "no gluten"
+      ],
+      "violating": [
+        "contains gluten",
+        "contains wheat"
+      ]
+    },
+    "organic": {
+      "support": [
+        "organic",
+        "usda organic",
+        "certified organic"
+      ],
+      "violating": []
+    },
+    "paraben_free": {
+      "support": [
+        "paraben-free",
+        "paraben free",
+        "no parabens",
+        "without parabens"
+      ],
+      "violating": [
+        "contains parabens"
+      ]
+    },
+    "single_origin": {
+      "support": [
+        "single origin",
+        "single-origin",
+        "single estate",
+        "single-estate",
+        "single farm"
+      ],
+      "violating": []
+    },
+    "vegan": {
+      "support": [
+        "vegan",
+        "100% vegan",
+        "plant-based",
+        "plant based"
+      ],
+      "violating": [
+        "contains animal",
+        "non-vegan"
+      ]
+    }
+  },
+  "strata": {
+    "real_supplier_attribute_not_product": "REAL wrong-subject instances adjudicated as misleading: supplier_attribute_not_product.",
+    "real_supplier_entity_generality": "REAL wrong-subject instances adjudicated as misleading: supplier_entity_generality.",
+    "real_third_party_subject": "REAL wrong-subject instances adjudicated as misleading: third_party_subject.",
+    "real_company_level_generality": "REAL wrong-subject instances adjudicated as misleading: company_level_generality.",
+    "real_regional_generality": "REAL wrong-subject instances adjudicated as misleading: regional_generality.",
+    "real_bundled_component_attribute": "REAL wrong-subject instances adjudicated as misleading: bundled_component_attribute.",
+    "real_region_industry_generality": "REAL wrong-subject instances adjudicated as misleading: region_industry_generality.",
+    "real_producer_entity_not_product": "REAL wrong-subject instances adjudicated as misleading: producer_entity_not_product.",
+    "real_carrier_multi_axis": "REAL honest sentences carrying markers for MORE THAN ONE axis — the hardest cases, because a guard for any one of them destroys a true row.",
+    "real_carrier_wrong_subject": "REAL honest sentences carrying wrong_subject markers. A guard for that axis must not suppress these.",
+    "real_carrier_letter_not_spirit": "REAL honest sentences carrying letter_not_spirit markers. A guard for that axis must not suppress these."
+  },
+  "cases": [
+    {
+      "id": "ws-01",
+      "stratum": "real_supplier_attribute_not_product",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "product_description",
+      "text": "More : Nestled along the southern shores of Guatemala's breathtaking Lake Atitlán, AproCafé Atitlán is a cooperative of 54 organic-certified producers farming the volcanic slopes…",
+      "claim_key": "organic",
+      "why": "The grammatical and semantic subject is the cooperative ('AproCafe Atitlan is a cooperative of 54 organic-certified producers'), not the roasted coffee being sold. Producer-level certification does not establish that this roaster's product is organic (organic certification requires chain of custody through the roaster). Quoted as proof that THIS bag is organic, it invites an inference the sentence never makes.",
+      "provenance": {
+        "host": "littlewaves.coffee",
+        "url": "https://littlewaves.coffee/products/atitlan-washed-guatemala",
+        "claim": "organic",
+        "adjudication_unit": "A040",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_surface_today": "product copy",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": true
+      }
+    },
+    {
+      "id": "ws-02",
+      "stratum": "real_supplier_entity_generality",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "product_description",
+      "text": "Banko Dhadhato is one of many primary Fair Trade and organic certified cooperatives that make up the storied Yirgacheffe Coffee Farmers Cooperative Union (YCFCU).",
+      "claim_key": "fair_trade",
+      "why": "The subject is a cooperative, and the predicate is background about the union's membership ('one of many primary … cooperatives that make up the storied YCFCU'). Nothing says this bag was bought or sold on Fair Trade terms, and the product title is 'Ethiopia Yirgacheffe Grade 1 Banko' while the sentence names Banko Dhadhato. Medium, not high: co-op-held certification is genuinely how fair trade is structured, so a reader could call it substantively true — but the row presents it as the page stating the PRODUCT is fair trade, and it does not. The v3.6 competitor(brand_subject) detector fired hostile here and was right.",
+      "provenance": {
+        "host": "wreckingballcoffee.com",
+        "url": "https://wreckingballcoffee.com/products/ethiopia-gedeb-banko-gotiti-12oz",
+        "claim": "fair_trade",
+        "adjudication_unit": "A070",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "medium",
+        "re_examined": "reinstated",
+        "engine_surface_today": "product copy",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "ws-03",
+      "stratum": "real_third_party_subject",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "structured_data",
+      "text": "David has other 2 farms and wants to improve his processes to produce sustainable coffee, that's why his farms have three certifications, Fairtrade, Organic (one farm), and…",
+      "claim_key": "organic",
+      "why": "The grammatical subject is the producer David and explicitly his OTHER farms — \"David has other 2 farms ... that's why his farms have three certifications, Fairtrade, Organic (one farm)\". The parenthetical scopes Organic to ONE farm, and the sentence never says which, nor that this Geisha lot came from it. It is a producer-profile paragraph, not a claim about this product. competitor(brand_subject) fired hostile for wrong_subject — a wrong_subject guard would correctly suppress this.",
+      "provenance": {
+        "host": "trafficcoffee.com",
+        "url": "https://trafficcoffee.com/products/la-colmena-geisha",
+        "claim": "organic",
+        "adjudication_unit": "A065",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": true
+      }
+    },
+    {
+      "id": "ws-04",
+      "stratum": "real_company_level_generality",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "page_description",
+      "text": "Equator Coffee Roasters specializes in roasting and delivering fresh organic coffee.",
+      "claim_key": "organic",
+      "why": "'Equator Coffee Roasters specializes in roasting and delivering fresh organic coffee.' The subject is the ROASTER and the predicate is what it specializes in - a company/site-wide generality. It does not assert that this Peru Geisha microlot is organic; a roaster that specializes in organic coffee can and does also sell non-organic microlots, and geisha microlots are a common exception. A careful shopper reading only this as proof about this product is misled. (Aside: trade_form(no_finite_verb) fired on a sentence whose finite verb is 'specializes' - detector noise, does not change the verdict.)",
+      "provenance": {
+        "host": "equator.ca",
+        "url": "https://equator.ca/products/peru-geisha-microlot-w",
+        "claim": "organic",
+        "adjudication_unit": "A022",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_surface_today": "page description",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "ws-05",
+      "stratum": "real_regional_generality",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "product_description",
+      "text": "Chirinos brings together over 800 smallholder farmers in the high mountains of Peru, where organic farming is taken seriously and community prosperity is built cup by cup.",
+      "claim_key": "organic",
+      "why": "'Chirinos brings together over 800 smallholder farmers in the high mountains of Peru, where organic farming is taken seriously and community prosperity is built cup by cup.' The organic clause is a relative clause about the PLACE - organic farming is taken seriously there - not a statement that this coffee was organically grown or certified. It is the ambient-ethos form ('taken seriously'), not a production fact, and the product is a blend so even a co-op-level fact would not carry. Contrast A037, which states the growers produce by organic practices only; that is an assertion, this is scene-setting.",
+      "provenance": {
+        "host": "unionroasted.com",
+        "url": "https://unionroasted.com/products/summer-blend",
+        "claim": "organic",
+        "adjudication_unit": "A067",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_surface_today": "product copy",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "ws-06",
+      "stratum": "real_bundled_component_attribute",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "structured_data",
+      "text": "The Body Wash Eucalyptus to gently cleanse and nourish, The Body Serum to deeply hydrate and replenish, and The Body Lotion Fragrance-Free to strengthen, firm, and lock in…",
+      "claim_key": "fragrance_free",
+      "why": "'The Body Wash Eucalyptus ..., The Body Serum ..., and The Body Lotion Fragrance-Free to strengthen, firm, and lock in...' The product is a three-item KIT, and 'Fragrance-Free' is a token inside the NAME of one of the three items. The kit as a whole is not fragrance free - the first listed item is 'The Body Wash Eucalyptus', which is a fragrance descriptor in its own name. A shopper reading this row as proof the kit is fragrance_free is misled by exactly the bundled-item mechanism. The trade_form marker fired, but suppression here would be correct, so not an honest carrier.",
+      "provenance": {
+        "host": "necessaire.com",
+        "url": "https://necessaire.com/products/the-body-ritual-kit",
+        "claim": "fragrance_free",
+        "adjudication_unit": "A047",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": true
+      }
+    },
+    {
+      "id": "ws-07",
+      "stratum": "real_region_industry_generality",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "structured_data",
+      "text": "The country has a particularly strong tradition of organic and cooperative farming: a large proportion of Peruvian specialty coffee is certified organic, grown by smallholder…",
+      "claim_key": "organic",
+      "why": "\"The country has a particularly strong tradition of organic and cooperative farming: a large proportion of Peruvian specialty coffee is certified organic, grown by smallholder…\" The grammatical subject is Peru and then Peruvian specialty coffee as a category. It establishes nothing about this tasting pack, and its own quantifier concedes as much — \"a large proportion\", not all. This is the industry/region generality class verbatim. Worth recording precisely because the claim happens to be TRUE: the page title is \"Peru Tasting Pack (Organic)\", so the verdict is right and the evidence is wrong, which is exactly the shape that survives a status-only comparison and reaches a merchant as a green row backed by a sentence that cannot carry it. Not an honest carrier — only plain_present fired, and suppressing this sentence would be correct.",
+      "provenance": {
+        "host": "ozonecoffee.co.uk",
+        "url": "https://ozonecoffee.co.uk/products/peru-tasting-pack",
+        "claim": "organic",
+        "adjudication_unit": "A053",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": true
+      }
+    },
+    {
+      "id": "ws-08",
+      "stratum": "real_producer_entity_not_product",
+      "direction": "hostile",
+      "expected": "not_proven",
+      "surface": "product_description",
+      "text": "Banko Dhadhato is one of many primary Fair Trade and organic certified cooperatives that make up the storied Yirgacheffe Coffee Farmers Cooperative Union (YCFCU).",
+      "claim_key": "organic",
+      "why": "\"Banko Dhadhato is one of many primary Fair Trade and organic certified cooperatives that make up the storied Yirgacheffe Coffee Farmers Cooperative Union (YCFCU).\" The subject is a COOPERATIVE and the predicate certifies that organisation, inside a passage of origin background; the product is a 12oz roasted coffee (page title \"Ethiopia Yirgacheffe Grade 1 Banko\", slug banko-gotiti, so the named entity is not even the product's own lot string). Organic certification of a producer organisation is not certification of the roasted bag, which needs chain of custody through the roaster, and the sentence additionally generalises over \"many\" member coops. Medium confidence, not high: this is the actual supply chain of this coffee rather than a competitor or an unrelated product, so a reader could fairly treat it as producer evidence — I am recording it as a defect on the evidence, not asserting the coffee is non-organic. competitor(brand_subject) fired HOSTILE here and was right, so this row is not an honest carrier.",
+      "provenance": {
+        "host": "wreckingballcoffee.com",
+        "url": "https://wreckingballcoffee.com/products/ethiopia-gedeb-banko-gotiti-12oz",
+        "claim": "organic",
+        "adjudication_unit": "A069",
+        "engine_answer_today": "pass_evidenced",
+        "confidence": "medium",
+        "re_examined": "reinstated",
+        "engine_surface_today": "product copy",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-01",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "product_title",
+      "text": "Organic Guatemalan Coffee - Calgary Heritage Roasting Co.",
+      "claim_key": "organic",
+      "why": "The product title 'Organic Guatemalan Coffee' is the merchant's own assertion that this coffee is organic; a shopper reading it is not misled about the subject or the sense. It is verbless label-value text, so spec_block and trade_form both fired -- a guard on either axis would suppress product titles wholesale, which are the single most direct claim surface a merchant controls.",
+      "provenance": {
+        "host": "canadianheritageroastingco.com",
+        "url": "https://canadianheritageroastingco.com/products/guatemalan-1",
+        "claim": "organic",
+        "adjudication_unit": "A015",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 3,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "product title",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-02",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "product_description",
+      "text": "You'll find our Organic Peru Norte is medium bodied and accented by clean, bright, and smooth acidity.",
+      "claim_key": "organic",
+      "why": "'our Organic Peru Norte' names this product (handle: organic-fair-trade-peru-norte) with 'Organic' inside the merchant's own product name, so the organic status is asserted even though the sentence's main predicate is about body and acidity. Medium, not high, because the claim rides in a naming noun phrase rather than a predicate -- a stricter reading would call that letter-not-spirit. Carries first_person and plain_present markers on all three axes.",
+      "provenance": {
+        "host": "highrisecoffeeroasters.com",
+        "url": "https://highrisecoffeeroasters.com/products/organic-fair-trade-peru-norte-1lb-bag",
+        "claim": "organic",
+        "adjudication_unit": "A030",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 3,
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "product copy",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-03",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Formulated without parabens, phthalates, or sulfates.",
+      "claim_key": "paraben_free",
+      "why": "'Formulated without parabens, phthalates, or sulfates' is a direct, unambiguous paraben-free assertion about this body wash. It fires three markers at once -- negation, bare-participle lead, verbless comma chain -- so it would be suppressed by a naive guard on ANY of the three axes. This is the archetypal honest carrier and the exact shape of the v3.1 regression.",
+      "provenance": {
+        "host": "brooklyncandlestudio.com",
+        "url": "https://brooklyncandlestudio.com/products/brooklyn-hand-body-wash",
+        "claim": "paraben_free",
+        "adjudication_unit": "A013",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 3,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-04",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "page_description",
+      "text": "Clean-burning, cruelty-free, and made without parabens or sulfates.",
+      "claim_key": "cruelty_free",
+      "why": "'Clean-burning, cruelty-free, and made without parabens or sulfates' predicates cruelty-free of this candle in a verbless attribute chain. Genuine. Carries spec_block, trade_form and already_refused markers, so guards on all three axes would wrongly suppress it.",
+      "provenance": {
+        "host": "otherland.com",
+        "url": "https://otherland.com/products/dessert-first",
+        "claim": "cruelty_free",
+        "adjudication_unit": "A049",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 3,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "page description",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-05",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Description Built from water-resistant nylon twill with vegan leather details, the Metro Travel Wallet is designed to carry your multiple passports, cards, ID, and documents…",
+      "claim_key": "vegan",
+      "why": "'Built from water-resistant nylon twill with vegan leather details' predicates construction of the named product (the Metro Travel Wallet is the subject of the main clause). Both materials are animal-free; page elsewhere: 'premium nylon twill with ultra-microfibre vegan leather accents'. Borderline because 'vegan' sits inside the material name 'vegan leather' and covers a component, not a whole-product certification — if the requirement means product-level vegan certification this flips. A guard on plain_present or spec_block(label_value) (the leading 'Description' label) would destroy a true row.",
+      "provenance": {
+        "host": "monos.com",
+        "url": "https://monos.com/products/metro-travel-passport-wallet",
+        "claim": "vegan",
+        "adjudication_unit": "A044",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 3,
+        "confidence": "medium",
+        "re_examined": "reinstated",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": true
+      }
+    },
+    {
+      "id": "hc-06",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "faq",
+      "text": "All of our Supers are vegan and tested for pesticides, heavy metals, microbiological content and more.",
+      "claim_key": "vegan",
+      "why": "Universal quantification over a class that contains this product: the URL is /products/superbeauty and the sentence says \"All of our Supers are vegan\". A statement true of every member of a superset entails it of this member, so a shopper is not misled. But site_wide fired HOSTILE for wrong_subject — this is exactly the dangerous case: a wrong_subject guard suppressing site_wide shapes kills an honest entailing row.",
+      "provenance": {
+        "host": "moonjuice.com",
+        "url": "https://moonjuice.com/products/superbeauty",
+        "claim": "vegan",
+        "adjudication_unit": "A045",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 3,
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "FAQ structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-07",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "page_description",
+      "text": "Discover Guatemala El Sol Natural, a naturally processed single origin coffee with notes of Concord grape, milk chocolate, and raspberry.",
+      "claim_key": "single_origin",
+      "why": "Names this exact product ('Guatemala El Sol Natural') and calls it 'a naturally processed single origin coffee'. Genuine assertion. It is an imperative-plus-appositive with no finite predicate, so trade_form fired -- a tense_modality or wrong_subject guard aimed at verbless/comma-chain copy would wrongly suppress it. This is the commonest honest shape in DTC page descriptions.",
+      "provenance": {
+        "host": "evermorecoffee.com",
+        "url": "https://evermorecoffee.com/products/guatemala-el-sol-natural",
+        "claim": "single_origin",
+        "adjudication_unit": "A023",
+        "carrier_axes": [
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "page description",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-09",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Enjoy fair trade, organic, single origin Colombian coffee at the touch of a button.",
+      "claim_key": "single_origin",
+      "why": "\"Enjoy fair trade, organic, single origin Colombian coffee at the touch of a button\" — the noun phrase is the coffee in this K-cup, and \"Italian\" in the product title is a roast level, not an origin, so single-origin Colombian is coherent rather than contradictory. Imperative mood + comma chain make trade_form fire on both tense_modality and wrong_subject; a guard on either would suppress a true row.",
+      "provenance": {
+        "host": "justuscoffee.com",
+        "url": "https://justuscoffee.com/products/italian-k-cup",
+        "claim": "single_origin",
+        "adjudication_unit": "A033",
+        "carrier_axes": [
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-10",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Enjoy fair trade, organic, single origin Colombian coffee at the touch of a button.",
+      "claim_key": "organic",
+      "why": "Same sentence as A033 read for the organic key: \"fair trade, organic, single origin Colombian coffee\" describes the coffee this K-cup contains. trade_form(no_finite_verb,comma_chain) fired on tense_modality and wrong_subject — the comma-chain attribute list is the commonest honest shape in DTC copy, so a guard there is expensive.",
+      "provenance": {
+        "host": "justuscoffee.com",
+        "url": "https://justuscoffee.com/products/italian-k-cup",
+        "claim": "organic",
+        "adjudication_unit": "A034",
+        "carrier_axes": [
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-11",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "product_title",
+      "text": "UltraWash Dishwasher Detergent Case, Unscented",
+      "claim_key": "fragrance_free",
+      "why": "The product title itself names the variant \"Unscented\", which is the merchant's own designation of this SKU rather than a sentence about something else. Residual letter-not-spirit risk (an \"unscented\" formula can carry a masking fragrance) is a labelling convention, not a mis-subjected quote. trade_form(no_finite_verb) fired on tense_modality and wrong_subject — every product title is verbless, so a guard on that shape would suppress the entire title surface.",
+      "provenance": {
+        "host": "dropps.com",
+        "url": "https://dropps.com/products/ultrawash-dishwasher-detergent-case-unscented",
+        "claim": "fragrance_free",
+        "adjudication_unit": "A021",
+        "carrier_axes": [
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "product title",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-12",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "page_description",
+      "text": "Single Origin - Mexico - One of our absolute favorite coffees in Oaxaca is back.",
+      "claim_key": "single_origin",
+      "why": "'Single Origin - Mexico - ...' is a label-value spec line for a single-origin Mexican lot (product is Artist Reserve Mexico Honorato Aparacio), and the trailing clause names Oaxaca, consistent with the label. Genuine assertion. Honest carrier: spec_block(label_value) fires under both letter_not_spirit and wrong_subject, and first_person('our') under wrong_subject - a guard suppressing verbless label-value spec lines or first-person sentences would destroy the single most canonical honest form this claim takes. I excluded tense_modality because its only marker here is plain_present, the canonical honest shape no guard would key on.",
+      "provenance": {
+        "host": "colorroasters.com",
+        "url": "https://colorroasters.com/products/artist-reserve-mexico-honorato-aparacio-fresh-harvest-2026",
+        "claim": "single_origin",
+        "adjudication_unit": "A017",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "high",
+        "re_examined": "reinstated",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "page description",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-13",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "page_description",
+      "text": "single origin Ethiopia washed",
+      "claim_key": "single_origin",
+      "why": "'single origin Ethiopia washed' - a verbless trade descriptor on a product that is an Ethiopian single origin (Idido Ethiopia). It asserts the claim of this product in the flattest possible way. Honest carrier on exactly the shape that makes it terse: trade_form(no_finite_verb) fires under both tense_modality and wrong_subject, so a guard requiring a finite verb or a delimitable subject would suppress a true row. This is the shape that cost the origin term 17 true statements.",
+      "provenance": {
+        "host": "lamillcoffee.com",
+        "url": "https://www.lamillcoffee.com/products/idido-ethiopia-1",
+        "claim": "single_origin",
+        "adjudication_unit": "A038",
+        "carrier_axes": [
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "page description",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-14",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "faq",
+      "text": "ALL Chomps are gluten free - no need to worry about that pesky ingredient.",
+      "claim_key": "gluten_free",
+      "why": "'ALL Chomps are gluten free' is brand-level but UNIVERSALLY quantified, and the product is a Chomps jerky trial pack on chomps.com, so the statement entails the claim for this product - a careful shopper is not misled. Honest carrier: already_refused(negation, 'no need to worry about that pesky ingredient') under letter_not_spirit and spec_block under letter_not_spirit/wrong_subject. A wrong_subject guard aimed at brand-wide/site_wide subjects would also reach it, which is precisely the trap - quantified brand claims are honest, unquantified ones are not, and the marker cannot tell them apart.",
+      "provenance": {
+        "host": "chomps.com",
+        "url": "https://chomps.com/products/high-protein-snack-jerky-stick-trial-pack",
+        "claim": "gluten_free",
+        "adjudication_unit": "A016",
+        "carrier_axes": [
+          "letter_not_spirit",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "FAQ structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-15",
+      "stratum": "real_carrier_multi_axis",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Constructed out of 5oz organic cotton.",
+      "claim_key": "organic",
+      "why": "'Constructed out of 5oz organic cotton.' A direct material statement about the garment - organic modifies the cotton the product is made of, in the right sense, with no competing subject. Honest carrier: trade_form(no_finite_verb) fires under tense_modality and wrong_subject because the sentence is a participial fragment with no explicit subject, so a guard demanding a finite verb or a resolvable subject span would suppress one of the cleanest true material claims in the batch.",
+      "provenance": {
+        "host": "outerknown.com",
+        "url": "https://outerknown.com/products/nomadic-oxford-g9jd3k3rer-resale",
+        "claim": "organic",
+        "adjudication_unit": "A051",
+        "carrier_axes": [
+          "tense_modality",
+          "wrong_subject"
+        ],
+        "axis_overlap": 2,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-16",
+      "stratum": "real_carrier_wrong_subject",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Ours are single origin and roasted to perfection.",
+      "claim_key": "single_origin",
+      "why": "'Ours are single origin' asserts the property of the merchant's own nibs; the product is a named single-origin lot (Mababu, Tanzania). The competitor(brand_subject) detector fired on the contrastive 'Ours', which is a HOSTILE wrong_subject marker on an honest sentence -- the dangerous case. A wrong_subject guard keying on brand-contrast framing would delete a true row. Residual: 'Ours' has no antecedent inside the quoted span (the known referent gap), which is why this is medium not high.",
+      "provenance": {
+        "host": "askinosie.com",
+        "url": "https://askinosie.com/products/mababu-tanzania-roasted-cocoa-nibs-1lb",
+        "claim": "single_origin",
+        "adjudication_unit": "A002",
+        "carrier_axes": [
+          "wrong_subject"
+        ],
+        "axis_overlap": 1,
+        "confidence": "medium",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-17",
+      "stratum": "real_carrier_letter_not_spirit",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "structured_data",
+      "text": "Free of the Top 9 Allergens, gluten-free, non-GMO, and kosher, these cookies are safe for schools, playdates, and parties.",
+      "claim_key": "gluten_free",
+      "why": "'... gluten-free ... these cookies are safe for ...' asserts gluten-free of this product directly. The already_refused(negation) marker fired on 'Free of the Top 9 Allergens' -- a negation-keyed guard would suppress a genuine free-from claim, which is precisely the v3.1 failure where an unanchored 'free of' frame killed 16 real rows.",
+      "provenance": {
+        "host": "partakefoods.com",
+        "url": "https://partakefoods.com/products/teeny-tiny-crunchy-chocolate-chip",
+        "claim": "gluten_free",
+        "adjudication_unit": "A055",
+        "carrier_axes": [
+          "letter_not_spirit"
+        ],
+        "axis_overlap": 1,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "structured data",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    },
+    {
+      "id": "hc-18",
+      "stratum": "real_carrier_wrong_subject",
+      "direction": "must_not_regress",
+      "expected": "pass",
+      "surface": "page_description",
+      "text": "Each beautifully designed tin can holds our carefully sourced single origin Colombian medium roast...",
+      "claim_key": "single_origin",
+      "why": "'Each beautifully designed tin can holds our carefully sourced single origin Colombian medium roast...' - the grammatical subject is the tin, but the tin is the product's container and the claim attaches to what it holds, which IS the product (a limited-edition tin of coffee). Singular 'single origin Colombian medium roast', so no blend ambiguity. This is the dangerous case the honestCarrier question exists for: packaging(pkg_head) fires HOSTILE under wrong_subject, plus first_person, and a container-subject guard would kill a true single-origin row. Excluded the other two axes - plain_present only.",
+      "provenance": {
+        "host": "redbaycoffee.com",
+        "url": "https://redbaycoffee.com/products/chaz-bear-collaboration-limited-edition-tin-can",
+        "claim": "single_origin",
+        "adjudication_unit": "A059",
+        "carrier_axes": [
+          "wrong_subject"
+        ],
+        "axis_overlap": 1,
+        "confidence": "high",
+        "re_examined": "unrefuted",
+        "engine_answer_today": "pass_evidenced",
+        "engine_surface_today": "page description",
+        "text_source": "the engine's own rendered evidence quote, re-executed against the captured snapshot",
+        "was_truncated_in_v36_export": false
+      }
+    }
+  ],
+  "excluded_cases": {
+    "hc-08": {
+      "host": "thursdayboots.com",
+      "claim": "organic",
+      "reason": "NOT ADJUDICABLE AS A SENTENCE-LEVEL CASE. The engine answers `pass_evidenced` for this row, but it matched against the full evidence text and RENDERS a quote truncated at ~180 characters — and the truncation cuts off the word `organic`. So the case's text, which is the engine's own rendered quote byte-for-byte, does not contain the term it is supposed to prove. A must-not-regress case that cannot pass on its own text measures the truncation, not the guard. The adjudicator flagged this hazard in its own reasoning before the suite existed.",
+      "filed_as": "the underlying defect is filed as a numbered gap — a rendered quote that omits the term it proves. Measured at 2 of 69 quoted rows (1 of them a row a merchant is actually shown); 16 of 69 are truncated at all."
+    }
+  },
+  "baseline_at_creation": {
+    "measured_at_commit": "8822d9f3c62ec4bb709683fda80a1cea2282f202",
+    "note": "RECORDED, NOT TARGETED. The hostile cases are expected to FAIL — they are defects the engine has not fixed, and a suite whose hostile half passed at creation would be measuring nothing. The must-not-regress half is the live constraint: those rows are true today and a guard must not take them.",
+    "hostile_met": "0/8",
+    "must_not_regress_met": "17/17"
+  }
+}

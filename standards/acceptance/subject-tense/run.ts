@@ -169,13 +169,33 @@ export function runSuite(suite: AcceptanceSuite | null, problems: SuiteProblem[]
     };
   }
 
-  const terms: ClaimTermsView = { support: suite.terms.support, violating: suite.terms.violating ?? [] };
+  const suiteTerms: ClaimTermsView = { support: suite.terms.support, violating: suite.terms.violating ?? [] };
   const results: CaseResult[] = [];
   const units: UnitReport[] = [];
 
+  // v3.9 — PER-CASE TERMS, additive and strictly opt-in.
+  //
+  // Suite 1.0's cases all probe ONE pinned vocabulary, so one term list serves the whole
+  // file. Suite 2.0's cases are real merchant sentences spanning EIGHT different claim
+  // keys, and running them all against the union of eight vocabularies would let an
+  // `organic` case be satisfied by a `vegan` term — measuring something nobody asked.
+  //
+  // A case may therefore carry `claim_key`, resolved against `terms_by_claim_key`. With
+  // neither present the behaviour is byte-identical to before, which is what keeps 1.0
+  // frozen. A `claim_key` naming a key the suite does not carry is a REFUSAL, not a
+  // silent fallback to the union — falling back would answer a different question and
+  // report it as this one.
+  const byKey = (suite as { terms_by_claim_key?: Record<string, ClaimTermsView> }).terms_by_claim_key;
+  const termsFor = (c: AcceptanceCase & { claim_key?: string }): ClaimTermsView => {
+    if (!c.claim_key) return suiteTerms;
+    const t = byKey?.[c.claim_key];
+    if (!t) throw new Error(`case ${c.id} names claim_key '${c.claim_key}' but the suite carries no terms for it`);
+    return { support: t.support, violating: t.violating ?? [] };
+  };
+
   for (const c of suite.cases) {
     try {
-      const r = evaluateWithVocabulary(asEvidence(c.text, c.surface), terms);
+      const r = evaluateWithVocabulary(asEvidence(c.text, c.surface), termsFor(c));
       results.push({ ...c, actual: r.outcome, met: r.outcome === c.expected, matchedTerm: r.term });
       units.push({ id: `case:${c.id}`, role: "sweep", completed: true });
     } catch (e) {
@@ -270,7 +290,11 @@ export function renderRun(run: RunResult, suite: AcceptanceSuite | null): string
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  const { suite, problems } = loadSuite();
+  // v3.9 — `--suite <file>` selects a suite. Absent, it is `suite.json` exactly as before,
+  // so 1.0's invocation and its gated result are untouched.
+  const si = process.argv.indexOf("--suite");
+  const named = si >= 0 ? process.argv[si + 1] : undefined;
+  const { suite, problems } = named ? loadSuite(join(HERE, named)) : loadSuite();
   const run = runSuite(suite, problems);
   process.stdout.write(
     process.argv.includes("--json")
