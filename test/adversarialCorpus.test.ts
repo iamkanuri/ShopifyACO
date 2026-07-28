@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { AssertionStatus, Requirement } from "../src/server/productTest.js";
 import {
   statusOf, verdictOf, requirementsFor, mkExtracted, verdictOfIds, verdictOfLd, verdictOfPage,
-  attr, claimReq, deliveryReq, idsReq, type HostileClass, type MkOptions,
+  attr, claimReq, deliveryReq, idsReq, priceReq, stockReq, type HostileClass, type MkOptions,
 } from "./support/adversarial.js";
 
 // ===========================================================================
@@ -1050,6 +1050,66 @@ const V28_FOUND: Case[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// v3.7-FOUND — from the first COMPLETE row-by-row audit of the general sample.
+//
+// 488 pass rows over 172 real stores, every one adjudicated individually and every
+// confirmed defect re-executed against the raw captured bytes. 18 confirmed, where the
+// published figure recorded ZERO — because that zero came from checking ONE class.
+//
+// ⚠️ AND ONLY THREE OF THE SEVEN CLASSES CAN BE PINNED HERE AT ALL. This corpus probes
+// `evaluate` — the matcher. Four of the seven live UPSTREAM of it, in
+// `fetchPublicProduct` / `priceToUsd`, where the product is normalised before any
+// requirement sees it:
+//
+//   • a non-USD price rendered with a "$"  — `PublicProduct` has no currency field, so
+//     the defect is structurally unrepresentable in this file;
+//   • integer CENTS read as dollars        — `priceToUsd`'s guard, `p > 1000 &&
+//     isInteger(p)`, before `minPriceUsd` exists;
+//   • a MISSING `available` field defaulted to purchasable — `v.available !== false`
+//     resolves the absence into a `true` that reaches `evaluate` indistinguishable
+//     from a stated one;
+//   • "lowest readable price" that is the page's MAXIMUM — the JSON-LD-offer fallback
+//     when no variant list was reached.
+//
+// So the corpus count rises by 3 and the honest reading is NOT "4 defects went
+// unrecorded". It is that **the fetch and normalisation layer has no adversarial corpus
+// at all**, and this is the first measurement that needed one. Filed as ENGINE_GAPS
+// P-17 with the numbers rather than fixed here — this session designs nothing.
+// ---------------------------------------------------------------------------
+const V37_FOUND: Case[] = [
+  C("Looking for a smaller size? Try our 1/2lb. Cocoa Nib Pouch.", attr("dimensions"), "not_proven", "bundled-item",
+    "askinosie.com, reproduced from its captured bytes. The ONLY quantity in the quoted structured " +
+    "data is a SIBLING SKU's size, reached by a cross-reference link, while the product under test is " +
+    "the 1lb. The merchant is shown another product's weight as proof that this one states its own. " +
+    "`bundled-item` is the least-wrong existing class and is not exact — a cross-sell is not in the " +
+    "box — which is itself a coverage note: this corpus has no cross-sell class.",
+    "pass_evidenced"),
+
+  C("", priceReq(10), "requires_store_access", "placeholder",
+    "$0.00 IS NOT A PRICE, and five real stores are told it is: knifewear.com (a Shopify `Referral` " +
+    "record), kosas.com (`GWP`, template_suffix `gwp`, compare_at 26.00), partakefoods.com, " +
+    "studioneat.com (whose own title is SYDNEY TEST PRODUCT) and tenthousand.cc (a real garment with " +
+    "18 GS1 barcodes and a masked price), plus branchbasics.com's `unsearchable` fulfillment stub. " +
+    "`price_under` compares `minPriceUsd < capUsd` and 0 is below every cap, so the row passes and " +
+    "renders `Lowest readable price is $0.00.` The honest answer is the one the branch beside it " +
+    "already gives when no price is exposed at all: requires_store_access. Three further stores " +
+    "(puracy, supergoop, voluspa) publish a deliberate 0.00 free gift and were adjudicated BORDERLINE, " +
+    "counted as passes — which is why the fix is a decision about zero and not a filter on it.",
+    "pass_evidenced", { minPriceUsd: 0 }),
+
+  C("", stockReq(), "not_proven", "surface-scoping",
+    "lesserevil.com, reproduced from its captured bytes. JSON-LD says `InStock`; the page's own inline " +
+    "product object says `\"available\":false` and nothing anywhere on the page says true. LD wins by " +
+    "the documented precedence (structured data -> variants), so a sold-out product is reported in " +
+    "stock and the merchant is told their own data is wrong by omission. The precedence is deliberate " +
+    "and defensible; what has no answer is a CONTRADICTION between the two surfaces, which the order " +
+    "resolves silently instead of reporting. Note this case is reachable here only because the variant " +
+    "list can be handed in already resolved — the sibling defect (a MISSING `available` field defaulted " +
+    "to purchasable on kytebaby.com, two rows) happens in the fetch layer and cannot be expressed.",
+    "pass_evidenced", { ldAvailability: "InStock", variants: [{ title: "Default", priceUsd: 12, available: false, options: ["Default"] }] }),
+];
+
+// ---------------------------------------------------------------------------
 // IDENTIFIERS — fixed this session; these lock the fix in.
 //
 // v3.5 CP2a added `actual` and `detail` here. `actual` exists for the same reason it
@@ -1480,7 +1540,7 @@ const RULE_D: PageCase[] = [
 const ALL: Array<[string, Case[]]> = [
   ["materials", MATERIALS], ["dimensions", DIMENSIONS],
   ["care", CARE], ["claims", CLAIMS], ["delivery", DELIVERY], ["v2.5-found", V25_FOUND],
-  ["v2.8-found", V28_FOUND],
+  ["v2.8-found", V28_FOUND], ["v3.7-found", V37_FOUND],
 ];
 
 for (const [group, cases] of ALL) {
@@ -1796,7 +1856,27 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // two rule-D cases instead — the shape with nothing else published and the shape with
   // a GTIN one node down must render the BYTE-IDENTICAL sentence, because the engine
   // does not look and therefore cannot tell them apart.
-  const EXPECTED_OPEN_GAPS = 57;
+  //
+  // 57 -> 60: v3.7 CP-1, from the FIRST complete row-by-row audit of the general sample —
+  // 488 pass rows over 172 real stores, 18 confirmed false passes where the published
+  // figure recorded ZERO. The arithmetic, one line per case, because a count that moves by
+  // three needs three reasons:
+  //   +1  the SIBLING product's size, reached by a cross-reference link, read as this
+  //       product's measurement (askinosie.com, from its captured bytes).          -> 58
+  //   +1  $0.00 accepted as a readable price, on five real stores that publish no price
+  //       (knifewear, kosas, partakefoods, studioneat, tenthousand + branchbasics). -> 59
+  //   +1  JSON-LD `InStock` reported over the page's own `"available":false`, with no
+  //       surface anywhere saying true (lesserevil.com).                           -> 60
+  //
+  // ⚠️ +3 CASES, 18 CONFIRMED DEFECTS, AND THE DIFFERENCE IS NOT SLOPPINESS. Seven defect
+  // classes were confirmed; four of them are UPSTREAM of the matcher this corpus probes,
+  // in `fetchPublicProduct` / `priceToUsd`, and are structurally unrepresentable here — a
+  // non-USD price (no currency field exists on `PublicProduct`), integer cents read as
+  // dollars, a MISSING `available` field defaulted to purchasable, and a "lowest readable
+  // price" that is the page's maximum. Read the gap as "the fetch and normalisation layer
+  // has no adversarial corpus at all", not as four defects quietly dropped. ENGINE_GAPS
+  // P-17 carries them with the numbers.
+  const EXPECTED_OPEN_GAPS = 60;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

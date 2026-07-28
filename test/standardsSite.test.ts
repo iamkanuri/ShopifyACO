@@ -5,7 +5,8 @@ import path from "node:path";
 import {
   loadPublishedStandards, standardsPageFor, standardJsonFor, standardsSitemapPaths,
   llmsTxt, renderFitness, findStandard, groundingOf, fitnessOf, measuredOf, predictionOf,
-  esc, renderStandaloneDocument, FONT_LINKS, orderedTiers, currentOf, isCurrent,
+  esc, renderStandaloneDocument, FONT_LINKS, orderedTiers, currentOf, isCurrent, renderComparison,
+  type FitnessSample,
   type PublishedStandard,
 } from "../src/server/standardsSite.js";
 import { standardHash } from "../standards/hash.js";
@@ -979,35 +980,114 @@ test("v1.3's BOUND COMES FROM THE SIDECAR, and the figure it displaces is NAMED,
   assert.equal(fitnessOf(findStandard("coffee", "1.0")!)!.supersededInDocument, undefined);
 });
 
+/**
+ * ⚠️ THIS TEST WAS REWRITTEN AT v3.7, AND HOW IT BROKE IS THE POINT.
+ *
+ * It used to read the x=0 floor OFF THE LIVE ARTIFACT: `f.samples.find(x => x.is_floor)`.
+ * v3.7 completed the general sample's audit — 488 rows adjudicated individually, 18
+ * confirmed where the floor recorded 0 — so `is_floor` went false and the test failed with
+ * "the general sample is not labelled a floor". The rule it was guarding did not stop
+ * mattering; the artifact it was reading simply moved out from under it.
+ *
+ * Had it been written one degree looser — `const floor = f.samples.find(x => x.is_floor);
+ * if (!floor) return;` — it would have gone GREEN and silently stopped testing anything,
+ * which is this repo's own vacuous-fixture failure with a different fixture. So the guard
+ * is now exercised against CONSTRUCTED samples, where it can never be disarmed by an
+ * artifact change, and the live artifact is asserted separately for what it is today.
+ */
+const sample = (over: Partial<FitnessSample> & { label: string; confirmed_false_positives: number; pass_rows_audited: number }): FitnessSample => ({
+  name: over.label.toLowerCase(), stores: 100,
+  point_estimate_pct: (over.confirmed_false_positives / over.pass_rows_audited) * 100,
+  bound_95_cluster_icc02_pct: 1, ...over,
+} as FitnessSample);
+
 test("AN x=0 FLOOR IS NOT A LOW ERROR RATE, and no ratio is drawn against one", () => {
-  // ⚠️ THE HONESTY TRAP THIS RELEASE WALKED INTO. Rule D closed every confirmed defect in
-  // the general sample, so x went to 0 and the rule of three returned 0.85% — against a
-  // retired 0.83% that was wrong by an order of magnitude for exactly the same reason:
-  // x=0 over an audit that examined ONE class estimates what the audit looked for, not
-  // the error rate. The derived comparison would have rendered "by an order of
-  // magnitude", reviving the sentence v3.2 corrected, off the back of a fix.
+  // The trap, kept alive on a constructed pair: a complete audit beside an x=0 floor.
+  // x=0 over an audit that examined ONE class estimates what the audit looked for, not the
+  // error rate — which is exactly how a retired 0.83% survived eighteen false passes.
+  const html = renderComparison([
+    sample({ label: "Category sample", confirmed_false_positives: 8, pass_rows_audited: 160, bound_95_cluster_icc02_pct: 10.97 }),
+    sample({ label: "General sample", confirmed_false_positives: 0, pass_rows_audited: 488, bound_95_cluster_icc02_pct: 0.85, is_floor: true }),
+  ]);
+  assert.doesNotMatch(html, /order of magnitude/i, "an order-of-magnitude claim is drawn off an x=0 floor");
+  assert.doesNotMatch(html, /is higher than the .* bound by/i, "a ratio is drawn against an x=0 floor");
+  assert.match(html, /No comparison is drawn/i, "the page neither compares nor says why not");
+  assert.match(html, /not a low error rate/i, "zero-confirmed is presented as a low error rate");
+
+  // ANTI-VACUITY ANCHOR. The refusals must be refusals, not a renderer that never
+  // compares. A pair with NON-overlapping intervals and no floor must state the ratio.
+  const drawn = renderComparison([
+    sample({ label: "High sample", confirmed_false_positives: 40, pass_rows_audited: 200, bound_95_cluster_icc02_pct: 26, interval_95: { lower_pct: 15.0, upper_pct: 26.0 } }),
+    sample({ label: "Low sample", confirmed_false_positives: 2, pass_rows_audited: 400, bound_95_cluster_icc02_pct: 1.8, interval_95: { lower_pct: 0.1, upper_pct: 1.8 } }),
+  ]);
+  assert.match(drawn, /is higher than the .* bound by/i,
+    "the comparison refuses even a genuinely separated pair — every other assertion here proves nothing");
+});
+
+test("NO RATIO IS DRAWN BETWEEN OVERLAPPING INTERVALS, and the live artifact is such a pair", () => {
+  // ⚠️ THE SAME REFUSAL, GENERALISED, AND THE REASON IT HAD TO BE. Closing the general
+  // sample's audit removed the floor — and with it the branch above — so the arithmetic
+  // resumed and would have rendered "higher by about 1.3×" plus "the number that matters
+  // to a merchant is the one measured on their own category". Both are unsupported: at
+  // equal audit depth the two samples' 95% intervals OVERLAP.
+  const overlapping = renderComparison([
+    sample({ label: "A", confirmed_false_positives: 7, pass_rows_audited: 160, bound_95_cluster_icc02_pct: 9.99, interval_95: { lower_pct: 2.14, upper_pct: 8.75 }, audit: { row_by_row: true } }),
+    sample({ label: "B", confirmed_false_positives: 18, pass_rows_audited: 488, bound_95_cluster_icc02_pct: 7.53, interval_95: { lower_pct: 2.35, upper_pct: 5.75 }, audit: { row_by_row: true } }),
+  ]);
+  assert.match(overlapping, /intervals overlap/i, "an overlapping pair is compared anyway");
+  assert.doesNotMatch(overlapping, /is higher than the .* bound by/i, "a ratio is drawn between overlapping intervals");
+  assert.doesNotMatch(overlapping, /the number that matters to a merchant/i,
+    "the page tells a merchant to prefer a category figure that is not distinguishable from the general one");
+
+  // And the LIVE artifact is exactly that pair today, asserted from its own fields so this
+  // cannot pass on a page that has stopped carrying intervals at all.
   const s = findStandard("coffee", "1.3")!;
   const f = fitnessOf(s)!;
-  const floor = f.samples.find((x) => x.is_floor)!;
-  assert.ok(floor, "the general sample is not labelled a floor");
-  assert.equal(floor.confirmed_false_positives, 0, "this test is written for the x=0 case");
-
+  assert.equal(f.samples.length, 2, "the live artifact no longer has two samples to compare");
+  const ivs = f.samples.map((x) => x.interval_95);
+  assert.ok(ivs.every(Boolean), "a live sample publishes no 95% interval, so the overlap test cannot run on it");
+  const [a, b] = ivs as Array<{ lower_pct: number; upper_pct: number }>;
+  assert.ok(!(a.lower_pct > b.upper_pct || b.lower_pct > a.upper_pct),
+    "the live intervals no longer overlap — this test's premise has changed and the page's claim must be re-derived, not left asserting a refusal");
   const html = renderFitness(s);
-  assert.doesNotMatch(html, /order of magnitude/i, "the page draws an order-of-magnitude claim off an x=0 floor");
-  assert.doesNotMatch(html, /is higher than the .* bound by/i, "the page draws a ratio against an x=0 floor");
-  assert.match(html, /No comparison is drawn/i, "the page neither compares nor says why not");
-  assert.match(html, /not a low error rate/i, "the page presents zero-confirmed as a low error rate");
+  assert.match(html, /intervals overlap/i, "the live page does not state the refusal");
+  assert.doesNotMatch(html, /order of magnitude/i);
+});
 
-  // A one-class check over a many-class sample is INCOMPLETE, and INCOMPLETE must never
-  // render as "every candidate was adjudicated" — the inversion completion.ts exists for.
-  assert.equal(floor.completion_state, "INCOMPLETE",
-    "a sample whose other defect classes were never adjudicated is not VERIFIED_CLEAN");
-  assert.ok(html.includes("INCOMPLETE"), "the incomplete state is not published");
-  const txt = llmsTxt(BASE);
-  const block = txt.slice(txt.indexOf("/standards/coffee/1.3)"));
-  assert.ok(block.includes("Completion state: INCOMPLETE"), "llms.txt hides the incomplete state from a machine reader");
-  assert.ok(!/Completion state: INCOMPLETE\. .*every candidate was adjudicated/i.test(block),
-    "INCOMPLETE is described as a completed audit");
+test("THE GENERAL SAMPLE'S AUDIT IS COMPLETE, and nothing still calls it a floor", () => {
+  // v3.7 CP-1. The claim being pinned is not the number — it is the DEPTH: every pass row
+  // adjudicated individually, which is what makes it comparable to the category sample at
+  // all. A future session that re-floors this sample must fail here rather than quietly
+  // publish a floor beside a complete audit again.
+  const s = findStandard("coffee", "1.3")!;
+  const f = fitnessOf(s)!;
+  const gen = f.samples.find((x) => x.name === "general")!;
+  assert.ok(gen, "the general sample is gone");
+  assert.equal(gen.is_floor, false, "the general sample is labelled a floor again");
+  assert.equal(gen.audit?.row_by_row, true, "the general sample no longer claims a row-by-row audit");
+  assert.notEqual(gen.confirmed_false_positives, 0,
+    "the general sample records zero confirmed again — which is the state that produced a published 0.83%");
+  assert.equal(gen.completion_state, "DEFECTS_FOUND");
+
+  // The per-kind decomposition is published as COUNTS with a separation statement beside
+  // it. A table of rates with no separation statement invites a comparison the intervals
+  // refuse, so the statement is required, not optional.
+  assert.ok((gen.per_kind?.length ?? 0) >= 5, "the per-kind decomposition is not published");
+  const sep = f.per_kind_separation?.general;
+  assert.ok(sep, "the per-kind table is published with no separation test beside it");
+  assert.ok(sep!.pairs_tested > 0,
+    "the separation test reports 0 pairs TESTED, which reads exactly like 'nothing separates'");
+  const html = renderFitness(s);
+  assert.match(html, /Do the kinds differ from each other\?/i, "the separation statement is not rendered");
+  assert.match(html, /does not support a spread/i);
+  // Every per-kind cell carries a completion state — the same rule the blended samples obey.
+  for (const c of gen.per_kind ?? []) {
+    assert.ok(c.completion_state, `per-kind cell ${c.kind} carries no completion state`);
+    assert.ok(c.confirmed_false_positives !== undefined, `per-kind cell ${c.kind} carries no confirmed count`);
+  }
+  // A refused figure is rendered as a refusal, never as a number or as a blank.
+  const refused = (gen.per_kind ?? []).filter((c) => c.cluster_adjustment_refused || c.bound_95_naive_refused);
+  if (refused.length) assert.match(html, /<em>refused<\/em>/, "a refused figure renders blank rather than as a refusal");
 });
 
 test("A RE-MEASURED ENTRY PUBLISHES BOTH RATES, and the displaced record keeps its declared biases", () => {

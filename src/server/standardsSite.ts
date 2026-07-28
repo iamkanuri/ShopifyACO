@@ -130,6 +130,20 @@ export interface FitnessSample {
    *  particular was DROPPED by v1.1's in-document block and restored at 1.2. */
   icc?: number; per_store_pct?: number;
   completion_state?: string;
+  /** GRAMMAR 1.2 / v3.7. A Wilson 95% interval beside the Poisson-upper bound, because
+   *  the Poisson/n form stops being a probability at small n and the per-kind cells are
+   *  where small n arrives. Optional: v1.0's sidecar predates it and renders without. */
+  interval_95?: { lower_pct: number; upper_pct: number };
+  /** v3.7. The blended bound decomposed by requirement kind. Published as COUNTS with
+   *  intervals, never as six rates: see `renderSeparation` for why. */
+  per_kind?: Array<{
+    kind: string; entries?: number; pass_rows: number; stores: number;
+    confirmed_false_positives: number | null; borderline_counted_as_passes?: number | null;
+    point_estimate_pct?: number; interval_95?: { lower_pct: number; upper_pct: number };
+    bound_95_naive_pct?: number | null; bound_95_naive_refused?: string;
+    deff_icc02?: number; bound_95_cluster_icc02_pct?: number | null; cluster_adjustment_refused?: string;
+    per_store_pct?: number | null; underpowered?: boolean; completion_state?: string;
+  }>;
   audit?: { row_by_row?: boolean; untruncated_evidence?: boolean; borderline_recorded?: boolean; borderline_count?: number };
   limits?: string[];
   defects?: CategoryFitnessDefect[];
@@ -220,6 +234,16 @@ export interface FitnessDoc {
   measured_at: string; engine_version?: string;
   samples: FitnessSample[];
   pending?: Record<string, string>;
+  /** v3.7. The pairwise interval-overlap test over the per-kind cells, per sample. It is
+   *  published because its ANSWER is the deliverable: the decomposition does not support a
+   *  spread, and a table of cells with no separation statement invites the reader to make
+   *  one up. `pairs_tested` is carried beside `pairs_separated` so a test that silently
+   *  tested nothing cannot read as "nothing separates". */
+  per_kind_separation?: Record<string, {
+    pairs_tested: number; pairs_separated: number;
+    widest_separation_pp?: number;
+    separated?: Array<{ a: string; b: string; gap_pp: number }>;
+  }>;
   /** Measured fail rate per entry. OVERRIDES the document's predicted band — the
    *  bands are hypotheses written before the standard had ever run, and rewriting
    *  them inside standard.json would change its hash and break every citation. */
@@ -649,7 +673,7 @@ function renderScalarish(v: unknown): string {
  * on a sample means only part of it has been re-checked, and comparing a complete
  * audit against a floor as if they were peers is a bigger error than either number.
  */
-function renderComparison(samples: FitnessSample[]): string {
+export function renderComparison(samples: FitnessSample[]): string {
   if (samples.length < 2) return "";
   const complete = samples.filter((s) => !s.is_floor);
   const floors = samples.filter((s) => s.is_floor);
@@ -668,6 +692,42 @@ function renderComparison(samples: FitnessSample[]): string {
   if (emptyFloors.length) {
     return `<p class="std-limit"><strong>No comparison is drawn between these samples, and the reason is the more useful finding.</strong> The ${
       esc(emptyFloors.map((s) => s.label).join(" and the "))} now records ZERO confirmed false passes — in the one defect class that has ever been mechanically re-checked. Every other class in that sample is unexamined. That is not a low error rate; it is the same epistemic position that produced a 0.83% figure this project published for weeks and then found eighteen errors inside. A ratio between a complete row-by-row audit and an x=0 floor would be arithmetic, not a measurement, so none is stated.</p>`;
+  }
+
+  // ⚠️ AND THE SAME REFUSAL, GENERALISED — because closing one sample's audit gap put the
+  // ratio right back in reach. The branch above only fires while a floor sits at x=0. At
+  // v3.7 the general sample stopped being a floor: every one of its 488 pass rows was
+  // adjudicated individually, 18 confirmed false passes were found where the floor recorded
+  // 0, and its bound went from 0.85% to 7.53%. With no floor left, the arithmetic below
+  // resumes and would have rendered "the coffee bound is higher by about 1.3×" plus "the
+  // number that matters to a merchant is the one measured on their own category".
+  //
+  // Both sentences are unsupported. Audited to the same depth for the first time, the two
+  // samples' 95% intervals OVERLAP — the general interval lies inside the coffee one — so
+  // no difference is demonstrated at all. A ratio between two overlapping intervals is
+  // arithmetic, not a measurement, and this is the fourth version of the same sentence this
+  // project has had to retire (an order of magnitude at v3.1, about 1.6× at v3.2, revived
+  // by a fix at v3.5). The refusal is now on the INTERVALS rather than on a flag, which is
+  // the only form that survives a future sample of any shape.
+  const withIv = samples.filter((s) => s.interval_95);
+  if (withIv.length >= 2) {
+    const overlapping: Array<[FitnessSample, FitnessSample]> = [];
+    for (let i = 0; i < withIv.length; i++) {
+      for (let j = i + 1; j < withIv.length; j++) {
+        const A = withIv[i]!, B = withIv[j]!;
+        const a = A.interval_95!, b = B.interval_95!;
+        if (!(a.lower_pct > b.upper_pct || b.lower_pct > a.upper_pct)) overlapping.push([A, B]);
+      }
+    }
+    if (overlapping.length) {
+      const [A, B] = overlapping[0]!;
+      return `<p class="std-limit"><strong>No difference is stated between these samples, because their intervals overlap.</strong> ${
+        esc(A.label)} is ${A.point_estimate_pct.toFixed(2)}% (95% ${A.interval_95!.lower_pct.toFixed(2)}–${A.interval_95!.upper_pct.toFixed(2)}%) and ${
+        esc(B.label)} is ${B.point_estimate_pct.toFixed(2)}% (95% ${B.interval_95!.lower_pct.toFixed(2)}–${B.interval_95!.upper_pct.toFixed(2)}%). ${
+        A.audit?.row_by_row !== false && B.audit?.row_by_row !== false
+          ? "Both have now had every passing row adjudicated individually, which is the first time the two have been audited to the same depth — and at equal depth they are statistically indistinguishable. "
+          : ""}Every earlier version of the claim that a category sample and a general sample differ was measuring AUDIT DEPTH rather than category: a general figure of 0.83% became 7.80% when one defect class was checked mechanically, and the general sample's remaining rate was unmeasured until every row was read. A ratio between overlapping intervals would be arithmetic, so none is stated.</p>`;
+    }
   }
 
   const hi = [...samples].sort((a, b) => b.bound_95_cluster_icc02_pct - a.bound_95_cluster_icc02_pct)[0]!;
@@ -972,6 +1032,73 @@ function bandCalibrationTable(rows: Array<{ e: StandardEntry; m: EntryDiscrimina
  * mechanism for that class, instead of leaving a reader to assume every known error has
  * been fixed.
  */
+/**
+ * The blended bound, decomposed by requirement kind.
+ *
+ * ⚠️ PUBLISHED AS COUNTS WITH INTERVALS, NEVER AS SIX RATES, and that is the whole
+ * decision. A merchant reading one blended number and getting a price row deserves to
+ * know that price rows carry 14 of the 18 known errors in this sample — that is a COUNT,
+ * and it is a fact. What the cells do not support is a spread: see `renderSeparation`.
+ * A six-cell table of percentages read as six rates would be false precision, which is
+ * worse than the blend it decomposes.
+ *
+ * Three refusals are rendered rather than smoothed over, because each marks a place the
+ * published method stops working and a reader would otherwise assume it had not:
+ *   • a Poisson-upper/n figure above 100 is not a rate and is refused, not clamped;
+ *   • a cluster adjustment where rows-per-store is exactly 1 is not an adjustment;
+ *   • an interval spanning more than 20 points cannot be read as a rate at all.
+ */
+function renderPerKind(x: FitnessSample): string {
+  const ks = x.per_kind ?? [];
+  if (!ks.length) return "";
+  const iv = (i?: { lower_pct: number; upper_pct: number }) => (i ? `${i.lower_pct.toFixed(1)}–${i.upper_pct.toFixed(1)}%` : "—");
+  const pct = (v?: number | null) => (v == null ? "—" : `${v.toFixed(2)}%`);
+  const rows = ks.map((c) => `<tr>
+    <th scope="row"><code>${esc(c.kind)}</code></th>
+    <td>${c.entries ?? "—"}</td><td>${c.pass_rows}</td><td>${c.stores}</td>
+    <td>${c.confirmed_false_positives == null ? "<strong>null</strong>" : c.confirmed_false_positives}</td>
+    <td>${c.borderline_counted_as_passes ?? "—"}</td>
+    <td>${pct(c.point_estimate_pct)}</td>
+    <td>${iv(c.interval_95)}${c.underpowered ? " <abbr title=\"the interval spans more than 20 points — this cell cannot be separated from its neighbours and must not be read as a rate\">⚠️</abbr>" : ""}</td>
+    <td>${c.bound_95_naive_refused ? "<em>refused</em>" : pct(c.bound_95_naive_pct)}</td>
+    <td>${c.cluster_adjustment_refused ? "<em>refused</em>" : pct(c.bound_95_cluster_icc02_pct)}</td>
+    <td>${esc(String(c.completion_state ?? "—"))}</td>
+  </tr>`).join("");
+  const refusals = [
+    ...new Set(ks.map((c) => c.bound_95_naive_refused).filter(Boolean) as string[]),
+    ...new Set(ks.map((c) => c.cluster_adjustment_refused).filter(Boolean) as string[]),
+  ];
+  return `<table class="std-bounds"><caption>${esc(x.label)} — the bound decomposed by requirement kind</caption>
+    <thead><tr><th scope="col">Kind</th><th scope="col">Entries</th><th scope="col">Pass rows</th><th scope="col">Stores</th><th scope="col">Confirmed</th><th scope="col">Borderline</th><th scope="col">Point</th><th scope="col">95% interval</th><th scope="col">Naive P95 upper</th><th scope="col">Cluster-adjusted</th><th scope="col">State</th></tr></thead>
+    <tbody>${rows}</tbody></table>${refusals.map((r) => `<p class="std-note">Refused: ${esc(r)}</p>`).join("")}`;
+}
+
+/**
+ * Whether the per-kind cells separate at all — the statement the table above needs, and
+ * the reason it is published as counts.
+ *
+ * Two kinds count as separable only when their 95% intervals do not overlap, which is the
+ * conservative test. `pairs_tested` is rendered beside `pairs_separated` on purpose: a
+ * separation test that silently tested nothing returns "0 separated", which reads exactly
+ * like "nothing separates", and this session's own first run of it did precisely that.
+ */
+function renderSeparation(f: FitnessDoc): string {
+  const sep = f.per_kind_separation;
+  if (!sep || !Object.keys(sep).length) return "";
+  const parts = Object.entries(sep).map(([name, s]) => {
+    if (!s.pairs_tested) return `<li><strong>${esc(name)}: the test did not run</strong> — 0 pairs tested, which is not the same answer as "nothing separates".</li>`;
+    const detail = s.pairs_separated
+      ? `${s.pairs_separated} of ${s.pairs_tested} pairs separate, the widest by <strong>${(s.widest_separation_pp ?? 0).toFixed(2)} percentage points</strong>${
+          s.separated?.length ? ` (${s.separated.map((x) => `<code>${esc(x.a)}</code> vs <code>${esc(x.b)}</code>`).join(", ")})` : ""}.`
+      : `none of the ${s.pairs_tested} pairs separates.`;
+    return `<li>${esc(name)}: ${detail}</li>`;
+  });
+  return `<div class="std-classes"><h4>Do the kinds differ from each other?</h4>
+  ${p("Two kinds are reported as different only when their 95% intervals do not overlap. That is the conservative test, and it is the one that matters: a spread stated on point estimates is a spread stated on nothing.")}
+  <ul>${parts.join("")}</ul>
+  ${p("So the decomposition does not support a spread at these sample sizes. It is published as counts — which kind the known errors are actually in — rather than as a set of rates, because a table of six percentages invites a comparison the intervals refuse.")}</div>`;
+}
+
 function defectClasses(x: FitnessSample): string {
   const cs = x.defect_classes ?? [];
   if (!cs.length) return "";
@@ -1183,7 +1310,7 @@ export function renderFitness(s: PublishedStandard): string {
       ? p(`Per-store rate: ${x.per_store_pct.toFixed(2)}%${x.icc !== undefined ? `, clustered at ICC ${x.icc}` : ""} — pass rows are not independent, because rows from one store share that store's copy conventions.`)
       : "";
     return `<div class="std-method"><h3>${esc(x.label)} — method</h3>${p(methodOf(x))}${completion}${spread}${
-      provenanceHtml(x)}${defectClasses(x)}${defectRows(x)}${limitsHtml(x)}${
+      provenanceHtml(x)}${renderPerKind(x)}${defectClasses(x)}${defectRows(x)}${limitsHtml(x)}${
       x.source && !x.provenance ? p(`Record: ${x.source}`) : ""}</div>`;
   }).join("");
   const pending = f.pending && Object.keys(f.pending).length
@@ -1217,7 +1344,7 @@ export function renderFitness(s: PublishedStandard): string {
   <table class="std-bounds"><caption>False-positive rate by sample</caption>
     <thead><tr><th scope="col">Sample</th><th scope="col">Stores</th><th scope="col">Pass rows audited</th><th scope="col">Confirmed false positives</th><th scope="col">Point estimate</th><th scope="col">95% upper bound</th></tr></thead>
     <tbody>${rows}</tbody></table>
-  ${shape}${methods}${pending}
+  ${shape}${renderSeparation(f)}${methods}${pending}
   <p class="std-note">Measured ${esc(f.measured_at)}${f.engine_version ? ` against engine ${esc(f.engine_version)}` : ""}.</p>
 </section>`;
 }

@@ -1,11 +1,64 @@
 {
   "_comment": "MEASURED FITNESS FOR v1.3, kept BESIDE the standard. `standard_hash` covers standard.json's bytes (ba2050578ed0…) and every citation resolves through it, so a measurement taken AFTER v1.3 shipped must not change them — the same reason v1.0's measurement is a sidecar and v1.1's is inside the document. A measurement's home depends on WHEN it was taken. v1.3's in-document `category_fitness` was carried across from v1.2 and was measured on the PRE-rule-D engine; this sidecar supersedes it, and the page says so rather than quietly showing one number over the other.",
-  "measured_at": "2026-07-27",
-  "engine_version": "v3.5 rule D",
-  "engine_commit": "132d085",
+  "_v37_comment": "v3.7 CP-1/CP-3. TWO CHANGES, both measurements taken AFTER v1.3 shipped and therefore both sidecar-only; no standard.json byte moves. (1) THE GENERAL SAMPLE IS NO LONGER A FLOOR: all 488 of its pass rows were adjudicated individually — the depth the coffee sample already had — and 18 confirmed false passes were found where the floor recorded 0. Every one was re-executed against the raw captured bytes by a rule that does not read the auditor's prose, with a two-sided canary over adjudicated true passes. (2) THE COFFEE COUNT DROPS FROM 8 TO 7: www.stumptowncoffee.com is scored against ALS-COFFEE v1.3's ACTUAL TEXT rather than against a stricter rule, and its text does not disqualify it. Both readings are recorded below. A per-kind decomposition is added to both samples, together with the pairwise separation test that says it does not support a spread.",
+  "measured_at": "2026-07-28",
+  "engine_version": "v3.5 rule D — unchanged at v3.6 and v3.7 (both measurement-only; no matcher file touched, asserted by gate)",
+  "engine_commit": "7085b34",
   "supersedes_in_document": {
     "field": "category_fitness",
     "reason": "v1.3's in-document block was carried across from v1.2 unchanged and records the engine as it was before rule D: 162 pass rows, 10 confirmed, 12.78% cluster-adjusted. Rule D disqualifies an MPN that is the storefront's own product object id, which removes two of those ten and the two rows that carried them. The document is not edited; this sidecar is the later measurement."
+  },
+  "cross_sample_comparison": {
+    "_comment": "THE FINDING THIS SESSION EXISTS FOR. Audited to the same depth for the first time, the category sample and the general sample are STATISTICALLY INDISTINGUISHABLE. The 95% Wilson intervals overlap almost completely and the general interval lies inside the coffee one. Every previous version of the 'a category sample and a general sample differ' claim — an order of magnitude at v3.1, about 1.6x at v3.2 — was a measurement of AUDIT DEPTH, not of category. v2.8: zero across 55 rows was a statement about sample SIZE. v3.0: about sample SHAPE. v3.2: about AUDIT METHOD. v3.7: it was audit method the whole way down, and correcting it removes the spread.",
+    "coffee_interval_95": {
+      "lower_pct": 2.1352,
+      "upper_pct": 8.7543
+    },
+    "general_interval_95": {
+      "lower_pct": 2.3457,
+      "upper_pct": 5.7548
+    },
+    "intervals_overlap": true,
+    "ratio_of_bounds_stated": false,
+    "ratio_refused_because": "The intervals overlap, so no difference is demonstrated and a ratio between the two bounds would be arithmetic rather than a measurement. This refusal is the same rule as the x=0 floor refusal it replaces, generalised: publish only interval-supported statements.",
+    "audited_to_the_same_depth": true
+  },
+  "per_kind_separation": {
+    "_comment": "EVERY PAIR TESTED, never a pair chosen because it looked separated. Two kinds are reported separable only when their 95% Wilson intervals do not overlap. The result is the deliverable: the per-kind decomposition does NOT support a spread in either sample at these n, and saying so is worth more than a table of cells presented as rates.",
+    "coffee": {
+      "pairs_tested": 10,
+      "pairs_separated": 1,
+      "separated": [
+        {
+          "a": "variant_option",
+          "b": "claim",
+          "separated": true,
+          "gap_pp": 0.45
+        }
+      ],
+      "widest_separation_pp": 0.45
+    },
+    "general": {
+      "pairs_tested": 21,
+      "pairs_separated": 1,
+      "separated": [
+        {
+          "a": "price_under",
+          "b": "in_stock",
+          "separated": true,
+          "gap_pp": 0.17
+        }
+      ],
+      "widest_separation_pp": 0.17
+    }
+  },
+  "inter_adjudication": {
+    "_comment": "v3.6's 71-row claim adjudication overlaps this population on SIX rows, not on a comparable population: 37 of v3.6's 71 passing rows carry forced claim keys the engine would never generate for that merchant, and the rest are coffee. All 6 agree — and all 6 agree on 'not a defect', so there is ZERO positive case on either side and the comparison measures nothing about agreement when one adjudicator says yes. Reported as INCOMPLETE rather than as 100%.",
+    "overlapping_rows": 6,
+    "agreements": 6,
+    "disagreements": 0,
+    "positive_cases_either_side": 0,
+    "completion_state": "INCOMPLETE"
   },
   "samples": [
     {
@@ -15,12 +68,12 @@
       "stores": 77,
       "products_evaluated": 100,
       "pass_rows_audited": 160,
-      "confirmed_false_positives": 8,
+      "confirmed_false_positives": 7,
       "borderline_counted_as_passes": 7,
-      "point_estimate_pct": 5,
-      "bound_95_naive_pct": 9.02,
-      "bound_95_cluster_icc02_pct": 10.97,
-      "per_store_pct": 10.39,
+      "point_estimate_pct": 4.38,
+      "bound_95_naive_pct": 8.22,
+      "bound_95_cluster_icc02_pct": 9.99,
+      "per_store_pct": 9.09,
       "icc": 0.2,
       "rows_per_store": 2.08,
       "deff_icc02": 1.22,
@@ -32,7 +85,7 @@
         "borderline_count": 7
       },
       "method": "Every one of the 162 pass rows the published measurement audited was individually adjudicated against its FULL untruncated evidence. Those adjudications are carried forward here unchanged; what moved is which rows the engine still passes. Rule D removed 2 of them, both adjudicated as confirmed false positives, so both the numerator AND the denominator fall — a correction that removed only the numerator would flatter the rate. The 95% upper bound is a Poisson upper limit inflated by a design effect for clustering within store (ICC 0.2), because rows from one store share that store's copy conventions.",
-      "supersedes": "12.78% over 162 pass rows with 10 confirmed, measured before rule D",
+      "supersedes": "10.97% over 160 pass rows with 8 confirmed (v3.5 CP5), which itself superseded 12.78% over 162 rows with 10 confirmed (pre-rule-D). What moved at v3.7 is ONE adjudication, not the engine and not the sample: www.stumptowncoffee.com is now scored against v1.3's actual text.",
       "defects": [
         {
           "entry_id": "ALS-COFFEE-1.3-WEIGHT-001",
@@ -53,13 +106,6 @@
           "evidence": "hydrangea.coffee — The farm’s volcanic soils are described as rich in organic matter, while narrow canyons channel warm winds through the surrounding landscape—the feature that gave Brisa Eterna its…",
           "why_wrong": "\"soils are described as rich in organic matter\" is the soil-science sense of the word and makes no claim that the coffee is organic.",
           "category_specific": true,
-          "status": "pinned_known_gap"
-        },
-        {
-          "entry_id": "ALS-COFFEE-1.3-IDENT-001",
-          "evidence": "www.stumptowncoffee.com — (the row renders no quote)",
-          "why_wrong": "The JSON-LD emits \"sku\":\"100754\",\"mpn\":\"100754\" adjacent in the same object -- the mpn is a byte-identical echo of the store-local SKU, which the requirement explicitly excludes, and no gtin field exists.",
-          "category_specific": false,
           "status": "pinned_known_gap"
         },
         {
@@ -92,9 +138,10 @@
         }
       ],
       "limits": [
-        "ONE of the three identifier defects survives, and it is not an oversight. `www.stumptowncoffee.com` publishes \"sku\":\"100754\",\"mpn\":\"100754\" — the MPN is a byte copy of the store's own SKU, not of its Shopify object id, so rule D does not reach it. The rule that would (`mpn === sku`) was scored over all 36 MPN-publishing products in the corpus at 0 true positives and 7 false, and the seven are the COMPLIANT case: a brand that manufactures what it sells legitimately uses one string for both. It was deliberately not implemented.",
-        "The comparison with the general DTC sample is a FLOOR, not a bound, and the two are NOT audited to the same depth. The general sample now records ZERO confirmed false passes — in the ONE defect class anyone has ever mechanically re-checked. Every other class in it is unexamined, which is precisely the state that produced a published 0.83% before this class was looked at.",
-        "The bound covers the engine's false PASSES only. False fails are not in it, and rule D creates them: six real merchants in the captured corpus publish a check-digit-valid GTIN on a Product node the extractor does not select, and are now told they publish no usable identifier (`ENGINE_GAPS` P-12)."
+        "⚠️ THE STUMPTOWN ROW IS RE-SCORED AS A TRUE PASS, AND THIS SUPERSEDES THIS SIDECAR'S OWN EARLIER READING. www.stumptowncoffee.com publishes \"sku\":\"100754\",\"mpn\":\"100754\". The earlier reading counted it as a surviving defect the engine deliberately does not catch. Scored against ALS-COFFEE v1.3's ACTUAL TEXT it is not a defect at all, so there is nothing for the engine to catch and counting it inflated the bound. The deciding sentence is IDENT-001's own adversarial.residual_risk clause (2), verbatim: \"It disqualifies a value for being the seller's own object id, not for being seller-private in general: a stock code that is neither a placeholder nor the storefront's key is outside this clause.\" accepted_evidence and insufficient_evidence scope identically. Checked against the bytes rather than against that reasoning: the storefront's own product key is 9516469289128 and its variant key is 55754751967400 (engine shopifyStorefrontObjectId and meta.product.id agree); 100754 is the merchant's SKU. The third key carrying the value is the analytics defaultVariant.id / items[].id, whose conventional value in a GA-shaped payload IS the SKU — reading that as \"the storefront's key\" would disqualify every published SKU, which is the reading residual_risk (2) forecloses and the rule (mpn === sku) already measured at 0 true positives and 7 false.",
+        "⚠️ A TENSION INSIDE THE ENTRY, STATED RATHER THAN RESOLVED SILENTLY. IDENT-001's insufficient_evidence clause for the MPN field reasons field-agnostically in its why_not — \"A seller-private stock code is not a global identifier ... That reason is field-agnostic\" — which read alone would disqualify a SKU echo. Its `form` and its residual_risk do not. `form` is the operative text an evaluator matches against and why_not is justification prose, so the rule governs; but the document owes a narrower why_not or a wider form, and until it has one this row is decided by a reading rather than by a match.",
+        "The bound covers the engine's false PASSES only. False fails are not in it, and rule D creates them: six real merchants in the captured corpus publish a check-digit-valid GTIN on a Product node the extractor does not select, and are now told they publish no usable identifier (ENGINE_GAPS P-12).",
+        "The comparison with the general DTC sample is now like for like for the first time — both samples have had every passing row adjudicated individually — and the two are STATISTICALLY INDISTINGUISHABLE. See cross_sample_comparison. No ratio is stated between them, because their intervals overlap."
       ],
       "provenance": {
         "sample_id": "experiments/v3-5/publish/out/std_head_v10.jsonl",
@@ -109,31 +156,511 @@
         "excluded_out_of_category": 2,
         "captured_on": "2026-07-27",
         "notes": "The 103-brand run is deduplicated on registrable domain, and the audit's store count is lower than the run's because 23 storefronts produced no passing row at all. ⚠️ A DUPLICATION IN THE WIDER CORPUS THAT DOES NOT REACH THIS NUMBER, recorded so a future bound does not inherit it: the three snapshot sets this project holds (172 general, 44 coffee, 122 coffee) total 338 files but only 334 registrable domains and 335 distinct product URLs — `onyxcoffeelab.com` and `vervecoffee.com` are the SAME product in the general and coffee sets, and `deathwishcoffee.com` appears at both apex and www within one coffee set. Neither published sample pools across sets and both are internally deduplicated (general: 172 files, 172 domains, 172 URLs; this audit: 77 hosts, 77 domains, 77 URLs), so no figure here moves. Any bound computed over the UNION of the sets must dedupe first: two files of one product are perfectly correlated, not merely clustered, and would inflate n while adding no information."
-      }
+      },
+      "interval_95": {
+        "lower_pct": 2.1352,
+        "upper_pct": 8.7543
+      },
+      "per_kind": [
+        {
+          "kind": "variant_option",
+          "entries": 4,
+          "pass_rows": 55,
+          "stores": 28,
+          "confirmed_false_positives": 0,
+          "borderline_counted_as_passes": 1,
+          "point_estimate_pct": 0,
+          "interval_95": {
+            "lower_pct": 0,
+            "upper_pct": 6.53
+          },
+          "bound_95_naive_pct": 5.45,
+          "deff_icc02": 1.19,
+          "bound_95_cluster_icc02_pct": 6.5,
+          "per_store_pct": 0,
+          "completion_state": "VERIFIED_CLEAN"
+        },
+        {
+          "kind": "attribute",
+          "entries": 1,
+          "pass_rows": 51,
+          "stores": 51,
+          "confirmed_false_positives": 3,
+          "borderline_counted_as_passes": 0,
+          "point_estimate_pct": 5.88,
+          "interval_95": {
+            "lower_pct": 2.02,
+            "upper_pct": 15.92
+          },
+          "bound_95_naive_pct": 15.2,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 5.88,
+          "completion_state": "DEFECTS_FOUND"
+        },
+        {
+          "kind": "delivery",
+          "entries": 1,
+          "pass_rows": 29,
+          "stores": 29,
+          "confirmed_false_positives": 0,
+          "borderline_counted_as_passes": 1,
+          "point_estimate_pct": 0,
+          "interval_95": {
+            "lower_pct": 0,
+            "upper_pct": 11.7
+          },
+          "bound_95_naive_pct": 10.33,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 0,
+          "completion_state": "VERIFIED_CLEAN"
+        },
+        {
+          "kind": "claim",
+          "entries": 3,
+          "pass_rows": 23,
+          "stores": 20,
+          "confirmed_false_positives": 4,
+          "borderline_counted_as_passes": 5,
+          "point_estimate_pct": 17.39,
+          "interval_95": {
+            "lower_pct": 6.98,
+            "upper_pct": 37.14
+          },
+          "bound_95_naive_pct": 39.8,
+          "deff_icc02": 1.03,
+          "bound_95_cluster_icc02_pct": 40.99,
+          "per_store_pct": 20,
+          "underpowered": true,
+          "completion_state": "DEFECTS_FOUND"
+        },
+        {
+          "kind": "identifiers",
+          "entries": 1,
+          "pass_rows": 2,
+          "stores": 2,
+          "confirmed_false_positives": 0,
+          "borderline_counted_as_passes": 0,
+          "point_estimate_pct": 0,
+          "interval_95": {
+            "lower_pct": 0,
+            "upper_pct": 65.76
+          },
+          "bound_95_naive_pct": null,
+          "bound_95_naive_refused": "the Poisson-upper/n form returns 149.79% at x=0, n=2 — above 100 it is not a rate. Read the Wilson interval instead; the published blended bound uses this form legitimately only because its n is large enough for the quotient to stay below 1.",
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "the figure it would inflate is itself refused",
+          "per_store_pct": 0,
+          "underpowered": true,
+          "completion_state": "VERIFIED_CLEAN"
+        }
+      ]
     },
     {
       "name": "general",
       "label": "General DTC sample",
-      "description": "172 products over 172 stores captured without regard to category — the shape a broad fitness sweep produces.",
+      "description": "172 products over 172 stores captured without regard to category — the shape a broad fitness sweep produces. Replayed at v3.7 through runProductTest itself with only the transport swapped: 172/172 evaluated, 0 replay misses, 0 hard errors, and 488 pass rows, which is byte-for-byte the denominator this sidecar already published.",
       "stores": 169,
       "products_evaluated": 172,
       "pass_rows_audited": 488,
-      "confirmed_false_positives": 0,
-      "point_estimate_pct": 0,
-      "bound_95_naive_pct": 0.61,
-      "bound_95_cluster_icc02_pct": 0.85,
+      "confirmed_false_positives": 18,
+      "borderline_counted_as_passes": 13,
+      "point_estimate_pct": 3.69,
+      "interval_95": {
+        "lower_pct": 2.3457,
+        "upper_pct": 5.7548
+      },
+      "bound_95_naive_pct": 5.47,
+      "bound_95_cluster_icc02_pct": 7.53,
+      "per_store_pct": 10.06,
+      "icc": 0.2,
       "rows_per_store": 2.89,
       "deff_icc02": 1.38,
-      "is_floor": true,
-      "completion_state": "INCOMPLETE",
+      "is_floor": false,
+      "completion_state": "DEFECTS_FOUND",
       "audit": {
-        "row_by_row": false
+        "row_by_row": true,
+        "untruncated_evidence": true,
+        "borderline_recorded": true,
+        "borderline_count": 13
       },
-      "method": "⚠️ READ THE ZERO BEFORE READING THE PERCENTAGE. Rule D closed every one of this sample's 21 confirmed false passes, so the count is now 0 over 488 pass rows — and x=0 over an audit that checked ONE class is exactly the epistemic state that produced this project's retired 0.83%. The arithmetic here returns 0.85%, which is 0.83% again to within two hundredths of a point, for the same reason it was wrong the first time: the number estimates what the audit thought to look for, not the error rate. Only the identifier class has ever been mechanically re-checked in this sample. The 507-row read that preceded it looked at every rendered row and found nothing, because the identifier row renders no quote. Every other class here is in exactly that position today.",
-      "supersedes": "8.81% (x=21) before rule D, itself correcting 0.83% (x=0) published before the identifier class was checked at all",
+      "per_kind": [
+        {
+          "kind": "price_under",
+          "pass_rows": 165,
+          "stores": 165,
+          "confirmed_false_positives": 14,
+          "borderline_counted_as_passes": 4,
+          "point_estimate_pct": 8.48,
+          "interval_95": {
+            "lower_pct": 5.12,
+            "upper_pct": 13.74
+          },
+          "bound_95_naive_pct": 13.26,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 8.48,
+          "completion_state": "DEFECTS_FOUND"
+        },
+        {
+          "kind": "in_stock",
+          "pass_rows": 143,
+          "stores": 143,
+          "confirmed_false_positives": 2,
+          "borderline_counted_as_passes": 0,
+          "point_estimate_pct": 1.4,
+          "interval_95": {
+            "lower_pct": 0.38,
+            "upper_pct": 4.96
+          },
+          "bound_95_naive_pct": 4.4,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 1.4,
+          "completion_state": "DEFECTS_FOUND"
+        },
+        {
+          "kind": "delivery",
+          "pass_rows": 56,
+          "stores": 56,
+          "confirmed_false_positives": 0,
+          "borderline_counted_as_passes": 3,
+          "point_estimate_pct": 0,
+          "interval_95": {
+            "lower_pct": 0,
+            "upper_pct": 6.42
+          },
+          "bound_95_naive_pct": 5.35,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 0,
+          "completion_state": "VERIFIED_CLEAN"
+        },
+        {
+          "kind": "attribute",
+          "pass_rows": 54,
+          "stores": 47,
+          "confirmed_false_positives": 1,
+          "borderline_counted_as_passes": 2,
+          "point_estimate_pct": 1.85,
+          "interval_95": {
+            "lower_pct": 0.33,
+            "upper_pct": 9.77
+          },
+          "bound_95_naive_pct": 8.78,
+          "deff_icc02": 1.03,
+          "bound_95_cluster_icc02_pct": 9.05,
+          "per_store_pct": 2.13,
+          "completion_state": "DEFECTS_FOUND"
+        },
+        {
+          "kind": "variant_option",
+          "pass_rows": 35,
+          "stores": 35,
+          "confirmed_false_positives": 1,
+          "borderline_counted_as_passes": 3,
+          "point_estimate_pct": 2.86,
+          "interval_95": {
+            "lower_pct": 0.51,
+            "upper_pct": 14.53
+          },
+          "bound_95_naive_pct": 13.55,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 2.86,
+          "completion_state": "DEFECTS_FOUND"
+        },
+        {
+          "kind": "identifiers",
+          "pass_rows": 29,
+          "stores": 29,
+          "confirmed_false_positives": 0,
+          "borderline_counted_as_passes": 0,
+          "point_estimate_pct": 0,
+          "interval_95": {
+            "lower_pct": 0,
+            "upper_pct": 11.7
+          },
+          "bound_95_naive_pct": 10.33,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 0,
+          "completion_state": "VERIFIED_CLEAN"
+        },
+        {
+          "kind": "claim",
+          "pass_rows": 6,
+          "stores": 6,
+          "confirmed_false_positives": 0,
+          "borderline_counted_as_passes": 1,
+          "point_estimate_pct": 0,
+          "interval_95": {
+            "lower_pct": 0,
+            "upper_pct": 39.03
+          },
+          "bound_95_naive_pct": 49.93,
+          "deff_icc02": 1,
+          "bound_95_cluster_icc02_pct": null,
+          "cluster_adjustment_refused": "rows_per_store == 1 — one product per store and one row per store in this kind, so there is no within-store correlation to adjust for. The naive figure IS the clustered figure.",
+          "per_store_pct": 0,
+          "underpowered": true,
+          "completion_state": "VERIFIED_CLEAN"
+        }
+      ],
+      "method": "Every one of the 488 pass rows was adjudicated individually against its FULL untruncated evidence, in 13 kind-scoped batches, with every row assigned exactly once by (host,label) and the merge refusing to produce any number if a single row were unadjudicated. Each of the 18 confirmed defects was then RE-EXECUTED against the raw captured bytes by a mechanical rule that does not read the adjudicator's sentence, because auditor prose is a candidate and never a verdict: 18 candidates, 18 confirmed, 0 refuted, 0 uncheckable, with a two-sided canary of 108 executions of the same checks against adjudicated TRUE passes and 0 false alarms. That canary caught a defect in one of the checks on its first run — an availability check that read only the /products/{handle}.json tier fired on four true passes whose available flags live in the .js tier — so four extra defects would have been published without it. The 95% upper bound is a Poisson upper limit inflated by a design effect for clustering within store (ICC 0.2); a Wilson interval is published beside it because the per-kind cells are where small n arrives and the Poisson/n form stops being a probability there.",
+      "supersedes": "0.85% with x=0 over 488 rows, which this sidecar published as a FLOOR and labelled INCOMPLETE — zero confirmed in the ONE defect class anyone had mechanically re-checked. That floor was correct about its class: `identifiers` is 0 of 29 here, so rule D really did close it. It was not an error rate. The published sequence 0.83% -> 7.80% -> 8.81% -> 0.85% now ends at this figure, measured over a complete row-by-row audit of all seven kinds.",
+      "defect_classes": [
+        {
+          "klass": "$0.00 treated as a price",
+          "count": 6,
+          "example": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "addressed_by_a_guard": false
+        },
+        {
+          "klass": "A non-USD price rendered with a US dollar sign",
+          "count": 5,
+          "example": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
+          "addressed_by_a_guard": false
+        },
+        {
+          "klass": "Integer CENTS read as dollars — a factor of 100",
+          "count": 2,
+          "example": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
+          "addressed_by_a_guard": false
+        },
+        {
+          "klass": "A MISSING availability field defaulted to purchasable",
+          "count": 2,
+          "example": "kytebaby.com — (the row renders no quote) A \"Gilmore Girls\" variant is listed and purchasable.",
+          "addressed_by_a_guard": false
+        },
+        {
+          "klass": "A SIBLING product's size read as this product's",
+          "count": 1,
+          "example": "askinosie.com — Try our 1/2lb.",
+          "addressed_by_a_guard": false
+        },
+        {
+          "klass": "\"Lowest readable price\" is the page's MAXIMUM",
+          "count": 1,
+          "example": "fieldcompany.com — (the row renders no quote) Lowest readable price is $135.00.",
+          "addressed_by_a_guard": false
+        },
+        {
+          "klass": "Structured data says in stock; the store's own variant data says otherwise",
+          "count": 1,
+          "example": "lesserevil.com — (the row renders no quote) Your structured data marks this product in stock.",
+          "addressed_by_a_guard": false
+        }
+      ],
+      "defects": [
+        {
+          "entry_id": "default-requirement/attribute",
+          "evidence": "askinosie.com — Try our 1/2lb.",
+          "why_wrong": "The only quantity in the quoted structured-data evidence is the size of a DIFFERENT SKU: the raw JSON-LD description reads \"Looking for a smaller size? Try our 1/2lb. Cocoa Nib Pouch.\", an anchor to /products/mababu-tanzania-single-origin-roasted-cocoa-nibs-1-2-lb, while this product is the 1lb pouch. The merchant is shown \"Try our 1/2lb.\" as proof of their own product's measurement.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "sibling-product-size",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "title \"Mababu, Tanzania Roasted Cocoa Nibs- 1lb\" (sizes 1lb) · quoted sizes 2lb · cross-reference phrase present: true\n         quote: Try our 1/2lb."
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "branchbasics.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "why_wrong": "'Lowest readable price is $0.00.' is a null treated as a number. The only price evidence is a Shopify variant price of '0.00' on a hidden fulfillment stub: title 'Concentrate 2PK - (Amazon Replacement)', tags 'os-3EiSwCJzni, unsearchable', empty body_html, available:false, and no JSON-LD Product/Offer on the page at all. Nothing establishes that this product is sold for under $10; the store publishes no price for it.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "zero-price-placeholder",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 0 · rendered \"Lowest readable price is $0.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "fieldcompany.com — (the row renders no quote) Lowest readable price is $135.00.",
+          "why_wrong": "The sentence asserts a superlative the page's own bytes refute: the JSON-LD publishes a single Offer at 135.0 USD (no AggregateOffer, no lowPrice), but the Shopify analytics bootstrap on the same HTML lists 9 variants of 'Leather Oven Mitts, Factory Second' at 7900/7900/7900/9400x5/13500 cents — three Black Suede sizes at $79.00. $135.00 is the MAXIMUM variant price, rendered as 'Lowest readable price', and the derived cap should have been $80 not $140.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "ld-offer-price-not-product-minimum",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 135 (from LD offer, no variant list reached) · bootstrap variant prices (¢) 7900,9400,13500 → true min $79"
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
+          "why_wrong": "The number 75 is CANADIAN dollars, not US: the page's JSON-LD offer is \"price\": 75.0, \"priceCurrency\": \"CAD\", Shopify.currency = {\"active\":\"CAD\",\"rate\":\"1.0\"}, Shopify.country = \"CA\", shop gardeners-kit.myshopify.com, paymentSettings CAD. The sentence renders C$75 as \"$75.00\" (≈US$55), so the figure the merchant reads is false.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "non-usd-price-rendered-as-usd",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "signals {\"ldPriceCurrency\":\"CAD\",\"shopifyCurrencyActive\":\"CAD\",\"shopifyCountry\":\"CA\",\"ogPriceCurrency\":\"CAD\"} · engine minPriceUsd 75 rendered as \"Lowest readable price is $75.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "hismileteeth.com — (the row renders no quote) Lowest readable price is $34.99.",
+          "why_wrong": "This is the AUSTRALIAN storefront: shop hismile.myshopify.com, Shopify.currency = {\"active\":\"AUD\",\"rate\":\"1.0\"}, Shopify.country = \"AU\", paymentSettings currencyCode AUD, and the analytics track call is {\"currency\":\"AUD\"}. The .json price 34.99 is A$34.99 (≈US$23) rendered to the merchant as \"$34.99\".",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "non-usd-price-rendered-as-usd",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "signals {\"shopifyCurrencyActive\":\"AUD\",\"shopifyCountry\":\"AU\"} · engine minPriceUsd 34.99 rendered as \"Lowest readable price is $34.99.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "why_wrong": "$0.00 is not a price. The .json shows product_type \"Referral\", body_html \"\", tags \"meta-no-description, meta-no-image\", and one variant priced \"0.00\" with SKU \"ph-46838681075886\" (a placeholder id) — a store-internal Calgary Farmers Market referral record. The row proves a price cap from the absence of a price, and additionally the shop's own currency is CAD (paymentSettings CAD, countryCode CA) served through an /en-us USD market at rate 0.709698.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "zero-price-not-a-price",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 0 · rendered \"Lowest readable price is $0.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "kosas.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "why_wrong": "$0.00 is not a price: the .json shows product_type \"GWP\", template_suffix \"gwp\", and both shade variants priced \"0.00\" with compare_at_price \"26.00\" (Klaviyo renders Price \"$0.00\" / CompareAtPrice \"$26.00\"). This is a gift-with-purchase promo record granted on a qualifying order, so a price cap is being proven from a zero placeholder rather than from a price.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "zero-price-not-a-price",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 0 · rendered \"Lowest readable price is $0.00.\""
+        },
+        {
+          "entry_id": "default-requirement/variant_option",
+          "evidence": "kytebaby.com — (the row renders no quote) A \"Gilmore Girls\" variant is listed and purchasable.",
+          "why_wrong": "The row says the variant is \"purchasable\" but every surface in the capture says the opposite: the page's own embedded variant records report all six \"Gilmore Girls / …\" variants as \"available\":false, and the page emits six JSON-LD offers (skus 1615GG1-1615GG6) all with availability schema.org/OutOfStock. The engine's product source here was /products/womens-short-sleeve-pajama-set-in-gilmore-girls.json, which contains no \"available\" key on any variant (verified: no \"available\" substring in the whole body), so the missing field was defaulted to true — 6/6 matched variants flagged available in the batch, 0/6 available per the page. Nothing on this product is buyable.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "availability-defaulted-true-on-missing-field",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "ldAvailability null · .json 6 variant(s) carrying `available`: false · .js NOT CAPTURED · engine reports 6/6 purchasable"
+        },
+        {
+          "entry_id": "default-requirement/in_stock",
+          "evidence": "kytebaby.com — (the row renders no quote) At least one variant is listed as purchasable.",
+          "why_wrong": "The row asserts \"At least one variant is listed as purchasable\" but no public surface lists any variant as purchasable: the captured /products/womens-short-sleeve-pajama-set-in-gilmore-girls.json variant objects carry no `available` key at all (verified field-by-field on all 6), robots.txt blocks the .js endpoint with `Disallow: /*.js$` so the availability tier was never reached, and the engine's `available: v.available !== false` turned that absence into purchasable. The only availability the page actually states is 6 occurrences of \"availability\":\"http://schema.org/OutOfStock\" — one per size, with zero InStock anywhere — and 32 inline \"available\":false flags for this product with 0 true. This should have been requires_store_access.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "absent-availability-defaulted-purchasable",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "ldAvailability null · .json 6 variant(s) carrying `available`: false · .js NOT CAPTURED · engine reports 6/6 purchasable"
+        },
+        {
+          "entry_id": "default-requirement/in_stock",
+          "evidence": "lesserevil.com — (the row renders no quote) Your structured data marks this product in stock.",
+          "why_wrong": "The product is sold out and the row tells the merchant it is in stock. The page's inline Shopify product object states \"available\":false at both product level (price_min/price_max 929) and at its single default variant, 4 occurrences with 0 true. The page also publishes three mutually contradictory LD Product nodes for this product: two say InStock and a third — carrying the IDENTICAL @id \"/products/cowboy-cheddar-cheezmos-snack-box#product\" as the first — says \"availability\":\"OutOfStock\". The engine read the first node and rendered a pass; no .json or .js tier was fetched, so nothing arbitrated the conflict. An InStock marking that the same page contradicts twice does not establish \"In stock and purchasable\".",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "ld-instock-contradicted-by-out-of-stock",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "ldAvailability \"InStock\" · raw variants with an `available` field 0, all false: false · page has \"available\":false and no \"available\":true: true"
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
+          "why_wrong": "The mug costs $10.00, not $1000.00. /products/dad-mug.json says \"price\":\"10.00\", the web-pixel payload says {\"amount\":10.0,\"currencyCode\":\"USD\"} and Klaviyo says Price \"$10.00\"; the engine took the cents integer 1000 from /products/dad-mug.js (and the analytics bootstrap var meta …\"price\":1000) and priceToUsd's cents-guard only divides when p > 1000, so exactly 1000 cents falls through. Both the label \"Price under $1005\" and the sentence \"$1000.00\" are off by 100×.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "cents-read-as-dollars",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 1000 · bootstrap min (cents) 1000 · .json price 10 · first LD \"price\" 1000 · cents-guard is `p > 1000 && isInteger(p)` so 1000 passes through unchanged"
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "missoma.com — (the row renders no quote) Lowest readable price is $135.00.",
+          "why_wrong": "The number is POUNDS: the JSON-LD offer is \"price\":\"135.00\",\"priceCurrency\":\"GBP\" (shipping also quoted in GBP), shop missoma-store.myshopify.com, Shopify.currency = {\"active\":\"GBP\",\"rate\":\"1.0\"}, Shopify.country = \"GB\", paymentSettings GBP. £135 is roughly US$170, so rendering it as \"$135.00\" makes the row's own conclusion — under the $140 cap — false, not merely mislabelled.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "non-usd-price-rendered-as-usd",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "signals {\"ldPriceCurrency\":\"GBP\",\"shopifyCurrencyActive\":\"GBP\",\"shopifyCountry\":\"GB\",\"ogPriceCurrency\":\"GBP\"} · engine minPriceUsd 135 rendered as \"Lowest readable price is $135.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "mustardmade.com — (the row renders no quote) Lowest readable price is $32.00.",
+          "why_wrong": "This is the AU storefront: JSON-LD offer \"price\" : 32.0, \"priceCurrency\" : \"AUD\", shop mustard-made.myshopify.com, theme literally named \"[LIVE] Mustard Template - AU\", Shopify.currency = {\"active\":\"AUD\",\"rate\":\"1.0\"}, Shopify.country = \"AU\", paymentSettings AUD. A$32 (≈US$21) is rendered to the merchant as \"$32.00\".",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "non-usd-price-rendered-as-usd",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "signals {\"ldPriceCurrency\":\"AUD\",\"shopifyCurrencyActive\":\"AUD\",\"shopifyCountry\":\"AU\",\"ogPriceCurrency\":\"AUD\"} · engine minPriceUsd 32 rendered as \"Lowest readable price is $32.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "organicbasics.com — (the row renders no quote) Lowest readable price is $50.00.",
+          "why_wrong": "The captured storefront is the German/EUR market — Shopify.country = \"DE\", Shopify.currency = {\"active\":\"EUR\"}, og:price:amount \"50,00\" with og:price:currency EUR, and both JSON-LD Product nodes carry priceCurrency EUR — so the figure is €50, rendered by the engine as \"$50.00\" against a \"$55\" cap.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "non-usd-price-rendered-as-usd",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "signals {\"ldPriceCurrency\":\"EUR\",\"shopifyCurrencyActive\":\"EUR\",\"shopifyCountry\":\"DE\",\"ogPriceCurrency\":\"EUR\"} · engine minPriceUsd 50 rendered as \"Lowest readable price is $50.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "partakefoods.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "why_wrong": "$0.00 is a zeroed-out record, not a price: this is a real retail cookie SKU (60-07008) marked OutOfStock, and the same page's recommendation payload lists Partake's other cookies at real prices ($7.49, $16.99) alongside a cluster of retired SKUs all at 0.0 USD. The merchant is told a $0.00 price fact was proven for a product that is simply no longer priced.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "zero-price-not-a-price",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 0 · rendered \"Lowest readable price is $0.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "richer-poorer.com — (the row renders no quote) Lowest readable price is $300.00.",
+          "why_wrong": "The rendered sentence is false by a factor of 100. product.js gives price 300 / price_max 800 in CENTS and product.json confirms \"3.00\" and \"8.00\" (compare_at 12.00) — these socks cost $3.00. priceToUsd's cents-guard only divides when the integer exceeds 1000, so 300 and 800 passed through untouched, the label cap was generated from the bogus $300, and the merchant reads \"Lowest readable price is $300.00\" for a $3 pair of socks.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "cents-read-as-dollars",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 300 · bootstrap min (cents) 300 · .json price 3 · first LD \"price\" 8 · cents-guard is `p > 1000 && isInteger(p)` so 300 passes through unchanged"
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "studioneat.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "why_wrong": "The listing is the merchant's own accidentally-published test record — title \"SYDNEY TEST PRODUCT\", sku equal to the variant id 49979497054485, OutOfStock, price 0 in JSON-LD, og:price:amount \"0\" and product.json \"0.00\". There is no product and no price, yet the merchant is told a price fact was evidenced.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "zero-price-not-a-price",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 0 · rendered \"Lowest readable price is $0.00.\""
+        },
+        {
+          "entry_id": "default-requirement/price_under",
+          "evidence": "tenthousand.cc — (the row renders no quote) Lowest readable price is $0.00.",
+          "why_wrong": "The $0.00 is a masked/unset price on a real, purchasable garment, not a price. All 18 variants carry genuine SKUs (TTM0211301…) and GS1 barcodes (8404926790xx), several are available with live inventory (Iron/L shows 32 units, Iron/M 12, Salt/XL 7), yet price, price_min, price_max, og:price:amount and product.json are all 0 and the product is tagged exclude_include_in_collections. The merchant is told \"Price under $10: pass\" about a muscle tee that does not cost $0.",
+          "category_specific": false,
+          "status": "pinned_known_gap",
+          "defect_class": "zero-price-not-a-price",
+          "mechanically_reconfirmed": true,
+          "reconfirmation": "engine minPriceUsd 0 · rendered \"Lowest readable price is $0.00.\""
+        }
+      ],
+      "provenance": {
+        "sample_id": "experiments/v3-7/general_head.jsonl (replay of experiments/v2-9/snaps at 7085b34)",
+        "category_scope": "no_category",
+        "stores": 169,
+        "products": 172,
+        "selection": "one_product_per_store",
+        "deduplicated_by_brand": true,
+        "applicability_gate_enforced": false,
+        "captured_on": "2026-07-26",
+        "notes": "172 files, 172 registrable domains, 172 distinct product URLs — checked before counting, because ENGINE_GAPS P-16 records that the wider 338-file corpus holds only 334 merchants. This sample is internally clean and pools with nothing. `stores` is 169 rather than 172 because three storefronts produced no passing row at all; 17 of those 169 carry at least one confirmed defect."
+      },
       "limits": [
-        "THIS IS NOT A LOW ERROR RATE. It is zero confirmed in the single defect class anyone has mechanically re-checked, over pass rows whose other classes are unexamined. A general sample also estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes.",
-        "The ratio between this figure and the category figure is NOT a measurement, and with x=0 on this side it is not even a comparison. The two samples are not audited to the same depth: one had every passing row read individually, the other had one class checked by machine."
+        "⚠️ THE LARGEST DEFECT CLASS IN THIS ENGINE IS ARITHMETIC, NOT LANGUAGE, AND NO AUDIT IN THIS PROJECT'S HISTORY HAD LOOKED AT IT. 14 of the 18 are price rows. The kind looked like a tautology — the cap is generated by rounding the product's own price up, so the comparison always passes — and what there is to check is whether the NUMBER and the SENTENCE are true. Four mechanisms say no: (1) no code path in the engine reads a currency, so five stores publishing GBP/CAD/AUD/EUR/AUD are rendered with a US dollar sign while JSON-LD priceCurrency, Shopify.currency and Shopify.country all state otherwise on the same page; (2) priceToUsd's cents guard is `p > 1000 && Number.isInteger(p)`, so an integer CENTS value at or below 1000 from the /products/{handle}.js tier passes through unchanged — levainbakery.com's $10.00 mug is published as \"Lowest readable price is $1000.00\" on a strict `>` at the exact boundary, and richer-poorer.com's $3.00 item as $300.00; (3) $0.00 is treated as a price on five products that publish no price, including one whose own title is SYDNEY TEST PRODUCT and one Shopify `Referral` record; (4) on fieldcompany.com \"Lowest readable price\" is the page's MAXIMUM, because the JSON-LD publishes a single Offer at 135.00 while the analytics bootstrap on the same HTML lists a 7900-cent variant.",
+        "NONE OF THE 18 IS AN IDENTIFIER ROW. `identifiers` is 0 of 29. The floor this figure replaces was measured on that class alone and was right about it; what it was not is an error rate. A sample audited in one class tells you what that audit thought to look for.",
+        "⚠️ THE PER-KIND CELLS DO NOT SUPPORT A SPREAD, and that is published rather than hidden behind a table. Of the 21 pairs of kinds in this sample, exactly one separates on non-overlapping 95% intervals, by a fraction of a percentage point. A six-cell table read as six rates would be false precision; the cells are published as COUNTS with intervals, and the pairwise test is published beside them.",
+        "Borderlines are counted as PASSES, the same convention as the coffee sample, and there are 13. Three are deliberate free gifts whose $0.00 the merchant's own title states, three are variant option values that are really the product's name, three are delivery timings whose scope is arguable, two are materials rows stating a property rather than a constituent, one is an ingredient-scoped organic claim, and one is a shipping sentence whose antecedent is the order rather than the product.",
+        "A general sample estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes. That limit is unchanged by this measurement and is the reason a category standard is still fitness-measured on its own category."
       ]
     }
   ],

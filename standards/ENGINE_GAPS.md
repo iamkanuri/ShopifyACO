@@ -1657,6 +1657,13 @@ observations; they cluster, and the clustering is the useful part:
 **P-15 was filed at v3.5 CP3**, and it belongs with the first row: it is what P-12's absence makes
 the engine *say*, measured on 34 stores.
 
+**P-17 was filed at v3.7 CP-1** and belongs to none of them either. It is the one row on this page
+that is not about language: four defect classes in the **fetch and normalisation** layer, carrying
+14 of the 18 confirmed false passes the first complete general-sample audit found — a currency
+never read, integer cents read as dollars, a missing availability flag defaulted to purchasable, and
+a "lowest readable price" that is the page's maximum. Its real content is that **that layer has
+never been attacked**, by any of this project's five adversarial passes.
+
 **P-16 was filed at v3.5 CP5** and belongs to none of them: it is not about identifiers at all. It
 records that the 338-file snapshot corpus every bound in this repo is computed over holds **334
 distinct merchants**, and that no published figure moves for it — which is a fact about the
@@ -2213,6 +2220,78 @@ files of one product are **perfectly correlated, not merely clustered**, so they
 contributing no information, and the cluster adjustment (which models within-store correlation at
 ICC 0.2) would understate the design effect rather than correct for it. **Dedupe on registrable
 domain AND on normalised product URL before computing any n over more than one set.**
+
+## P-17 · The FETCH AND NORMALISATION layer has no adversarial corpus, and it holds the engine's largest measured defect class
+
+| | |
+|---|---|
+| **files** | `src/server/productTest.ts` — `priceToUsd` (l. 834), the variant/price/availability assembly in `fetchPublicProduct` (l. ~1216-1252), and `evaluate`'s `price_under` branch |
+| **change** | none proposed here. Four defect classes, measured, with the count each carries |
+| **decides** | the engine owner |
+| **status** | **OPEN, MEASURED, FILED NOT FIXED at v3.7 CP-1** |
+
+The first complete row-by-row audit of the general sample — 488 pass rows over 172 real stores,
+every row adjudicated individually, every confirmed defect re-executed against the raw captured
+bytes with a two-sided canary — found **18 confirmed false passes where the published figure
+recorded zero**. `test/adversarialCorpus.test.ts` could be extended by **three**. The other four
+classes are **upstream of the matcher that corpus probes**: they happen in `fetchPublicProduct`,
+before any `Requirement` sees the product, and `PublicProduct` cannot express them.
+
+```
+class                                          confirmed   expressible in the corpus?
+non-usd price rendered with a "$"                   5       NO — no currency field exists
+$0.00 accepted as a readable price                  6       yes (pinned)
+integer CENTS read as dollars                       2       NO — priceToUsd, pre-minPriceUsd
+a MISSING `available` defaulted to purchasable      2       NO — resolved before evaluate
+"lowest readable price" is the page's MAXIMUM       1       NO — the LD-offer fallback
+LD InStock over the page's own available:false      1       yes (pinned)
+a SIBLING product's size read as this product's     1       yes (pinned)
+```
+
+**1 · No code path in this engine reads a currency.** `minPriceUsd` is
+`Math.min(...variant prices)`; a Shopify storefront serves those in the STORE's currency; the
+generated label (`Price under $140`) and the rendered evidence (`Lowest readable price is $135.00.`)
+both carry a US dollar sign. Every signal is on the page and none is consulted — `missoma.com`
+publishes `priceCurrency: GBP` in JSON-LD, `Shopify.currency.active = "GBP"`, `Shopify.country =
+"GB"` and `og:price:currency GBP`, and is told its £135 necklace is under $140. Also
+`gardenerskit.com` (CAD), `mustardmade.com` (AUD), `organicbasics.com` (EUR), `hismileteeth.com`
+(AUD).
+
+**2 · `priceToUsd`'s cents guard has a floor AND an off-by-one, and it costs a factor of 100.**
+`p > 1000 && Number.isInteger(p) ? p / 100 : p` — a guard for the `/products/{handle}.js` tier,
+which serves integer **cents**. `levainbakery.com`'s `.js` price is `1000`; `1000 > 1000` is false,
+so the $10.00 mug is published as **"Lowest readable price is $1000.00"** and asked *"Price under
+$1005"*, while the store's own `.json` says `"price":"10.00"`. `richer-poorer.com`'s `300` becomes
+`$300.00` against a true `"3.00"`. **Every product at or under $10.00 whose variants come from the
+`.js` tier is rendered at 100× its price.** A strict `>` on the exact boundary and a threshold below
+which the guard cannot fire.
+
+**3 · `v.available !== false` turns a MISSING field into a purchasable one.** `kytebaby.com`
+publishes six variants, none carrying an `available` boolean; `ldAvailability` is null; the `.js`
+tier was never fetched. The merchant is told *"At least one variant is listed as purchasable"* and
+*"A 'Gilmore Girls' variant is listed and purchasable"* — **two rows** — when no public surface says
+anything at all about availability. The honest status is `requires_store_access`, which the branch
+below it already returns when there are no variants.
+
+**4 · "Lowest readable price" can be the page's MAXIMUM.** `fieldcompany.com`'s JSON-LD publishes a
+single Offer at 135.0 USD with no `AggregateOffer` and no `lowPrice`, so `minPriceUsd` falls back to
+it — while the analytics bootstrap on the same HTML lists variant prices of 7900 / 9400 / 13500
+cents. The row says *"Lowest readable price is $135.00"* on a page publishing a $79.00 variant.
+
+⚠️ **Why this is one row and not four.** They share a cause: **the normalisation layer has never
+been attacked.** Every adversarial pass this project has run — v2.4's 959 probes, v3.2's 661
+sentences, v3.5's 78 identifier cases — has probed `evaluate`, because that is where the interesting
+language lives. Nothing has ever handed `fetchPublicProduct` a hostile `.js` payload. The three
+pinned cases prove the point rather than close it: the corpus can only reach a defect once the
+product has been assembled, and by then a missing availability flag and a stated one are the same
+`true`.
+
+⚠️ **And the reason the whole class was invisible until now.** `price_under` looks like a tautology
+— the cap is generated by rounding the product's own price up, so the comparison always passes and
+there appears to be nothing to audit. **165 of the sample's 488 pass rows are that kind, and 14 of
+its 18 confirmed defects are in it.** This is the v3.2 quoteless-row lesson in a second shape: a row
+whose evidence *is* rendered can still be un-auditable, if what is wrong about it is a currency
+symbol or a decimal point rather than a sentence.
 
 ## P-13 · GS1 restricted-circulation (`2xx`) and coupon (`99xx`) prefixes are accepted as product GTINs
 
