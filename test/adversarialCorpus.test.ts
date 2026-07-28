@@ -1273,6 +1273,12 @@ interface PageCase {
   actual?: AssertionStatus;
   /** Substring the rendered detail must contain. */
   detail?: string;
+  /** The WHOLE rendered `detail`, byte for byte. `detail` is an `includes`, and an
+   *  `includes` cannot see a clause APPENDED to a correct sentence — nor one REMOVED
+   *  from it, which is the defect v3.5 CP3 fixed: the sentence said "the only
+   *  identifier in your product structured data" to six merchants who publish a valid
+   *  GTIN one node down, and every substring assertion in this file was satisfied. */
+  detailExact?: string;
   /** What `shopifyStorefrontObjectId` must have read — a guard that fires for the
    *  wrong reason is not a guard, and status alone cannot see which id it compared. */
   storefrontId: string | null;
@@ -1283,7 +1289,8 @@ const RULE_D: PageCase[] = [
   { label: "mpn IS the storefront's product key", storefrontId: "8079462006899",
     html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"id":8079462006899,"vendor":"Acme","type":"Skincare","variants":[{"id":44139877171393,"public_title":"30ml"}]},"page":{"pageType":"product"}}'),
     correct: "not_proven", detail: "8079462006899",
-    why: "glowrecipe.com, verbatim: the same value the page also emits as `rid`, `source_product_id`, `product.id` and `data-product-id`. It is not a placeholder, so the row passed and reported a published product identifier, while the value identifies nothing to anyone outside that one store." },
+    detailExact: "The only identifier we can use on your product's own structured-data node is an MPN (8079462006899), and that is the id your own storefront uses for this product — it resolves to nothing outside your store. We read that node only, so a GTIN published beneath it on an offer or a variant is not counted here.",
+    why: "glowrecipe.com, verbatim: the same value the page also emits as `rid`, `source_product_id`, `product.id` and `data-product-id`. It is not a placeholder, so the row passed and reported a published product identifier, while the value identifies nothing to anyone outside that one store. ⚠️ THE WHOLE SENTENCE IS ASSERTED, and the SAME sentence is asserted on the six-store case below, where a valid GTIN sits one node down. That identity is the property, not a duplication: the engine reads the product node and nothing else, so it cannot tell these two pages apart, and copy that distinguished them would be claiming a measurement we never took. This page is the side where nothing else is published — it is what stops the reach limit reading as an admission that something WAS found." },
   { label: "the disqualification NAMES the reason, not just the value", storefrontId: "7649496858737",
     html: PAGE(P({ mpn: "7649496858737" }), '{"product":{"id":7649496858737,"type":"Coffee","variants":[{"id":42,"public_title":"12oz"}]}}'),
     correct: "not_proven", detail: "id your own storefront uses for this product",
@@ -1325,7 +1332,7 @@ const RULE_D: PageCase[] = [
   { label: "a valid GTIN still passes even when the mpn is the storefront key", storefrontId: "8079462006899",
     html: PAGE(P({ mpn: "8079462006899", gtin13: "4006381333931" }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":42}]}}'),
     correct: "pass_evidenced", detail: "4006381333931",
-    why: "Rule D disqualifies one FIELD, not the row. Measured: 0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD, so this interaction was never exercised by the real-store replay and only a constructed case can hold it. ⚠️ The GTIN is on the PRODUCT NODE — this case was written at CP2a with the GTIN inside `offers[]`, which stopped being reachable when CP2c reverted the descent, and a case whose fixture no longer reaches the branch it names pins nothing." },
+    why: "Rule D disqualifies one FIELD, not the row. ⚠️ THIS CASE'S OWN MEASUREMENT WAS WRONG IN EXACTLY THE WAY THE ROW'S COPY WAS, and v3.5 CP3 corrected both. It read \"Measured: 0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD\". Re-executed over the captured bytes (`experiments/v3-5/copyfix/adjudicate_cp1.mjs`, 23/23 pages read, two-sided canary): 0 on the SELECTED product node — true, and true BY CONSTRUCTION, since this branch only runs when there is none; 0 reachable by descending `offers[]`/`hasVariant[]`/`isVariantOf[]` from that node; and SIX anywhere in the JSON-LD graph (flybyjing, monos, negativeunderwear, nomatic, wandpdesign, yellowbirdsauce). \"Anywhere in their JSON-LD\" was a statement about the node the ENGINE reads dressed as a statement about the merchant's whole markup — the identical conflation as the sentence this row used to render, in the file that pins it. What survives is the case's PURPOSE: no captured store puts a valid GTIN on the product node beside a storefront-key mpn, so the interaction is unexercised by the real-store replay and only a constructed case can hold it. The GTIN is on the PRODUCT NODE — this case was written at CP2a with the GTIN inside `offers[]`, which stopped being reachable when CP2c reverted the descent, and a case whose fixture no longer reaches the branch it names pins nothing." },
 
   // --- the class rule D deliberately does NOT close ---------------------------
   { label: "mpn === sku, and NOT the storefront key", storefrontId: "8631346921664",
@@ -1424,6 +1431,32 @@ const RULE_D: PageCase[] = [
     why: "KNOWN GAP, and the hostile class this corpus exists for: merchant-controlled text reaching a reader. The JSON-LD `description` is written by the store and appears BEFORE the analytics script, so `var meta = {}` inside a sentence about theme installation decides what the engine reads about that store. Whether it is deliberate does not matter — a parser steered by the input it is judging is the defect. ENGINE_GAPS P-10." },
 
   // --- the recall gap and rule D, INTERSECTING ---------------------------------
+  //
+  // ⚠️ SIX NAMED REAL MERCHANTS, and the sentence they were shown was false about them.
+  // `experiments/v3-5/ship_pivot.ts` (DEFECTS_FOUND, 23/23 rule-D losses examined, 0
+  // snapshots missing, two-sided canary passing) measured that 6 of the 23 stores rule D
+  // newly fails DO publish a check-digit-valid GTIN in their JSON-LD: flybyjing.com,
+  // monos.com, negativeunderwear.com, nomatic.com, wandpdesign.com, yellowbirdsauce.com.
+  // All six were `pass_evidenced` at af6d387 AND at d151876 and are `not_proven` only at
+  // head, so rule D owns the flip, not the CP2a revert.
+  //
+  // Classified from the captured bytes rather than from prose (`classify_six.mjs`,
+  // `enclosing.mjs`, `adjudicate_cp1.mjs` under experiments/v3-5/copyfix): on ALL SIX the
+  // value hangs off a Product node the extractor does not SELECT, and NOTHING publishable
+  // is reachable by descending `offers[]`/`hasVariant[]`/`isVariantOf[]` from the node it
+  // does select — 0 of 23 by descent, 6 of 23 across the graph. So P-06 answers none of
+  // them, wide OR narrowed. Corroborated by the engine rather than by a re-implementation:
+  // at `d151876`, with the wide descent LIVE, all six still rendered "Your structured data
+  // publishes an MPN (…)". Four carry the value in the own `gtin*` key of that other
+  // Product node; two carry theirs on its `Offer`s. This is ENGINE_GAPS P-12, and it is
+  // the measurement behind the register's "P-12 before P-06".
+  { label: "SIX REAL STORES: the GTIN is on a Product node the extractor does not select", storefrontId: "15019014521202",
+    html: RAW_PAGE(P({ mpn: "15019014521202" }),
+      `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@graph": [{ "@type": "WebPage", name: "Thing" }, { "@type": "Product", name: "Thing", gtin: "810089218773" }] })}</script>` +
+      '<script>var meta = {"product":{"id":15019014521202,"type":"Bags","variants":[{"id":42}]}};</script>'),
+    correct: "pass_evidenced", actual: "not_proven",
+    detailExact: "The only identifier we can use on your product's own structured-data node is an MPN (15019014521202), and that is the id your own storefront uses for this product — it resolves to nothing outside your store. We read that node only, so a GTIN published beneath it on an offer or a variant is not counted here.",
+    why: "KNOWN GAP, and nomatic.com's real shape reproduced from its captured bytes — mpn 15019014521202 (its own storefront key) on the first Product node, gtin 810089218773 on a Product node inside a later block's @graph. DISTINCT FROM X-01/X-04/R15 below, which is the offers[] door: here the value is on the own key of a node the extractor already flattened and merely did not pick, so it needs no descent and carries none of P-06's variant-attribution risk. Nothing in LD_SELECTION can express it either — `verdictOfLd` builds a page with ONE node, so a second, non-selected Product node was structurally unrepresentable in this file. ⚠️ ITS STATUS IS NOT WHAT THIS CASE PINS. `conflict_rules[1]` of ALS-COFFEE-1.3-IDENT-001 says the engine reads the product-level node only, so `not_proven` is what the published standard licenses; what was WRONG is the sentence, which told six merchants the MPN was \"the only identifier in your product structured data\" and that a machine buyer therefore can't match the product — two assertions of absence we never established. The row went from right-for-the-wrong-reason (base passed it, naming the storefront key) to wrong-for-a-stated-reason. `detailExact` is asserted BYTE-IDENTICAL to the no-other-identifier case above: one sentence, both shapes, because the engine cannot tell them apart. ENGINE_GAPS P-12." },
   { label: "RESIDUAL X-01/X-04/R15: rule D disqualifies the mpn and the only real GTIN is nested", storefrontId: "7215488761946",
     html: PAGE(P({ mpn: "7215488761946", offers: [{ "@type": "Offer", price: "18.00", gtin13: "5060391620510" }] }), '{"product":{"id":7215488761946,"type":"Coffee","variants":[{"id":42}]}}'),
     correct: "pass_evidenced", actual: "not_proven",
@@ -1536,6 +1569,12 @@ for (const c of RULE_D) {
         `the rendered detail must contain ${JSON.stringify(c.detail)} but was ${JSON.stringify(v.detail)}. Why: ${c.why}`,
       );
     }
+    // The WHOLE rendered sentence. An `includes` is blind in both directions — it
+    // cannot see a clause appended to a correct sentence (CP2a's provenance caveat)
+    // and it cannot see a false clause already in one (CP3's "the only identifier in
+    // your product structured data", satisfied by every substring assertion here while
+    // being false about six named merchants).
+    if (c.detailExact !== undefined) assert.equal(v.detail, c.detailExact, `the WHOLE rendered detail. Why: ${c.why}`);
   });
 }
 
@@ -1737,7 +1776,27 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //     seven compliant merchants).
   // A class that is closed in the engine and a class that is pinned in the corpus are
   // both progress; a class nobody can count is not.
-  const EXPECTED_OPEN_GAPS = 56;
+  //
+  // 56 -> 57: v3.5 CP3 pins ONE more case and it is +1 CASE, 0 NEW DEFECTS — say that
+  // plainly, because the count is of cases and a rise that is really a second fixture
+  // must not be read as the engine getting worse. `ship_pivot.ts` measured that 6 of the
+  // 23 real stores rule D newly fails publish a check-digit-valid GTIN one node down;
+  // three further scripts then classified WHERE, from the bytes, and the answer is the
+  // same for all six: under a Product node the extractor does not SELECT, with NOTHING
+  // reachable by descending from the node it does select (0 of 23 by descent, 6 of 23
+  // across the graph — so P-06 answers none of them). The offers-under-the-selected-node
+  // door was already pinned (X-01/X-04/R15). The node-selection door was pinned NOWHERE,
+  // and could not be: `verdictOfLd` builds a page with one node, so a second,
+  // non-selected Product node had no representation in this file at all.
+  //   +1  rule-d: the GTIN on a Product node the extractor does not select (nomatic.com,
+  //       reproduced from its captured bytes).                                    -> 57
+  // The COPY defect the same measurement exposed added no gap and changed no status:
+  // 338 stores replayed before and after, 2,847 rows, 0 status changes, 0 quote changes,
+  // 23 detail changes and every one an identifier row. It is pinned as `detailExact` on
+  // two rule-D cases instead — the shape with nothing else published and the shape with
+  // a GTIN one node down must render the BYTE-IDENTICAL sentence, because the engine
+  // does not look and therefore cannot tell them apart.
+  const EXPECTED_OPEN_GAPS = 57;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

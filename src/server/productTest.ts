@@ -1996,12 +1996,39 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // row whose rendered evidence names nothing is a row nobody can check. This
       // branch names the value AND the reason, under the same per-ROW lint gate as the
       // pass copy — a merchant's own string must never fail their whole report.
+      //
+      // ⚠️ v3.5 CP3 — AND IT MUST NOT ASSERT AN ABSENCE WE NEVER ESTABLISHED. This
+      // sentence used to open "The only identifier in your product structured data is
+      // an MPN (…)" and close "so a machine buyer can't match this product to a
+      // catalogue entry". Measured over the 23 real stores rule D newly fails
+      // (`experiments/v3-5/ship_pivot.ts`: DEFECTS_FOUND, 23/23 examined, 0 snapshots
+      // missing, two-sided canary passing), SIX of them publish a check-digit-valid
+      // GTIN in their own JSON-LD — flybyjing, monos, negativeunderwear, nomatic,
+      // wandpdesign, yellowbirdsauce — just not on the node this engine reads. On all
+      // six the value hangs off a DIFFERENT Product node, so this is node selection
+      // (ENGINE_GAPS P-12) and not the reverted descent: at `d151876`, with the wide
+      // descent live, every one of the six still named the MPN. For those six, both
+      // clauses of the old sentence were flatly false.
+      //
+      // The STATUS is right and does not change: `conflict_rules[1]` of
+      // ALS-COFFEE-1.3-IDENT-001 says "the engine reads the product-level node only;
+      // per-variant identity is a known limitation published as a blocked entry". So
+      // the defect is the SENTENCE. It now says where we read and what that excludes.
+      //
+      // ⚠️ ONE SENTENCE FOR BOTH MERCHANTS, DELIBERATELY. The engine does not look
+      // below the product node, so it cannot tell the store that publishes nothing else
+      // from the store that publishes six GTINs one node down — and copy that branched
+      // on a distinction we never measured would be the same defect with better
+      // grammar. The corpus pins the identical string on both shapes.
       if (mpnIsStorefrontKey && !realGtin) {
+        // The reach limit, stated once so the two lint variants cannot drift apart.
+        const readLimit =
+          " We read that node only, so a GTIN published beneath it on an offer or a variant is not counted here.";
         return {
           label: req.label, status: "not_proven", surfacesChecked: checked,
           detail: renderIdentifierDetail(
-            `The only identifier in your product structured data is an MPN (${mpnRaw}), and that is the id your own storefront uses for this product — it resolves to nothing outside your store, so a machine buyer can't match this product to a catalogue entry.`,
-            `The only identifier in your product structured data is an MPN that is the id your own storefront uses for this product — it resolves to nothing outside your store, so a machine buyer can't match this product to a catalogue entry.`,
+            `The only identifier we can use on your product's own structured-data node is an MPN (${mpnRaw}), and that is the id your own storefront uses for this product — it resolves to nothing outside your store.${readLimit}`,
+            `The only identifier we can use on your product's own structured-data node is an MPN that is the id your own storefront uses for this product — it resolves to nothing outside your store.${readLimit}`,
           ),
         };
       }

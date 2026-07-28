@@ -1095,6 +1095,112 @@ renders **only at v1.0/v1.1, where those five entries were never run at all.** A
 to the current version, displayed on the frozen ones. Reverted to each document's own wording, with
 a test forbidding a tier explanation that claims a measurement its entries lack.
 
+## The matcher OUTGREW the contract, and only chosen input could see it (v3.5)
+
+Two changes were built for the `identifiers` row. **Coffee Standard v1.3** closed the clause that
+had been scoped to the wrong field — an `mpn` that is the storefront's own object id is now
+disqualified — and **rule D** implemented it. A third, the **GTIN widening**, descended into
+`offers[]`/`hasVariant[]`/`isVariantOf[]`. Rule D survives with zero regressions. The widening was
+reverted in `ed198db` and proved byte-equivalent to base over 1,193 values. That split was decided
+by one instrument and contradicted by the other:
+
+| instrument | verdict on the SAME commit, the same day |
+|---|---|
+| replay over **338 captured real stores**, comparing status **and detail and quote** | **32 clean recall gains, 0 rows lost, no other-kind change** |
+| **78 chosen cases**, 3 worktrees, 234 executions, mechanically A/B'd against the parent | **11 regressions — every one in the widening** |
+
+**Second confirmation of the v3.2 rule — a real-store replay is a REGRESSION CHECK, never an
+acceptance gate — and the ninth instance in the series. It is also the first time the adversarial
+pass was run as a GATE rather than as an autopsy, and it paid for itself on first use in anger:
+the replay's verdict was "ship it".**
+
+⚠️ **Two of the eleven were invisible to a status diff.** Same `pass_evidenced` before and after —
+what changed was the rendered quote, which acquired a GTIN taken from a variant list. A status
+comparison, a pass-count, and a merchant reading a green row all see nothing. **Compare the QUOTE.**
+The corpus now asserts whole rendered sentences (`detailExact`), not substrings, because `includes`
+is blind in both directions: it cannot see a clause appended to a correct sentence, and it cannot
+see a false clause already inside one.
+
+⚠️ **A NEW FAILURE SHAPE: the engine answered, from an `executable` row, a question its own
+published standard declares `blocked`.** `conflict_rules[1]` of `ALS-COFFEE-1.3-IDENT-001` says
+verbatim that *"the engine reads the product-level node only; per-variant identity is a known
+limitation published as a blocked entry"*. The widening picked the first validating barcode out of a
+variant list and reported it as the product's. Nothing was broken; the matcher had simply grown past
+the contract it executes. **When a change makes the engine able to answer something new, check the
+standard says it MAY** — a recall win outside the contract is not a win.
+
+⚠️ **The discriminator an earlier writeup pointed at was the worst of the five scored.** v3.2's
+finding quoted `"sku":"100754","mpn":"100754"` adjacent in one object, which reads as an obvious
+rule. Scored over all 36 mpn-publishing products in the corpus (23 true positives): rule A
+(`mpn === sku`) is **0 true positives, 7 false, 0% precision** — and the seven are exactly the
+COMPLIANT case, because a brand that manufactures what it sells legitimately uses one string for
+both. One of the seven is D'Addario's real published part number (`PW-CP-09`); another is a valid
+GTIN. Rule D (`mpn ===` the analytics-bootstrap product id) is 23/23 with 0 false positives. **Score
+the candidate rules before building one**, or the plausible-sounding one fails seven real merchants
+to catch nothing.
+
+⚠️ **THE NUMBERS WERE WRONG IN THE FLATTERING DIRECTION TWICE, AND THE SECOND TIME WAS ONE
+CHECKPOINT AFTER DIAGNOSING THE FIRST.** The prior session's sweep read `mpn`/`sku`/`gtin` with a
+**whole-body regex** where the engine reads them off the **first JSON-LD `Product` node**: it
+reported "roughly 40 of 50 pages publishing an `mpn`" (measured: **30 of 172**) and "18 carried a
+passing identifiers row" (measured: **21**). CP-1 found that, said so, and then two headings later
+wrote *"12 publish a real GTIN elsewhere — 6 in `offers[]`/`hasVariant[]`, 6 only in the Shopify
+variant `barcode`"*. Re-executed over the same bytes: the first half is **0** — on every one of
+those stores the value hangs off a *different* Product node, so nothing is reachable by descending
+from the selected one — and the second half is **not measurable from these snapshots at all**,
+because `pageSufficient` skips the `/products/{handle}.json` tier when the page's JSON-LD is
+complete, so it was captured on **0 of 23**. The script reports it `null` and resolves `INCOMPLETE`
+rather than printing the zero. **A document written to correct a scope error made one of the same
+family two headings later; assume your own numbers have it and go and execute them.**
+
+⚠️ **A commit measured its own regression class and shipped it as a caveat sentence.**
+`selectGtin`'s comment recorded the recall win as "32 of 338" and, in the corpus beside it, the
+regression class as "22 of 338 carry more than one distinct nested GTIN" — two halves of one
+number, never multiplied. The product is what decides how much of the win a narrowing keeps, and it
+is now measured: of the 32 gains, **19 are multi-valued and 13 are not**. A
+"descend only when exactly one distinct value is reachable" rule keeps **13 of 32**, not 32.
+**Two counts with the same denominator and no intersection is an unfinished measurement.**
+
+**The narrowing was deliberately NOT shipped** (`ENGINE_GAPS` P-06). Its predicate was derived from
+the same 78 cases that failed the wide rule, and validating a fix against the test set that produced
+it is *fitting*, not measuring — the mistake this repo records being caught by six times, and wrote
+the rule down after the fifth.
+
+### Six named merchants, and a sentence that was true of the common case
+
+`ship_pivot.ts` (`DEFECTS_FOUND`, 23/23 rule-D losses examined, 0 snapshots missing, two-sided
+canary): **6 of the 23 real stores rule D newly fails DO publish a check-digit-valid GTIN** —
+`flybyjing`, `monos`, `negativeunderwear`, `nomatic`, `wandpdesign`, `yellowbirdsauce`, between one
+and six each. The status is right; `conflict_rules[1]` says we read the product node only. **The
+rendered sentence was not.** It said *"The only identifier in your product structured data is an MPN
+(X) … so a machine buyer can't match this product to a catalogue entry"* — two assertions of an
+absence we never established. **The row went from right-for-the-wrong-reason to
+wrong-for-a-stated-reason**: base passed these six *on the MPN*, a string that resolves to nothing
+outside the store that minted it.
+
+The sentence now names where we read and what that excludes, and it is **byte-identical for the
+merchant who publishes nothing else and the merchant who publishes six GTINs one node down** —
+because the engine does not look, so copy that distinguished them would be claiming a measurement
+nobody took. Proof that only the sentence moved: 338 stores replayed before and after through the
+CP2 harness, **2,847 rows, 0 status changes, 0 quote changes, 23 detail changes, every one an
+identifier row**, two-sided canary computed from the data rather than declared.
+
+⚠️ **All six are NODE SELECTION, not the reverted descent — and the engine proved it, not a
+re-implementation.** At `d151876`, **with the wide descent live**, all six still rendered *"Your
+structured data publishes an MPN (…)"*. So P-06 answers none of them, wide or narrowed, and
+`ENGINE_GAPS`'s "P-12 before P-06" stops being a judgement call. `EXPECTED_OPEN_GAPS` 56 → **57**:
+**+1 case, 0 new defects** — the shape had no representation in the corpus at all, because
+`verdictOfLd` builds a page with one node.
+
+⚠️ **The same falsity is still shipping one branch over, on 34 stores instead of 6, and it was
+filed rather than fixed.** *"Your product structured data publishes no GTIN or MPN"* is the same
+claim shape, and 34 of the 223 captured stores told it publish a valid GTIN one node down —
+`topodesigns.com` publishes **60**. It is `ENGINE_GAPS` **P-15**, with the measurement, because the
+brief scoped this change to one sentence and *where work implies a change elsewhere, write it down
+as a proposal rather than make it.* And the same conflation was found inside the corpus itself: a
+`why` reading *"0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD"* — true of
+the node the ENGINE reads, false of the merchant's markup, in the very file that pins the defect.
+
 ## Your own replay CANNOT validate a matcher change (v3.2 — the eighth instance)
 
 **The three coffee false positives were fixed, measured, and reverted, and the measurement is

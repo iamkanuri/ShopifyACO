@@ -5,7 +5,7 @@ deliverable, not an appendix: **a standard whose assertions the engine cannot ex
 document**, so the honest half of authoring a standard is writing down precisely what is missing.
 
 Each gap states: the assertions it blocks, why the current mechanism is insufficient, what would be
-required, and **the risk of building it** — especially against the **56** defects pinned open in
+required, and **the risk of building it** — especially against the **57** defects pinned open in
 `test/adversarialCorpus.test.ts`. Be sceptical of every "this is easy" instinct here; three of
 these gaps have already been attempted in some form and reverted.
 
@@ -16,7 +16,9 @@ these gaps have already been attempted in some form and reverted.
 > widening was reverted. `+13` net at CP2d: the residuals an independent adversarial pass measured
 > against rule D, minus one entry whose `correct` field turned out to be the thing that was wrong.
 > `+1` at CP2e: the shape that only a four-tree re-run could show — the recall gap intersecting
-> rule D (P-06). **A class nobody can count is not progress.**
+> rule D (P-06). `+1` at CP3: the six named real merchants below, whose GTIN sits on a Product node
+> the extractor does not select — **+1 case, 0 new defects**, and a shape the corpus could not
+> express at all until it was written. **A class nobody can count is not progress.**
 
 Read alongside [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md), which is where the current capability is
 recorded. **Line references are to commit `9843cb6`** (`main`, == production `/healthz`), verified by
@@ -1380,10 +1382,15 @@ observations; they cluster, and the clustering is the useful part:
 | **P-09 · P-10 · P-14** | *how far rule D reaches* | the engine, except P-14's first half |
 | **P-13** | *are GS1 reserved prefixes acceptable evidence* | the standard; low priority, and it says so |
 
+**P-15 was filed at v3.5 CP3**, and it belongs with the first row: it is what P-12's absence makes
+the engine *say*, measured on 34 stores.
+
 ⚠️ **Two of these are not "future work" in the ordinary sense.** **P-11** records a mechanical,
 one-character bypass of a guard that shipped days ago. **P-12** records a merchant who marks their
-page up *correctly* and is told they publish no identifier. Both are pinned as executable corpus
-cases, so neither can go quiet — but neither is waiting on a discovery, only on a decision.
+page up *correctly* and is told they publish no identifier — and as of v3.5 CP3 it is no longer a
+constructed case: **six named real merchants**, four of whom need no descent at all. Both are pinned
+as executable corpus cases, so neither can go quiet — but neither is waiting on a discovery, only on
+a decision.
 
 ## P-01 · Three coffee entries are `blocked_by` a gap that is now CLOSED
 
@@ -1765,6 +1772,111 @@ there isn't one.
 selection rule ("the node whose `@id`/`url` matches the canonical URL", say) would make several of
 P-06's cases decidable *without* descending into variant lists at all — the merchant's own markup
 would say which node answers, instead of the engine picking one and hedging in the copy.
+
+### 🔴 SIX NAMED REAL MERCHANTS — the strongest evidence in this register, and it is not flattering
+
+Every other case above is constructed. These are stores, measured from their captured bytes
+(`experiments/v3-5/ship_pivot.ts` — `DEFECTS_FOUND`, 23/23 rule-D losses examined, 0 snapshots
+missing, two-sided canary passing; placement classified by
+`experiments/v3-5/copyfix/classify_six.mjs` — `VERIFIED_CLEAN`).
+
+**6 of the 23 real stores rule D newly fails publish a check-digit-valid GTIN in their own JSON-LD.**
+All six were `pass_evidenced` at `af6d387` **and** at `d151876`, and are `not_proven` only at head —
+so **rule D owns this flip, not the CP2a revert**, and the descent never reached these nodes either.
+
+| store | selected node | distinct publishable GTINs | ≥1 on the OWN key of a Product node we do not select | reachable by descending from the SELECTED node |
+|---|---|---|---|---|
+| `flybyjing.com` | `Product` | 1 | ✓ | **no** |
+| `nomatic.com` | `Product` | 1 | ✓ (inside a later block's `@graph`) | **no** |
+| `yellowbirdsauce.com` | `ProductGroup` | 2 | — (only on `Offer`s under another Product) | **no** |
+| `monos.com` | `ProductGroup` | 3 | ✓ | **no** |
+| `wandpdesign.com` | `ProductGroup` | 4 | ✓ | **no** |
+| `negativeunderwear.com` | `Product` | 6 | — (only on `Offer`s under another Product) | **no** |
+
+**Say what happened in the right direction: the row went from right-for-the-wrong-reason to
+wrong-for-a-stated-reason.** At base it passed, and it passed **on the `mpn`** — the storefront's own
+product key, a string that resolves to nothing outside that one store — so its verdict was right and
+its evidence named a value that identifies nothing. Rule D correctly refuses that value, and the
+merchant is now told they publish no usable identifier while publishing between one and six real
+GTINs. Per `conflict_rules[1]` the STATUS is what the published document licenses. That does not make
+it a good answer; it makes it a stated one.
+
+Three things this measurement settles that the constructed cases could not:
+
+1. **P-06 CANNOT ANSWER ANY OF THEM — not wide, not narrowed.** On all six, *nothing publishable is
+   reachable by descending `offers[]`/`hasVariant[]`/`isVariantOf[]` from the selected node*: the
+   value always sits under a **different** Product node (`enclosing.mjs`, `VERIFIED_CLEAN`;
+   `adjudicate_cp1.mjs` counts 0/23 for the descent and 6/23 for the graph). Corroborated by the
+   engine itself rather than by a re-implementation: at `d151876`, **with the wide descent live**,
+   all six rendered *"Your structured data publishes an MPN (…)"* — the descent named no GTIN on any
+   of them. This gap alone answers all six; the register's own priority note ("P-12 before P-06") is
+   now a measurement rather than a judgement call.
+2. **Four of the six need nothing but the node choice.** `flybyjing`, `monos`, `nomatic` and
+   `wandpdesign` carry a value in the own `gtin*` key of a Product node the extractor already
+   flattened and merely did not pick. The other two carry theirs on `Offer`s belonging to that other
+   Product node, so they need the node rule *and* one step.
+3. `verdictOfLd` builds a page with **one** node, so a second, non-selected Product node was
+   structurally unrepresentable in the corpus. It is now pinned as a rule-D page case
+   (`SIX REAL STORES: the GTIN is on a Product node the extractor does not select`, `nomatic.com`'s
+   real shape), `EXPECTED_OPEN_GAPS` 56 → 57 — **+1 case, 0 new defects.**
+
+⚠️ **And CP-1's own account of where these values live was wrong, in the flattering direction.**
+`experiments/v3-5/CP1_DECISION.md` states *"Of the 21 general defects, 12 publish a real GTIN
+elsewhere — 6 in `offers[].gtin12` / `hasVariant[].gtin`, 6 only in the Shopify variant `barcode`."*
+Re-executed: the first half is **0**, for the reason above. The second half is **not measurable from
+these snapshots at all** — `pageSufficient` skips the `/products/{handle}.json` tier when the page's
+JSON-LD is complete, so it was never fetched and never captured on **0 of 23** of these stores;
+`adjudicate_cp1.mjs` reports it `null` and resolves `INCOMPLETE` rather than printing the zero.
+The document CP-1 wrote to correct a prior session's whole-body-regex numbers made a scope error of
+the same family two headings later.
+
+**The copy defect it exposed, and what was done about it.** The rendered sentence said *"The only
+identifier in your product structured data is an MPN (X) … so a machine buyer can't match this
+product to a catalogue entry."* Both clauses are false for these six: there is another identifier,
+and we never established that a buyer cannot match the product. Fixed at v3.5 CP3 — the sentence now
+names where we read and what that excludes, and it is **byte-identical for both shapes**, because the
+engine does not look below the product node and so cannot tell them apart. Proof that only the
+sentence moved: 338 captured stores replayed before and after through the CP2 harness, **2,847 rows,
+0 status changes, 0 quote changes, 23 detail changes and every one an identifier row**
+(`experiments/v3-5/copyfix/cmp.mjs`, `VERIFIED_CLEAN`, two-sided canary computed from the data).
+
+## P-15 · The GENERIC identifier sentence asserts the same absence, on 34 stores instead of 6
+
+| | |
+|---|---|
+| **file** | `src/server/productTest.ts` (the `identifiers` row's final `not_proven` branch) |
+| **change** | say what was read and where, as the rule-D branch now does — or fix P-12 and make the sentence true |
+| **decides** | the engine owner |
+| **status** | **OPEN, MEASURED, DELIBERATELY NOT FIXED at v3.5 CP3** |
+
+The branch beside the one CP3 corrected still renders *"Your product structured data publishes no
+GTIN or MPN, so a machine buyer can't match this product to a catalogue entry."* That is the same
+claim shape — an absence asserted about the whole of a merchant's structured data from a read of one
+node — and the population is larger. Measured over the same 338 captured stores
+(`experiments/v3-5/copyfix/generic_branch.mjs`, `DEFECTS_FOUND`, 246 rows examined, 0 snapshots
+unreadable, two-sided canary passing):
+
+```
+rows told "publishes no GTIN or MPN"          223
+  …publishing a valid GTIN one node down       34   ← general 28, coffee44 4, coffee122 2
+rows told the rule-D sentence                  23
+  …publishing a valid GTIN one node down        6
+```
+
+`topodesigns.com` is told it publishes no identifier while publishing **60** distinct valid GTINs;
+`paireyewear.com` 30, `baronfig.com` 29, `wildone.com` 24.
+
+⚠️ **This 34 is not P-06's 32 renamed.** P-06's figure counts rows the CP2a *descent* flipped to a
+pass, so it is bounded by the three keys that descent walked; this one counts a publishable GTIN on
+any non-selected node, including sibling top-level `Product` nodes no descent would ever reach. They
+overlap heavily and neither contains the other.
+
+⚠️ **Why it was not fixed in the same commit.** The v3.5 CP3 brief scoped the change to the rule-D
+sentence and required a before/after proof that no status moved; widening the edit would have
+rewritten `detail` on 223 rows instead of 23 and put a measured, verified proof next to an unmeasured
+one. This repo's own rule applies — *where work implies a change elsewhere, write it down as a
+proposal rather than make it* (v3.4) — so here it is, with the number, rather than in a commit
+message nobody greps.
 
 ## P-13 · GS1 restricted-circulation (`2xx`) and coupon (`99xx`) prefixes are accepted as product GTINs
 
