@@ -274,7 +274,15 @@ export async function executeAuthenticatedRun(
     return { failed: true, status: 409, error: "This test's contract changed since it was saved, so a before/after comparison wouldn't be valid. Save it as a new test to measure from here." };
   }
   if (ENGINE_VERSION !== row.engine_version) {
-    return { failed: true, status: 409, error: `This test was recorded on engine ${row.engine_version} and we now run ${ENGINE_VERSION}. Results across engine versions aren't comparable, so we won't present them as a before/after. Save it as a new test to measure from here.` };
+    // ⚠️ "AN EARLIER ENGINE VERSION", not the recorded string. `ENGINE_VERSION`
+    // sat at `v2.0.0` from v2.0 through v3.7 while the matcher changed repeatedly
+    // — v3.5's rule D alone flipped identifier rows on real stores — so a record
+    // TAGGED `v2.0.0` may have been produced by any of a dozen different engines.
+    // Naming that tag back to the merchant states a precision the tag does not
+    // have. v3.8 bumps to v2.1.0 and adds a tripwire (test/engineVersion.test.ts)
+    // that fails the suite if a matcher file changes without a bump, so future
+    // tags mean what they say.
+    return { failed: true, status: 409, error: `This test was recorded on an earlier engine version and we now run ${ENGINE_VERSION}. Results across engine versions aren't comparable, so we won't present them as a before/after. Save it as a new test to measure from here.` };
   }
 
   const products = await loadNormalizedProducts(shop, { cap: 5_000 });

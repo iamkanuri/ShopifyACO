@@ -1552,7 +1552,30 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
 
 /** Bump when the EVALUATOR's semantics change (a status could differ on identical
  *  input). Pure additions that cannot change an existing verdict don't need a bump. */
-export const ENGINE_VERSION = "v2.0.0";
+/**
+ * The engine identity a saved buyer test is compared against.
+ *
+ * ⚠️ BUMP THIS WHENEVER A MATCHER FILE CHANGES. `buyerTests.ts` refuses a
+ * before/after across two different values, because results from two different
+ * matchers are not comparable — and that refusal is the ONLY thing standing
+ * between a merchant and a silent regression in their own trend line.
+ *
+ * ⚠️ IT SAT AT `v2.0.0` FROM v2.0 THROUGH v3.7 WHILE THE MATCHER CHANGED
+ * REPEATEDLY. v3.5's rule D flipped identifier rows on real stores under this
+ * same tag; v3.0's `care` guard, v2.8's quantity guard and v2.5's subject rule
+ * all shipped under it too. So every record tagged `v2.0.0` may have come from
+ * any of a dozen engines, and the guard has been dead for most of its life — not
+ * because it was wrong, but because nobody remembered to move the number.
+ *
+ * **A guard that depends on memory is not a guard.** `test/engineVersion.test.ts`
+ * now pins this value against a content hash of the matcher files, so changing a
+ * matcher without bumping fails `npm test`. Do not weaken that test to make a
+ * change land; bump the version, which is the thing it exists to make you do.
+ *
+ * v2.1.0 — v3.8: the tier-aware cents conversion and the non-USD price refusal.
+ * Together they change what 44 of 349 captured stores' price rows report.
+ */
+export const ENGINE_VERSION = "v2.1.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency

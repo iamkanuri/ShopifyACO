@@ -266,20 +266,20 @@
       "description": "172 products over 172 stores captured without regard to category — the shape a broad fitness sweep produces. Replayed at v3.7 through runProductTest itself with only the transport swapped: 172/172 evaluated, 0 replay misses, 0 hard errors, and 488 pass rows, which is byte-for-byte the denominator this sidecar already published.",
       "stores": 169,
       "products_evaluated": 172,
-      "pass_rows_audited": 488,
-      "confirmed_false_positives": 18,
+      "pass_rows_audited": 483,
+      "confirmed_false_positives": 11,
       "borderline_counted_as_passes": 13,
-      "point_estimate_pct": 3.69,
+      "point_estimate_pct": 2.28,
       "interval_95": {
-        "lower_pct": 2.3457,
-        "upper_pct": 5.7548
+        "lower_pct": 1.28,
+        "upper_pct": 4.03
       },
-      "bound_95_naive_pct": 5.47,
-      "bound_95_cluster_icc02_pct": 7.53,
-      "per_store_pct": 10.06,
+      "bound_95_naive_pct": 3.77,
+      "bound_95_cluster_icc02_pct": 5.17,
+      "per_store_pct": 5.92,
       "icc": 0.2,
-      "rows_per_store": 2.89,
-      "deff_icc02": 1.38,
+      "rows_per_store": 2.86,
+      "deff_icc02": 1.37,
       "is_floor": false,
       "completion_state": "DEFECTS_FOUND",
       "audit": {
@@ -661,7 +661,103 @@
         "⚠️ THE PER-KIND CELLS DO NOT SUPPORT A SPREAD, and that is published rather than hidden behind a table. Of the 21 pairs of kinds in this sample, exactly one separates on non-overlapping 95% intervals, by a fraction of a percentage point. A six-cell table read as six rates would be false precision; the cells are published as COUNTS with intervals, and the pairwise test is published beside them.",
         "Borderlines are counted as PASSES, the same convention as the coffee sample, and there are 13. Three are deliberate free gifts whose $0.00 the merchant's own title states, three are variant option values that are really the product's name, three are delivery timings whose scope is arguable, two are materials rows stating a property rather than a constituent, one is an ingredient-scoped organic claim, and one is a shipping sentence whose antecedent is the order rather than the product.",
         "A general sample estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes. That limit is unchanged by this measurement and is the reason a category standard is still fitness-measured on its own category."
-      ]
+      ],
+      "measured_at": "2026-07-28",
+      "engine_commit": "f5cf74f",
+      "engine_commit_note": "measured at f5cf74f (the last matcher commit); branch tip at publication was dbd523e, and every commit between them is measurement, documentation or the ENGINE_VERSION bump — none changes a row.",
+      "engine_version_tag": "v2.1.0",
+      "supersedes_measurement": {
+        "measured_at": "2026-07-28",
+        "engine_commit": "7085b34",
+        "engine_description": "v3.5 rule D; unchanged through v3.6 and v3.7 (both measurement-only)",
+        "pass_rows_audited": 488,
+        "confirmed_false_positives": 18,
+        "borderline_counted_as_passes": 13,
+        "point_estimate_pct": 3.69,
+        "interval_95": {
+          "lower_pct": 2.3457,
+          "upper_pct": 5.7548
+        },
+        "bound_95_naive_pct": 5.47,
+        "bound_95_cluster_icc02_pct": 7.53,
+        "rows_per_store": 2.89,
+        "deff_icc02": 1.38,
+        "why_displaced": "Not withdrawn and not an error. It is a correct measurement OF THE ENGINE AT 6a3e5d7, and the engine changed: v3.8 shipped a tier-aware cents conversion and a non-USD price refusal. Both figures are true of their own engine SHA, which is why both are pinned to one."
+      },
+      "denominator_change": {
+        "statement": "488 - 5 + 0 = 483. Every row that left the pass set is named; none entered it.",
+        "pass_rows_before": 488,
+        "left_the_pass_set": [
+          {
+            "store": "gardenerskit.com",
+            "row": "Price under $80",
+            "from": "pass_evidenced",
+            "to": "not_proven",
+            "now_says": "Your store publishes prices in CAD, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+          },
+          {
+            "store": "hismileteeth.com",
+            "row": "Price under $35",
+            "from": "pass_evidenced",
+            "to": "not_proven",
+            "now_says": "Your store publishes prices in AUD, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+          },
+          {
+            "store": "missoma.com",
+            "row": "Price under $140",
+            "from": "pass_evidenced",
+            "to": "not_proven",
+            "now_says": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+          },
+          {
+            "store": "mustardmade.com",
+            "row": "Price under $35",
+            "from": "pass_evidenced",
+            "to": "not_proven",
+            "now_says": "Your store publishes prices in AUD, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+          },
+          {
+            "store": "organicbasics.com",
+            "row": "Price under $55",
+            "from": "pass_evidenced",
+            "to": "not_proven",
+            "now_says": "Your store publishes prices in EUR, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+          }
+        ],
+        "entered_the_pass_set": [],
+        "pass_rows_after": 483,
+        "reconciles": true,
+        "why_it_shrank": "The five rows are the non-USD stores whose price row now refuses instead of stating a dollar figure. They did not stop being rows; they stopped being PASSING rows, which is the intended effect of the fix. A denominator that moves without an itemised reason is a number that looks measured and is actually a side effect, so the itemisation is published rather than the delta."
+      },
+      "defects_closed_by_v3_8": {
+        "count": 7,
+        "currency_rows_now_refusing": [
+          "gardenerskit.com — Price under $80",
+          "hismileteeth.com — Price under $35",
+          "missoma.com — Price under $140",
+          "mustardmade.com — Price under $35",
+          "organicbasics.com — Price under $55"
+        ],
+        "cents_rows_now_correct": [
+          "levainbakery.com — Price under $1005 -> $15; evidence $1000.00 -> $10.00. Still a PASS row, and now a true one.",
+          "richer-poorer.com — Price under $305 -> $10; evidence $300.00 -> $3.00. Still a PASS row, and now a true one."
+        ],
+        "note": "Two of the seven remain PASSING rows with a CORRECTED price, which is why 'still a pass row' cannot be used as 'still a false pass'. Treating them mechanically as survivors reported two closed defects as open on the first run of the re-measurement."
+      },
+      "surviving_defects": [
+        "askinosie.com — Measurements are stated (attribute)",
+        "branchbasics.com — Price under $10 (price_under)",
+        "fieldcompany.com — Price under $140 (price_under)",
+        "knifewear.com — Price under $10 (price_under)",
+        "kosas.com — Price under $10 (price_under)",
+        "kytebaby.com — Gilmore Girls option available (variant_option)",
+        "kytebaby.com — In stock and purchasable (in_stock)",
+        "lesserevil.com — In stock and purchasable (in_stock)",
+        "partakefoods.com — Price under $10 (price_under)",
+        "studioneat.com — Price under $10 (price_under)",
+        "tenthousand.cc — Price under $10 (price_under)"
+      ],
+      "method_v3_8": "Replay of experiments/v2-9/snaps through runProductTest with only the transport swapped, at dbd523e and at the pre-fix parent, from separate git WORKTREES rather than a file swap. Pass rows are keyed on PRODUCT URL, not host: deathwishcoffee.com appears in this sample and again in a coffee set, and keying on host pooled three of another sample's rows, giving 491 where 488 is published. The bound uses the exact Poisson CDF inversion from experiments/v3-7/perkind.mjs, anchored against the published table at x = 0..10 — x = 11 is past the end of general_bound.mjs's hand-typed table, whose fallback returns 19.501 against an exact 18.208."
     }
   ],
   "entry_discrimination": {
@@ -690,5 +786,15 @@
         "note": "Re-measured against the v1.3 wording on an engine that implements it. 74 of 76 adjudicated rows fail, against 72 of 76 before — the two rows that moved are the two whose MPN is the storefront's own product object id. The verdict is unchanged at not_discriminating, and it may still not be acted on as a retirement: it is above the band, and every bias declared on the in-document record still applies."
       }
     ]
-  }
+  },
+  "v3_8_scope": {
+    "statement": "v3.8's two price fixes move the GENERAL sample only. The coffee sample cannot move.",
+    "reason": "ALS-COFFEE-1.3-PRICE-001 is tier `unbound` and NO v1.3 entry binds req_kind `price_under` — the ten bindings are claim x3, variant_option x4, delivery, identifiers and attribute. The coffee sample therefore contains zero price rows, so a price fix has nothing to touch. Verified by reading the bindings out of standard.json rather than assumed.",
+    "coffee_figures_unchanged": {
+      "pass_rows_audited": 160,
+      "confirmed_false_positives": 7
+    },
+    "standard_json_untouched": "standard_hash does not move; every citation against v1.3 still resolves."
+  },
+  "_v38_comment": "v3.8 (2026-07-28): the general sample re-measured at the fixed SHA after the tier-aware cents fix and the non-USD price refusal. v3.7's figures are NOT edited — they are frozen inside `samples[].supersedes_measurement`, pinned to the engine commit that produced them. Both readings are true of their own engine."
 }

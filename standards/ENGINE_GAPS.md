@@ -2586,3 +2586,55 @@ from the cents mechanism** — `fieldcompany.com` ($135 rendered / $79 readable)
 ⚠️ Related and confirmed by the v3.8 fetch corpus as a general rule rather than a store's bad luck:
 `extract.ts:120` is `arr(raw).find(o => o && typeof o === "object")` — first offer, no minimum, no
 `@type` check — and `extract.ts:67` keeps a leading `-`, so a negative JSON-LD price parses.
+
+---
+
+## P-20 · A re-run should distinguish REPAIR-drift from ordinary contract drift
+
+| | |
+|---|---|
+| **file** | `src/server/buyerTests.ts` (`executeAuthenticatedRun`, the two 409 branches) |
+| **change** | classify a contract change caused by a REPAIRED input separately from one caused by an edited requirement, and say which to the merchant |
+| **decides** | the engine owner |
+
+v3.8 bumped `ENGINE_VERSION` to `v2.1.0` and added `test/engineVersion.test.ts`, so a matcher change
+can no longer ship without one. What it did **not** do is teach the re-run path *why* a contract
+moved. Measured over 349 deduped real stores:
+
+| | stores | `contractVersion` changes? | what a merchant re-running sees |
+|---|---:|---|---|
+| cents/tier fix (3a) | **6** | **yes** — `niceCap(minPriceUsd)` feeds `capUsd`, which is hashed | 409 *"this test's contract changed"* — **correct**: comparing "under $1005" to "under $15" is not a comparison |
+| non-USD refusal (3b) | **38** | **no** — the cap is unmoved | **no 409**; only the row's answer flips `pass_evidenced → not_proven` |
+| unaffected | **305** | no | nothing |
+
+Both 409s are honest today, and the `ENGINE_VERSION` bump now catches the 38 as well. But the
+message a merchant gets is the same sentence whether their contract moved because *they* edited a
+requirement or because *we* repaired a price we had been reporting wrongly — and those deserve
+different words. The second is the app admitting a defect, and *"save it as a new test to measure
+from here"* reads as the merchant's problem.
+
+⚠️ **Filed rather than built** because the brief scoped v3.8 to two fixes and this is a third
+change, in a different file, on a path with no test coverage for the 409 branches. *Where work
+implies a change elsewhere, write it down as a proposal rather than make it.*
+
+### What the dead guard actually cost, measured rather than assumed
+
+`ENGINE_VERSION` sat at `v2.0.0` from v2.0 through v3.7 while the matcher changed repeatedly, so the
+comparability guard was inert for most of its life. Whether that COST anything is a separate
+question from whether it was inert, and it is answerable:
+
+```
+buyer_tests      2 rows   (both v2walk.myshopify.com, the v2.1 CP3 walkthrough store)
+buyer_test_runs  5 rows   all engine_version = v2.0.0
+tests with >1 run: 1      (test #8, four runs)
+run timestamps:   2026-07-24T23:53Z .. 2026-07-24T23:59Z   — a six-minute window
+rule D (66a80a4): 2026-07-27
+```
+
+**No saved before/after straddles a matcher change.** Every run predates rule D by three days, and
+all four runs of test #8 fall inside six minutes of one walkthrough session.
+
+⚠️ **This is the LOCAL Supabase dev stack, not production.** Production's `buyer_tests` cannot be
+inspected from here, so the honest statement is: *on inspectable data the dead guard cost nothing,
+and production is unknown.* It is recorded this way rather than as "no harm done", which is the
+claim the data does not support.
