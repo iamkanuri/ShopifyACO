@@ -73,8 +73,10 @@ function matcherHash(): string {
 // ---------------------------------------------------------------------------
 // THE PIN. Both values move together, or neither moves.
 // ---------------------------------------------------------------------------
-const PINNED_ENGINE_VERSION = "v2.1.0";
-const PINNED_MATCHER_HASH = "623b389cf40b92a0";
+// v3.9 CP-4 — `priceToUsd`'s `.json` tier now fails closed. The tripwire fired on the
+// matcher edit, which is it working; both pins move together, as this file requires.
+const PINNED_ENGINE_VERSION = "v2.2.0";
+const PINNED_MATCHER_HASH = "8f86f57f20449745";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();

@@ -909,12 +909,49 @@ const priceToUsd = (p: string | number | undefined, tier: PriceTier): number | n
     if (typeof p !== "number" || !Number.isFinite(p) || !Number.isInteger(p) || p < 0) return null;
     return p / 100;
   }
-  // The `.json` tier serves string dollars. A number here is a shape no captured
-  // store produces; it is read as dollars rather than refused because that is what
-  // the endpoint's contract says, and because refusing would be a behaviour change
-  // measured on zero stores in either direction.
-  if (typeof p === "number") return Number.isFinite(p) ? p : null;
-  if (typeof p === "string") { const n = Number(p.replace(/[^0-9.]/g, "")); return Number.isFinite(n) ? n : null; }
+  // ⚠️ AND IT NOW FAILS CLOSED ON THE `.json` TIER TOO (v3.9 CP-4).
+  //
+  // The old body was `Number(p.replace(/[^0-9.]/g, ""))`, and the strip is the defect:
+  // a string with no digits survives it as `""`, `Number("") === 0`, and `0` is finite —
+  // so the guard could not fire and the row STATED a price of $0.00. Executed against
+  // this function, twelve inputs did exactly that: "USD" · "EUR" · "" · "   " · "N/A" ·
+  // "TBD" · "Contact us" · "Sold out" · "$" · "-" · "null" · "free".
+  //
+  // Two more were wrong in the way this function exists to prevent — a differently-wrong
+  // NUMBER rather than a refusal, which no auditor and no status diff looks at twice:
+  //   "-5.00"  -> $5.00     the sign is stripped, so a negative becomes a positive
+  //                         and then WINS the `Math.min` over the variants
+  //   "1e5"    -> $15.00    `e` is stripped and the exponent digits concatenate onto
+  //                         the mantissa; the honest value is 100000
+  //
+  // The rule is the tier's own measured contract, stated above: 931 `.json` price
+  // strings across 349 deduped stores, every one matching `^\d+\.\d+$`, zero numeric,
+  // zero integer-valued strings, zero carrying a symbol or a separator. Anything else is
+  // a value whose meaning we have not established, and this function's invariant is that
+  // an unestablished value is REFUSED, never guessed at.
+  //
+  // ⚠️ ZERO IS DELIBERATELY UNTOUCHED. `"0.00"` parses cleanly and still returns `0`,
+  // exactly as before. Refusing it would be a real improvement on 11 stores and it would
+  // also decide **P-19** by side effect, move 5 of the general sample's surviving
+  // defects, and drag a published figure with it. `$0.00`-as-a-price is filed, scoped and
+  // measured on its own; it is not this change's to take.
+  //
+  // ⚠️ Nothing here recovers a locale-formatted price. `"1.299,00"` and `"€12,50"` stop
+  // rendering a WRONG number and start refusing — an improvement under the invariant, and
+  // NOT the same as parsing them correctly. The fetch corpus records the honest answers
+  // for those as numbers, so those cases move from `wrong_price` to `status != honest`
+  // rather than disappearing. Do not read them as closed.
+  //
+  // Integer-dollar strings are accepted (`^\d+$`) though none was observed, because the
+  // tier's contract is decimal dollars and an integer is unambiguously one; the decimal
+  // point is a formatting habit, not a unit marker.
+  if (typeof p === "number") return Number.isFinite(p) && p >= 0 ? p : null;
+  if (typeof p === "string") {
+    const s = p.trim();
+    if (!/^\d+(\.\d+)?$/.test(s)) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
   return null;
 };
 
@@ -1575,7 +1612,7 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * v2.1.0 — v3.8: the tier-aware cents conversion and the non-USD price refusal.
  * Together they change what 44 of 349 captured stores' price rows report.
  */
-export const ENGINE_VERSION = "v2.1.0";
+export const ENGINE_VERSION = "v2.2.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency
