@@ -1423,6 +1423,12 @@ const RULE_D: PageCase[] = [
     correct: "not_proven", actual: "pass_evidenced",
     why: "KNOWN GAP, and the hostile class this corpus exists for: merchant-controlled text reaching a reader. The JSON-LD `description` is written by the store and appears BEFORE the analytics script, so `var meta = {}` inside a sentence about theme installation decides what the engine reads about that store. Whether it is deliberate does not matter — a parser steered by the input it is judging is the defect. ENGINE_GAPS P-10." },
 
+  // --- the recall gap and rule D, INTERSECTING ---------------------------------
+  { label: "RESIDUAL X-01/X-04/R15: rule D disqualifies the mpn and the only real GTIN is nested", storefrontId: "7215488761946",
+    html: PAGE(P({ mpn: "7215488761946", offers: [{ "@type": "Offer", price: "18.00", gtin13: "5060391620510" }] }), '{"product":{"id":7215488761946,"type":"Coffee","variants":[{"id":42}]}}'),
+    correct: "pass_evidenced", actual: "not_proven",
+    why: "KNOWN GAP, and the ONLY THREE STATUS REGRESSIONS THAT SURVIVE THE CP2a REVERT against af6d387 — adjudicated X-01, X-04 and R15, re-run in four worktrees. It is worth reading exactly what happened. In `af6d387` this row PASSED, and it passed on the mpn — which is the storefront's own product key, the precise value CP2b was built to reject. So base was right in STATUS and wrong in EVIDENCE: it told the merchant they publish an identifier and named a string that resolves to nothing outside their own store. Rule D correctly refuses that value; the pass then depends on the GTIN in `offers[]`, which the reverted `selectGtin` does not read. The result is a FALSE FAIL where there used to be a right answer reached from a wrong one. It is the P-06 recall gap intersecting rule D, not a new mechanism, and it is the strongest argument in the register for solving node selection (P-12) rather than re-widening the descent (P-06)." },
+
   // --- rule D is scoped to ONE FIELD, and the value can move ------------------
   { label: "RESIDUAL EVA-15: the storefront key published in the GTIN field", storefrontId: "8079462006891",
     html: PAGE(P({ gtin13: "8079462006891" }), '{"product":{"id":8079462006891,"type":"Coffee","variants":[{"id":44139877171393}]}}'),
@@ -1695,6 +1701,12 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //       key (EVA-03, D-06), a VARIANT key (EVA-14), the key legible OUTSIDE the one
   //       bootstrap we read (EVA-07, D-10, EVA-08/09/11/12, D-11, EVA-10, EVA-22), and
   //       the key in a DIFFERENT FIELD (EVA-15, EVA-21).                          -> 55
+  //   +1  and one more the RE-RUN found, which no single-commit reading could have: the
+  //       recall gap INTERSECTING rule D. X-01, X-04 and R15 are the only three status
+  //       regressions that survive the revert against af6d387, and all three are one
+  //       page shape — the mpn is the storefront key (rule D refuses it, correctly) and
+  //       the only real GTIN is nested (the reverted selector cannot see it). Base
+  //       passed them ON THE STOREFRONT KEY: right in status, wrong in evidence.  -> 56
   //
   // ⚠️ 14 CASES, FOUR CLASSES. The count is of cases and always has been; do not read
   // it as fourteen independent defects. They are pinned one fixture each because a
@@ -1725,7 +1737,7 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //     seven compliant merchants).
   // A class that is closed in the engine and a class that is pinned in the corpus are
   // both progress; a class nobody can count is not.
-  const EXPECTED_OPEN_GAPS = 55;
+  const EXPECTED_OPEN_GAPS = 56;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

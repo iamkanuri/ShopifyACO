@@ -5,7 +5,7 @@ deliverable, not an appendix: **a standard whose assertions the engine cannot ex
 document**, so the honest half of authoring a standard is writing down precisely what is missing.
 
 Each gap states: the assertions it blocks, why the current mechanism is insufficient, what would be
-required, and **the risk of building it** — especially against the **55** defects pinned open in
+required, and **the risk of building it** — especially against the **56** defects pinned open in
 `test/adversarialCorpus.test.ts`. Be sceptical of every "this is easy" instinct here; three of
 these gaps have already been attempted in some form and reverted.
 
@@ -1568,6 +1568,28 @@ GTIN appears on four variants** (adjudicated `R08`, an attack the standard recor
 GTIN and it is the storefront's own product key. A uniqueness predicate passes it, names it as the
 merchant's GTIN, and hands the merchant the exact value rule D rejects one field over. Whatever
 ships must carry the P-11 value test as well, or it re-opens the class CP2b closed.
+
+### ⚠️ THE THREE REGRESSIONS THAT SURVIVE THE REVERT, AND WHY THEY ARE THIS ROW'S PROBLEM
+
+Re-running the 78-case bundle in **four** worktrees after the revert (`base af6d387` → `d151876` →
+`1c0dc41` → `0f0317a`, 312 executions, `VERIFIED_CLEAN`, 0 drift on the three shared trees) leaves
+**3 status regressions and 0 quote regressions**, down from 9 and 2. All three — `X-01`, `X-04`,
+`R15` — are one page shape, and the shape is this row intersecting rule D:
+
+| | |
+|---|---|
+| the page publishes | `mpn` = the storefront's own product key, and a valid GTIN in `offers[]` / `hasVariant[]` |
+| `af6d387` answered | **pass**, ON THE MPN — right in status, and its rendered evidence named a string that resolves to nothing outside that one store |
+| today | **not_proven** — rule D refuses the key (correctly), and the reverted selector cannot see the GTIN |
+
+**Base was right for the wrong reason and the regression is a FALSE FAIL.** That is not a defence of
+the current answer; a merchant publishing a real GTIN is told they publish no identifier. It is the
+attribution: the status flip is caused by rule D removing a value that should never have carried the
+row, and this gap is what used to hide it.
+
+⚠️ **It is also the strongest argument for doing P-12 before P-06.** A node selection rule would let
+these pages answer from the merchant's own markup. Re-widening the descent would answer them by
+picking a variant — which is what produced the nine regressions this revert removed.
 
 ## P-07 · `selectGtin` returns the first NON-EMPTY key, not the first PUBLISHABLE one
 
