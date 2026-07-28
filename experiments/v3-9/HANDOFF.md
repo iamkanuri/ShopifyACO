@@ -11,11 +11,20 @@ Session date: 2026-07-28. Branch: **`feat/v3-9-worth`**, off `main` at `3dbef7c`
 
 | thing | value |
 |---|---|
-| production SHA | **`3dbef7c`** — untouched all session |
-| `main` == `origin/main` == `/healthz` | all `3dbef7c`, confirmed at CP-0 |
-| working branch | `feat/v3-9-worth` |
-| pushed? | **NO** — and must not be, without Pause 2 |
-| both production probes at CP-0 | `verify_prod` **21/21**, `verify_sections` **15/15** |
+| production SHA | **`12db430`** — v3.9 is LIVE |
+| `main` == `origin/main` == `/healthz` | all **`12db430`** |
+| pushed? | ✅ **YES** — `3dbef7c..12db430`, at Pause 2's decision |
+| `verify_prod` | **VERIFIED_CLEAN — 21/21, 0 failures** |
+| `verify_sections` | **VERIFIED_CLEAN — 15/15, 0 failures** |
+| fetch corpus at the deployed SHA | **5/5 closed**, `67 − 5 = 62` reconciles |
+
+⚠️ **Why the fetch corpus was re-run after deploy, and what it proves.** This release is a
+REFUSAL path: no real store publishes a malformed price (0 of 1,925 measured), so no
+snapshot probe and no HTTP probe can reach it — there is nothing on the public web that
+would exercise it. The corpus is the only instrument that can, and it was run with the
+working tree verified byte-identical to the deployed commit and `src/` clean. **It proves
+the deployed SOURCE refuses these inputs; it does not prove the running process was
+observed doing so, and no available instrument can.** Stated rather than glossed.
 
 ---
 
@@ -102,7 +111,17 @@ production          untouched
 
 ---
 
-## PAUSE 2 — THE OPEN DECISION
+## PAUSE 2 — ANSWERED AND EXECUTED
+
+| call | outcome |
+|---|---|
+| push | **PUSHED** `3dbef7c..12db430`; both probes clean; fetch corpus re-verified at the deployed SHA |
+| publish the capability block | **HELD.** Block completed and pinned; render slot wired **dark** behind `STANDARDS_SHOW_CAPABILITY_BLOCK`. Decision re-presented **at v4.0's close**. Selective disclosure explicitly rejected. |
+| re-examine v3.8's 55 | **DONE.** Gold 6/6, 42 of 55 overturned, `274 → 316`, `1137 → 1282`, corrected in place with a per-group trail |
+
+### The record of the original decision
+
+
 
 **Push `feat/v3-9-worth` to `main`?** It carries one matcher change (`priceToUsd` fails
 closed on the `.json` tier) and an `ENGINE_VERSION` bump to `v2.2.0`.
