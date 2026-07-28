@@ -889,10 +889,20 @@ type PriceTier = "json" | "js";
  * non-negative integer is a value whose unit we have not established, and
  * dividing an unestablished unit by 100 is the CATASTROPHIC direction — a $50
  * product published as $0.50. Measured today: `understated_100x` occurs on 0 of
- * 349 stores, and that is the invariant this function exists to keep. Refusing
- * yields `null`, the price row reports `requires_store_access`, and no number is
- * stated. A wrong price may never become a differently-wrong price; the only
- * acceptable failure direction is refusing to state one.
+ * 349 stores, and that is the invariant this function exists to keep. A wrong
+ * price may never become a differently-wrong price; the only acceptable failure
+ * direction is refusing to state one.
+ *
+ * ⚠️ WHAT REFUSING ACTUALLY PRODUCES, and it is TWO different things depending on
+ * the path — an earlier draft of this comment named only the second and was wrong
+ * about the common case. Returning `null` empties `prices`, so `minPriceUsd`
+ * falls back to the JSON-LD offer and is null only if that is absent too. Then:
+ *   • on the PUBLIC path, `adjudicability` scores `price_under` 0 when
+ *     `minPriceUsd == null`, and a 0-scored candidate is DROPPED — so no price
+ *     row is generated and the merchant sees no such row at all;
+ *   • on a PINNED or reconstructed contract the row already exists, and
+ *     `evaluate`'s `price_under` branch returns `requires_store_access`.
+ * Both are honest. Neither states a number.
  */
 const priceToUsd = (p: string | number | undefined, tier: PriceTier): number | null => {
   if (tier === "js") {
