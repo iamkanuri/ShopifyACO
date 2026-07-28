@@ -1,0 +1,495 @@
+{
+  "id": "generic-collisions",
+  "productNoun": "product",
+  "productPlural": "products",
+  "unitNoun": "batch",
+  "siblingDescriptor": "other",
+  "competitor": "Northbank",
+  "bundleNoun": "gift set",
+  "packagingNoun": "carton",
+  "facilityNoun": "warehouse",
+  "specLabels": [
+    "Specification",
+    "Method"
+  ],
+  "adjacentDomains": [
+    {
+      "domain": "organic chemistry — VOC and solvent labelling",
+      "collidesWith": [
+        "organic"
+      ],
+      "sentences": [
+        "Certified to emit under 0.5 mg/m3 of total volatile organic compounds.",
+        "Low-VOC finish: 12 g/L of volatile organic compounds, well under the CARB limit.",
+        "The binder is an organic solvent, so work in a ventilated room."
+      ],
+      "why": "In chemistry `organic` means carbon-based and carries no agricultural, certification or food meaning whatever. VOC copy is near-universal on paint, sealant, adhesive, flooring, mattress and candle pages, quoted in exactly this form against CARB, SCAQMD and GREENGUARD limits. The perverse part: a low-VOC sentence is a claim that the product contains LESS of the thing called organic, and the engine reads it as a claim that the product IS organic. Executed: all three return pass_evidenced on term `organic`."
+    },
+    {
+      "domain": "soil science and agronomy — soil organic matter",
+      "collidesWith": [
+        "organic"
+      ],
+      "sentences": [
+        "Grown in volcanic soil rich in organic matter at 1,900 metres.",
+        "Our potting mix is 40% organic matter by volume.",
+        "Worm castings raise organic matter and improve water retention.",
+        "Cover cropping between the rows returns organic material to the topsoil."
+      ],
+      "why": "Soil organic matter (SOM) is a standard agronomic measure of decomposed plant and animal residue and is entirely orthogonal to certification — conventionally farmed, heavily sprayed land can be very high in organic matter, and a certified organic field can be low. This is not a hypothesis: CLAUDE.md records this exact collision as a CONFIRMED shipped false pass on a coffee page (v3.2, 'the soil-science sense of organic (2)'), and the fourth sentence shows the class is wider than the two words that were caught — `organic material` walks past on one synonym. Executed: all four pass."
+    },
+    {
+      "domain": "industrial design and craft — organic as a description of FORM",
+      "collidesWith": [
+        "organic"
+      ],
+      "sentences": [
+        "The organic silhouette is hand-thrown, so no two vases are alike.",
+        "Soft organic curves inspired by river stones.",
+        "An organic edge, left raw from the live-edge slab.",
+        "An organic-shaped mirror with a hand-bevelled edge."
+      ],
+      "why": "In furniture, ceramics, jewellery, rugs and lighting, `organic` is an adjective of SHAPE — irregular, nature-like, asymmetric — the sense used in 'organic modernism' and Wright's 'organic architecture'. It is one of the highest-frequency words in that category's copy. This is the most dangerous member of the class for a structural reason: the SUBJECT of the sentence really is the product, and the sentence really does say organic, so no aboutness rule, no subject rule and no negation guard can ever intervene. It is not a wrong-subject problem and cannot be fixed as one. Executed: all four pass."
+    },
+    {
+      "domain": "display and colourant technology — OLED and organic pigments",
+      "collidesWith": [
+        "organic"
+      ],
+      "sentences": [
+        "A 6.7-inch organic light-emitting diode panel with 2,000 nits peak brightness.",
+        "Lightfast organic pigments in an acrylic binder.",
+        "The colourant is an organic pigment rather than a mineral oxide."
+      ],
+      "why": "OLED is literally 'organic light-emitting diode' and spec sheets routinely spell it out; Japanese-market copy writes 'organic EL'. In colourants, 'organic pigment' is the standard trade antonym of 'inorganic/mineral pigment' in Colour Index nomenclature — an organic pigment is a synthetic carbon compound, often the LESS natural of the two options. Electronics and art-supply stores are ordinary Shopify categories and write both verbatim. Executed: all three pass."
+    },
+    {
+      "domain": "growth marketing and web analytics idiom",
+      "collidesWith": [
+        "organic"
+      ],
+      "sentences": [
+        "This playbook shows how we reached $2M in organic search traffic.",
+        "Chapter 4 covers organic growth loops and referral mechanics.",
+        "The dashboard template tracks paid and organic reach side by side.",
+        "We grew to 40,000 subscribers through organic channels alone."
+      ],
+      "why": "'Organic traffic', 'organic reach' and 'organic growth' are the standard analytics antonym of 'paid'. Digital products — courses, templates, Notion kits, ebooks, agency retainers — are a very large Shopify category, and their product descriptions are written in precisely this vocabulary. The word appears in the product description of the thing being sold, so surface filtering does not help. Executed: all four pass."
+    },
+    {
+      "domain": "organic certification scope — the farm or the ingredient, not the finished product",
+      "collidesWith": [
+        "organic",
+        "certified organic",
+        "usda organic"
+      ],
+      "sentences": [
+        "Sourced from a certified organic farm in Oaxaca.",
+        "We buy certified organic green coffee and roast it in a conventional facility.",
+        "Blended from USDA organic almonds and conventional sea salt."
+      ],
+      "why": "This is a REGULATORY-register collision rather than a homograph, and I flag it as such. Under the US NOP a finished product may be labelled organic only if the HANDLER is certified; certification of a farm, or of one input, does not transfer, and 'made with organic ___' (70-95%) and '100% organic' are distinct regulated tiers with different label rights. Each sentence is a scrupulous merchant describing exactly what is and is not certified — the second says outright that the finishing facility is conventional — and each is credited as a whole-product organic claim. Executed: all three pass, the second and third on the strongest terms in the list (`certified organic`, `usda organic`)."
+    },
+    {
+      "domain": "leather goods and textiles — 'vegan leather' as a MATERIAL name",
+      "collidesWith": [
+        "vegan",
+        "100% vegan"
+      ],
+      "sentences": [
+        "Our vegan leather tote is finished with a wool-felt liner.",
+        "100% vegan leather strap, hand-burnished at the edges.",
+        "Cut from Italian vegan leather and stitched with silk thread.",
+        "The vegan suede body is backed with a beeswax-treated canvas."
+      ],
+      "why": "'Vegan leather' is a material's proper name — polyurethane or PVC on a textile backing — used by the trade the way 'pleather' once was. It names ONE component. Wool, silk, beeswax, shellac, bone, horn and hide glue are all routine in the same article, so a vegan-leather bag is frequently not a vegan product, and three of these four sentences say so in the same breath. The merchant is not lying; the material is correctly named. The engine is wrong to read a whole-product ethical claim out of a fabric name. Executed: all four pass, and `100% vegan` — the strongest-sounding term in the dictionary — matches inside '100% vegan leather'."
+    },
+    {
+      "domain": "bioplastics and surfactant chemistry — 'plant-based' as a FEEDSTOCK term",
+      "collidesWith": [
+        "plant-based",
+        "plant based"
+      ],
+      "sentences": [
+        "This tumbler is moulded from plant-based bioplastic derived from sugarcane.",
+        "A plant based cellulose film that composts in twelve weeks.",
+        "Plant-based surfactants do the cleaning; the richness comes from lanolin esters.",
+        "Printed with plant-based inks on FSC board."
+      ],
+      "why": "In materials and household chemistry 'plant-based' identifies where the CARBON came from (PLA from corn, surfactants from coconut and palm) and says nothing about whether animal material is present elsewhere. Lanolin, beeswax, tallow-derived stearates, shellac, casein binders and hide glue coexist with plant-derived inputs constantly — the third sentence names lanolin, a sheep product, in the same clause and still passes. A plant-based feedstock is not a vegan claim about the article. Executed: all four pass."
+    },
+    {
+      "domain": "food marketing — 'plant-based' is not 'vegan'",
+      "collidesWith": [
+        "plant-based",
+        "plant based"
+      ],
+      "sentences": [
+        "A plant based protein blend sweetened with wildflower honey.",
+        "Our plant-based recipe uses grass-fed whey for a complete amino profile.",
+        "Plant-based eating with a little butter, the way we actually cook."
+      ],
+      "why": "The highest-yield collision in this whole set, because the vocabulary imports it: `plant-based` and `plant based` are listed as SUPPORTING terms for `vegan`, and in food marketing 'plant-based' describes a diet or a recipe centred on plants. It has no legal definition in the US or UK and is applied routinely to products containing honey, whey, dairy, eggs and gelatin. Each sentence names the animal ingredient explicitly and is still credited as proof the product is vegan. This is a vocabulary defect as much as an engine defect — narrowing the matcher cannot fix a term list that equates a dietary style with an ingredient rule. Executed: all three pass."
+    },
+    {
+      "domain": "audience and gift copy — 'vegan' as a PERSON",
+      "collidesWith": [
+        "vegan",
+        "non-vegan"
+      ],
+      "sentences": [
+        "The perfect present for the vegan in your family.",
+        "Popular with vegan and non-vegan shoppers alike.",
+        "Written by a vegan chef, for cooks of every stripe."
+      ],
+      "why": "`vegan` is a count noun for a person at least as often as an adjective for a product; gift-guide copy, author bylines and audience descriptors use it constantly, and the item being described may be a leather-bound notebook or a cheese board. The second sentence is worse than a false pass: it trips the violating term `non-vegan` and executes to CONTRADICTED, so a shop writing an inclusive audience line is told by the engine that its own public copy states the opposite of the requirement. Executed: 1 and 3 pass, 2 contradicts."
+    },
+    {
+      "domain": "decorative motif vocabulary — 'animal' as a shape, print or figure",
+      "collidesWith": [
+        "contains animal"
+      ],
+      "sentences": [
+        "Each set contains animal-shaped cutters in stainless steel.",
+        "Our nursery mobile contains animal figures cut from felt.",
+        "Our enamel pin set contains animal silhouettes in six colourways.",
+        "The rug contains animal motifs drawn from Anatolian kilims.",
+        "This cookie tin contains animal crackers baked in Devon."
+      ],
+      "why": "`contains animal` is a bare, UNFRAMED violating term, and in homeware, stationery, kids', craft and textile copy `animal` is overwhelmingly a shape/print/motif word — animal crackers, animal print, animal-shaped cutters, animal motifs. VOCABULARY.md's own rule is that violating terms must be framed for exactly this reason. All five execute to CONTRADICTED, the reputationally worst verdict available: the merchant is told their page states the product is not vegan, on copy about biscuit cutters and a felt mobile. Note the near-miss: 'This sticker sheet contains animal outlines' returns not_proven only because `sticker` is in the subject veto list — the guard that saves it is an accident of noun choice, not a reading of the sentence."
+    },
+    {
+      "domain": "cosmetic labelling — 'unscented' is not 'fragrance-free'",
+      "collidesWith": [
+        "unscented"
+      ],
+      "sentences": [
+        "Unscented: a trace masking fragrance neutralises the natural odour of the raw shea.",
+        "Our unscented formula uses a masking agent rather than a perfume oil.",
+        "Unscented, so it will not compete with your own perfume.",
+        "An unscented carrier oil, so you can add your own essential oils."
+      ],
+      "why": "These are DIFFERENT claims and the cosmetics industry knows it: 'unscented' means the product has no perceptible smell, which is routinely achieved by ADDING a masking fragrance, while 'fragrance-free' means no fragrance ingredient was added at all. Neither is defined by the FDA, and contact dermatitis to masking fragrance in products labelled unscented is a documented clinical problem — the distinction is standard in patch-testing guidance. Listing `unscented` as a supporting term for `fragrance_free` imports that false equivalence, and the first two sentences are merchants being unusually HONEST about the masking agent and being credited for the opposite of what they wrote. Executed: all four pass on term `unscented`."
+    },
+    {
+      "domain": "natural perfumery — essential oils marketed as 'fragrance-free'",
+      "collidesWith": [
+        "fragrance-free",
+        "fragrance free",
+        "no added fragrance"
+      ],
+      "sentences": [
+        "Fragrance-free: scented only with steam-distilled lavender essential oil.",
+        "No added fragrance; the scent you notice is cold-pressed orange peel.",
+        "Fragrance free formula, and any aroma comes from the botanical extracts themselves."
+      ],
+      "why": "Much of the natural-beauty trade reads 'fragrance' as the INCI ingredient Parfum/Fragrance — a synthetic undisclosed blend — so a product perfumed entirely with essential oils is marketed as fragrance-free in good faith. Essential oils carry the same regulated sensitisers the claim exists to warn about: linalool, limonene, citral, geraniol and the rest of the 26 EU-declarable fragrance allergens. The merchant is describing their formulation accurately in their own register; the fragrance-allergic shopper the claim exists for is the person harmed. Executed: all three pass."
+    },
+    {
+      "domain": "candle, soap and wax supply — 'fragrance' as a raw material the BUYER adds",
+      "collidesWith": [
+        "no fragrance",
+        "added fragrance",
+        "unscented"
+      ],
+      "sentences": [
+        "This soy wax holds a 10% scent load, and no fragrance is added at our factory.",
+        "Recommended added fragrance rate is 6 to 10% by weight.",
+        "Unscented base wax, ready for you to scent as you like."
+      ],
+      "why": "In DIY supply copy `fragrance` is an input the customer buys separately, so 'no fragrance' and 'added fragrance' describe a formulation INSTRUCTION rather than the finished article's composition. The middle sentence is the sharp one: it trips the violating term `added fragrance` and executes to CONTRADICTED, so a supplier of a genuinely unscented wax base is told its own copy states the product has added fragrance, when the sentence is a dosing recommendation for the buyer. Executed: 1 and 3 pass, 2 contradicts."
+    },
+    {
+      "domain": "metallurgy, abrasives and mineral chemistry — aluminium the ELEMENT, not the antiperspirant salt",
+      "collidesWith": [
+        "with aluminum",
+        "contains aluminum",
+        "aluminum-free",
+        "aluminium free"
+      ],
+      "sentences": [
+        "Hand-sanded with aluminum oxide paper before the final oiling.",
+        "The mineral pigment is coated with aluminum oxide for lightfastness.",
+        "A 6061 frame finished with aluminum hardware and stainless bolts.",
+        "Our matte glaze contains aluminum silicate, better known as kaolin.",
+        "An aluminium free frame, machined from titanium billet."
+      ],
+      "why": "The `aluminum_free` claim in personal care is about aluminium SALTS — aluminium chlorohydrate and aluminium zirconium tetrachlorohydrex — the actives that make a product a regulated OTC antiperspirant drug in the US. Aluminium oxide (abrasives, ceramic glaze, pigment coatings), aluminium silicate (kaolin clay, in cosmetics and pottery alike) and aluminium the structural metal are unrelated to that claim. `with aluminum` is a bare two-word violating term and will fire on 'with aluminum hardware', which is the ordinary way a bottle, bike, watch or luggage page describes its parts. Executed: the first four all CONTRADICT; the fifth passes on a titanium bike frame."
+    },
+    {
+      "domain": "chemical leavening — 'aluminum-free baking powder'",
+      "collidesWith": [
+        "aluminum-free",
+        "aluminum free",
+        "contains aluminum"
+      ],
+      "sentences": [
+        "Made with aluminum-free baking powder, so there is no metallic aftertaste.",
+        "Aluminum free leavening keeps the crumb sweet.",
+        "Our double-acting powder contains aluminum sulfate for the second rise."
+      ],
+      "why": "'Aluminum-free baking powder' is a fixed product term in baking meaning free of sodium aluminium sulfate (SAS), a leavening acid, and it is a TASTE claim — bakers avoid SAS for the metallic note, not for any dermal reason. It says nothing about the rest of the product and nothing about the claim's actual referent. The third sentence is a compliant baker disclosing their leavening system and executes to CONTRADICTED. Executed: 1 and 2 pass, 3 contradicts."
+    },
+    {
+      "domain": "water, brewing, bath and fertiliser chemistry — mineral sulfates",
+      "collidesWith": [
+        "contains sulfates",
+        "sulfate free",
+        "sulfate-free"
+      ],
+      "sentences": [
+        "Our Burton water salt contains sulfates and chlorides in a 2:1 ratio.",
+        "Each soak is built on magnesium sulfate, so the tin contains sulfates by design.",
+        "Sulfate free potash for chloride-sensitive crops."
+      ],
+      "why": "`sulfate_free` in hair care means free of the anionic detergents SLS and SLES specifically; it has never meant free of all sulfate salts. Magnesium sulfate (Epsom), calcium sulfate (gypsum — used in brewing water and in tofu), potassium sulfate (the 'sulfate of potash' fertiliser grade) and barium sulfate are ordinary and desirable in adjacent categories, and homebrew water chemistry is written as a sulfate-to-chloride ratio as a matter of routine. Executed: 1 and 2 contradict, 3 passes. A measured fragility worth recording: 'Gypsum, or calcium sulfate, is what the brewing salt contains; sulfates sharpen the hop bite' returns not_proven — the violating term needs literal adjacency, so this class is reachable or not on word order alone."
+    },
+    {
+      "domain": "food chemistry and pharmacy — parabens outside cosmetics",
+      "collidesWith": [
+        "contains parabens"
+      ],
+      "sentences": [
+        "Blueberry skin naturally contains parabens, which is where the preservative was first isolated.",
+        "Carrot root naturally contains parabens at trace level.",
+        "Every over-the-counter syrup on this shelf contains parabens as an excipient.",
+        "Our shelf-stable icing contains parabens permitted as E218 in the EU."
+      ],
+      "why": "Parabens are esters of p-hydroxybenzoic acid; methylparaben occurs naturally in blueberries, carrots and barley, and the class is a long-standing food preservative (E214-E219) and a standard pharmaceutical excipient in syrups and suspensions. A merchant writing accurate ingredient education, or an accurate OTC excipient list, trips the bare violating term `contains parabens`. Executed: all four CONTRADICT — the engine tells a paraben-free skincare brand that its own educational paragraph about blueberries states the opposite of its claim."
+    },
+    {
+      "domain": "botany and bioplastics — wheat the PLANT PART, not the gluten grain",
+      "collidesWith": [
+        "contains wheat"
+      ],
+      "sentences": [
+        "Each scoop contains wheat grass, spirulina and chlorella.",
+        "This bowl contains wheat straw fibre and bamboo instead of virgin plastic.",
+        "Our compostable tableware contains wheat straw pressed under heat.",
+        "Our lip balm contains wheat germ oil for vitamin E."
+      ],
+      "why": "Wheatgrass is the young leaf, cut before the grain forms, and is gluten-free; wheat straw is the hollow stalk and is now a mainstream filler in moulded tableware and packaging; wheat germ oil is a refined lipid. None of these is a gluten disclosure and two of them are not even food. All four trip the bare violating term `contains wheat` and execute to CONTRADICTED — a genuinely gluten-free green-powder brand and a wheat-straw bowl are both told their copy states the opposite. Written 'wheatgrass' as one word the string does not match at all, so this class is reachable on a space."
+    },
+    {
+      "domain": "allergen cross-contact disclosure and substitution education",
+      "collidesWith": [
+        "contains wheat",
+        "contains gluten"
+      ],
+      "sentences": [
+        "Packed in a kitchen that also contains wheat, tree nuts and soy.",
+        "Our kitchen contains wheat flour, so we cannot guarantee zero cross-contact.",
+        "Barley malt contains gluten, which is why we brew with sorghum."
+      ],
+      "why": "I flag this as a speech-act / referent collision rather than a homograph, and it is the highest-yield one in the food keys. The first two are legally expected cross-contact statements about a FACILITY; the third is a gluten-free brewery explaining a substitution. All three are what a careful, compliant merchant writes, and all three execute to CONTRADICTED — the engine reports to a gluten-free brand that its own public copy states the opposite of the requirement. Because allergen statements are near-universal in the exact category the claim is asked in, this shape is not rare."
+    },
+    {
+      "domain": "estate sales, probate and the pre-owned antiques and jewellery trade",
+      "collidesWith": [
+        "single estate",
+        "single-estate"
+      ],
+      "sentences": [
+        "This piece comes from a single estate collection acquired in 2019.",
+        "The whole lot was bought at a single estate sale in Bucks County.",
+        "A single-estate consignment of mid-century Danish teak.",
+        "Estate jewellery from a single estate, catalogued lot by lot."
+      ],
+      "why": "In the antiques, auction and jewellery trades 'estate' means a deceased or dispersing owner's property — 'estate jewellery' simply means pre-owned. Vintage and antique shops are a large Shopify category and describe provenance in exactly these words. The string is byte-identical to the tea, coffee and wine sense of `single estate` and the meaning has no relation to agricultural origin: it is a fact about a probate lot, not about a farm. Executed: all four pass."
+    },
+    {
+      "domain": "web architecture — the HTTP origin",
+      "collidesWith": [
+        "single origin",
+        "single-origin"
+      ],
+      "sentences": [
+        "Serve the storefront and the API from a single origin to avoid CORS preflights.",
+        "The theme keeps every asset on a single-origin domain for a faster first paint."
+      ],
+      "why": "In browsers an origin is scheme + host + port, and single-origin / same-origin is everyday vocabulary in the developer-tooling register. Shopify themes, apps, plugins and developer courses are themselves a real merchant category selling on Shopify, and their product descriptions are written this way. A clean homograph: identical string, wholly unrelated meaning, and the sentence is about the product being sold. Executed: both pass."
+    },
+    {
+      "domain": "palaeoanthropology and historical linguistics — the single-origin hypothesis",
+      "collidesWith": [
+        "single origin",
+        "single-origin"
+      ],
+      "sentences": [
+        "Argues for the single origin of modern humans against the multiregional case.",
+        "A single-origin account of the alphabet, from Sinai to the Aegean."
+      ],
+      "why": "'Single-origin hypothesis' is the standard name for the Out-of-Africa model, and 'single origin' is the general term for monogenesis in evolutionary biology and in script/language history. Bookshops, museum shops and print sellers write it verbatim in blurbs, and books, posters and prints are ordinary Shopify inventory. Executed: both pass."
+    },
+    {
+      "domain": "freight vocabulary and agricultural licensing units",
+      "collidesWith": [
+        "single origin",
+        "single farm"
+      ],
+      "sentences": [
+        "Consolidated freight from a single origin keeps the footprint low.",
+        "One licence covers a single farm operation, however many implements you run.",
+        "Our importer clears everything through a single origin port."
+      ],
+      "why": "`origin` is the standard freight term for the shipping point — origin/destination, ex-works origin, origin charges — and in agricultural software and equipment 'a single farm' is a licensing or sizing unit. Neither says anything about where the product's material came from. Note that the obvious phrasing 'All orders ship from a single origin' is correctly vetoed by the shipment-subject rule; these three are not, because their subjects are 'Consolidated freight', 'One licence' and 'Our importer'. Executed: the first two pass."
+    },
+    {
+      "domain": "trade-in commerce and the plain-English idiom 'a fair trade'",
+      "collidesWith": [
+        "fair trade",
+        "fair-trade"
+      ],
+      "sentences": [
+        "Send back the old frame and we will quote you a fair trade-in value.",
+        "Trade in last year's board for a fair trade-in credit.",
+        "Swap any size within 30 days, which we think is a fair trade.",
+        "A fair trade for a bike you have outgrown."
+      ],
+      "why": "'Fair trade' is an ordinary English noun phrase meaning an even exchange, and 'fair trade-in value' is boilerplate in eyewear, phones, bikes, instruments, snowboards and jewellery. The hyphen in 'trade-in' is a word boundary for this matcher — boundaries are non-alphanumeric — so `fair trade` matches inside 'fair trade-in' and the merchant has made no sourcing claim of any kind. Executed: all four pass."
+    },
+    {
+      "domain": "trade policy, economics, and three certification marks sharing one string",
+      "collidesWith": [
+        "fair trade",
+        "fair-trade",
+        "fairtrade"
+      ],
+      "sentences": [
+        "This collection of essays argues for fair trade over free trade.",
+        "Our reading list covers fair trade economics, from Prebisch to the present."
+      ],
+      "why": "'Fair trade' names a political movement and an academic literature as well as a certification, and books, courses and prints use it as a SUBJECT rather than as a claim about the item. Separately and more structurally: `fairtrade` as one word is the FAIRTRADE Mark of Fairtrade International, while 'Fair Trade Certified' is Fair Trade USA's distinct scheme with different standards and a different owner — the dictionary flattens three strings with three different referents into one claim, so even a true match cannot tell the reader which scheme was met. Executed: both pass."
+    },
+    {
+      "domain": "in-house and physical-performance laboratory testing",
+      "collidesWith": [
+        "lab tested",
+        "third-party tested",
+        "third party tested"
+      ],
+      "sentences": [
+        "Lab tested to 50,000 Martindale rubs for abrasion resistance.",
+        "Every batch is lab tested in our own facility before it ships.",
+        "Lab tested by our head of quality in the Portland lab.",
+        "Lab tested for colourfastness to ISO 105-B02.",
+        "The firmware is third-party tested for security before each release."
+      ],
+      "why": "'Lab tested' names a laboratory, not an INDEPENDENT one, and sentences 2 and 3 say outright that the lab belongs to the merchant — and are credited anyway. The tests named are physical-performance tests (Martindale abrasion, ISO colourfastness, penetration testing) that say nothing about the composition or purity a `third_party_tested` claim is asked about. Textile, footwear, electronics and software merchants write all five of these verbatim. Executed: all five pass."
+    },
+    {
+      "domain": "press, ambassador and community testing",
+      "collidesWith": [
+        "independently tested"
+      ],
+      "sentences": [
+        "Independently tested by three cycling magazines over a full season.",
+        "Independently tested by our ambassador team on the Pacific Crest Trail."
+      ],
+      "why": "'Independently' is used of anyone who is not the seller — journalists, ambassadors, a customer panel — and neither is an accredited laboratory. The second is not even independent of the brand. Both are honest in their own register: nobody reading a bike page thinks 'independently tested by three magazines' means an ISO 17025 lab. Worth noting the guard that does NOT fire: the engine's review-context veto matches `review`, `reviews`, `reviewed`, and neither 'magazines' nor 'reviewers' matches it, so nothing intervenes. Executed: both pass."
+    },
+    {
+      "domain": "the manufacturer's own certificate of analysis",
+      "collidesWith": [
+        "certificate of analysis"
+      ],
+      "sentences": [
+        "A certificate of analysis is printed inside every lid.",
+        "We issue a certificate of analysis with each production run.",
+        "Ask for the certificate of analysis and we will email our QC report."
+      ],
+      "why": "A CoA is a document issued by the PRODUCER'S own QC function unless it explicitly names an external laboratory — that is precisely what 'manufacturer's CoA' means in the supplement, chemical and food trades, and it is why buyers ask specifically for a third-party CoA. Sentences 2 and 3 say plainly that the issuer is the merchant ('We issue', 'our QC report') and are still credited as evidence of third-party testing. The term is in the supporting list with no requirement that an external party be named. Executed: 1 and 2 pass."
+    },
+    {
+      "domain": "canine breed vocabulary — 'Lab' the dog",
+      "collidesWith": [
+        "lab tested"
+      ],
+      "sentences": [
+        "Lab tested and Lab approved by our two chocolate Labradors.",
+        "Every flavour is Lab tested before it reaches the shelf, and Bailey has veto power."
+      ],
+      "why": "'Lab tested, Lab approved' is a well-worn deliberate pun in dog treats, pet gear and pet-food copy, where 'Lab' is the breed. It is the cleanest homograph in this whole vocabulary — identical string, unrelated domain — and because it is a joke merchants reach for on purpose, it is common rather than freak. Both sentences name the dogs in the same clause and are still read as laboratory verification. Executed: both pass."
+    },
+    {
+      "domain": "animal-welfare husbandry — 'cruelty-free' as a FARMING claim",
+      "collidesWith": [
+        "cruelty-free",
+        "cruelty free"
+      ],
+      "sentences": [
+        "Filled with cruelty-free down from farms certified to the Responsible Down Standard.",
+        "Cruelty free wool from mulesing-free flocks in Tasmania.",
+        "Cruelty-free eggs from our own pasture-raised hens.",
+        "Ahimsa silk, a cruelty free process that lets the moth emerge.",
+        "Cruelty-free honey, harvested only after the colony has overwintered."
+      ],
+      "why": "In fashion and food 'cruelty-free' is a welfare claim about how an ANIMAL was kept or harvested — RDS down, mulesing-free wool, ahimsa/peace silk, pasture-raised eggs, overwintered honey. It is a real, established and often certified use of the exact string, and it is not a claim about laboratory testing, which is what this claim key asks. The sharpest part: it is asserted precisely about products that CONTAIN animal material, so the engine returns its strongest reading of the string on the copy least entitled to it. Executed: all five pass."
+    },
+    {
+      "domain": "clinical and veterinary testing disclaimers, and animal-testing law",
+      "collidesWith": [
+        "not tested on animals",
+        "tested on animals"
+      ],
+      "sentences": [
+        "This blend is not tested on animals or in humans, so we make no efficacy claims.",
+        "Not tested on animals of any species, and for human use only.",
+        "Since 2013, cosmetics tested on animals may not be sold in the EU."
+      ],
+      "why": "In a clinical or veterinary register 'not tested on animals' is a statement of MISSING EVIDENCE — no animal model was run, so nothing is known about safety or efficacy in that species — and it is written as a warning, not as a credential. Essential-oil and supplement merchants write it that way because many botanicals are toxic to cats. The valence is inverted: the same string that reads as an ethics badge is here a disclaimer of ignorance. The third sentence is a merchant accurately describing EU Regulation 1223/2009 and trips the VIOLATING term, executing to CONTRADICTED — honest regulatory education rendered to the merchant as 'your public copy states the opposite of this requirement'."
+    },
+    {
+      "domain": "rabbit iconography — a literal leaping bunny",
+      "collidesWith": [
+        "leaping bunny"
+      ],
+      "sentences": [
+        "The Leaping Bunny plush is hand-stitched in Vermont.",
+        "Our Leaping Bunny garden statue is cast in reconstituted stone.",
+        "Leaping Bunny embroidery hoop kit, six inches across."
+      ],
+      "why": "'Leaping bunny' is a plain description of a rabbit in mid-jump and a natural product name in toys, garden ornament, embroidery, nursery decor and Easter ranges. The Leaping Bunny certification is a logo programme run by Cruelty Free International, and nothing in the string distinguishes the certification from the animal. A merchant who has never applied for the programme is credited with it. Because a product name usually sits in the TITLE, this is simultaneously the merchant-controlled-string hazard — the shop names its own evidence. Executed: all three pass."
+    },
+    {
+      "domain": "polymer-chemistry education — 'contains BPA' said of a different material",
+      "collidesWith": [
+        "contains bpa"
+      ],
+      "sentences": [
+        "Polycarbonate contains BPA, which is why we moulded this in Tritan.",
+        "The industry's standard epoxy lining contains BPA, and ours is an acrylic.",
+        "Resin code 7 often contains BPA, so check the base of older bottles."
+      ],
+      "why": "Stated honestly: this is a referent collision inside one chemistry, not a homograph — the sentence is about a material CLASS rather than this article. I include it because it is the only genuinely reachable collision for this key (see notes on the BPA acronym), and because it is the exact paragraph a BPA-free brand writes to justify its material choice. All three execute to CONTRADICTED, so the merchants most invested in the claim are the ones told their own page states the opposite of it. `contains bpa` is bare and unframed, which is what makes an educational clause indistinguishable from a disclosure."
+    },
+    {
+      "domain": "can-coating and thermal-paper trade — 'BPA free' as a non-intent standard",
+      "collidesWith": [
+        "bpa free",
+        "bpa-free"
+      ],
+      "sentences": [
+        "All cans are BPA free on a non-intent basis, as the trade standard allows.",
+        "Our linings are BPA free, meaning no bisphenol A is intentionally added.",
+        "Our thermal receipt rolls are BPA free and print at 200 dpi."
+      ],
+      "why": "In the food-can trade 'BPA-NI' — bisphenol-A non-intent, i.e. not intentionally added — is the operative term of art, and 'BPA free' is used as its shorthand even though the two are not the same statement: non-intent permits trace carryover and does not address the substitutes (BPS, BPF) that replaced it. The first two sentences are merchants being precise about which standard they meet and are credited with the stronger absolute claim. The third is a stationery merchant describing thermal paper, where BPA is a developer in the coating and the claim is about a printing consumable. Executed: all three pass."
+    },
+    {
+      "domain": "complete-mix baking copy — 'no baking soda REQUIRED'",
+      "collidesWith": [
+        "no baking soda",
+        "without baking soda",
+        "baking soda free"
+      ],
+      "sentences": [
+        "No baking soda required, just add water and whisk.",
+        "Rises without baking soda from your cupboard, because the leavening is already blended in.",
+        "Our pancake mix rises with no baking soda from your pantry.",
+        "Complete mix: no baking soda, no eggs and no measuring."
+      ],
+      "why": "An INVERTED collision, and the reason this key needs one. In mix copy 'no X required' means the BUYER need not add X, and the usual reason is that X is already in the blend — the second sentence says so outright and still passes. The plain meaning of the sentence is the opposite of the claim. `baking_soda_free` is a deodorant-category claim (sodium bicarbonate is a known axillary irritant), while the baking register is where the string actually occurs in the wild, so the collision is between the two registers as well as between the two readings. Executed: all four pass."
+    }
+  ]
+}

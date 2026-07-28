@@ -41,12 +41,44 @@ import { buildEvidence, type QuotableSurface } from "../../src/server/testEviden
 import { evaluateWithVocabulary, type ClaimTermsView, asEvidence } from "../../standards/vocabulary.js";
 import { ENGINE_CLAIM_KEYS } from "../../standards/compile.js";
 import { generateAttacks, DEFAULT_CONTEXT } from "../../standards/attack/generate.js";
+import { parseContext } from "../../standards/attack/context.js";
 import { ATTACK_CLASSES, type AttackClass, type AttackSentence } from "../../standards/attack/types.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..", "..");
 const OUT = join(HERE, "out");
 mkdirSync(OUT, { recursive: true });
+
+// ---------------------------------------------------------------------------
+// v3.9 CP-1B — THE CONTEXT IS NOW SELECTABLE, AND THAT IS THE WHOLE OF STEP 2.
+//
+// v3.8 ran this with `DEFAULT_CONTEXT`, whose `adjacentDomains` is `[]`. The generator's
+// class-2 domain-collision half (`generate.ts:151-188`) therefore emitted nothing for all
+// 13 keys, and `adjacent_vocabulary` has read as fragment-probes-only ever since — the
+// "attacked and found nothing" illusion, where an untested half is indistinguishable from
+// a clean one. The 36 authored collisions existed the whole time in a subagent return
+// value that no consumer read.
+//
+// CONTEXT_FILE selects a context; absent, behaviour is byte-identical to v3.8's.
+// `parseContext` reports malformed entries rather than dropping them silently, and a
+// dropped collision is a COVERAGE REDUCTION, so its problems are fatal here rather than
+// advisory.
+// ---------------------------------------------------------------------------
+const CONTEXT_FILE = process.env.CONTEXT_FILE ?? null;
+let ACTIVE_CONTEXT = DEFAULT_CONTEXT;
+let CONTEXT_PROBLEMS: string[] = [];
+if (CONTEXT_FILE) {
+  const parsed = parseContext(JSON.parse(readFileSync(CONTEXT_FILE, "utf8")));
+  ACTIVE_CONTEXT = parsed.context;
+  CONTEXT_PROBLEMS = parsed.problems;
+  if (CONTEXT_PROBLEMS.length) {
+    throw new Error(
+      `context ${CONTEXT_FILE} produced ${CONTEXT_PROBLEMS.length} problem(s) — refusing to run, ` +
+      `because a dropped collision reduces coverage while looking exactly like a key that has none:\n` +
+      CONTEXT_PROBLEMS.map((p) => `  - ${p}`).join("\n"),
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 1. ENUMERATE THE DICTIONARIES BY EXECUTION
@@ -271,7 +303,7 @@ function main(): void {
     const set = generateAttacks(asVocabulary(key), {
       seed: SEED,
       perCellLimit: PER_CELL,
-      context: DEFAULT_CONTEXT,
+      context: ACTIVE_CONTEXT,
       includeControls: true,
     });
     perKeySets[key] = set;
@@ -397,7 +429,10 @@ function main(): void {
     generated_at_commit: process.env.GIT_SHA ?? null,
     seed: SEED,
     per_cell_limit: PER_CELL,
-    context_id: DEFAULT_CONTEXT.id,
+    context_id: ACTIVE_CONTEXT.id,
+    context_file: CONTEXT_FILE,
+    adjacent_domain_count: ACTIVE_CONTEXT.adjacentDomains.length,
+    adjacent_domain_sentences: ACTIVE_CONTEXT.adjacentDomains.reduce((n, d) => n + d.sentences.length, 0),
     source_span: sourceSpan,
     keys: KEYS,
     key_count: KEYS.length,
@@ -436,7 +471,11 @@ function main(): void {
         `NO ADJUDICATION HAS HAPPENED: an engine answer is not a verdict.`,
   };
 
-  writeFileSync(join(OUT, "g14_sentences.json"), `${JSON.stringify(out, null, 2)}\n`);
+  // v3.9: OUT_FILE lets a second context write elsewhere. v3.8's `g14_sentences.json` is
+  // the frozen record its whole table was computed from; a re-run under a different
+  // context must never land on top of it.
+  const outPath = process.env.OUT_FILE ?? join(OUT, "g14_sentences.json");
+  writeFileSync(outPath, `${JSON.stringify(out, null, 2)}\n`);
 
   // Console summary
   const L: string[] = [];
