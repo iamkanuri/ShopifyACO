@@ -1412,6 +1412,121 @@ directions at once.
 
 **The other eleven keys have had neither treatment.** That is the gap.
 
+---
+
+### ✅ STEP 1 IS MEASURED — 2026-07-28, against `6a3e5d7` (v3.8)
+
+**Status moves from "never run" to "step 1 measured on 2026-07-28, against `6a3e5d7`."** No fix was
+made and none is licensed by this; the table below is the target for the fix sessions it licenses.
+Artifacts: `experiments/v3-8/g14_generate.ts` · `out/g14_sentences.json` · `g14_merge.mjs` ·
+`g14_table.mjs`.
+
+⚠️ **THIS SECTION'S OWN HEADING WAS WRONG, AND SO WAS THE PARAGRAPH ABOVE.** The templatizer has
+**EIGHT** classes, not six, and it generates all eight rather than "six of them":
+`letter_not_spirit` · `adjacent_vocabulary` · `wrong_subject` · `merchant_controlled_string` ·
+`orthography` · `violation` · `tense_modality` · `denial`. The must-not-regress direction is not a
+ninth class — it is built in as `control: true` templates. The heading is left as written because
+it is what the gap was filed under and citations resolve through it.
+
+**Method.** The thirteen keys and their 69 terms were enumerated by lifting the `CLAIM_TERMS`
+literal out of the engine's own source bytes and evaluating it (it has no `export`, and a regex
+would also match the copy in `standards/__tests__/vocabulary.engine.test.ts`), then round-tripping
+**69/69** through the real `evaluate()`. Key set cross-checked against `ENGINE_CLAIM_KEYS`. Every
+sentence was run down BOTH the real `evaluate()` and the proven mirror `evaluateWithVocabulary`,
+which agreed on **all 3,681**. Ten parallel adjudicators (batched class-major round-robin so no one
+adjudicator owned a class), then four independent refuters told to default to `refuted: true` under
+uncertainty.
+
+```
+sentences executed   3,681   (hostile 3,500 · controls 181)
+dropped by cap           0   — full coverage, not a sample
+controls meeting their expected outcome   181/181
+groups                 779   adjudicated 779/779, missing 0, duplicates 0
+refuter verdicts       327   → 55 claims refuted away
+```
+
+**CONFIRMED FALSE PASSES / HOSTILE SENTENCES, per key × class:**
+
+| claim key | letter_not_spirit | adjacent_vocab | wrong_subject | merchant_ctrl | orthography | violation | tense_modality | denial |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `aluminum_free` | 32/35 | ~0/14 | 46/128 | 0/60 | 0/86 | 1/24 | 53/90 | 10/59 |
+| `baking_soda_free` | 23/25 | ~0/10 | 27/80 | 0/36 | 0/60 | 0/8 | 37/54 | 3/41 |
+| `cruelty_free` | 19/20 | ~0/8 | 28/66 | 0/30 | 0/47 | 0/8 | 33/45 | 0/33 |
+| `vegan` | 18/20 | ~0/6 | 27/76 | 0/36 | 0/45 | 0/16 | 36/54 | 4/34 |
+| `fragrance_free` | 21/25 | ~0/8 | 31/80 | 0/36 | 0/51 | 0/8 | 38/54 | 11/41 |
+| `paraben_free` | 18/20 | ~0/8 | 30/66 | 0/30 | 0/45 | 0/8 | 30/45 | 6/33 |
+| `sulfate_free` | 18/20 | ~0/8 | 25/66 | 0/30 | 0/45 | 0/8 | 30/45 | 6/33 |
+| `single_origin` | 25/25 | ~0/6 | 40/70 | 0/30 | 0/40 | n/a | 40/45 | 10/40 |
+| `organic` | 14/15 | ~0/4 | 23/42 | 0/18 | 0/25 | n/a | 23/27 | 3/24 |
+| `fair_trade` | 15/15 | ~0/2 | 18/42 | 0/18 | 0/20 | n/a | 24/27 | 6/24 |
+| `gluten_free` | 15/15 | ~0/8 | 21/62 | 0/30 | 0/45 | 0/16 | 26/45 | 6/26 |
+| `third_party_tested` | 23/25 | ~0/10 | 27/70 | 0/30 | 0/52 | n/a | 37/45 | 0/40 |
+| `bpa_free` | 19/20 | ~0/8 | 25/66 | 0/30 | 0/45 | 0/8 | 32/45 | 4/33 |
+| **TOTAL** | **260/280** | **~0/100** | **368/914** | **0/414** | **0/606** | **1/104** | **439/621** | **69/461** |
+
+Completion states: **`n/a`** = the class does not attack that key's term roles (`violation` against
+a key whose violating list is empty) — nothing was owed. **`~`** = HALF-RUN, see below. No cell is
+empty, and no `0` in this table means "we did not look" except where marked.
+
+**Sentence-level roll-up:** confirmed false passes **1,137** · correct 1,464 · generator artefacts
+**735** · false fails **164**, over 3,500 hostile sentences.
+
+⚠️ **`generator_artifact` IS A THIRD STATE AND IT IS 735 SENTENCES.** The generator is a documented
+heuristic; it produced `"Our carton is Contains Aluminum."` and `"Our product is free of vegan."` —
+sentences no merchant writes, on which the engine's answer carries no information in either
+direction. Counting them as defects would have inflated this campaign by two-thirds. Counting them
+as correct would hide real coverage loss. They are their own column, and where a template's slot
+needed a substance and received an absence-claim, that is a GENERATOR defect to fix before the next
+run, not an engine defect.
+
+⚠️ **FALSE FAILS ARE COUNTED SEPARATELY AND NEVER MERGED.** 164 of them. A false fail is the
+recoverable direction; a false pass is not. A single number over both would be the arithmetic this
+repo has spent four releases learning not to publish.
+
+#### What the table says, in three sentences a stranger needs
+
+1. **The engine reads keywords, not sentences, on three axes and reads them well on three others.**
+   `tense_modality` (439/621), `letter_not_spirit` (260/280) and `wrong_subject` (368/914) are
+   wide open; `merchant_controlled_string` (0/414), `orthography` (0/606) and `violation` (1/104)
+   are clean.
+2. **`letter_not_spirit` is the worst RATE at 93%, and `tense_modality` the worst COUNT at 439** —
+   nothing in the engine reads tense, modality or condition, so *"We hope to move this batch to a
+   Fragrance-Free product next season."* is credited as proof the product is fragrance-free today.
+3. **The defect is uniform across all thirteen keys**, which means it is a property of the matcher
+   and not of any term list — so no amount of editing `CLAIM_TERMS` addresses it.
+
+#### ⚠️ THE COVERAGE THIS TABLE DOES NOT HAVE, stated because a `0` cannot say it
+
+`adjacent_vocabulary` ran its **mechanisable half only** — fragment probes over multi-word terms.
+`DEFAULT_CONTEXT.adjacentDomains` is empty, so the **domain-collision half was never attempted for
+any of the thirteen keys.** That matters more than `0/100` suggests: two of this repo's known
+confirmed defects live exactly there — `organic` in its soil-science sense, and homographs such as
+`REACH`. Reading that column as "attacked and clean" is precisely the mistake the generator's own
+`notExercised` logic exists to prevent, one level up. **A human-authored `adjacentDomains` set for
+the thirteen keys is the next step and it is not optional.**
+
+#### Two findings banked independently of adjudication
+
+- **The real claim branch REFUSES the `shipping_policy` surface** (`productTest.ts:1746`) and the
+  mirror `evaluateWithVocabulary` does not. `standards/__tests__/vocabulary.engine.test.ts` proves
+  the mirror faithful but only ever probes `product_description`, so its proof structurally cannot
+  see this. **And `attack/templates.ts`'s `merchant_controlled_string/shipping_policy` template
+  asserts in its own `intent` that "the claim branch restricts no surface" — that comment is
+  STALE**, and the sentences it generates cannot reach the branch at all.
+- **The engine has no `contradicted` status for a claim.** Contrary evidence returns
+  `status: "not_proven"` distinguished only by the detail sentence *"Your public copy states the
+  opposite of this requirement."* Any instrument checking `status === "contradicted"` silently
+  reads every contradiction as a plain miss.
+
+#### Why nothing was pinned in the adversarial corpus
+
+274 confirmed false-pass groups over 1,137 sentences. Pinning them would move
+`EXPECTED_OPEN_GAPS` from 60 to the high hundreds in a single commit, in a session whose brief said
+**"No fixes. Not one."** and whose value is an unfitted measurement. `EXPECTED_OPEN_GAPS` stays at
+**60**. The table is the artifact; selecting a representative pin set is a decision for the fix
+session, which should choose its pins to match the guard it is building. *Where work implies a
+change elsewhere, write it down as a proposal rather than make it.*
+
 ### What the campaign is
 
 Express each built-in as a vocabulary artifact, generate the attack set, execute it, and produce a
@@ -2228,7 +2343,7 @@ domain AND on normalised product URL before computing any n over more than one s
 | **files** | `src/server/productTest.ts` — `priceToUsd` (l. 834), the variant/price/availability assembly in `fetchPublicProduct` (l. ~1216-1252), and `evaluate`'s `price_under` branch |
 | **change** | none proposed here. Four defect classes, measured, with the count each carries |
 | **decides** | the engine owner |
-| **status** | **OPEN, MEASURED, FILED NOT FIXED at v3.7 CP-1** |
+| **status** | **v3.7: OPEN, MEASURED, FILED NOT FIXED. v3.8: THE CORPUS NOW EXISTS — see the update at the end of this section.** |
 
 The first complete row-by-row audit of the general sample — 488 pass rows over 172 real stores,
 every row adjudicated individually, every confirmed defect re-executed against the raw captured
@@ -2334,3 +2449,140 @@ other, with no stated reason. And if `offers[].mpn` ever becomes readable, **rul
 in the same commit**, or the widening re-opens exactly the class CP2b closed: a storefront key
 published on an offer instead of the product node would walk straight past a guard that only reads
 `info.mpn`.
+
+---
+
+## P-17 — UPDATE, 2026-07-28 (v3.8): the corpus was built, and 49 of 60 defects were unreachable by sampling
+
+`experiments/v3-8/fetch_harness.ts` + `fetch_cases.json`, frozen in commit `234ee7b` **before any
+fix code was written**, authored by six independent agents who wrote no bytes and no fix. Case specs
+are SEMANTIC — a mechanical synthesizer turns them into real HTTP bodies fed through the REAL
+`fetchPublicProduct` with only the transport swapped, so nothing about parsing, tier order, robots
+or conversion is reimplemented. The harness validated itself against known reality before any
+authored case ran: a `.js` price of exactly `1000` renders `$1000.00` (levainbakery) and a GBP store
+renders `$135.00` (missoma).
+
+```
+cases                                       101, six clusters
+wrong-NUMBER defects in the SHIPPED engine   60
+  of which UNREACHABLE by a real-store sample  49   ← the headline
+closed by v3.8's two fixes                   15
+residual at HEAD                             45
+NEWLY OPENED by either fix                    0
+```
+
+⚠️ **A FLAG IS NOT A DEFECT, and the distinction is load-bearing here.** Nine currency cases differ
+from the engine only in PROMISE — their authors expected a non-USD store to receive a pass reporting
+its own currency, and v3.8 shipped a refusal. Counted separately, never folded in, and filed as
+**P-18**.
+
+**What is now permanently expressible**: anything the `store` spec can describe — per-tier price
+shape and magnitude, `available` present/absent/false, JSON-LD offer and currency, the analytics
+bootstrap, per-tier HTTP status and content type, robots disallow. That covers all four of the
+classes v3.7 recorded as inexpressible.
+
+**What remains structurally inexpressible even now**, from the completeness critic: anything below
+the response body — TLS/transport fingerprinting, connection resets mid-stream, and the byte cap
+interacting with chunked transfer. The synthesizer hands the engine a complete recorded response, so
+a body that never finishes arriving cannot be modelled by it.
+
+**Residual classes nobody had named**, every one upstream of every matcher this project has ever
+attacked, and every one found by chosen input rather than by sampling:
+
+| shape | what happens |
+|---|---|
+| `p > 1000` is a **signed** comparison | no negative magnitude can ever satisfy it, so `-200000` — a credit or refund line — passes through unconverted |
+| `toFixed` abandons fixed notation at 1e21 | the evidence sentence renders `$1.0000000000000001e+23` and the cap round-trips through the display string as `1` |
+| **zero-decimal currencies** (JPY, KRW) | dividing `.js` by 100 is wrong: ¥1250 becomes ¥12.50 |
+| **three-decimal currencies** (KWD, BHD, JOD, OMR) | subdivided into 1000, not 100, so the same division is wrong the other way |
+| comma decimal separator | `"12,50"` → `replace(/[^0-9.]/g,"")` → `"1250"` → **×100** |
+| European thousands separator | `"1.299,00"` parses as **1.299**, which INVERTS the minimum selection — a selection error, not a rendering one |
+| a currency code in the price field | `Number("GBP".replace(/[^0-9.]/g,""))` is `Number("")` is **0**, and `Number.isFinite(0)` is true — so the row states a price of zero |
+| `parseOffer` | commits to the FIRST offer object, never a minimum, with no `@type` check |
+
+**⚠️ The recon also found a SECOND price producer nobody had connected to this gap.**
+`src/server/authenticatedTest.ts` builds its own `PublicProduct` with `priceUsd: v.price` raw —
+**no `priceToUsd`, no cents guard, no currency** — feeding the same `evaluate`. Filed as **P-18**.
+
+---
+
+## P-18 · What a price row should PROMISE for a non-USD store — and the authenticated path still says dollars
+
+| | |
+|---|---|
+| **file** | `src/server/productTest.ts` (`price_under`, `declaredCurrency`) · `src/server/authenticatedTest.ts` · `src/catalog/*` |
+| **change** | decide the SEMANTICS of a price row for a store that does not publish in USD, then implement — and give the authenticated path a currency at all |
+| **decides** | the engine owner (the default requirement set owns `price_under`; coffee's `PRICE-001` is `unbound` per P-02a and binds nothing) |
+
+**v3.8 shipped a REFUSAL, not an answer.** When a store's own bytes declare a non-USD currency the
+`price_under` row now returns `not_proven` naming the currency and states no number. Measured: **38
+of 349 deduped real stores** declare non-USD (GBP, CAD, AUD, EUR), 5 of them inside the published
+general sample, and every one was previously told `Lowest readable price is $135.00.` about a
+£135.00 product.
+
+That removes a false statement. **It does not decide what the row should promise**, and three
+distinct questions are open:
+
+1. **Should a non-USD store get an ANSWER rather than a refusal?** `minPriceUsd` is a real number in
+   a known currency, and `niceCap` over it is a valid cap in that same currency — so
+   *"Price under £140 · Lowest readable price is £135.00"* is available, true, and useful. The six
+   independent authors of the v3.8 fetch corpus **all expected exactly that**, and nine of their
+   currency cases differ from the shipped engine only on this point. That is a documented
+   disagreement between the corpus and the shipped decision, not a defect in either.
+2. **The field is misnamed.** `PublicProduct.minPriceUsd` has never held USD; it holds the store's
+   own currency. Renaming it touches every consumer and is why it was not done inside a price-fix
+   commit.
+3. **⚠️ THE AUTHENTICATED PATH STILL SAYS DOLLARS, and this is the sharp end.** `authenticatedTest.ts`
+   builds its own `PublicProduct` from the synced catalog with `declaredCurrency: null`, because the
+   catalog carries no currency field — so **a GBP merchant who INSTALLS the app is told a dollar
+   figure by the very path that was supposed to know their store better than the public one.** The
+   currency is available (`shop.currencyCode`), but wiring it is a catalog-sync change. The public
+   path is where the 38 measured stores are and where v3.8's evidence is; the authenticated path is
+   filed here rather than changed on no measurement.
+
+**Also open, from the same measurement, and deliberately NOT taken:** an ABSENT currency declaration
+is not a non-USD one. 1 store in 349 declares nothing at all, and the row still answers for it
+exactly as before. Refusing on silence is a wider change than anything v3.8 measured.
+
+⚠️ **And the precedence order has never been exercised against a contradiction.** JSON-LD
+`priceCurrency` is read first (34 of the 38), then `Shopify.currency.active` (the other 4).
+`Shopify.country` is deliberately NOT read — it contradicts the active currency on 8 stores because
+it reflects the visitor's geo — and `og:price:currency` is not read because it disagrees with both
+other signals on 3. **Zero captured stores have JSON-LD saying USD while the bootstrap disagrees**,
+so the ordering is currently untested where it matters. A future store will supply that case.
+
+---
+
+## P-19 · The `$0.00` price and the "lowest readable price" that is not the page's lowest
+
+| | |
+|---|---|
+| **file** | `src/server/productTest.ts` (`minPriceUsd`, `price_under`) |
+| **change** | decide what a price row asserts when the only readable price is zero, and where "lowest" is read from |
+| **decides** | the engine owner (default requirement set). Coffee's `PRICE-001` is `unbound` and binds nothing, so no published standard owns either question today |
+
+Both are **promise questions**, which is why v3.8 measured them and shipped neither.
+
+**`$0.00` IS TREATED AS A PRICE — 11 of 349 stores.** `knifewear.com` (a `Referral` product type),
+`kosas.com` (a `GWP` with `template_suffix: "gwp"`), `partakefoods.com`, `studioneat.com` (whose
+title is literally `SYDNEY TEST PRODUCT`), `tenthousand.cc` (a real garment with 18 GS1 barcodes and
+a masked price), `branchbasics.com` (an `unsearchable` Amazon fulfillment stub), `dedcool.com`,
+`colonnacoffee.com`, plus `puracy.com`/`supergoop.com`/`voluspa.com` — the last three being
+deliberate free gifts the merchant's own title says so, and which v3.7 counted as passes. **The
+question is not "is zero wrong"; it is whether a row that says `Price under $10 · Lowest readable
+price is $0.00` is telling a merchant anything true.** A rule keyed on the number alone would
+convict the genuine free gifts.
+
+**"LOWEST READABLE PRICE" CAN BE ABOVE THE PAGE'S CHEAPEST — 9 of 349 stores**, and this figure was
+a FLOOR until it was pushed. `minPriceUsd` falls back to `ld?.offer?.price` when no variant price
+survives, and `parseOffer` takes **the first offer object in the array, never a minimum** — so
+`fieldcompany.com` renders `$135.00` while the analytics bootstrap on the same HTML lists variants
+at 7900/9400/13500 cents. v3.8's first pass measured this at **2** because the census read only the
+`.json`/`.js` tiers; parsing the bootstrap raises it to **9**, of which **4 are genuinely distinct
+from the cents mechanism** — `fieldcompany.com` ($135 rendered / $79 readable),
+`deathwishcoffee.com` ($25 / $14.99), `templecoffee.com` ($29.50 / $23), `september.coffee`
+($28.50 / $24). **No cents fix answers any of those four.**
+
+⚠️ Related and confirmed by the v3.8 fetch corpus as a general rule rather than a store's bad luck:
+`extract.ts:120` is `arr(raw).find(o => o && typeof o === "object")` — first offer, no minimum, no
+`@type` check — and `extract.ts:67` keeps a leading `-`, so a negative JSON-LD price parses.

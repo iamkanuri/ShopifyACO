@@ -97,6 +97,14 @@ for (const [dir, f] of files) {
     for (const a of assertions) {
       rows.push(JSON.stringify({
         host: snap.host,
+        // ⚠️ THE URL IS NOT DECORATION. A HOST can appear in more than one corpus
+        // with a DIFFERENT product — `deathwishcoffee.com` is in the general sample
+        // and again in a coffee set (P-16 records it, captured at apex and at www.).
+        // Filtering these rows by host to recover "the general sample" therefore
+        // pulls in another sample's rows: it reported 491 general pass rows where
+        // v3.7 published 488, and the only reason that was caught is that the
+        // published number existed to disagree with.
+        url: snap.url,
         label: a.label ?? null,
         status: a.status ?? null,
         // BOTH, always. A status-only diff is blind in the way that matters.
