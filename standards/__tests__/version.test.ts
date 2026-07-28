@@ -105,6 +105,20 @@ const V13 = loadJson<Doc12>("coffee/v1.3/standard.json");
 const V10_FROZEN_HASH = "334389c4eb6145112deec621e667f11142fb204c66bedd314fc12662d09acec5";
 const V11_FROZEN_HASH = "f8ec2780f60c38931913e5b6cd37506500c8462709209de7180ba6691d6137e7";
 const V12_FROZEN_HASH = "fe199a864d3d4d565986851f9bfae9e108d55e4c86af18b1f8027f3d23486b58";
+/** ⚠️ THE CURRENT VERSION IS PINNED TOO, AND THAT CORRECTS A CONVENTION.
+ *
+ *  Each version above was pinned to a literal only once its successor superseded it, on the
+ *  reasoning that the current one is the one still being worked on. That reasoning is wrong,
+ *  and this file's own doctrine says why: **a reissue is a NEW VERSION, never an edit.** The
+ *  current version's bytes are therefore exactly as frozen as any predecessor's — there is no
+ *  legitimate edit for the pin to obstruct.
+ *
+ *  What the delay actually cost: v1.3 is published, sits at a stable URL, is in `sitemap.xml`
+ *  and is named CURRENT in `llms.txt` to machine readers. Every citation made against
+ *  `ba2050578ed0…` from the moment it deployed had nothing but a recomputation behind it — and
+ *  a recomputation makes this test agree with whatever v1.3 happens to say today, which is the
+ *  check the header above calls worth nothing. Pin on PUBLICATION, not on supersession. */
+const V13_FROZEN_HASH = "ba2050578ed0274885fd6213967c230b2a57dd2b7c1d3fba8c5e1633027d4cf7";
 
 test("[version] v1.0 IS BYTE-FROZEN — its hash is the one every citation resolves through", () => {
   assert.equal(
@@ -139,10 +153,20 @@ test("[version] v1.2 IS BYTE-FROZEN TOO — pinned to a literal now that v1.3 su
   assert.notEqual(V12_FROZEN_HASH, V11_FROZEN_HASH);
 });
 
-test("[version] v1.3's hash agrees three ways: stored, recomputed, and distinct from all three predecessors", () => {
+test("[version] v1.3 IS BYTE-FROZEN — pinned to a literal because it is PUBLISHED, not because it is superseded", () => {
+  assert.equal(
+    standardHash(V13), V13_FROZEN_HASH,
+    "coffee/v1.3/standard.json has changed. It is the CURRENT published version — it is served at a stable " +
+    "URL, listed in sitemap.xml and named CURRENT in llms.txt — so every citation already made against it now " +
+    "resolves to a different text. If the change is intended, it is a NEW VERSION, not an edit.",
+  );
+});
+
+test("[version] v1.3's hash agrees four ways: pinned, stored, recomputed, and distinct from all three predecessors", () => {
   const h = hashMatches(V13);
   assert.ok(h.ok, `v1.3's stored hash ${h.stored} does not match its content ${h.computed}`);
   assert.equal(h.computed, standardHash(V13), "recomputing v1.3's hash does not reproduce it");
+  assert.equal(h.computed, V13_FROZEN_HASH, "v1.3's content no longer hashes to the pinned literal");
   for (const [name, frozen] of [["v1.0", V10_FROZEN_HASH], ["v1.1", V11_FROZEN_HASH], ["v1.2", V12_FROZEN_HASH]] as const) {
     assert.notEqual(h.computed, frozen, `v1.3 hashes identically to ${name} — then it is not a new version`);
   }

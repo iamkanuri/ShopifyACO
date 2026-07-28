@@ -764,6 +764,115 @@ AND NOT SUFFICIENT.** Only the attack classes about the TERM close; every class 
 sibling product, gift set, subscription rotation, cross-sell, shipment, packaging, review
 pull-quote — stays open, and so do tense and modality, which no term list can supply.
 
+### 📌 OBSERVATION — 2026-07-28 · the residual named above has now been MEASURED
+
+> **This is an observation appended BESIDE the recommendation, not a re-ranking of it.** The
+> priority list is unchanged and G-06 §1+§3 is still item 1. What follows is the number the next
+> session should be holding while it reads that recommendation, and one correction to *how* §3
+> should be built that the measurement makes unavoidable. Nothing here is a design.
+
+The paragraph above names eight classes about the SUBJECT and says they stay open. Sessions v3.6
+CP-1 (natural frequency) and CP-2 (the collapse test) measured what leaving them open costs.
+**335 deduped real stores** (166 coffee / 169 general), one product each, **3,349 prose sentences**,
+replayed through `fetchPublicProduct` → `buildBuyerTask` → `evaluate` with only the transport
+swapped; 335/335 readable, 0 replay misses, resolves COMPLETE. Records: `experiments/v3-6/freq/`
+and `experiments/v3-6/collapse/`.
+
+**Consequence — the only number that decides anything.** All **71 passing claim rows** (over 54
+stores) were read individually against the engine's own product title, with no unadjudicated
+remainder: **41 true passes · 17 FALSE PASSES over 14 stores · 2 wrong-evidence-but-incidentally-true
+· 9 marginal · 2 not adjudicable because the row renders no quote** (the v3.2 CP3 class, in a second
+measurement). **13 of the 17 are attributable to one of the 15 hostile strata.** Among the 34 rows a
+merchant actually sees, 10 are false and 6 are attributable.
+
+**Occurrence — and eight of the fifteen named classes cost nothing.** `packaging`, `shipment`,
+`comparative`, `past_tense`, `future_conditional`, `modal`, `review_quote` and `enquiry_evaluation`
+produced **zero** false passes across all 71 rows, and three of those are among the *most frequent*
+shapes in the corpus (`shipment` on a projected 17–37 stores, `packaging` 7–25, `past_tense` 4–17).
+`enquiry_evaluation` returned an exact zero — **0 hits over 3,349 sentences**, 95% upper bound
+**1.13%**, at a detector proven live on its own cases. That is the `origin` tombstone's configuration
+exactly. `review_quote`'s zero is a *different kind of answer* and must not be printed the same way:
+all three hits are review chrome and `productTest.ts:1229` excludes review surfaces on purpose, so it
+is ambiguous between "merchants do not write it" and "we never read where they write it".
+
+**The residual is ONE capability, not eight.** CP-2 labelled every case on four dimensions —
+the term's governing noun phrase (REF), the speaker (SPKR), whether the property is asserted as
+holding now (TIME), and whether the predicate is an assertion at all (FORCE) — and asked the single
+question *would one change move both?*
+
+| | of the 17 confirmed false passes |
+|---|---|
+| REF hostile (the term's governing NP does not denote this product) | **17 / 17** |
+| REF the **sole** hostile dimension | **14 / 17** |
+| TIME hostile | **0 / 17** |
+| SPKR hostile | 1 / 17 · FORCE hostile 2 / 17 |
+
+**And it is not the SUBJECT.** 8 of the 17 have **no surface subject at all** (imperatives, NP lists,
+participial fragments); 1 more has **this product as its subject** and is still false
+(`blossomcoffeeroasters.com`, *"our Cold Brew Blend features a washed single-origin from Guatemala"*);
+and five must-not-regress cases share `xsl-01`'s exact subject `We`. That is **9 of 17 a subject frame
+cannot reach before any collision count**, which confirms the standing suspicion that "read the
+subject" is the wrong frame. Executed: the engine returns an identical outcome **and an identical
+matched term** on 17/17 minimal pairs, so it reads none of this today.
+
+**Two things this does NOT license, both measured on the same corpus.** The cost side is
+10–60× the benefit side: `trade_form` is projected at **90–211 of 335 stores (27–63%)**,
+`first_person` is **180 stores (53.73%, exact)**, `plain_present` 91–175, `spec_block` 66–144, and
+**2 of 16 sampled `already_refused` hits are `without X` used as the claim itself, on live passing
+rows today**. And four of the 17 false passes sit **outside all 21 strata** — two are `single-origin`
+inside a sentence describing a *blend*, two are the soil-science sense of `organic`, which G-14 below
+already lists as a vocabulary hazard. Structurally those two are REF instances as well, so the same
+capability partially subsumes a class currently filed under G-14.
+
+### Which way this points
+
+**G-06 §1+§3 stays first, and one of these numbers argues for it rather than against it — but §3's
+measured value is conditional on a step that currently lives in G-14.**
+
+1. **§3 and the subject residual are COMPLEMENTARY, not competing.** The 3 false passes referent
+   resolution provably *cannot* close are the ones whose governing NP is a class of undecidable
+   membership — and the only must-PASS cases sharing that label are `fps-01`/`fps-03`, the suite's
+   own designated near-identical twins, so no single referent reading separates them. **2 of those 3
+   are on the `page description` surface**, which is §3's lever. §3 is four lines; the residual has
+   no design.
+2. ⚠️ **§3's NAMED hazard did not fire, and a different surface did.** The ask above is written
+   around `product_title` / `product_options`. In this sample `product_title` produced **2 of 71**
+   passing rows and **0 of 17** false passes, while `page description` produced **15 of 71 and 4 of
+   17** — including the one where a store's *only* `organic` evidence anywhere on the page was its
+   meta description. Build §3 with `page_description` in view, not only the title. (n is small on
+   the title figure; report it as 2 rows, not as a rate.)
+3. ⚠️ **§3 closes zero live merchant rows on its own.** `acceptedSurfaces` is a per-*requirement*
+   field, and all 17 false passes came from the **13 built-in claim keys**, which no vocabulary
+   artifact covers. Until the built-ins are expressed as artifacts with surfaces declared — which is
+   G-14's step 1, not G-06's — §3 is plumbing with nothing plumbed into it. That pairing is the
+   cheapest measured win on this page and it spans two gaps.
+4. **Nothing here touches G-06's coverage argument**, which is about whether a standard's rows can
+   run at all. Zero executable rows is a different quantity from a wrong answer on a row that runs.
+
+**The counter-case, stated so a later session can act on it rather than rediscover it:** 17 false
+passes in 71 rows is the largest measured live defect class in this engine, it affects every merchant
+today, and G-06's own conclusion is that closing the dictionary unblocks none of it. What holds it
+below §1+§3 is not its size — it is that **every subject-shaped change this repo has measured has
+come back worse than the code it replaced** (v2.6's negation-scope rewrite, v2.8's `origin`
+narrowing, v3.2's four guards reverted after 2 attackers found 192 regressions where a 216-store
+replay found 0). CP-2 was barred from designing one, deliberately. **The measurement licenses SCOPING
+the residual as a numbered gap; it does not license shipping a guard for it.**
+
+### Reusable for G-14's campaign — yes, and it removes that campaign's stated blind spot
+
+`experiments/v3-6/freq/{extract,strata,canary,sample}.ts` + `experiments/v3-6/collapse/probe.ts` give
+G-14, off the shelf: **335 replayable real stores** whose RAW HTTP bytes are captured (so a re-run is
+transport-only and re-executes against **any** commit — which satisfies G-14's non-negotiable
+"must run against the SHIPPED engine, not a pinned worktree" trigger); per-claim-key row execution
+through the engine's own `evaluate`; and the two-sided-canary + `INCOMPLETE` discipline already
+wired. It also supplies the thing G-14's own honesty section says it cannot buy — **natural-frequency
+weighting**, so the ~1,500 sentences to adjudicate can be ordered by how often the shape occurs
+instead of read uniformly. It buys no independence, exactly as G-14 says. **Do not start G-14 on the
+strength of this; its trigger is explicit and it must be scheduled.**
+
+*Baseline re-proved at the end of CP-2 on `6cffd1b`: `standards/acceptance/subject-tense/run.ts` →
+hostile 4/37, must-not-regress 19/19. Nothing under `standards/acceptance/` or `src/` was edited.*
+
 ---
 
 ## G-07 — The `identifiers` row passes on identifiers that identify nothing
