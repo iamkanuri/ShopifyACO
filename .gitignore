@@ -101,3 +101,6 @@ experiments/v3-3/*
 !experiments/v3-8/
 experiments/v3-8/*
 !experiments/v3-8/*.md
+!experiments/v3-8/fetch_cases.json
+!experiments/v3-8/*.ts
+!experiments/v3-8/*.mjs
