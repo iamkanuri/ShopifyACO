@@ -1,8 +1,8 @@
 # DEPLOY.md — ShopifyACO (Railway, single service)
 
-> **Release index.** Release blocks run **newest-first** from here down: v3.3 (pending) · v3.2
-> `24dedf0` · v3.2 CP0 `8b71433` · v2.3 `459f706` · v2.2 `50eb90a` · V2 · the repositioning
-> release. **Two sit outside that order:** `## v2.4 release` and `## v2.5 release` were appended
+> **Release index.** Release blocks run **newest-first** from here down: **v3.4 `af6d387`** ·
+> v3.3 `9843cb6` · v3.2 `24dedf0` · v3.2 CP0 `8b71433` · v2.3 `459f706` · v2.2 `50eb90a` · V2 ·
+> the repositioning release. **Two sit outside that order:** `## v2.4 release` and `## v2.5 release` were appended
 > at the very END of this file, after the evergreen reference sections. They are newer than the
 > v2.3 block below and are deliberately NOT relocated here — they are `##` headings, so moving
 > them verbatim between `#` release blocks would render them as subsections of whichever release
@@ -10,12 +10,53 @@
 
 ---
 
-# ▶ RELEASE (pending): v3.3 — a real result on /demo, and a navigable standard
+# ▶ RELEASE: v3.4 — one grammar, and a rule read from the function ✅ SHIPPED 2026-07-27, commit `af6d387`
+
+**Branch:** `feat/v3-4-reconcile` · **Base:** `main` @ `9843cb6` (v3.3)
+**Status:** merged **fast-forward** and pushed; Railway auto-built. `/healthz` → `af6d387` confirms.
+**No migration.**
+
+## BB.1 What it carries
+
+- **Two sessions had each authored a grammar and both called it 1.1.** The reconciliation is
+  **grammar 1.2** — `coffee/v1.1` is published and *declares* 1.1, and a grammar version resolves
+  through the same citation contract as `standard_hash`, so redefining it would invalidate a
+  hash-frozen document against the rules it names.
+- **Coffee Standard v1.2 issued.** v1.0, v1.1 and v1.2 all served, all byte-frozen, all three
+  hashes pinned to literals. The band is gone; `not_discriminating` is now a MEASURED verdict.
+- **New tier `unbound`** — the engine can run it and public data can adjudicate it, and this
+  standard has not authored the binding or the adversarial pass.
+- **Two defects fixed that only a THIRD version could expose**: the entry-id router followed
+  `supersedes` exactly one hop (42/42 v1.0 ids resolved at v1.1, **0/42** at v1.2), and
+  `renderEntry` read v1.0's sidecar directly, so every v1.1 entry page published "predicted, not
+  yet measured" for entries the same document records as measured.
+
+## BB.2 Post-deploy verification — RUN IT, don't assume it
+
+`node experiments/v3-5/verify_prod.mjs` → **17/17 `VERIFIED_CLEAN`** on 2026-07-27.
+`/healthz` SHA · every standards route rendering with JavaScript OFF (per-route byte floors) · all
+three hashes agreeing **four** ways (disk, served bytes, `X-Standard-Hash`, recomputed-from-served)
+· `llms.txt` naming v1.2 CURRENT and the earlier two SUPERSEDED · the landing page linking v1.2.
+
+> ⚠️ **TWO TRAPS IN THAT SCRIPT'S FIRST RUN, both of which read as product defects and were not.**
+> The served-vs-disk byte comparison failed on all three versions because this repo checks out with
+> `core.autocrlf` on Windows while Railway serves LF — identical after normalisation. And a single
+> global byte floor failed `/standards`, which is a legitimately short three-version index. Compare
+> the CONTENT HASH across an OS boundary, and set floors per route.
+
+## BB.3 Rollback
+
+```bash
+# Railway → Deployments → the 9843cb6 deploy → Redeploy. No migration, so a code rollback is complete.
+```
+
+---
+
+# ▶ RELEASE: v3.3 — a real result on /demo, and a navigable standard ✅ SHIPPED 2026-07-27, commit `9843cb6`
 
 **Branch:** `feat/v3-3-public-surfaces` · **Base:** `main` @ `24dedf0` (v3.2, pushed 2026-07-27)
-**Commit:** `a9cea94` — **PENDING merge to `main`.** Until `/healthz` reports a SHA from this
-branch, nothing below has been verified in production. Treat it as intent, not a measurement.
-**No migration.**
+**Commit:** `9843cb6` (the release-SHA fill-in on top of `a9cea94`). Merged to `main` and live;
+`/healthz` reported it until v3.4 superseded it. **No migration.**
 
 > ⚠️ **DEPLOY THIS BEFORE thirdocular.com.** `ThirdOcular/scripts/check-copy.mjs` is wired into
 > that repo's `npm run build` and fetches `GET /api/brand.json` from this service. It correctly
