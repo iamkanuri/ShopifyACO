@@ -1344,9 +1344,47 @@ export function renderFitness(s: PublishedStandard): string {
   <table class="std-bounds"><caption>False-positive rate by sample</caption>
     <thead><tr><th scope="col">Sample</th><th scope="col">Stores</th><th scope="col">Pass rows audited</th><th scope="col">Confirmed false positives</th><th scope="col">Point estimate</th><th scope="col">95% upper bound</th></tr></thead>
     <tbody>${rows}</tbody></table>
-  ${shape}${renderSeparation(f)}${methods}${pending}
+  ${shape}${renderSeparation(f)}${methods}${pending}${renderCapabilityBlock()}
   <p class="std-note">Measured ${esc(f.measured_at)}${f.engine_version ? ` against engine ${esc(f.engine_version)}` : ""}.</p>
 </section>`;
+}
+
+/**
+ * THE CAPABILITY × FREQUENCY BLOCK — WIRED DARK ON PURPOSE (v3.9 CP-5).
+ *
+ * The content is measured, complete and pinned (`experiments/v3-9/CP5_STAGED_BLOCK.md`);
+ * only the decision to publish is outstanding. It renders NOTHING unless
+ * `STANDARDS_SHOW_CAPABILITY_BLOCK=1`, so shipping it later is a flag flip rather than a
+ * rebuild, and the flag is not set anywhere.
+ *
+ * ⚠️ WHY IT IS DARK, and the second reason is the operative one:
+ *   1. a v4.0 guard session is opening on the third row's shape, so the block would go
+ *      stale on contact;
+ *   2. **the third row is a bypass recipe for an unguarded weakness.** It names an attack
+ *      that succeeds against the live matcher 40% of the time on chosen input, with
+ *      confirmed false passes on real stores today. Published before the patch, that is a
+ *      working recipe for making this engine certify a claim a product does not hold.
+ *      Publication follows the patch or the pin, security-disclosure style.
+ *
+ * ⚠️ AND IT SHIPS WHOLE OR NOT AT ALL. Publishing the two DESCOPED rows while withholding
+ * the open one was considered and REJECTED as selective disclosure: a table showing two
+ * axes at "attacks well, occurs never" and silently omitting the third reads as a clean
+ * bill of health, which is the pattern this site exists to oppose.
+ *
+ * The numbers are NOT inlined here. When the flag is flipped this must read them from a
+ * generated artifact, for the reason the file's own header documents four times over: a
+ * hand-written figure beside generated ones is how this page has gone false before.
+ */
+export function renderCapabilityBlock(): string {
+  if (process.env.STANDARDS_SHOW_CAPABILITY_BLOCK !== "1") return "";
+  // Deliberately not implemented. Reaching here means someone set the flag without
+  // building the generated source, and an empty section reads exactly like a section with
+  // nothing to show — the defect this file has shipped three times.
+  throw new Error(
+    "STANDARDS_SHOW_CAPABILITY_BLOCK is set, but the capability block has no generated " +
+    "source yet. See experiments/v3-9/CP5_STAGED_BLOCK.md — the content is pinned; the " +
+    "renderer must read it from an artifact rather than inline the figures.",
+  );
 }
 
 function entryHref(s: PublishedStandard, id: string): string {
