@@ -15,7 +15,8 @@ these gaps have already been attempted in some form and reverted.
 > inside a corpus reporting 36. `+4` at CP2c: recall gaps deliberately reinstated when the CP2a GTIN
 > widening was reverted. `+13` net at CP2d: the residuals an independent adversarial pass measured
 > against rule D, minus one entry whose `correct` field turned out to be the thing that was wrong.
-> **A class nobody can count is not progress.**
+> `+1` at CP2e: the shape that only a four-tree re-run could show — the recall gap intersecting
+> rule D (P-06). **A class nobody can count is not progress.**
 
 Read alongside [`ENGINE_CONTRACT.md`](ENGINE_CONTRACT.md), which is where the current capability is
 recorded. **Line references are to commit `9843cb6`** (`main`, == production `/healthz`), verified by
