@@ -24,7 +24,7 @@ import {
   type PublicProduct, type Requirement, type AssertionStatus, type Assertion,
 } from "../../src/server/productTest.js";
 import { buildEvidence, type QuotableSurface } from "../../src/server/testEvidence.js";
-import { extractPage, type GtinSource } from "../../src/crawler/extract.js";
+import { extractPage } from "../../src/crawler/extract.js";
 
 // ---- product construction ---------------------------------------------------
 
@@ -84,15 +84,13 @@ export function mkProduct(o: MkOptions = {}): PublicProduct {
   } as PublicProduct;
 }
 
-/** An `extracted` page carrying only the structured-data identifier fields.
- *  `gtinSource` defaults to null — the unqualified rendering — so an identifier case
- *  only exercises the provenance clause when it deliberately sets one. */
-export function mkExtracted(over: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean; gtinSource?: GtinSource | null } = {}): NonNullable<PublicProduct["extracted"]> {
-  const { gtin = null, mpn = null, sku = null, productSchema = true, gtinSource = null } = over;
+/** An `extracted` page carrying only the structured-data identifier fields. */
+export function mkExtracted(over: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean } = {}): NonNullable<PublicProduct["extracted"]> {
+  const { gtin = null, mpn = null, sku = null, productSchema = true } = over;
   return {
     jsonLdTypes: productSchema ? ["Product"] : [],
     hasProductSchema: productSchema,
-    product: { name: null, brand: null, sku, gtin, gtinSource, mpn, offer: null, rating: null, reviewCount: null },
+    product: { name: null, brand: null, sku, gtin, mpn, offer: null, rating: null, reviewCount: null },
     title: null, metaDescription: null, canonicalUrl: null, robotsIndex: true,
     headings: { h1: [], h2: [] }, faqs: [],
     signals: {
@@ -147,7 +145,7 @@ export function verdictOf(sentence: string, requirement: Requirement, o: MkOptio
 /** The identifiers row, driven only by structured-data values. The product copy is
  *  irrelevant to it, so the sentence is fixed and only the identifier varies. */
 export function verdictOfIds(
-  ids: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean; gtinSource?: GtinSource | null },
+  ids: { gtin?: string | null; mpn?: string | null; sku?: string | null; productSchema?: boolean },
   over: MkOptions = {},
 ): { status: AssertionStatus; detail: string } {
   const a = evaluate(mkProduct({ description: "A thing.", ...over, extracted: mkExtracted(ids) }), idsReq());
@@ -156,17 +154,18 @@ export function verdictOfIds(
 
 /**
  * The identifiers row driven by REAL JSON-LD, run through the production
- * `extractPage` (v3.5 CP2a).
+ * `extractPage` (v3.5 CP2a; the provenance field it returned was removed at CP2c).
  *
  * `verdictOfIds` sets `product.gtin` directly, so it structurally CANNOT see a
- * selection bug — which is the whole of what CP2a changed. This judge builds a page
- * whose only structured data is the supplied node, extracts it exactly as the fetch
- * path does, and returns the selection alongside the verdict: a row that passes on
- * the WRONG value is a different answer, and status alone cannot see it.
+ * SELECTION bug — which is exactly the class CP2a introduced and CP2c reverted. This
+ * judge builds a page whose only structured data is the supplied node, extracts it
+ * exactly as the fetch path does, and returns the selected value alongside the
+ * verdict: a row that passes on the WRONG value is a different answer, and status
+ * alone cannot see it.
  */
 export function verdictOfLd(node: Record<string, unknown>): {
   status: AssertionStatus; detail: string;
-  gtin: string | null; gtinSource: GtinSource | null; signalGtin: boolean;
+  gtin: string | null; signalGtin: boolean;
 } {
   const html =
     `<html><head><script type="application/ld+json">${JSON.stringify(node)}</script>` +
@@ -176,7 +175,6 @@ export function verdictOfLd(node: Record<string, unknown>): {
   return {
     status: a.status, detail: a.detail,
     gtin: extracted.product?.gtin ?? null,
-    gtinSource: extracted.product?.gtinSource ?? null,
     signalGtin: extracted.signals.gtin,
   };
 }

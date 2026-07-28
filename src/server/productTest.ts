@@ -1,6 +1,6 @@
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
-import { extractPage, extractJsonLd, isPublishableGtin, type ExtractedPage, type GtinSource } from "../crawler/extract.js";
+import { extractPage, extractJsonLd, type ExtractedPage } from "../crawler/extract.js";
 import { htmlToText, htmlToBlockText } from "../crawler/sanitize.js";
 import { parseRobots, isAllowedByRobots, type RobotsPolicy } from "../crawler/robots.js";
 import {
@@ -8,6 +8,7 @@ import {
   SURFACE_LABEL, type EvidenceSentence, type SupportedEvidence, type QuotableSurface,
 } from "./testEvidence.js";
 import { lintStrings } from "./claimLinter.js";
+import { isValidGtin } from "../feeds/validate.js";
 import {
   getCachedResult, storeResult, reserveHostSlot, getCachedRobots, storeRobots,
   reserveEgressSlot, withEgressSlot, markHostThrottled, hostThrottleCooldownMs,
@@ -657,18 +658,33 @@ const PLACEHOLDER_TOKEN = "na|tbd|none|null|nil|unknown|unspecified|notapplicabl
 const PLACEHOLDER_CORE = new RegExp(`^(?:${PLACEHOLDER_TOKEN})+\\d*(?:see\\w*|onrequest|tbc|comingsoon)?$`, "i");
 
 /**
- * Extracted in v3.0 CP3 so the AUTHENTICATED path can pick a variant barcode using the
- * identical rule the `identifiers` row judges it by. ENGINE_GAPS G-07 is explicit that
- * these guards must apply to catalog values exactly as they do to JSON-LD ones — "an
- * Admin API value is no more trustworthy than a JSON-LD one. Reuse, do not
+ * True when a raw GTIN string is a real, publishable GTIN.
+ *
+ * Extracted in v3.0 CP3 so the AUTHENTICATED path can pick a variant barcode using
+ * the identical rule the `identifiers` row judges it by. ENGINE_GAPS G-07 is explicit
+ * that these guards must apply to catalog values exactly as they do to JSON-LD ones —
+ * "an Admin API value is no more trustworthy than a JSON-LD one. Reuse, do not
  * reimplement." A second copy of this arithmetic is how the two paths drift.
  *
- * ⚠️ THE DEFINITION MOVED to `src/crawler/extract.ts` in v3.5 CP2a, because the
- * extractor now SELECTS a GTIN by this same rule and importing it the other way round
- * would be a cycle. Re-exported here so every existing import site — and the one
- * public name this module has always owned — is unchanged.
+ * ⚠️ IT LIVES HERE, IN THE JUDGING PATH, AND THAT IS THE POINT AGAIN. v3.5 CP2a moved
+ * it into `src/crawler/extract.ts` because the extractor had started SELECTING a GTIN
+ * by this rule; CP2c reverted that selection, so the extractor reports what the product
+ * node publishes and this module decides whether it is publishable. One rule, one
+ * caller, in the layer that renders the verdict.
+ *
+ * Merchants publish GTINs with the separators printed on the barcode ("0-36000-29145-2",
+ * "400 638 133 3931"). Those are the same number, and rejecting them told stores that DO
+ * publish an identifier that they don't. Normalised HERE rather than in `isValidGtin`,
+ * which is shared with the feed validator — there the spec genuinely requires a
+ * digits-only value, so loosening it would weaken a different, correct check.
+ *
+ * All-zeros passes the check-digit arithmetic (0 mod 10 === 0) and is the commonest
+ * "I had to put something in the field" value there is.
  */
-export { isPublishableGtin };
+export function isPublishableGtin(raw: string): boolean {
+  const digits = raw.trim().replace(/[\s-]/g, "");
+  return isValidGtin(digits) && !/^0+$/.test(digits);
+}
 
 /**
  * v3.5 CP2a — THE IDENTIFIERS ROW NOW NAMES THE VALUE IT PASSED ON.
@@ -696,19 +712,6 @@ export { isPublishableGtin };
 function renderIdentifierDetail(withValue: string, withoutValue: string): string {
   return lintStrings([withValue]).ok ? withValue : withoutValue;
 }
-
-/** The honesty clause for a GTIN that was NOT on the product node. Keyed on
- *  `GtinSource`; the caller supplies `"product"` when the source is unknown, which is
- *  the unqualified (and weakest-claim) rendering. */
-const GTIN_SOURCE_CLAUSE: Record<GtinSource, string> = {
-  product: "",
-  offer:
-    " That GTIN sits on this product's offer list rather than on the product itself, so on a" +
-    " multi-variant product it identifies one variant, not all of them.",
-  variant:
-    " That GTIN sits on the first variant listed rather than on the product itself, so it" +
-    " identifies that variant, not the product as a whole.",
-};
 
 /** True when this identifier value cannot identify anything. */
 export function isPlaceholderIdentifier(raw: string): boolean {
@@ -1972,14 +1975,17 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       if (realGtin) { named.push(`a GTIN (${gtinRaw})`); bare.push("a GTIN"); }
       if (realMpn) { named.push(`an MPN (${mpnRaw})`); bare.push("an MPN"); }
       if (named.length) {
-        // v3.5 CP2a — the pass now says WHERE the GTIN came from when that is not the
-        // product node itself, because those are different claims (see `selectGtin`).
-        const caveat = realGtin ? GTIN_SOURCE_CLAUSE[info?.gtinSource ?? "product"] : "";
+        // ⚠️ NO PROVENANCE CLAUSE, because there is no longer any provenance to state:
+        // `selectGtin` reads the product node and nothing else (v3.5 CP2c). CP2a added a
+        // caveat naming an offer- or variant-sourced GTIN; reverting the descent made it
+        // unreachable, and an unreachable branch that renders merchant-facing copy is a
+        // sentence nobody can test. If the descent ever returns, the caveat returns with
+        // it — see the tombstone on `selectGtin`.
         return {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
           detail: renderIdentifierDetail(
-            `Your structured data publishes ${listPhrase(named)}.${caveat}`,
-            `Your structured data publishes ${listPhrase(bare)}, but we can't reproduce the value here — it contains wording our reporting standard doesn't allow us to repeat.${caveat}`,
+            `Your structured data publishes ${listPhrase(named)}.`,
+            `Your structured data publishes ${listPhrase(bare)}, but we can't reproduce the value here — it contains wording our reporting standard doesn't allow us to repeat.`,
           ),
           evidenceSurface: "structured data",
         };

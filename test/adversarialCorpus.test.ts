@@ -1062,13 +1062,16 @@ const V28_FOUND: Case[] = [
 // ---------------------------------------------------------------------------
 interface IdCase {
   label: string;
-  opts: { gtin?: string | null; mpn?: string | null; gtinSource?: "product" | "offer" | "variant" | null };
+  opts: { gtin?: string | null; mpn?: string | null };
   correct: AssertionStatus;
   why: string;
   /** Present ONLY when the engine currently disagrees with `correct`. Counted in openGaps. */
   actual?: AssertionStatus;
   /** Substring the rendered `detail` must contain — usually the value itself. */
   detail?: string;
+  /** The WHOLE rendered `detail`, byte for byte. `detail` cannot see a clause APPENDED
+   *  to a correct sentence, which is exactly what CP2a's provenance caveat was. */
+  detailExact?: string;
 }
 const IDENTIFIERS: IdCase[] = [
   { label: "mpn N/A.", opts: { mpn: "N/A." }, correct: "not_proven", why: "Placeholder with a trailing period — the old anchored regex missed every affixed form." },
@@ -1099,15 +1102,14 @@ const IDENTIFIERS: IdCase[] = [
   { label: "detail names the MPN it passed on", opts: { mpn: "WH-1000XM5" }, correct: "pass_evidenced",
     detail: "WH-1000XM5",
     why: "Same rule for the MPN branch, which is the branch that carried every measured defect." },
-  { label: "gtin from an offer says so", opts: { gtin: "4006381333931", gtinSource: "offer" }, correct: "pass_evidenced",
-    detail: "identifies one variant, not all of them",
-    why: "A GTIN on the offer list is a claim about that offer. On a multi-variant product the list holds a different GTIN per variant (22 of 338 captured products carry more than one distinct nested GTIN), so reporting it unqualified would imply the stronger claim." },
-  { label: "gtin from a variant says so", opts: { gtin: "4006381333931", gtinSource: "variant" }, correct: "pass_evidenced",
-    detail: "identifies that variant, not the product as a whole",
-    why: "Same, for hasVariant[]/isVariantOf[]." },
-  { label: "gtin with NO recorded source renders unqualified", opts: { gtin: "4006381333931", gtinSource: null }, correct: "pass_evidenced",
-    detail: "publishes a GTIN (4006381333931).",
-    why: "The authenticated path builds this record from the synced catalog and never runs `selectGtin`, so `gtinSource` is legitimately absent there. A renderer that reads a field which does not exist produces NOTHING, and nothing looks exactly like a section with nothing to show — this pins the missing case to the weakest (unqualified) claim rather than to an empty string." },
+  // v3.5 CP2c — THE PASS COPY CARRIES NO PROVENANCE CLAUSE, because there is no
+  // provenance left to state. CP2a rendered " That GTIN sits on the first variant
+  // listed rather than on the product itself…" for a GTIN read out of a nested node;
+  // reverting the descent made every such clause unreachable, and an unreachable
+  // branch that renders merchant-facing copy is a sentence nobody can test.
+  { label: "the pass copy states no provenance caveat", opts: { gtin: "4006381333931" }, correct: "pass_evidenced",
+    detailExact: "Your structured data publishes a GTIN (4006381333931).",
+    why: "Asserted as the WHOLE sentence, not a substring, because `includes` cannot see an APPENDED clause — the shape of the thing being pinned. The value is on the product node, the only place the extractor now reads one, so there is nothing to qualify. If the descent ever returns, its caveat returns with it and this case is what says so." },
 
   // --- merchant-controlled text reaching a LINTED output ----------------------
   { label: "mpn GUARANTEE-001 (linter-tripping value)", opts: { mpn: "GUARANTEE-001" }, correct: "pass_evidenced",
@@ -1122,12 +1124,29 @@ const IDENTIFIERS: IdCase[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// v3.5 CP2a — GTIN SELECTION, exercised through the REAL `extractPage`.
+// GTIN SELECTION, exercised through the REAL `extractPage` (added v3.5 CP2a;
+// REWRITTEN at CP2c, which reverted the widening these cases were written for).
 //
 // `verdictOfIds` sets `product.gtin` directly and therefore cannot see a selection
-// bug at all. These run actual JSON-LD through the production extractor. The hostile
-// classes are the ones a widening invites: a value that belongs to a DIFFERENT
-// product, a junk value promoted out of a nested node, and precedence.
+// bug at all. These run actual JSON-LD through the production extractor.
+//
+// ⚠️ WHAT THIS BLOCK IS NOW FOR. CP2a widened `selectGtin` to descend into `offers[]`,
+// `hasVariant[]` and `isVariantOf[]` and take the first publishable value. It was
+// measured purely additive over a 338-store replay — 32 real merchants who publish a
+// valid GTIN their theme emits per offer or per variant, 0 rows lost — and an
+// independent adversarial pass over 78 constructed cases in three worktrees then
+// attributed **11 regressions, every one of them, to that descent**. CP2c reverted it.
+// So this block carries two kinds of case and the difference is the point:
+//
+//   • REGRESSION CLASS — `correct: not_proven`, NO `actual`. These are the answers the
+//     descent got wrong. They pass today and they must keep passing: this is what
+//     stops the widening coming back unnoticed.
+//   • RECALL GAPS — `correct: pass_evidenced`, `actual: not_proven`. Real merchants
+//     the reverted engine is wrong about. Reverting did not make them right; it made
+//     them WRONG IN A DIRECTION WE CAN STATE (we did not look), instead of wrong in a
+//     direction we could not (we answered a question the standard declares blocked).
+//     A recall gap is a debt with a receipt; a false pass on a variant's identifier is
+//     a false claim about a merchant.
 // ---------------------------------------------------------------------------
 interface LdCase {
   label: string;
@@ -1136,56 +1155,88 @@ interface LdCase {
   /** The value the row must have selected — asserting status alone cannot see a pass
    *  on the wrong number. `null` means nothing may be selected. */
   gtin: string | null;
-  source: "product" | "offer" | "variant" | null;
   why: string;
   actual?: AssertionStatus;
+  /** The value actually selected today, when it differs from `gtin`. Same contract as
+   *  `actual`: present ONLY where the engine disagrees with the honest answer. */
+  actualGtin?: string | null;
+  /** The WHOLE rendered `detail`. A pass with a different quote is a different answer,
+   *  and a status-only assertion is structurally blind to it. */
+  detailExact?: string;
 }
 const P = (extra: Record<string, unknown>): Record<string, unknown> => ({ "@type": "Product", name: "Thing", ...extra });
 
 const LD_SELECTION: LdCase[] = [
-  // --- canonical TRUE: the recall the widening exists for ---------------------
-  { label: "gtin only on offers[]", node: P({ offers: [{ "@type": "Offer", price: "12", gtin12: "036000291452" }] }),
-    correct: "pass_evidenced", gtin: "036000291452", source: "offer",
-    why: "Measured on 338 captured real stores: 32 products publish a check-digit-valid GTIN the old top-level-only ladder could not see. Those merchants were told they publish no identifier while they publish a real one." },
-  { label: "gtin only on hasVariant[]", node: P({ hasVariant: [{ "@type": "Product", gtin13: "4006381333931" }] }),
-    correct: "pass_evidenced", gtin: "4006381333931", source: "variant",
-    why: "The second shape the measurement found — 19 of the 32 gains carried it on hasVariant[] rather than offers[]." },
-  { label: "gtin inside an AggregateOffer's nested offers", node: P({ offers: { "@type": "AggregateOffer", offers: [{ "@type": "Offer", gtin13: "4006381333931" }] } }),
-    correct: "pass_evidenced", gtin: "4006381333931", source: "offer",
-    why: "An AggregateOffer carries its members under a nested `offers`; stopping at the aggregate would miss every store that uses the correct schema.org shape for a variant range." },
+  // --- canonical TRUE: what the product node publishes ------------------------
+  { label: "gtin on the product node", node: P({ gtin13: "4006381333931" }),
+    correct: "pass_evidenced", gtin: "4006381333931",
+    why: "The product node's own identifier is the one that describes the product, and the only one the extractor reads. The control that keeps this block two-sided — a rule that selected nothing would satisfy every not_proven case below." },
+  { label: "top-level wins over a different offer gtin", node: P({ gtin13: "4006381333931", offers: [{ "@type": "Offer", gtin12: "036000291452" }] }),
+    correct: "pass_evidenced", gtin: "4006381333931",
+    why: "Unchanged across CP2a and its revert: whatever else is on the page, the product node's value is the answer when it has one." },
+
+  // --- THE REGRESSION CLASS the revert exists for -----------------------------
+  // Each of these PASSED under CP2a. `conflict_rules[1]` of ALS-COFFEE-1.3-IDENT-001
+  // says, verbatim: when "different variants carry different barcodes", "the engine
+  // reads the product-level node only; per-variant identity is a known limitation
+  // published as a blocked entry". An `executable` row answering a question the same
+  // published document declares `blocked` is not a recall win.
+  { label: "REGRESSION CLASS: three variants, three different barcodes", node: P({ hasVariant: [{ "@type": "Product", gtin13: "0810000100026" }, { "@type": "Product", gtin13: "0810000100019" }, { "@type": "Product", gtin13: "0810000100040" }] }),
+    correct: "not_proven", gtin: null,
+    why: "Adjudicated cases R01/G-04/R04. There is no product-level answer to pick, so 'the first that validates' answers for ONE variant while the row's sentence is about the product. 22 of 338 captured products carry more than one distinct nested GTIN, so this is not a constructed rarity." },
+  { label: "REGRESSION CLASS: offers per variant disagree", node: P({ offers: [{ "@type": "Offer", gtin13: "0810000100040" }, { "@type": "Offer", gtin13: "0810000100019" }] }),
+    correct: "not_proven", gtin: null,
+    why: "Adjudicated case R02. An offer-per-size list IS variants carrying different barcodes; the shape differs from hasVariant[] and the rule does not." },
+  { label: "REGRESSION CLASS: AggregateOffer members disagree", node: P({ offers: { "@type": "AggregateOffer", offers: [{ "@type": "Offer", price: "18.00", gtin13: "0810000100019" }, { "@type": "Offer", price: "96.00", gtin13: "0810000100026" }] } }),
+    correct: "not_proven", gtin: null,
+    why: "Adjudicated case R03. Members at 18.00 and 96.00 are different purchasable things with different barcodes, reached one level deeper than R02." },
+  { label: "REGRESSION CLASS: isVariantOf parent group whose siblings disagree", node: P({ isVariantOf: [{ "@type": "ProductGroup", hasVariant: [{ "@type": "Product", gtin13: "5060004111114" }, { "@type": "Product", gtin13: "4006381333931" }] }] }),
+    correct: "not_proven", gtin: null,
+    why: "Adjudicated cases R05/R06. This page's own node publishes nothing; the identifiers belong to the group's other members. Reached through the parent link, which is the third door CP2a opened." },
+  { label: "REGRESSION CLASS: the storefront's own key as a nested gtin13", node: P({ hasVariant: [{ "@type": "Product", gtin13: "8079462006891" }] }),
+    correct: "not_proven", gtin: null,
+    why: "Adjudicated case R13, and the worst of the eleven. The descent carries the storefront's own product key in from a variant list and names it as the merchant's GTIN — the exact value rule D (v3.5 CP2b) exists to reject, one field over. A widening and a tightening in the same release, cancelling each other on the same page." },
+  { label: "REGRESSION CLASS: gtin8 before gtin13 across disagreeing offers", node: P({ offers: [{ "@type": "Offer", gtin8: "96385074" }, { "@type": "Offer", gtin13: "4006381333931" }] }),
+    correct: "not_proven", gtin: null,
+    why: "Adjudicated case R17. Two offers, two different barcodes, and the key-precedence order inside a node decides which variant the merchant is told about — an arbitrary answer dressed as a selection rule." },
+  { label: "REGRESSION CLASS: a real MPN must not acquire a variant's GTIN in its evidence", node: P({ mpn: "FR-YRG-12-WB", hasVariant: [{ "@type": "Product", gtin13: "0810000100026" }, { "@type": "Product", gtin13: "0810000100019" }] }),
+    correct: "pass_evidenced", gtin: null,
+    detailExact: "Your structured data publishes an MPN (FR-YRG-12-WB).",
+    why: "Adjudicated case R21, and it is why this block asserts the RENDERED SENTENCE. The status is pass_evidenced in every tree, so no status diff and no real-store replay can see it — but under CP2a the row also named a GTIN taken from a variant list, which conflict_rules[1] puts out of bounds. A pass with a different quote is a different answer (v3.1, v3.2, twice)." },
 
   // --- HOSTILE: a value that is not this product's ----------------------------
+  // Trivially satisfied while nothing is followed. They are kept because they stop
+  // being trivial the instant any descent returns, and a narrowed descent is a live
+  // proposal (ENGINE_GAPS P-06) rather than a closed question.
   { label: "gtin only on isSimilarTo (a DIFFERENT product)", node: P({ isSimilarTo: [{ "@type": "Product", gtin13: "4006381333931" }] }),
-    correct: "not_proven", gtin: null, source: null,
-    why: "A related-products block is a competitor's or an upsell's identifier. This is why the walk is two named lists deep and NOT a general deep search: an unbounded walk reaches isSimilarTo/isRelatedTo and attributes another product's GTIN to this one. The control case for the widening's bound." },
+    correct: "not_proven", gtin: null,
+    why: "A related-products block is a competitor's or an upsell's identifier. Forward-looking bound: any future descent must be a named-key walk, never a deep search, or it attributes another product's GTIN to this one." },
   { label: "gtin only on a nested review/brand object", node: P({ brand: { "@type": "Brand", name: "Acme", gtin13: "4006381333931" } }),
-    correct: "not_proven", gtin: null, source: null,
-    why: "Same class through a different key. Only `offers`, `hasVariant` and `isVariantOf` are followed." },
-
-  // --- HOSTILE: widening WHERE we look must not widen WHAT we accept ----------
-  { label: "junk in offers[] does not surface", node: P({ offers: [{ "@type": "Offer", gtin13: "4006381333930" }] }),
-    correct: "not_proven", gtin: null, source: null,
-    why: "Bad check digit. The fallback is deliberately the TOP-LEVEL value only, so a nested junk value can never become `product.gtin` or flip `signals.gtin`. That narrowness is what makes the widening purely additive." },
+    correct: "not_proven", gtin: null,
+    why: "Same class through a different key." },
   { label: "a SKU published in offers[].gtin does not surface", node: P({ offers: [{ "@type": "Offer", gtin13: "20210151-GRN-S" }] }),
-    correct: "not_proven", gtin: null, source: null,
+    correct: "not_proven", gtin: null,
     why: "A real captured value (imogeneandwillie.com publishes per-variant SKUs in gtin fields). A seller-private stock code cannot match a product to an external catalogue, which is the row's whole promise." },
-  { label: "all-zeros in hasVariant[] does not surface", node: P({ hasVariant: [{ "@type": "Product", gtin13: "0000000000000" }] }),
-    correct: "not_proven", gtin: null, source: null,
-    why: "All-zeros passes the check-digit arithmetic and identifies nothing; the rejection has to hold wherever the value is read from, not just on the product node." },
 
-  // --- PRECEDENCE, stated and pinned ------------------------------------------
-  { label: "top-level wins over a different offer gtin", node: P({ gtin13: "4006381333931", offers: [{ "@type": "Offer", gtin12: "036000291452" }] }),
-    correct: "pass_evidenced", gtin: "4006381333931", source: "product",
-    why: "The product node's own identifier is the one that describes the product. Precedence is product -> offers[] -> hasVariant[]." },
-  { label: "an INVALID top-level gtin does not block a valid offer gtin", node: P({ gtin13: "4006381333930", offers: [{ "@type": "Offer", gtin12: "036000291452" }] }),
-    correct: "pass_evidenced", gtin: "036000291452", source: "offer",
-    why: "The old ladder returned the first non-empty top-level key and stopped, so one malformed value hid a real identifier elsewhere on the same node. Selecting the first PUBLISHABLE candidate is the same rule applied consistently." },
-  { label: "nothing valid anywhere reports the top-level value, not a nested one", node: P({ gtin13: "4006381333930", offers: [{ "@type": "Offer", gtin12: "036000291451" }] }),
-    correct: "not_proven", gtin: "4006381333930", source: "product",
-    why: "Both invalid. The reported value must stay exactly what it was before CP2a — the top-level one — so no downstream consumer of `product.gtin` sees a value that was never on the product node." },
-  { label: "first valid variant wins when variants disagree", node: P({ hasVariant: [{ "@type": "Product", gtin13: "4006381333931" }, { "@type": "Product", gtin13: "3665270039784" }] }),
-    correct: "pass_evidenced", gtin: "4006381333931", source: "variant",
-    why: "22 of 338 captured products carry more than one distinct nested GTIN. There is no product-level answer to pick, so the rule is first-publishable and the row's copy states that it identifies one variant." },
+  // --- RECALL GAPS the revert reintroduced, each with what it costs ------------
+  { label: "gtin only on a SINGLE offer", node: P({ offers: [{ "@type": "Offer", price: "12", gtin12: "036000291452" }] }),
+    correct: "pass_evidenced", gtin: "036000291452", actual: "not_proven", actualGtin: null,
+    why: "KNOWN GAP, reintroduced deliberately by the CP2a revert. Adjudicated cases G-03/R07: one variant, one offer, one barcode — conflict_rules[1] is not engaged and accepted_evidence names no node, so the honest answer is a pass. Measured cost: of 338 captured real stores, 32 publish a check-digit-valid GTIN only in a nested node and are told they publish none. It is NOT fixed by re-widening: the same descent answers the multi-variant cases above, which is the class that regressed. See ENGINE_GAPS P-06." },
+  { label: "gtin only on a SINGLE hasVariant entry", node: P({ hasVariant: [{ "@type": "Product", gtin13: "4006381333931" }] }),
+    correct: "pass_evidenced", gtin: "4006381333931", actual: "not_proven", actualGtin: null,
+    why: "KNOWN GAP, same class through the other named key — 19 of the 32 measured gains carried the value on hasVariant[] rather than offers[]. Pinned separately because a narrowed descent has to be measured on both shapes, not on whichever one its author tested." },
+  { label: "gtin only inside an AggregateOffer's nested offers", node: P({ offers: { "@type": "AggregateOffer", offers: [{ "@type": "Offer", gtin13: "4006381333931" }] } }),
+    correct: "pass_evidenced", gtin: "4006381333931", actual: "not_proven", actualGtin: null,
+    why: "KNOWN GAP, and the shape that needs two levels rather than one: an AggregateOffer carries its members under a nested `offers`. Adjudicated case G-06 — one barcode, nothing conflicting." },
+  { label: "an INVALID gtin13 hides a VALID gtin12 on the SAME node", node: P({ gtin13: "4006381333930", gtin12: "036000291452" }),
+    correct: "pass_evidenced", gtin: "036000291452", actual: "not_proven", actualGtin: "4006381333930",
+    why: "KNOWN GAP, and the one nobody attacked. `selectGtin` returns the first NON-EMPTY key, not the first PUBLISHABLE one, so a single malformed value hides a real identifier sitting beside it on the product node. This is not a descent — no nested node is involved — and CP2a happened to fix it in passing; the byte-identity revert took it back out. Restoring it alone is separable from the descent and carries none of the descent's risk. See ENGINE_GAPS P-07." },
+  { label: "nothing valid anywhere reports the top-level value", node: P({ gtin13: "4006381333930", offers: [{ "@type": "Offer", gtin12: "036000291451" }] }),
+    correct: "not_proven", gtin: "4006381333930",
+    why: "Both invalid. The value handed downstream must be the one the product node actually published, so no consumer of `product.gtin` ever sees a string that was never on that node." },
+  { label: "all-zeros on the product node does not pass", node: P({ gtin13: "0000000000000" }),
+    correct: "not_proven", gtin: "0000000000000",
+    why: "All-zeros satisfies the check-digit arithmetic and identifies nothing. Selection reports it; `isPublishableGtin` in the judging row refuses it — which is the division of labour the CP2a revert restored." },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1201,10 +1252,20 @@ const LD_SELECTION: LdCase[] = [
 // the hard part is not the comparison, it is the READ: `"id"` occurs inside
 // `variants[]` on every real page, so a regex returns a variant's key.
 // ---------------------------------------------------------------------------
-const PAGE = (ld: Record<string, unknown> | null, meta: string | null): string =>
+const PAGE = (ld: Record<string, unknown> | null, meta: string | null, beforeMeta = ""): string =>
   "<html><head>" +
   (ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : "") +
+  beforeMeta +
   (meta == null ? "" : `<script>var meta = ${meta};\nfor (var attr in meta) { window.ShopifyAnalytics.meta[attr] = meta[attr]; }</script>`) +
+  "</head><body><p>A thing.</p></body></html>";
+
+/** A page whose head chunk is written out verbatim — for the bootstrap SHAPES the
+ *  reader does not recognise, which `PAGE` cannot express because it hard-codes
+ *  `var meta = `. */
+const RAW_PAGE = (ld: Record<string, unknown> | null, rawHead: string): string =>
+  "<html><head>" +
+  (ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : "") +
+  rawHead +
   "</head><body><p>A thing.</p></body></html>";
 
 interface PageCase {
@@ -1236,7 +1297,7 @@ const RULE_D: PageCase[] = [
   { label: "a VARIANT key in mpn is NOT disqualified (measured limit)", storefrontId: "123456789",
     html: PAGE(P({ mpn: "8079462006899" }), '{"product":{"variants":[{"id":8079462006899,"public_title":"12oz"}],"id":123456789,"type":"Coffee"}}'),
     correct: "not_proven", actual: "pass_evidenced",
-    why: "KNOWN GAP, deliberate. v1.3's clause says \"the value the storefront also uses as its own product OR VARIANT key\"; rule D was scored on the PRODUCT key alone (23 TP / 0 FP / 0 FN over 36 mpn-publishing products) and variant-key matching occurs 0 times in 338 captured stores — so widening it would ship an unmeasured rule to close a class nothing in the corpus exhibits. It doubles as the NEGATIVE control for the parser: a regex taking the first \"id\" would disqualify here and this case would fail." },
+    why: "KNOWN GAP, deliberate, and CONFIRMED by the independent pass as adjudicated cases D-05 and EVA-13. v1.3's clause says \"the value the storefront also uses as its own product OR VARIANT key\"; rule D was scored on the PRODUCT key alone (23 TP / 0 FP / 0 FN over 36 mpn-publishing products) and variant-key matching occurs 0 times in 338 captured stores — so widening it would ship an unmeasured rule to close a class nothing in the corpus exhibits. It doubles as the NEGATIVE control for the parser: a regex taking the first \"id\" would disqualify here and this case would fail." },
 
   // --- FAILS OPEN, which is the direction that matters ------------------------
   { label: "no analytics bootstrap: nothing is disqualified", storefrontId: null,
@@ -1262,9 +1323,9 @@ const RULE_D: PageCase[] = [
     correct: "pass_evidenced", detail: "PW-CP-09",
     why: "daddario.com's real published part number. A guard that disqualified every mpn on every page with a bootstrap would satisfy the cases above and destroy the row; a one-sided corpus cannot tell the difference." },
   { label: "a valid GTIN still passes even when the mpn is the storefront key", storefrontId: "8079462006899",
-    html: PAGE(P({ mpn: "8079462006899", offers: [{ "@type": "Offer", gtin13: "4006381333931" }] }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":42}]}}'),
+    html: PAGE(P({ mpn: "8079462006899", gtin13: "4006381333931" }), '{"product":{"id":8079462006899,"type":"Coffee","variants":[{"id":42}]}}'),
     correct: "pass_evidenced", detail: "4006381333931",
-    why: "Rule D disqualifies one FIELD, not the row. Measured: 0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD, so this interaction was never exercised by the real-store replay and only a constructed case can hold it." },
+    why: "Rule D disqualifies one FIELD, not the row. Measured: 0 of the 23 rule-D stores publish a valid GTIN anywhere in their JSON-LD, so this interaction was never exercised by the real-store replay and only a constructed case can hold it. ⚠️ The GTIN is on the PRODUCT NODE — this case was written at CP2a with the GTIN inside `offers[]`, which stopped being reachable when CP2c reverted the descent, and a case whose fixture no longer reaches the branch it names pins nothing." },
 
   // --- the class rule D deliberately does NOT close ---------------------------
   { label: "mpn === sku, and NOT the storefront key", storefrontId: "8631346921664",
@@ -1326,6 +1387,9 @@ for (const i of IDENTIFIERS) {
         `A row that renders no value is invisible to a human audit. Why: ${i.why}`,
       );
     }
+    // `includes` cannot see a clause APPENDED to a correct sentence — which is exactly
+    // what CP2a's provenance caveat was, and why it needed its own assertion.
+    if (i.detailExact !== undefined) assert.equal(v.detail, i.detailExact, `the WHOLE rendered detail. Why: ${i.why}`);
   });
 }
 
@@ -1333,14 +1397,25 @@ for (const c of LD_SELECTION) {
   const gap = c.actual !== undefined;
   test(`[ld-selection]${gap ? " KNOWN GAP —" : ""} ${c.label}`, () => {
     const v = verdictOfLd(c.node);
-    assert.equal(v.status, c.actual ?? c.correct, `${c.label} — ${c.why}`);
-    // A pass on the WRONG value is a different answer; status cannot see it.
-    assert.equal(v.gtin, c.gtin, `selected GTIN — ${c.why}`);
-    assert.equal(v.gtinSource, c.source, `selected source — ${c.why}`);
-    // `signals.gtin` is read by the diagnosis and merchant-facts layers. It must never
-    // be true for a value the row would refuse: two parts of the engine answering
-    // differently about the same page is the defect this project names one level up.
-    assert.equal(v.signalGtin, c.gtin != null, `signals.gtin must track the selected value — ${c.why}`);
+    assert.equal(
+      v.status, c.actual ?? c.correct,
+      gap
+        ? `KNOWN GAP CHANGED. Corpus records actual=${c.actual} (honest answer: ${c.correct}). Got ${v.status}. ` +
+          `If this gap is now FIXED, delete its \`actual\` and decrement openGaps. Why: ${c.why}`
+        : `REGRESSION. Expected ${c.correct}, got ${v.status}. Why: ${c.why}`,
+    );
+    // A pass on the WRONG value is a different answer; status cannot see it. Where the
+    // engine currently selects something other than the honest answer, that value is
+    // recorded too — a gap whose selected value drifts is a different gap.
+    const expectGtin = c.actualGtin !== undefined ? c.actualGtin : c.gtin;
+    assert.equal(v.gtin, expectGtin, `selected GTIN — ${c.why}`);
+    // `signals.gtin` is read by the diagnosis and merchant-facts layers. It must track
+    // the selected value: two parts of the engine answering differently about the same
+    // page is the defect this project names one level up.
+    assert.equal(v.signalGtin, expectGtin != null, `signals.gtin must track the selected value — ${c.why}`);
+    // The RENDERED sentence, whole. R21 is a pass in every tree and the only thing that
+    // changed under CP2a was the quote — invisible to status, invisible to a replay.
+    if (c.detailExact !== undefined) assert.equal(v.detail, c.detailExact, `the WHOLE rendered detail. Why: ${c.why}`);
   });
 }
 
@@ -1495,6 +1570,24 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // are named at their case: a care instruction in the sentence AFTER its pointer, and
   // a delivery window whose only match in production was a substring accident.
   //
+  // 38 -> 42: v3.5 CP2c REVERTED THE CP2a GTIN WIDENING, AND FOUR RECALL GAPS CAME BACK
+  // WITH IT. Read the direction correctly — this is FOUR DEFECTS DELIBERATELY
+  // REINSTATED, which is a thing this corpus has never had to record before:
+  //   • a check-digit-valid GTIN published only in a SINGLE nested node — three shapes,
+  //     `offers[]`, `hasVariant[]` and an AggregateOffer's nested `offers`. Measured: 32
+  //     of 338 captured real stores are in this class and are told they publish no
+  //     identifier while they publish a real one.
+  //   • an invalid `gtin13` hiding a VALID `gtin12` on the SAME product node — first
+  //     non-empty key wins, not first publishable. Nobody attacked this one; CP2a fixed
+  //     it in passing and the byte-identity revert took it back out.
+  // They are gaps in RECALL. What CP2a traded for them was 11 regressions — 9 status
+  // and 2 quote-only, every one attributed by an independent three-worktree A/B to the
+  // same descent — including a page where the descent named the storefront's own product
+  // key as the merchant's GTIN, which is the exact value rule D exists to reject. The
+  // multi-variant class it answered is one `conflict_rules[1]` of ALS-COFFEE-1.3-IDENT-001
+  // declares BLOCKED. A gap we can state ("we did not look") beats an answer we cannot
+  // defend ("we read one variant's barcode and called it the product's").
+  //
   // 36 -> 38: v3.5 CP2b RECORDS TWO IDENTIFIER GAPS THAT WERE ALWAYS THERE AND COULD
   // NOT BE COUNTED. Read the direction correctly — this is not two new defects, and it
   // is not two repairs either:
@@ -1512,7 +1605,7 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   //     seven compliant merchants).
   // A class that is closed in the engine and a class that is pinned in the corpus are
   // both progress; a class nobody can count is not.
-  const EXPECTED_OPEN_GAPS = 38;
+  const EXPECTED_OPEN_GAPS = 42;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,
