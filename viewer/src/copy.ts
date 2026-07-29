@@ -24,7 +24,20 @@
 //    optimize/optimise, boost. These are the vocabulary of the category this
 //    product is not in.
 //
-// NUMBERS. Every count below is read off standards/coffee/v1.0/standard.json
+// ⚠️ NUMBERS. This module states STRUCTURAL counts only (42 entries, the tier split),
+// read off the published standard. It states NO measured figure — no bound, no row count,
+// no defect count — and it must not start. The viewer bundle imports nothing from `src/`
+// and cannot reach the registry or the fitness sidecar, so any measurement typed here is a
+// literal that goes false the next time the audit improves. Two such paragraphs shipped and
+// were live until v4.1: "162 requirements … Ten of those passes were wrong" against an
+// artifact reading 160 and 7, and "507 rows … found eighteen" against 483 and 11. Both are
+// now argued without figures and point at the page that derives them.
+//
+// The VERSION label is derived from COFFEE_STANDARD_URL (see below). Four places here said
+// v1.0 while the link resolved to v1.3.
+//
+// Historical note, kept because it explains the shape of this file: counts below were
+// originally read off standards/coffee/v1.0/standard.json
 // (42 entries; tiers executable 10 / blocked 16 / advisory 11 /
 // not_discriminating 5). No FITNESS number appears on this page: the coffee
 // re-measurement has not landed, and standards/coffee/v1.0/fitness.json is
@@ -71,6 +84,19 @@ export const STANDARDS_INDEX_URL = "/standards";
  *  asserts this string equals `currentOf("coffee")`, which fails the build on the next
  *  reissue rather than quietly costing every reader one hop. */
 export const COFFEE_STANDARD_URL = "/standards/coffee/1.3";
+
+/**
+ * The standard's version label, DERIVED from the URL above and never typed again.
+ *
+ * ⚠️ FOUR PLACES IN THIS FILE SAID "v1.0" WHILE THE LINK RESOLVED TO v1.3, and no lint
+ * could see it: a stale version label contains no banned word and no false token — it is a
+ * true sentence about an older document, rendered beside a link to a newer one. The same
+ * shape rotted `COFFEE_STANDARD_URL` itself one release earlier. The viewer bundle imports
+ * nothing from `src/`, so it cannot ask the registry; deriving from the one constant a
+ * test already pins against `currentOf("coffee")` is the next best thing, and it means the
+ * label cannot disagree with the href it sits next to.
+ */
+export const COFFEE_STANDARD_VERSION = `v${COFFEE_STANDARD_URL.split("/").pop()}`;
 /** The Example test — also server-rendered (src/server/buyerTestDemo.ts), so also a
  *  plain href. It shows a real Coffee Standard v1.0 result on a real coffee product
  *  page, replayed from a frozen capture. */
@@ -119,7 +145,7 @@ export const HERO = {
   cta: "Run a free test",
   micro: "One product. One buyer task. Proven, not proven, or requires store access — with the evidence.",
   seeExample: "See an example test →",
-  readStandard: "Read Coffee Standard v1.0 →",
+  readStandard: `Read Coffee Standard ${COFFEE_STANDARD_VERSION} →`,
   connect: "Get it on the Shopify App Store →",
 } as const;
 
@@ -127,10 +153,10 @@ export const HERO = {
  *  really is in Coffee Standard v1.0; the values are an example, and the card
  *  says so in its own label and its aria-label. */
 export const HERO_TEST = {
-  head: "BUYER TEST · AisleLens Coffee Standard v1.0",
+  head: `BUYER TEST · AisleLens Coffee Standard ${COFFEE_STANDARD_VERSION}`,
   task: "Task: 250 g of single-origin whole-bean coffee, dispatch timing stated, under £20.",
   ariaLabel:
-    "Example Buyer Test result against Coffee Standard v1.0: one requirement not proven, one requires store access.",
+    `Example Buyer Test result against Coffee Standard ${COFFEE_STANDARD_VERSION}: one requirement not proven, one requires store access.`,
   assertions: [
     { state: "proven", label: "Whole-bean option listed and purchasable" },
     { state: "proven", label: "Net weight stated on the page" },
@@ -147,14 +173,14 @@ export const HERO_TEST = {
 export const STANDARD_SECTION = {
   heading: "The standard is public before the test runs.",
   body: [
-    "A buying standard is the set of questions a competent buyer in a category actually needs settled — and, for each one, what counts as evidence, what does not, and which surface decides when two of them disagree. AisleLens Coffee Standard v1.0 carries 42 such entries at a fixed version and content hash, so a result cites the exact contract it ran under and that citation still resolves a year later. Every entry is readable at its own URL, before you buy anything and before a test is run.",
-    "Ten of the 42 are executable against a public product page today. The other 32 are written down with the reason each one is not: 16 should be executable and the engine cannot reach them yet, each naming its own gap; 11 are real buyer questions that public data cannot adjudicate at all; and 5 the engine could run and deliberately does not, because almost every coffee page answers them the same way, and a row that everybody passes separates nobody from anybody.",
+    `A buying standard is the set of questions a competent buyer in a category actually needs settled — and, for each one, what counts as evidence, what does not, and which surface decides when two of them disagree. AisleLens Coffee Standard ${COFFEE_STANDARD_VERSION} carries 42 such entries at a fixed version and content hash, so a result cites the exact contract it ran under and that citation still resolves a year later. Every entry is readable at its own URL, before you buy anything and before a test is run.`,
+    "Ten of the 42 are executable against a public product page today. The other 32 are written down with the reason each one is not: 16 should be executable and the engine cannot reach them yet, each naming its own gap; 11 are real buyer questions that public data cannot adjudicate at all; and 5 are questions the engine can run and public data can settle, for which this standard has not yet written the binding and put it through the adversarial pass — recorded as unbound rather than quietly dropped.",
   ],
   pull: "We publish what we cannot test, and why.",
   after: [
     "Ten of forty-two is the honest ratio. A standard that listed only its own strengths would be marketing, and the second number is the one a merchant needs in order to know what a passing result did not cover.",
-    "A category standard is fitness-measured on its own category before we publish an error rate for it, because a general sample averages copy that no individual merchant writes. Coffee Standard v1.0 has now been run against 100 real coffee products across 77 storefronts, and every one of the 162 requirements it passed was read individually against the store's full page text. Ten of those passes were wrong. The measured upper bound on the error rate a coffee roaster should expect is published on the standard's own page, alongside the method and the four defect classes behind it.",
-    "The same audit corrected a number we had published about ourselves. Our broad, non-category sample had been audited at 507 rows and reported zero errors. Checking one defect class mechanically — a product identifier that is really the store's own internal id — found eighteen in that same sample, which no reader could have caught, because that row shows the merchant no quote to be suspicious of. The broad figure was not an error rate. It was a measurement of what that audit had thought to look for.",
+    "A category standard is fitness-measured on its own category before we publish an error rate for it. It has been run against 100 real coffee products across 77 storefronts, and every single requirement it passed was then read individually against that store's full page text — not sampled. The passes that turned out to be wrong are counted, and the measured upper bound on the error rate a coffee roaster should expect is published on the standard's own page with the method and the defect classes behind it. We do not restate those figures here: this page cannot derive them, and a number typed beside a generated one is how a page goes quietly false.",
+    "The same discipline corrected a number we had published about ourselves. Our broad, non-category sample had been audited row by row and reported zero errors. Checking one defect class mechanically — a product identifier that is really the store's own internal id — found errors in that same sample that no reader could have caught, because that row shows the merchant no quote to be suspicious of. The figure had not been an error rate. It was a measurement of what that audit had thought to look for. The bound has moved three times since, each time because the audit got better, and every move is on the record.",
   ],
 } as const;
 

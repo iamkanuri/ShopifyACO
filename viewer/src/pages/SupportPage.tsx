@@ -21,9 +21,10 @@ export function SupportPage() {
 
       <h3>Common questions</h3>
       <ul>
-        <li><b>How do I run a scan?</b> Enter your store URL on the home page — no login needed for
-          the free scan. Connected Shopify stores get the full measure → diagnose → fix → verify loop
-          in the app.</li>
+        <li><b>How do I run a test?</b> Paste a product URL on the home page — no login needed. You
+          get a per-requirement result with the evidence for each row. Connected Shopify stores can
+          additionally confirm facts, apply reviewable fixes, and re-run the same contract to prove the
+          fix landed.</li>
         <li><b>Why did my results change between runs?</b> AI answers vary by model, time, prompt,
           and location. That's why we show sample sizes and confidence, and compare before/after runs
           with statistics rather than claiming a single change "worked".</li>

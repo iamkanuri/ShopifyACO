@@ -263,9 +263,43 @@ function builtCssHref(): string | null {
 
 app.get(/^\/standards(\/.*)?$/, (req, res, next) => {
   const page = standardsPageFor(req.path, baseUrl(req));
-  if (!page) return next();          // unknown standard/entry ⇒ the SPA's 404
+  if (!page) {
+    // ⚠️ A DEAD CITATION MUST NOT RETURN 200. Falling through to `next()` handed the
+    // request to the SPA catch-all, which sends index.html WITHOUT a status — so
+    // `/standards/coffee/1.3/ALS-COFFEE-1.3-BOGUS` answered 200 with an empty `#root`,
+    // and the "Page not found" text existed only after React mounted. On the product
+    // whose whole promise is that a citation still resolves a year later, a crawler, an
+    // agent or a link checker could not tell a dead citation from a live one.
+    //
+    // The 404 is served as a DOCUMENT rather than as bare text, so a human who mistypes
+    // an entry id gets the same JS-off page they would have got if it existed, and is
+    // told where the live index is.
+    return res.status(404).type("html").send(
+      renderStandaloneDocument(
+        {
+          title: "No such standard or entry",
+          description: "Nothing is published at this address. Every published standard, version and entry is listed at /standards.",
+          canonical: `${baseUrl(req)}/standards`,
+          jsonLd: "",
+          bodyHtml: `<div class="std-page"><h1>No such standard or entry</h1>
+  <p>Nothing is published at <code>${escapeHtml(req.path)}</code>.</p>
+  <p>Every published standard, every version and every entry is listed at
+  <a href="/standards">/standards</a>. Entry ids look like
+  <code>ALS-COFFEE-1.3-CERT-002</code>, and an id from an earlier version resolves
+  forward to the current one.</p></div>`,
+        },
+        { cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req) },
+      ),
+    );
+  }
   res.type("html").set("Cache-Control", "public, max-age=300").send(
-    renderStandaloneDocument(page, { cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req) }),
+    // ⚠️ `ogImage` — WITHOUT IT EVERY CITATION UNFURLS AS A BARE TEXT CARD. All 181
+    // standards pages omitted it while `/demo` four routes below passed it, so the one
+    // surface built to be cited was the one surface with no share preview.
+    renderStandaloneDocument(page, {
+      cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req),
+      ogImage: `${baseUrl(req)}/og/default.png`,
+    }),
   );
 });
 
@@ -299,9 +333,12 @@ app.get(/^\/demo\/?$/, (req, res, next) => {
 
 app.get("/sitemap.xml", async (req, res) => {
   const base = baseUrl(req);
-  // Repositioning: Index is retired from the public identity (nav/footer) but its
-  // routes stay crawlable for now (existing shared links + prior distribution work).
-  const urls = ["/", "/demo", "/methodology", "/scan", "/privacy", "/terms", "/support", "/index"]
+  // ⚠️ `/test` WAS MISSING AND `/scan` WAS NOT — the sitemap told crawlers and AI readers
+  // to prefer the RETIRED funnel over the current product. `/scan` and `/index` are the
+  // share-of-voice surfaces; `/test` is the thing the whole site is now about, and it was
+  // in neither the sitemap nor the SSR. Their routes still work for existing shared links;
+  // they are simply no longer advertised as what to index.
+  const urls = ["/", "/test", "/demo", "/methodology", "/privacy", "/terms", "/support"]
     // Every published standard and every ENTRY. A citation that resolves is the whole
     // reason the ids are stable, so each one is a first-class indexable page.
     .concat(standardsSitemapPaths())

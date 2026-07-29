@@ -15,6 +15,7 @@ import {
   TAGLINE,
   TAGLINE_SHORT,
 } from "../viewer/src/copy.js";
+import * as copy from "../viewer/src/copy.js";
 
 // ===========================================================================
 // THE PUBLIC SITE PASSES ITS OWN CHECK.
@@ -140,12 +141,20 @@ test("the standard leads, and the line only this company can write is on the pag
   );
 });
 
-test("the counts quoted on the page match standards/coffee/v1.0/standard.json", () => {
-  // The page states 42 entries, 10 executable, 16 blocked, 11 advisory and 5
-  // non-discriminating. Those are read off the document, and a document that
-  // moves must move the page with it — a hand-copied number is exactly the
+test("the counts quoted on the page match the CURRENT standard, not a superseded one", () => {
+  // The page states 42 entries and the tier split. Those are read off the document, and a
+  // document that moves must move the page with it — a hand-copied number is exactly the
   // class of claim this product refuses to print.
-  const doc = JSON.parse(read("standards/coffee/v1.0/standard.json")) as {
+  //
+  // ⚠️ THIS TEST USED TO PIN v1.0 BY PATH, AND THAT IS WHY IT DID NOT CATCH THE DRIFT IT
+  // EXISTS FOR. The four tier COUNTS are identical at v1.0 and v1.3, so pinning the old
+  // document kept it green while the copy said "Coffee Standard v1.0" beside a link that
+  // resolved to v1.3 — and, worse, while the copy described the fourth tier as "5 the
+  // engine could run and deliberately does not", which is `not_discriminating`'s meaning
+  // at v1.0 and the OPPOSITE of `unbound`'s at v1.3. A version-pinned fixture cannot see a
+  // version-drift defect. The path is now derived from the same constant the page links to.
+  const version = COFFEE_STANDARD_URL.split("/").pop()!;
+  const doc = JSON.parse(read(`standards/coffee/v${version}/standard.json`)) as {
     entries: Array<{ tier: string }>;
   };
   const tiers: Record<string, number> = {};
@@ -156,9 +165,17 @@ test("the counts quoted on the page match standards/coffee/v1.0/standard.json", 
   assert.equal(tiers.executable, 10, "executable count moved");
   assert.equal(tiers.blocked, 16, "blocked count moved");
   assert.equal(tiers.advisory, 11, "advisory count moved");
-  assert.equal(tiers.not_discriminating, 5, "not_discriminating count moved");
-  for (const n of ["42", "en of the 42", "16 should be executable", "11 are real buyer questions", "5 the engine could run"]) {
+  // The fourth tier is `unbound` at grammar 1.2 and was `not_discriminating` at 1.0. Assert
+  // whichever this document actually carries, and that the page describes the right one.
+  const fourth = tiers.unbound !== undefined ? "unbound" : "not_discriminating";
+  assert.equal(tiers[fourth], 5, `${fourth} count moved`);
+  for (const n of ["42", "en of the 42", "16 should be executable", "11 are real buyer questions"]) {
     assert.ok(prose.includes(n), `the standard section no longer states "${n}"`);
+  }
+  if (fourth === "unbound") {
+    assert.match(prose, /unbound/i, "the page does not describe the fourth tier as unbound, which is what this document carries");
+    assert.doesNotMatch(prose, /deliberately does not/,
+      "the page still uses `not_discriminating`'s wording for a tier this document calls `unbound` — the two mean opposite things");
   }
 });
 
@@ -296,4 +313,65 @@ test("the shared product description is served EXACTLY as the constant defines i
   // two sites disagreed on.
   assert.match(PRODUCT_DESCRIPTION, /proven, not proven, or requires store access/,
     "the shared description does not use this product's own result vocabulary");
+});
+
+// ===========================================================================
+// v4.1 — NO UN-INTERPOLATED TEMPLATE EXPRESSION MAY REACH A PUBLIC STRING.
+//
+// Caught in the act: replacing a hand-typed "v1.0" with `${COFFEE_STANDARD_VERSION}`
+// inside a DOUBLE-QUOTED string produced a landing-page paragraph that would have rendered
+// the literal characters `${COFFEE_STANDARD_VERSION}` to every visitor. TypeScript is
+// silent — it is a valid string — and the type is still `string`, so nothing downstream
+// notices. The only reason it did not ship is that the value was read back before commit.
+//
+// This is the same family as the `[object Object]` defect the standards site shipped three
+// times: a template failure that produces plausible-looking output instead of throwing.
+// ===========================================================================
+test("[copy] no public string contains an un-interpolated ${…} expression", () => {
+  const offenders: string[] = [];
+  const walk = (v: unknown, path: string): void => {
+    if (typeof v === "string") {
+      if (/\$\{[A-Za-z_]/.test(v)) offenders.push(`${path}: ${v.slice(0, 120)}`);
+      return;
+    }
+    if (Array.isArray(v)) { v.forEach((x, i) => walk(x, `${path}[${i}]`)); return; }
+    if (v && typeof v === "object") {
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) walk(x, `${path}.${k}`);
+    }
+  };
+  walk(copy, "copy");
+  assert.deepEqual(offenders, [], `a template expression was written inside a quoted string:\n${offenders.join("\n")}`);
+});
+
+test("[copy] the standard's version label is DERIVED and agrees with its own href", () => {
+  // A stale version label carries no banned word and no false token — it is a true
+  // sentence about an older document beside a link to a newer one, which is exactly why
+  // four of them survived every lint in this repo until v4.1.
+  const fromUrl = `v${copy.COFFEE_STANDARD_URL.split("/").pop()}`;
+  assert.equal(copy.COFFEE_STANDARD_VERSION, fromUrl);
+  const stringsWithAVersion = [
+    copy.HERO.readStandard, copy.HERO_TEST.head, copy.HERO_TEST.ariaLabel,
+    ...copy.STANDARD_SECTION.body,
+  ].filter((s) => /Coffee Standard v\d/.test(s));
+  assert.ok(stringsWithAVersion.length >= 3, "no versioned strings found — this assertion has stopped covering anything");
+  for (const s of stringsWithAVersion) {
+    const m = /Coffee Standard (v[\d.]+)/.exec(s)!;
+    assert.equal(m[1], copy.COFFEE_STANDARD_VERSION, `a hand-typed version label survived: ${s.slice(0, 90)}`);
+  }
+});
+
+test("[copy] the landing page states NO measured figure", () => {
+  // The viewer bundle imports nothing from `src/` and cannot reach the fitness sidecar, so
+  // any measurement typed here is a literal that goes false the next time the audit
+  // improves. Two such paragraphs were LIVE until v4.1 — "162 requirements … Ten of those
+  // passes were wrong" against an artifact reading 160 and 7, and "507 rows … found
+  // eighteen" against 483 and 11. Structural counts (42 entries, the tier split) are read
+  // off the published standard and are fine; RATES and AUDIT COUNTS are not.
+  const banned = [/\b\d+(\.\d+)?%/, /\b(162|507|488|483)\b/];
+  const prose = [...copy.STANDARD_SECTION.body, ...copy.STANDARD_SECTION.after];
+  for (const s of prose) {
+    for (const re of banned) {
+      assert.ok(!re.test(s), `a measured figure reached landing copy that cannot derive it: ${s.slice(0, 120)}`);
+    }
+  }
 });

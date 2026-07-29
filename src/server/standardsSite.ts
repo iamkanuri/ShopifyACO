@@ -1048,9 +1048,36 @@ function bandCalibrationTable(rows: Array<{ e: StandardEntry; m: EntryDiscrimina
  *   • a cluster adjustment where rows-per-store is exactly 1 is not an adjustment;
  *   • an interval spanning more than 20 points cannot be read as a rate at all.
  */
+/**
+ * ⚠️ A DECOMPOSITION THAT DOES NOT SUM TO ITS OWN HEADLINE IS NOT A DECOMPOSITION.
+ *
+ * This was live: the general sample's headline read 483 pass rows / 11 confirmed while the
+ * per-kind cells three inches below summed to 488 / 18. The cells were measured at v3.7 and
+ * never re-derived after v3.8 closed seven price defects and rule D removed rows, so the
+ * page disagreed with itself inside one section — on the surface whose entire argument is
+ * that its numbers are measured. The coffee sample's cells reconcile exactly (160 / 7) and
+ * still render.
+ *
+ * The renderer now REFUSES a table that does not reconcile, and says why. It does not patch
+ * the cells: the row and confirmed counts happen to be derivable (price_under 165→160,
+ * 14→7), but each cell's interval, naive bound and cluster adjustment are NOT — and a table
+ * with re-derived counts beside stale intervals would be a worse lie than the one it
+ * replaced, because it would look repaired.
+ */
+function perKindReconciles(x: FitnessSample): { ok: boolean; rows: number; confirmed: number } {
+  const ks = x.per_kind ?? [];
+  const rows = ks.reduce((n, c) => n + (c.pass_rows ?? 0), 0);
+  const confirmed = ks.reduce((n, c) => n + (c.confirmed_false_positives ?? 0), 0);
+  return { ok: rows === x.pass_rows_audited && confirmed === x.confirmed_false_positives, rows, confirmed };
+}
+
 function renderPerKind(x: FitnessSample): string {
   const ks = x.per_kind ?? [];
   if (!ks.length) return "";
+  const rec = perKindReconciles(x);
+  if (!rec.ok) {
+    return `<p class="std-limit"><strong>The per-kind decomposition for this sample is withheld.</strong> Its cells sum to ${rec.rows} pass rows and ${rec.confirmed} confirmed false positives, against this sample's ${x.pass_rows_audited} and ${x.confirmed_false_positives} — they were measured before a later engine change and have not been re-derived. The counts could be corrected arithmetically; the per-cell intervals could not, and a table of repaired counts beside stale intervals would read as measured when it is not. The headline bound above is unaffected: it is computed from the audited rows directly, not from these cells.</p>`;
+  }
   const iv = (i?: { lower_pct: number; upper_pct: number }) => (i ? `${i.lower_pct.toFixed(1)}–${i.upper_pct.toFixed(1)}%` : "—");
   const pct = (v?: number | null) => (v == null ? "—" : `${v.toFixed(2)}%`);
   const rows = ks.map((c) => `<tr>
@@ -1085,7 +1112,13 @@ function renderPerKind(x: FitnessSample): string {
 function renderSeparation(f: FitnessDoc): string {
   const sep = f.per_kind_separation;
   if (!sep || !Object.keys(sep).length) return "";
-  const parts = Object.entries(sep).map(([name, s]) => {
+  // ⚠️ SKIP THE ARTIFACT'S OWN ANNOTATION KEYS. `per_kind_separation` is typed
+  // `Record<string, …>` and the artifact carries a `_comment`, so iterating it rendered
+  // that comment through the `!pairs_tested` branch — publishing "_comment: the test did
+  // not run — 0 pairs tested" as a dead-instrument alarm at the top of the list, above the
+  // two real results. It was live in production. Every artifact in this repo uses a leading
+  // underscore for prose; a renderer that walks a Record must exclude them.
+  const parts = Object.entries(sep).filter(([name]) => !name.startsWith("_")).map(([name, s]) => {
     if (!s.pairs_tested) return `<li><strong>${esc(name)}: the test did not run</strong> — 0 pairs tested, which is not the same answer as "nothing separates".</li>`;
     const detail = s.pairs_separated
       ? `${s.pairs_separated} of ${s.pairs_tested} pairs separate, the widest by <strong>${(s.widest_separation_pp ?? 0).toFixed(2)} percentage points</strong>${
@@ -1255,7 +1288,14 @@ function identifierRowHtml(r: IdentifierRow, honest: boolean): string {
 </div>`;
 }
 
-function identifierSection(): string {
+/** The general sample's audited row count, read off the artifact the table below renders
+ *  from — so the prose and the table cannot state different numbers. Null when absent. */
+function generalRows(f: FitnessDoc | null): number | null {
+  const g = f?.samples?.find((x) => x.name === "general");
+  return g ? g.pass_rows_audited : null;
+}
+
+function identifierSection(f: FitnessDoc | null): string {
   const ex = identifierExample();
   if (!ex) return "";
   const rows = [ex.honest, ...ex.storeLocal];
@@ -1282,7 +1322,16 @@ function identifierSection(): string {
   ${lede}
   ${identifierRowHtml(ex.honest, true)}
   ${ex.storeLocal.map((r) => identifierRowHtml(r, false)).join("")}
-  <p class="std-limit"><strong>This is the class an audit cannot see.</strong> There is no rendered evidence to be suspicious of, so a reader checking every row learns nothing from any of them. The store-local values above sat inside a sample of 507 rows that had been read individually and reported zero errors; one mechanical check against the captured bytes found eighteen, and the published bound moved from 0.83% to 7.80%.</p>
+  ${/* ⚠️ THE NUMBERS IN THIS PARAGRAPH ARE DERIVED, and they used not to be. It read
+        "a sample of 507 rows … found eighteen, and the published bound moved from 0.83%
+        to 7.80%" — the last hand-typed figures on an otherwise fully generated page,
+        sitting directly above the generated table that says 483 and 11. Every one of them
+        was superseded: 507 → 483 rows, eighteen → 11 confirmed, and both 0.83% and 7.80%
+        are retired bounds. The general sample now reads off the same artifact as the table
+        below it, so the two cannot disagree again. The ARGUMENT is unchanged and is the
+        point: an audit that reads rendered evidence cannot see a class that renders none,
+        however many rows it reads. */ ""}
+  <p class="std-limit"><strong>This is the class an audit cannot see.</strong> There is no rendered evidence to be suspicious of, so a reader checking every row learns nothing from any of them. The store-local values above sat inside the general sample below — ${generalRows(f) ? `${generalRows(f)} pass rows, every one read individually` : "a sample read row by row"} — and a reader checking each rendered quote would have found none of them. It took one mechanical check against the captured bytes. The bound this page publishes has moved three times as the audit method improved, and each move was a measurement of what the previous audit had thought to look for.</p>
   ${closing}
   <p class="std-note">Record: ${esc(ex.source)}${ex.engine_checked_at ? ` · engine behaviour re-executed ${esc(ex.engine_checked_at)}${ex.engine_commit ? ` at ${esc(ex.engine_commit)}` : ""}` : ""}</p>
 </section>`;
@@ -1678,7 +1727,7 @@ export function renderStandard(s: PublishedStandard, base: string): SitePage {
   <p class="std-note"><a href="${esc(canonical)}/standard.json">The full standard as JSON</a> · <a href="${esc(canonical)}/grounding">Every source this standard is grounded in</a> · <a href="/demo">A real result on a real store</a> · <a href="/methodology">How these are built and measured</a></p>
   ${tableOfContents(s)}
   ${renderFitness(s)}
-  ${identifierSection()}
+  ${identifierSection(fitnessOf(s))}
   ${discriminationTable(s)}
   ${sections}
 </div>`,

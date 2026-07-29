@@ -11,10 +11,13 @@ export function TermsPage() {
 
       <h3>What the service does</h3>
       <p>
-        {brandName} measures whether AI assistants (e.g. ChatGPT, Gemini, Perplexity) mention and
-        recommend your products versus competitors, diagnoses gaps, and helps you act on them. For
-        connected Shopify stores it can read your catalog and, only with your explicit approval,
-        apply reviewable changes back to your store.
+        {brandName} publishes buying standards — the questions a competent buyer in a category needs
+        settled — and runs them as executable tests against a public product page, reporting for each
+        requirement whether your store's own public data proves it, with the evidence sentence and the
+        surface it was read from. It also runs a general buyer task against stores outside a published
+        category. For connected Shopify stores it can read your catalog and, only with your explicit
+        approval, apply reviewable changes back to your store. Some plans additionally measure how AI
+        assistants answer category questions; where that is used it is labelled as such.
       </p>
 
       <h3>Results are directional, not guarantees</h3>

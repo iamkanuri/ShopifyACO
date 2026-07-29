@@ -262,7 +262,13 @@ export function ProductTestPage() {
                 has an originating test to attribute it to. Every other ConnectShopify
                 on the site deliberately does not count. */}
             <ConnectShopify className="btn btn-primary" label="Connect Shopify to confirm, fix, and rerun" countAsFunnelStep />
-            <p className="pt-enrich"><i>Included in the full diagnostic: how live AI assistants currently answer questions like this in your category — and which stores they send buyers to instead.</i></p>
+            {/* ⚠️ THE LINE THAT WAS HERE SOLD THE RETIRED PRODUCT, in the last sentence a
+                visitor reads: "how live AI assistants currently answer questions like this
+                in your category — and which stores they send buyers to instead." It was
+                also outside the lint surface entirely (not in PUBLIC_MARKETING_STRINGS), so
+                no gate could see it. Replaced with the thing that is actually true of this
+                result and is the reason to connect: the same contract, re-run, as proof. */}
+            <p className="pt-enrich"><i>Connecting re-runs this exact contract with your metafields and policy data readable, so a fix can be proven rather than asserted.</i></p>
           </div>
         </div>
       )}
