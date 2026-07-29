@@ -48,7 +48,7 @@ const CLAIM_TERMS: Record<string, ClaimTerms> = {
   aluminum_free: { support: ["aluminum-free", "aluminum free", "aluminium-free", "aluminium free", "no aluminum", "without aluminum", "free of aluminum"], violating: ["contains aluminum", "with aluminum", "aluminum-based"] },
   baking_soda_free: { support: ["baking soda free", "baking-soda-free", "without baking soda", "no baking soda", "free of baking soda"], violating: ["contains baking soda"] },
   cruelty_free: { support: ["cruelty-free", "cruelty free", "not tested on animals", "leaping bunny"], violating: ["tested on animals"] },
-  vegan: { support: ["vegan", "100% vegan", "plant-based", "plant based"], violating: ["contains animal", "non-vegan"] },
+  vegan: { support: ["vegan", "100% vegan"], violating: ["contains animal", "non-vegan"] },
   fragrance_free: { support: ["fragrance-free", "fragrance free", "unscented", "no added fragrance", "no fragrance"], violating: ["added fragrance"] },
   paraben_free: { support: ["paraben-free", "paraben free", "no parabens", "without parabens"], violating: ["contains parabens"] },
   sulfate_free: { support: ["sulfate-free", "sulfate free", "no sulfates", "without sulfates"], violating: ["contains sulfates"] },
@@ -1612,7 +1612,7 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * v2.1.0 — v3.8: the tier-aware cents conversion and the non-USD price refusal.
  * Together they change what 44 of 349 captured stores' price rows report.
  */
-export const ENGINE_VERSION = "v2.3.0";
+export const ENGINE_VERSION = "v2.4.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency

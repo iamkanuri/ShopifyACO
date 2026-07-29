@@ -145,7 +145,24 @@ const EXPECTED: Record<string, Record<string, Cell>> = {
   aluminum_free: { letter_not_spirit: [35, 35], adjacent_vocabulary: [10, 43], wrong_subject: [77, 128], merchant_controlled_string: [35, 60], orthography: [32, 86], violation: [4, 24], tense_modality: [56, 90], denial: [35, 59] },
   baking_soda_free: { letter_not_spirit: [25, 25], adjacent_vocabulary: [12, 22], wrong_subject: [55, 80], merchant_controlled_string: [25, 36], orthography: [22, 60], violation: [1, 8], tense_modality: [40, 54], denial: [25, 41] },
   cruelty_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [17, 27], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 47], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
-  vegan: { letter_not_spirit: [20, 20], adjacent_vocabulary: [27, 39], wrong_subject: [44, 76], merchant_controlled_string: [20, 36], orthography: [23, 45], violation: [3, 16], tense_modality: [32, 54], denial: [20, 34] },
+  // ⚠️ v4.0 CP-1a — THE ONLY ROW THAT MOVED, and it moved because the DICTIONARY moved.
+  // `plant-based` and `plant based` were removed from `vegan`'s supporting terms (a false
+  // equivalence: plant-based is a dietary-predominance term in food and a carbon-FEEDSTOCK
+  // term in materials chemistry; vegan is an animal-exclusion rule). The templatizer emits
+  // one sentence per (template, term), so vegan's hostile corpus halves from 4 supporting
+  // terms to 2. Per-cell arithmetic, every cell exactly halved on the supporting side:
+  //   letter_not_spirit          20/20 -> 10/10   (-10 sentences)
+  //   adjacent_vocabulary        27/39 -> 13/23   (-16)
+  //   wrong_subject              44/76 -> 22/48   (-28)
+  //   merchant_controlled_string 20/36 -> 10/24   (-12)
+  //   orthography                23/45 -> 13/30   (-15)
+  //   violation                   3/16 ->  3/16   (0 — violating terms are unchanged)
+  //   tense_modality             32/54 -> 16/36   (-18)
+  //   denial                     20/34 -> 10/18   (-16)
+  // 115 hostile sentences and 6 controls leave the corpus. No other key's cell moves, which
+  // is the gate doing its job: a dictionary change is visible per cell and confined to
+  // its key.
+  vegan: { letter_not_spirit: [10, 10], adjacent_vocabulary: [13, 23], wrong_subject: [22, 48], merchant_controlled_string: [10, 24], orthography: [13, 30], violation: [3, 16], tense_modality: [16, 36], denial: [10, 18] },
   fragrance_free: { letter_not_spirit: [25, 25], adjacent_vocabulary: [19, 30], wrong_subject: [55, 80], merchant_controlled_string: [25, 36], orthography: [22, 51], violation: [1, 8], tense_modality: [40, 54], denial: [25, 41] },
   paraben_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [0, 12], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
   sulfate_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [3, 17], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
@@ -160,18 +177,20 @@ const EXPECTED: Record<string, Record<string, Cell>> = {
 /** Class totals, asserted separately so a compensating pair of per-cell errors cannot
  *  cancel out and leave the table looking unchanged. */
 const EXPECTED_CLASS_TOTALS: Record<string, [number, number]> = {
-  letter_not_spirit: [280, 280],
-  adjacent_vocabulary: [181, 332],
-  wrong_subject: [616, 914],
-  merchant_controlled_string: [280, 414],
-  orthography: [266, 606],
-  violation: [11, 104],
-  tense_modality: [448, 621],
-  denial: [280, 461],
+  letter_not_spirit: [270, 270],          // v4.0 CP-1a: 280/280 - 10/10
+  adjacent_vocabulary: [167, 316],        //             181/332 - 14/16
+  wrong_subject: [594, 886],              //             616/914 - 22/28
+  merchant_controlled_string: [270, 402], //             280/414 - 10/12
+  orthography: [256, 591],                //             266/606 - 10/15
+  violation: [11, 104],                   //             unchanged
+  tense_modality: [432, 603],             //             448/621 - 16/18
+  denial: [270, 445],                     //             280/461 - 10/16
 };
 
-const EXPECTED_HOSTILE_TOTAL = 3732;
-const EXPECTED_CONTROL_TOTAL = 181;
+// v4.0 CP-1a: 3732 - 115 = 3617 hostile, 181 - 6 = 175 controls. Both deltas are vegan's
+// alone, and both are the arithmetic consequence of two supporting terms leaving.
+const EXPECTED_HOSTILE_TOTAL = 3617;
+const EXPECTED_CONTROL_TOTAL = 175;
 
 /**
  * The ADJUDICATED counts. FROZEN PROVENANCE, NOT A GATE.
@@ -217,15 +236,50 @@ const EXPECTED_CONTROL_TOTAL = 181;
  * were discriminating rather than reinstating on reflex.
  */
 const ADJUDICATED_V38: Record<string, [number, number]> = {
-  letter_not_spirit: [260, 280],
-  adjacent_vocabulary: [0, 100],
-  wrong_subject: [441, 914],
-  merchant_controlled_string: [0, 414],
-  orthography: [0, 606],
+  letter_not_spirit: [252, 270],
+  adjacent_vocabulary: [0, 98],
+  wrong_subject: [425, 886],
+  merchant_controlled_string: [0, 402],
+  orthography: [0, 591],
   violation: [8, 104],
-  tense_modality: [439, 621],
-  denial: [134, 461],
+  tense_modality: [425, 603],
+  denial: [130, 445],
 };
+
+// ---------------------------------------------------------------------------
+// ⚠️ v4.0 CP-1a — HOW THIS FROZEN TABLE MOVED WITHOUT ANY HUMAN VERDICT BEING EDITED.
+//
+// The Phase-A adjudication's strongest objection was that removing a supporting term is
+// BLOCKED by this file: the denominator assertion below requires the adjudicated
+// denominator to equal the raw one, and the adjudicated NUMERATOR is a human read of 779
+// groups whose ids are `class|subclass|key` — "so the per-term delta is not derivable, and
+// the only exits are to destroy the record, re-run the campaign, or not remove the term."
+//
+// **That premise is falsifiable, and it is false.** `experiments/v3-8/g14_table.mjs`'s
+// roll-up is SENTENCE-level and `g14_sentences.json` records `term` on every row; group
+// verdicts are applied per sentence with per-term `exceptions` overriding them, which is
+// exactly why the schema demanded exceptions. Dropping the sentences generated from a
+// removed term is therefore an exact operation on the recorded trail.
+// `experiments/v4-0/rederive_adjudicated.mjs` does it, and refuses to answer unless BOTH
+// anchors reproduce first:
+//   ANCHOR 1  the roll-up over the untouched trail reproduces v3.8's table exactly
+//             (260/280 · 368/914 · 1/104 · 439/621 · 69/461, sum 1137) ✅
+//   ANCHOR 2  applying v3.9's 42 overturns reproduces the corrected table exactly
+//             (441/914 · 8/104 · 134/461, sum 1282) ✅
+// Anchor 2 earned its keep twice: two plausible formulations of "reinstate" gave 1,310 and
+// 1,281, and only "the re-examination overturns the REFUTATION, leaving per-term exceptions
+// intact" reproduces 1,282. Either wrong number would have looked like a measurement.
+//
+// CROSS-CHECK, from a completely independent instrument: the LIVE generation
+// (`experiments/v4-0/emit_g14.ts`) and the frozen v3.8 sentence trail agree on all seven
+// comparable denominators after the change — 270 · 886 · 402 · 591 · 104 · 603 · 445.
+//
+//   numerator delta  -8 · 0 · -16 · 0 · 0 · 0 · -14 · -4   =  -42
+//   sum              1282 - 42 = 1240
+//
+// No group changed its verdict. The corpus lost 115 hostile sentences; the adjudication
+// still describes every sentence that remains.
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 
@@ -415,8 +469,10 @@ test("[gaps] G-14 moves EXPECTED_OPEN_GAPS by +0, and this is the reason", () =>
   // 1137 before v3.9's re-examination; 1282 after, +145 = 73 (wrong_subject) + 65 (denial)
   // + 7 (violation), reconciled against the per-group trail in
   // `experiments/v3-9/out/v38_correct.json`.
+  // v4.0 CP-1a: 1282 - 42 = 1240, the sentences generated from `plant-based`/`plant based`
+  // leaving the corpus. Re-derived, not edited — see the block above ADJUDICATED_V38.
   assert.equal(
-    Object.values(ADJUDICATED_V38).reduce((n, [fp]) => n + fp, 0), 1282,
+    Object.values(ADJUDICATED_V38).reduce((n, [fp]) => n + fp, 0), 1240,
     "the total confirmed-false-pass count across classes changed; re-derive it from the " +
       "merge artifacts rather than editing this number",
   );

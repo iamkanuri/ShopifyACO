@@ -194,7 +194,14 @@ for (const [dir, f] of files) {
       } else {
         // FIDELITY PROOF. If the re-derived hit is not the row the engine rendered,
         // every matchedTerm below is a guess. Refuse rather than guess.
-        const reQuote = presentableQuote(hit.sentence);
+        //
+        // ⚠️ THE SPAN IS NOT OPTIONAL, and this line caught itself. After CP-1b closed P-22
+        // the engine renders a WINDOWED quote; calling `presentableQuote(sentence)` bare
+        // reproduces the old head cut, and the check correctly refused on two rows rather
+        // than mis-attributing them. Re-derive the span the way `findSupport` does.
+        const nrm = normalize(hit.sentence);
+        const spans = termMatches(nrm, [hit.term], true);
+        const reQuote = presentableQuote(hit.sentence, spans[0]);
         const engQuote = a.evidenceQuote ?? null;
         if ((reQuote ?? null) !== engQuote) {
           problems.push(`${snap.url} ${key}: re-derived quote != engine quote\n  re : ${reQuote}\n  eng: ${engQuote}`);

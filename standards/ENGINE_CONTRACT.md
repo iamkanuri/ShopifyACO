@@ -143,7 +143,7 @@ The 13 keys, read from the source:
 | `aluminum_free` | aluminum-free, aluminum free, aluminium-free, aluminium free, no aluminum, without aluminum, free of aluminum |
 | `baking_soda_free` | baking soda free, baking-soda-free, without baking soda, no baking soda, free of baking soda |
 | `cruelty_free` | cruelty-free, cruelty free, not tested on animals, leaping bunny |
-| `vegan` | vegan, 100% vegan, plant-based, plant based |
+| `vegan` | vegan, 100% vegan |
 | `fragrance_free` | fragrance-free, fragrance free, unscented, no added fragrance, no fragrance |
 | `paraben_free` | paraben-free, paraben free, no parabens, without parabens |
 | `sulfate_free` | sulfate-free, sulfate free, no sulfates, without sulfates |

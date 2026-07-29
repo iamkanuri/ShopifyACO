@@ -63,8 +63,6 @@
       "organic",
       "paraben free",
       "paraben-free",
-      "plant based",
-      "plant-based",
       "single estate",
       "single farm",
       "single origin",
@@ -160,9 +158,7 @@
     "vegan": {
       "support": [
         "vegan",
-        "100% vegan",
-        "plant-based",
-        "plant based"
+        "100% vegan"
       ],
       "violating": [
         "contains animal",

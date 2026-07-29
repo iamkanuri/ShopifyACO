@@ -87,8 +87,16 @@ function matcherHash(): string {
 // followed. Two independent reasons the bump is also right on the merits: 10 asked
 // rows over 8 real stores changed the sentence a merchant is shown, and this test's
 // own rule is "if the change can alter ANY row a merchant sees".
-const PINNED_ENGINE_VERSION = "v2.3.0";
-const PINNED_MATCHER_HASH = "a7b4342f8a07e97e";
+// v4.0 CP-1a — `plant-based` / `plant based` removed from `vegan`'s supporting terms.
+// A dictionary change is a matcher change: it decides rows. Two bumps land in this one
+// release (v2.3.0 for CP-1b, v2.4.0 for CP-1a) and that is deliberate rather than untidy —
+// this file's rule is that BOTH pins move together in the SAME commit, and re-pinning the
+// hash alone on the second commit "restores exactly the condition this test exists to
+// prevent". Version numbers are free; a silently-shared version is not. Only the final
+// deployed value is ever recorded against a merchant's saved test, so the intermediate
+// v2.3.0 costs nothing.
+const PINNED_ENGINE_VERSION = "v2.4.0";
+const PINNED_MATCHER_HASH = "b8d2ca02cade979d";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();
