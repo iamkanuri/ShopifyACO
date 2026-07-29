@@ -1612,7 +1612,7 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * v2.1.0 — v3.8: the tier-aware cents conversion and the non-USD price refusal.
  * Together they change what 44 of 349 captured stores' price rows report.
  */
-export const ENGINE_VERSION = "v2.2.0";
+export const ENGINE_VERSION = "v2.3.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency

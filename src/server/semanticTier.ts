@@ -156,7 +156,16 @@ export async function judgeClaims(
     if (!source) { discarded++; continue; } // not verbatim anywhere ⇒ discarded
     if (f.verdict === "about_other_subject") { vetoes.push(f.attribute); continue; }
     if (f.verdict !== "supports") continue; // "contradicts" grants nothing
-    const quote = presentableQuote(source.text);
+    // P-22 — the rendered quote must contain the proof. Here the proof is the model's
+    // own `exactQuote`, already verified verbatim against `source.text` on the line
+    // above, so its span is exactly what the window must hold. Without this a semantic
+    // grant on a long sentence renders a 180-character head that need not contain the
+    // span the tier granted on — the same defect as the lexical path, one tier over.
+    const at = normalize(source.text).indexOf(normalize(f.exactQuote));
+    const quote = presentableQuote(
+      source.text,
+      at >= 0 ? { index: at, end: at + normalize(f.exactQuote).length } : undefined,
+    );
     if (!quote) { discarded++; continue; }  // unpresentable ⇒ no credit
     if (grants.some((g) => g.attribute === f.attribute)) continue;
     grants.push({ attribute: f.attribute, quote, surface: source.surface, surfaceLabel: SURFACE_LABEL[source.surface] });

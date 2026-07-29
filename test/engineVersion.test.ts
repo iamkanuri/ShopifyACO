@@ -75,8 +75,20 @@ function matcherHash(): string {
 // ---------------------------------------------------------------------------
 // v3.9 CP-4 — `priceToUsd`'s `.json` tier now fails closed. The tripwire fired on the
 // matcher edit, which is it working; both pins move together, as this file requires.
-const PINNED_ENGINE_VERSION = "v2.2.0";
-const PINNED_MATCHER_HASH = "8f86f57f20449745";
+//
+// v4.0 CP-1b — P-22 closed: `presentableQuote` takes the matched span and slides its
+// window so the rendered quote always contains the term the row proves.
+//
+// ⚠️ THE BRIEF PREDICTED THIS TRIPWIRE WOULD STAY QUIET, AND IT WAS WRONG ABOUT THE
+// MECHANISM. It reasoned that a quote change is "renderer surface, not matcher". This
+// pin is a CONTENT HASH over whole files, and `src/server/testEvidence.ts` is one of
+// them, so any edit to it fires — the hash cannot and should not try to classify an
+// edit as renderer-only. It fired, it was read rather than re-pinned, and the bump
+// followed. Two independent reasons the bump is also right on the merits: 10 asked
+// rows over 8 real stores changed the sentence a merchant is shown, and this test's
+// own rule is "if the change can alter ANY row a merchant sees".
+const PINNED_ENGINE_VERSION = "v2.3.0";
+const PINNED_MATCHER_HASH = "a7b4342f8a07e97e";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { attachShippingPolicy, buildBuyerTask, contractVersion, evaluate, runProductTest, shopifyMetaProductType, type PublicProduct, type Requirement } from "../src/server/productTest.js";
-import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, passesAboutness } from "../src/server/testEvidence.js";
+import { buildEvidence, findSupport, findTimingSupport, presentableQuote, isNegated, normalize, passesAboutness } from "../src/server/testEvidence.js";
 import { lintStrings } from "../src/server/claimLinter.js";
 
 // ===========================================================================
@@ -87,6 +87,107 @@ test("3. quotes are whole sentences, <=180 chars, cut at a word boundary", () =>
   assert.equal(presentableQuote("Save $8.00 now $6.00 then $4.00 later"), null, "a price list is widget chrome");
   // A short clean sentence is quoted whole, unchanged.
   assert.equal(presentableQuote("Aluminum-free and gentle."), "Aluminum-free and gentle.");
+});
+
+// ---- 3b. P-22 — THE QUOTE MUST CONTAIN THE TERM IT PROVES ------------------
+//
+// Filed at v3.9, fixed at v4.0 CP-1b. The engine matches against the FULL sentence
+// and used to render `clean.slice(0, 180)`, so a term past character 180 produced a
+// green row whose quoted proof does not contain the claimed word. Worse than the v3.2
+// quoteless-row finding, because a quote that argues for nothing reads as MORE
+// credible than no quote at all.
+//
+// Measured on the 349-store replay corpus: 10 asked rows over 8 stores moved —
+// claim, attribute AND delivery rows, because `findAttributeSupport` and
+// `findTimingSupport` both delegate to `findSupport`. Zero status changes, zero
+// detail changes. `experiments/v4-0/out/ab_check_cp1b.json`.
+
+test("3b. presentableQuote WITHOUT a span is byte-identical to the head cut", () => {
+  // The blast-radius pin. If this ever stops holding, the fix stopped being surgical
+  // and every quote in the product moved.
+  const long = `Our formula is fragrance-free and ${"gentle ".repeat(60)}enough for daily use.`;
+  const clean = long.replace(/\s+/g, " ").trim();
+  const cut = clean.slice(0, 180);
+  const lastSpace = cut.lastIndexOf(" ");
+  const expected = `${(lastSpace > 90 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.!-]+$/, "")}…`;
+  assert.equal(presentableQuote(long), expected, "no span ⇒ the previous behaviour exactly");
+  // And a span that already falls inside the head window changes nothing either.
+  assert.equal(presentableQuote(long, { index: 18, end: 32 }), expected, "span inside the head window ⇒ unchanged");
+});
+
+test("3b. presentableQuote WITH a span past the cap windows onto the span", () => {
+  const filler = "gentle ".repeat(60);
+  const long = `Our formula is ${filler}fragrance-free enough for daily use.`;
+  const clean = long.replace(/\s+/g, " ").trim();
+  const idx = clean.indexOf("fragrance-free");
+  assert.ok(idx > 180, "the fixture must actually put the term past the cap, or this test proves nothing");
+
+  // ANTI-VACUITY: the OLD behaviour on this exact input must NOT contain the term.
+  // Without this the test could pass against a function that never changed.
+  assert.ok(!presentableQuote(long)!.includes("fragrance-free"), "the head cut must omit the term, or the fixture is wrong");
+
+  const q = presentableQuote(long, { index: idx, end: idx + "fragrance-free".length })!;
+  assert.ok(q.includes("fragrance-free"), "the windowed quote must contain the term it proves");
+  assert.ok(q.startsWith("…"), "a window that does not start at 0 says so");
+  assert.ok(q.length <= 182, `<=180 chars + two ellipses (got ${q.length})`);
+  assert.ok(clean.includes(q.replace(/^…/, "").replace(/…$/, "")), "the window is verbatim, never re-worded");
+});
+
+test("3b. the match span is index-aligned with the cleaned sentence", () => {
+  // `findSupport` computes spans against `normalize(text)`; `presentableQuote` slices
+  // `text.replace(/\s+/g," ").trim()`. The window is only correct because those two
+  // strings have the same length and the same alignment. `normalize` lower-cases and
+  // maps unicode dashes and curly apostrophes ONE character for one, then applies the
+  // identical whitespace collapse and trim — asserted here rather than assumed, because
+  // a future normaliser that deletes or expands a character would silently slide every
+  // window off its term while every status stayed green.
+  const tricky = [
+    "  Leading and trailing space  ",
+    "Multiple    internal     spaces",
+    "An em—dash and an en–dash and a ‐hyphen",
+    "Curly ‘quotes’ and more ’apostrophes‘",
+    "Tabs\tand\nnewlines\r\nmixed",
+    "Fragrance‑free with a non-breaking hyphen",
+  ];
+  for (const s of tricky) {
+    const clean = s.replace(/\s+/g, " ").trim();
+    assert.equal(normalize(s).length, clean.length, `normalize() changed the length of ${JSON.stringify(s)}`);
+  }
+});
+
+test("3b. EVERY dictionary term, buried past the cap, still appears in its own quote", () => {
+  // The general proof. One long sentence per supporting term, with the term at the
+  // end, run through the REAL findSupport — the function that owns the invariant.
+  // Attribute and delivery rows route through this same function, so proving it here
+  // proves it for all three row kinds.
+  const filler = "and it is a thoroughly ordinary product sentence ".repeat(6);
+  const claimKeys: Array<[string, string[]]> = [
+    ["fragrance_free", ["fragrance-free", "fragrance free", "no added fragrance", "no fragrance"]],
+    ["vegan", ["vegan", "100% vegan"]],
+    ["cruelty_free", ["cruelty-free", "cruelty free", "not tested on animals", "leaping bunny"]],
+    ["organic", ["organic", "usda organic", "certified organic"]],
+    ["single_origin", ["single origin", "single-origin", "single estate", "single farm"]],
+    ["gluten_free", ["gluten-free", "gluten free", "no gluten"]],
+    ["bpa_free", ["bpa-free", "bpa free", "no bpa", "without bpa"]],
+    ["third_party_tested", ["third-party tested", "lab tested", "certificate of analysis"]],
+  ];
+  let checked = 0;
+  for (const [key, terms] of claimKeys) {
+    for (const term of terms) {
+      const text = `This product ${filler}is ${term} today.`;
+      const ev = buildEvidence([{ surface: "product_description", text }]);
+      const hit = findSupport(ev, terms, { wholeWord: true });
+      assert.ok(hit, `${key}/${term}: findSupport found nothing — the fixture is wrong, not the engine`);
+      assert.ok(hit!.quote, `${key}/${term}: no quote produced`);
+      assert.ok(
+        hit!.quote!.toLowerCase().includes(term.toLowerCase()),
+        `${key}/${term}: the quote does not contain the term it proves — P-22 is back.\n  quote: ${hit!.quote}`,
+      );
+      checked++;
+    }
+  }
+  // Anti-vacuity: a loop that checked nothing passes silently.
+  assert.ok(checked >= 25, `only ${checked} term fixtures checked — the loop is not covering the dictionary`);
 });
 
 // ---- 4. negation prevents a claim match ------------------------------------

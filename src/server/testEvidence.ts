@@ -275,9 +275,40 @@ export function passesAboutness(sentence: string, term: string, opts: { allowLog
 
 // ---- gate 3: presentable quote ----------------------------------------------
 
+/**
+ * Where inside the sentence the proving term matched, as a half-open span into
+ * `normalize(sentence)`.
+ *
+ * ⚠️ THE INDICES ARE VALID AGAINST `clean` TOO, and that is not an accident that may
+ * be quietly broken. `normalize` lower-cases, maps the unicode dashes to `-` and the
+ * curly apostrophes to `'` — all one character for one — then applies exactly the
+ * same `\s+ → " "` collapse and `trim()` this function applies. So `normalize(s)` and
+ * `clean` have identical length and identical index alignment. A test asserts that
+ * over the whole corpus rather than trusting this comment.
+ */
+export interface QuoteSpan { index: number; end: number }
+
 /** A whole-sentence quote, ≤180 chars, cut at a WORD boundary with an ellipsis.
- *  Returns null when no clean sentence can be produced (caller names the surface). */
-export function presentableQuote(sentence: string): string | null {
+ *  Returns null when no clean sentence can be produced (caller names the surface).
+ *
+ * ⚠️ `mustInclude` EXISTS BECAUSE A QUOTE CAN OMIT THE TERM IT PROVES — P-22, filed
+ * at v3.9 and measured again here. The engine matches against the FULL sentence and
+ * used to render `clean.slice(0, 180)`, so on a long sentence whose proving term sits
+ * past character 180 the merchant was shown a green row whose quoted proof does not
+ * contain the claimed word. That is the v3.2 finding one step worse: a row that
+ * renders NO quote is at least visibly unproven, while a row that renders a quote
+ * arguing for nothing looks MORE credible, not less. Measured on the 349-store replay
+ * corpus: 2 of 70 quoted pass rows, 1 of them a row the merchant-facing task asks.
+ *
+ * The fix is to move the WINDOW, not to lengthen the cut. Lengthening trades one
+ * defect for a wall of text and still fails on the next longer sentence; a window
+ * anchored on the match is bounded and always contains its own proof.
+ *
+ * With no `mustInclude`, or with a span that already falls inside the head window,
+ * the output is BYTE-IDENTICAL to the previous behaviour. That is deliberate: the
+ * blast radius is exactly the rows that were broken, and the A/B proves it.
+ */
+export function presentableQuote(sentence: string, mustInclude?: QuoteSpan): string | null {
   const clean = sentence.replace(/\s+/g, " ").trim();
   if (!clean || clean.length > MAX_CLEAN_SENTENCE) return null;
   // Content density, not length, is what separates prose from scraped chrome:
@@ -287,10 +318,52 @@ export function presentableQuote(sentence: string): string | null {
   const letters = (clean.match(/[a-z]/gi) ?? []).length;
   if (letters / clean.length < 0.55) return null;                  // symbol/number soup
   if (clean.length <= MAX_QUOTE) return clean;
-  const cut = clean.slice(0, MAX_QUOTE);
-  const lastSpace = cut.lastIndexOf(" ");
-  const body = (lastSpace > MAX_QUOTE * 0.5 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.!-]+$/, "");
-  return `${body}…`;
+
+  // Does the head window already contain the proof? If there is no span to honour,
+  // or the span ends inside it, nothing about the old behaviour changes.
+  const span =
+    mustInclude &&
+    mustInclude.end > 0 &&
+    mustInclude.end <= clean.length &&
+    mustInclude.index >= 0 &&
+    mustInclude.index < mustInclude.end
+      ? mustInclude
+      : null;
+  if (!span || span.end <= MAX_QUOTE) {
+    const cut = clean.slice(0, MAX_QUOTE);
+    const lastSpace = cut.lastIndexOf(" ");
+    const body = (lastSpace > MAX_QUOTE * 0.5 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.!-]+$/, "");
+    return `${body}…`;
+  }
+
+  // Slide a MAX_QUOTE-wide window so it contains the span, with the surrounding
+  // context the term needs to be readable. A term longer than the whole window
+  // cannot be contained; the dictionaries have no such term, and rather than carry
+  // dead behaviour the window simply starts at the match in that case, so the proof
+  // is still the first thing the reader sees.
+  const width = span.end - span.index;
+  const pad = Math.max(0, Math.floor((MAX_QUOTE - width) / 2));
+  let start = Math.max(0, Math.min(span.index - pad, clean.length - MAX_QUOTE));
+  if (width >= MAX_QUOTE) start = span.index;
+  let stop = Math.min(clean.length, start + MAX_QUOTE);
+
+  // Snap to word boundaries, but NEVER past the span — a boundary snap that ate the
+  // proving term would reintroduce exactly the defect this branch exists to close.
+  if (start > 0) {
+    const nextSpace = clean.indexOf(" ", start);
+    if (nextSpace !== -1 && nextSpace + 1 <= span.index) start = nextSpace + 1;
+  }
+  if (stop < clean.length) {
+    const prevSpace = clean.lastIndexOf(" ", stop);
+    if (prevSpace >= span.end) stop = prevSpace;
+  }
+
+  // Trim leading/trailing punctuation the cut left dangling — but bounded by the
+  // span on both sides, so the trim can never eat the proof.
+  while (start < span.index && /[\s,;:.!-]/.test(clean[start]!)) start++;
+  while (stop > span.end && /[\s,;:.!-]/.test(clean[stop - 1]!)) stop--;
+  const body = clean.slice(start, stop);
+  return `${start > 0 ? "…" : ""}${body}${stop < clean.length ? "…" : ""}`;
 }
 
 // ---- the uniform support check ----------------------------------------------
@@ -374,7 +447,10 @@ export function findSupport(
     if (matches.some((m) => isNegated(ev.text, m.term))) continue;
     const best = matches.find((m) => passesAboutness(ev.text, m.term, opts).ok);
     if (!best) continue;
-    return { surface: ev.surface, sentence: ev.text, term: best.term, quote: presentableQuote(ev.text) };
+    // P-22 — the quote must contain the term this row proves. `best` carries the
+    // span into the normalised sentence, which is index-aligned with the cleaned
+    // one `presentableQuote` renders.
+    return { surface: ev.surface, sentence: ev.text, term: best.term, quote: presentableQuote(ev.text, best) };
   }
   return null;
 }
@@ -422,7 +498,11 @@ export function findViolation(
       // place "free of X" and "X: never" are unambiguous denials (v3.1 CP2a).
       if (isNegated(ev.text, v.term, { absenceFrames: true })) continue; // "does not contain gluten"
       if (!passesAboutness(ev.text, v.term, opts).ok) continue;
-      return { surface: ev.surface, sentence: ev.text, term: v.term, quote: presentableQuote(ev.text) };
+      // P-22 applies with MORE force here: "your public copy states the opposite of
+      // this requirement" is the most damaging sentence the engine can write about a
+      // store, and a quote that omits the violating term gives the merchant nothing
+      // to check it against.
+      return { surface: ev.surface, sentence: ev.text, term: v.term, quote: presentableQuote(ev.text, v) };
     }
   }
   return null;

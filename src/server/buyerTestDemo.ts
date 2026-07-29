@@ -165,18 +165,41 @@ const SURFACE_KEY: Record<string, QuotableSurface> = (() => {
  * every evidence sentence on the same surface and taking the one that reproduces the
  * quote exactly. Exact, not fuzzy: a prefix match would attribute the wrong sentence
  * whenever two share an opening, and a wrong receipt is worse than none.
+ *
+ * ⚠️ A SECOND, EQUALLY EXACT LEG WAS ADDED AT v4.0 CP-1b, AND WITHOUT IT THIS FUNCTION
+ * WOULD HAVE SILENTLY STOPPED RESOLVING. P-22's fix lets `presentableQuote` slide its
+ * window so the rendered quote always contains the term the row proves, which means a
+ * quote can now be `…middle of the sentence…` rather than a head cut — and the plain
+ * `presentableQuote(ev.text)` call above reproduces only the head. The row would still
+ * render; `fullSentence` would just go null, and the page would say the sentence could
+ * not be matched. That is the flattering-direction failure this repo keeps recording:
+ * a degradation that looks like an honest "not available".
+ *
+ * The second leg stays EXACT in the sense that matters: the quote's body, stripped of
+ * the ellipses the renderer added, must be a literal substring of the cleaned sentence,
+ * and it must match exactly ONE sentence on that surface. Ambiguity returns null rather
+ * than guessing, for the same reason the prefix match was rejected.
  */
 function resolveFull(evidence: EvidenceSentence[], a: Assertion): { sentence: string; truncated: boolean } | null {
   if (!a.evidenceQuote || !a.evidenceSurface) return null;
   const key = SURFACE_KEY[a.evidenceSurface];
   if (!key) return null;
-  for (const ev of evidence) {
-    if (ev.surface !== key) continue;
+  const clean = (s: string): string => s.replace(/\s+/g, " ").trim();
+  const onSurface = evidence.filter((ev) => ev.surface === key);
+
+  for (const ev of onSurface) {
     if (presentableQuote(ev.text) === a.evidenceQuote) {
-      return { sentence: ev.text, truncated: ev.text.replace(/\s+/g, " ").trim() !== a.evidenceQuote };
+      return { sentence: ev.text, truncated: clean(ev.text) !== a.evidenceQuote };
     }
   }
-  return null;
+  // Windowed quote: strip the renderer's own ellipses and require a unique containing
+  // sentence. `body` is never empty for a real quote, and an empty body would match
+  // every sentence — refuse rather than resolve on nothing.
+  const body = a.evidenceQuote.replace(/^…/, "").replace(/…$/, "");
+  if (!body || body === a.evidenceQuote) return null;
+  const hits = onSurface.filter((ev) => clean(ev.text).includes(body));
+  if (hits.length !== 1) return null;
+  return { sentence: hits[0]!.text, truncated: clean(hits[0]!.text) !== a.evidenceQuote };
 }
 
 let cache: DemoResult | null = null;
