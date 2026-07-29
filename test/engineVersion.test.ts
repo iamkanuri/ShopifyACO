@@ -57,11 +57,6 @@ const MATCHER_FILES = [
   "src/server/testEvidence.ts",
   "src/server/subject.ts",
   "src/crawler/extract.ts",
-  // v4.0 CP-3 — `src/server/referent.ts` is G-15-R's whole predicate: three closed word
-  // lists and a forward scan that decide whether a claim row passes. Without it on this
-  // list the entire guard would be editable without tripping the wire, which is exactly
-  // the condition `ENGINE_VERSION` sitting at v2.0.0 from v2.0 through v3.7 created.
-  "src/server/referent.ts",
 ] as const;
 
 /** Content hash over the matcher files, in a fixed order, newline-normalised so
@@ -100,11 +95,8 @@ function matcherHash(): string {
 // prevent". Version numbers are free; a silently-shared version is not. Only the final
 // deployed value is ever recorded against a merchant's saved test, so the intermediate
 // v2.3.0 costs nothing.
-// v4.0 CP-3 — G-15-R, the referent veto. `src/server/referent.ts` JOINS the watched list
-// in this commit, so the hash moves for two reasons at once: a new file is hashed, and
-// three existing ones changed bytes.
-const PINNED_ENGINE_VERSION = "v2.5.0";
-const PINNED_MATCHER_HASH = "6c96fe9c685e1934";
+const PINNED_ENGINE_VERSION = "v2.4.0";
+const PINNED_MATCHER_HASH = "b8d2ca02cade979d";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();

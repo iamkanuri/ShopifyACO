@@ -26,7 +26,6 @@
 // ===========================================================================
 
 import { nonProductSubject } from "./subject.js";
-import { referentVeto } from "./referent.js";
 
 /** Surfaces whose text is product evidence and may be quoted. Page chrome is
  *  deliberately absent — see the module header. */
@@ -422,18 +421,6 @@ export function findSupport(
      *  attribute rows' `valueGuard`: it reads the ORIGINAL sentence, case intact,
      *  and a rejected sentence skips to the next one rather than failing the row. */
     valueGuard?: (sentence: string) => boolean;
-    /**
-     * G-15-R — apply the REFERENT veto to each candidate match.
-     *
-     * OPT-IN, and set on the CLAIM branch alone. The attribute rows
-     * (`findAttributeSupport`) and the delivery row (`findTimingSupport`) route through
-     * this same function and are deliberately NOT given it: their blast radius is
-     * unmeasured here, so they are untouched by construction rather than by intention.
-     * `findViolation` never receives it either — *"your public copy states the opposite
-     * of this requirement"* is the most damaging sentence this engine writes, and
-     * suppressing one of those has not been measured.
-     */
-    referentGuard?: boolean;
   } = {},
 ): SupportedEvidence | null {
   for (const ev of evidence) {
@@ -458,18 +445,7 @@ export function findSupport(
     // true statement about the corpus and a false one about the code, and shipping it
     // as a comment would have invited a later session to delete a working guard.
     if (matches.some((m) => isNegated(ev.text, m.term))) continue;
-    // ⚠️ THE REFERENT VETO BELONGS HERE, NOT INSIDE `passesAboutness`, and the reason is
-    // a live bug in that function rather than a preference: it recomputes
-    // `sentence.toLowerCase().indexOf(term)` — FIRST OCCURRENCE ONLY — so on a sentence
-    // carrying the term more than once it reads the wrong clause. `n` and `m.index/m.end`
-    // are already in scope here and are already correct against the same normalised
-    // string. (That `indexOf` is filed separately as its own defect; folding it into this
-    // diff would make the A/B unreadable.)
-    const clean = ev.text.replace(/\s+/g, " ").trim();
-    const best = matches.find(
-      (m) => passesAboutness(ev.text, m.term, opts).ok
-        && !(opts.referentGuard === true && referentVeto(n, clean, m)),
-    );
+    const best = matches.find((m) => passesAboutness(ev.text, m.term, opts).ok);
     if (!best) continue;
     // P-22 — the quote must contain the term this row proves. `best` carries the
     // span into the normalised sentence, which is index-aligned with the cleaned

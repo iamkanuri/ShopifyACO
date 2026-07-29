@@ -1612,7 +1612,7 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * v2.1.0 — v3.8: the tier-aware cents conversion and the non-USD price refusal.
  * Together they change what 44 of 349 captured stores' price rows report.
  */
-export const ENGINE_VERSION = "v2.5.0";
+export const ENGINE_VERSION = "v2.4.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency
@@ -1966,11 +1966,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // `wholeWord` matters here and was not set before v2.5: the claim dictionary
       // contains single words, so `organic` matched inside `inorganic` — a word that
       // asserts the opposite of the claim it was crediting.
-      // `referentGuard` is set HERE and on no other row. G-15-R vetoes a match whose
-      // governing noun phrase denotes a supply-chain party, a landholding or a cultivation
-      // practice rather than this product. The attribute and delivery rows share
-      // `findSupport` and do NOT get it — their blast radius is unmeasured.
-      const hit = findSupport(quotable, fx.support, { wholeWord: true, referentGuard: true });
+      const hit = findSupport(quotable, fx.support, { wholeWord: true });
       // A PASS WITHOUT A QUOTE MUST SAY SO. `findSupport` returns a hit with
       // `quote: null` when no clean sentence can be cut, and this branch used to render
       // `hit.quote ?? undefined` — so the row passed showing the merchant nothing to

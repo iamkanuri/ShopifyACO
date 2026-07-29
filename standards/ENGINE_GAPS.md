@@ -1726,6 +1726,104 @@ subscription mention as hostile produces a false **fail** on a compliant merchan
 also v3.6's **highest-precision detector** (12 of 13 sampled hits confirmed), which makes it the most
 tempting stratum to write a rule against and the one where a wrong rule is most likely to ship.
 
+### 🔴 ATTEMPTED AT v4.0 AND REVERTED — the cost is now a number, not a fear
+
+**G-15-R**, a supply-chain **attachment-head veto** with a partitive predicative branch, was
+designed, implemented, wired, measured and reverted in one session. It is the **sixth**
+subject-shaped attempt in this repo and the **fifth** to be reverted. It never reached
+production and `main` never carried it; the record is commit `deb0fe1` on
+`feat/v4-0-referent`, reverted in the commit that follows it.
+
+```
+CLOSED   6 of its own 8 primary real-copy targets (A022 and A047 survived)
+COST     119 confirmed true-row losses
+RATIO    19.8 true rows lost per real-copy defect closed
+BAR      2.33 (strict) / 5.13 (raw) — experiments/v3-9/out/robust.json
+                                              8.5x over. No discounting reaches the bar.
+```
+
+**Every instrument the author could run said ship.** 349-store A/B over 2,928 rows: 4 status
+changes, all `pass_evidenced → not_proven`, all on rows the v3.9 adjudication confirms
+misleading, **0 true rows lost**. Suite 1.0 `4/37 → 5/37`, must-not-regress `19/19`. Suite
+2.0 hostile `0/8 → 6/8`, must-not-regress `17/17`. G-14: 13 cells moved, all `wrong_subject`,
+all down. A fourth attacker separately measured **0 occurrences of the blocking frame across
+319 snapshots** and 4 flips in 11,791 executions, all correct.
+
+Four independent attackers executing **chosen input** against the same frozen commit found
+**126 candidate regressions**, of which a refuter re-executing every one confirmed 119.
+**Tenth instance in the series, and the second time the gate ran BEFORE ship rather than as
+an autopsy.**
+
+#### THE FINDING IS A DIRECTION ERROR, NOT A LIST HOLE — which is why no dial-down answers it
+
+`referentVeto`'s Rule 1 reads only **FORWARD** from the matched term and never checks whether
+the term is already predicated of the product **behind** it. Rule 2 computes exactly that
+predicate (`before` + `COPULA_LEAD`) and spends it on the partitive branch alone. So the
+bridge crosses a bare `and` — which `CLAUSE_SPLIT` does **not** cut on, because it requires a
+comma — walks out of the clause carrying the claim, and vetoes on **the subject of the next
+independent clause**. `FOLLOWER_OK` then accepts that subject's finite verb, so the
+head-position test returns its most confident answer on exactly the input where it is wrong.
+
+Executed here, guard-off and guard-on in one process, three-legged canary live
+(`experiments/v4-0/verify_kill.ts`) — **13 of 13 lost**:
+
+> *"The beans are organic and farmers in Huila are paid above the C price."* → `not_proven`
+> *"The granola is gluten free and family farms in Montana grow the oats."* → `not_proven`
+> *"The bottle is BPA-free and local growers are paid within seven days."* → `not_proven`
+> *"This coffee comes from an organic farm in Antioquia."* → `not_proven`
+
+Note the second and third: `gluten_free` is an **allergen** row, and `bpa_free` has no
+agricultural reading at all. **The class is not confined to the claims the guard was aimed at.**
+
+⚠️ **ONE COMMA FLIPS THE VERDICT, and the merchant cannot see why.** Executed minimal pair:
+`"The bar is vegan and small farmers are paid a premium."` → `not_proven`; the same sentence
+with a comma before `and` → `pass_evidenced`. The forward scan and the clause splitter
+disagree about where a clause ends.
+
+#### What a successor must answer BEFORE writing any list
+
+1. **Decline the veto when `COPULA_LEAD` matches immediately before the term and the copula's
+   subject is not partitive.** The predicate is already computed; it is simply not consulted.
+2. **Stop the bridge at any coordinator introducing a new finite clause**, or remove the
+   coordinators from the bridge entirely.
+3. **`ENTITY_HEAD` conflated parties with PROCESS nouns, and the file decided that question
+   against itself.** `practices` / `principles` / `methods` were excluded *with the reason
+   written out* — *"grown using organic methods"* is a live passing row adjudicated NOT
+   misleading — and the bare deverbal nouns those words modify (`farming`, `agriculture`,
+   `cultivation`, `husbandry`) were kept. Executed: *"Organic farming is used from seedling to
+   harvest."* fails while *"Organic farming practices are used from seedling to harvest."*
+   passes. **Same proposition, opposite verdict, decided by morphology.**
+4. **For `fair_trade` the certification is held by the producer organisation BY DEFINITION,
+   and for `organic` it attaches to the operation and the cultivation practice.** A rule
+   premised on *"the head is a supply-chain party, therefore not about the product"* is
+   inverted for the two keys carrying the most dictionary terms. `single farm` is itself a
+   SUPPORT term for `single_origin`, so the vocabulary treats a farm as proof while the guard
+   vetoed the adjacent phrasing.
+5. **The partitive branch has no test that its subject denotes a class.** `PROPORTION`'s
+   of-less alternative matches any leading `most|many|much|some|several|plenty` with no
+   plural or mass head required, so fronted adjuncts fire: *"Much loved by pastry chefs, the
+   oil is certified organic."*, *"Most notably, the flour is organic."* — and the real brand
+   *"SOME BY MI is vegan and cruelty free."*
+
+⚠️ **THE PRE-PRICED DIAL-DOWN WAS FALSE AS MEASURED, and the way it was wrong generalises.**
+The design priced dropping `LANDHOLDING` as *"removes every farm-direct hazard"*. Measured two
+ways on the frozen tree: **4 of 17** and **54 of 119** — under half, and it touches none of the
+copula class. **A dial-down priced against the author's own corpus was priced against the
+instrument that cannot see the class.**
+
+⚠️ **BLAST RADIUS REACHED THE PUBLISHED CONTRACT.** The guard was mirrored into
+`standards/vocabulary.ts` — correctly, since otherwise the acceptance suites would have
+measured the guard-OFF path — so every published Coffee Standard claim row inherited it. A
+successor must scope that deliberately. It also fired identically on `product_title` and
+`product_options`, the two surfaces whose corpus coverage is **zero**; they were safe only
+because the finite-verb gate declines fragments, which is an accident of syntax rather than a
+surface gate.
+
+**What the attempt bought, recorded so the revert is not read as the work being worthless:**
+6 of 8 targets closed, **0 of 18 honest carriers lost**, the corpus instrument clean, and the
+finite-verb gate holding under 13 direct title/option probes. The design is sound where it is
+measurable and it is unmeasurable exactly where it is wrong.
+
 ### Risk of building it
 
 **Highest on this page, and the history is the argument.** Every subject- or scope-shaped change this
@@ -2717,7 +2815,140 @@ round-robin independently; never rely on a stride being coprime by luck.
 
 ---
 
-## P-22 · THE RENDERED QUOTE CAN OMIT THE TERM IT PROVES
+## P-23 · The `unscented` → `fragrance_free` equivalence, and the SPLIT that would resolve it
+
+**Filed at v4.0 CP-1a.** Adjudicated by 4 independent agents + 3 refuters with 2 blind gold
+cases (gold 4/4). The panel split **1-1-1-1** and the synthesis landed on **KEEP-PENDING**.
+
+`unscented` is carried as a supporting term for `fragrance_free`, whose merchant-visible label
+is literally `"Fragrance-free / unscented"`. The cosmetics industry distinguishes them:
+*unscented* means no perceptible smell, routinely achieved by **adding** a masking fragrance;
+*fragrance-free* means no fragrance ingredient was added. Neither is FDA-defined, and contact
+dermatitis to masking fragrance in products labelled unscented is documented clinical
+practice. Under EU Regulation 1223/2009 a masking fragrance is still `Parfum` on the INCI list.
+
+**Why it was NOT removed, in the order that decided it:**
+1. **The only live row is not a false pass.** `dropps.com`'s *"UltraWash Dishwasher Detergent
+   Case, Unscented"* publishes a complete ten-ingredient, variant-scoped formulation with zero
+   fragrance material — `masking`/`parfum`/`perfume`/`essential oil` return **0 across all
+   952,130 captured bytes**.
+2. **Bare removal with the label unchanged would be a false statement about a real store,
+   self-refuting on its own line.** The miss path renders *"Checked structured data, product
+   title and page description — no statement an AI buyer could verify"* — naming the product
+   title as a surface it read, while that title says *Unscented* and the second word of the
+   row's own label is *unscented*. Strictly worse than the v3.5 identifiers defect: there the
+   engine had not looked; here it looked, matched, and had the match removed from the
+   dictionary.
+3. **The corpus is SILENT, not reassuring.** n=1, in the wrong product category. `unscented`
+   occurs in 1 evidence sentence of 4,426 and 6 stores of 349 — a general DTC sample, not a
+   cosmetics one.
+
+⚠️ **RELABELLING ALONE, WITH THE TERM KEPT, IS WORSE THAN DOING NOTHING** — the pass row would
+read *"Fragrance-free — Stated in your product title"* quoting *"Unscented"*, taking the
+residual from half-disclosed by the slash to entirely undisclosed.
+
+**The proposal: SPLIT, not narrow.** `fragrance_free` keeps
+`[fragrance-free, fragrance free, no added fragrance, no fragrance]` with label
+`"Fragrance-free"`; a NEW key `unscented` takes `[unscented]` with label `"Unscented"`. It is
+a **14th claim key**, and that has costs nobody has priced: `ENGINE_CLAIM_KEYS` moves, so
+`compile.ts` refuses a standard binding any key outside the literal 13 — the published-contract
+surface; it produces new G-14 cells with no adjudicated record to derive them from; and it adds
+a third claim row to the largest `CATEGORY_CLAIMS` branch, whose discrimination is unmeasured.
+
+**Also required if the term is ever removed:** `CLAIM_LABEL.fragrance_free` must move in the
+same commit, `requirementFromLabel` needs a legacy-label entry (it reverse-maps a saved label
+string, and `contractVersion` does **not** hash the label, so the rename is silent on that
+path), plus the mirrors in `vocabulary.engine.test.ts`, `ENGINE_CONTRACT.md` and
+`suite2.json`, plus a suite-2.0 re-derivation for `hc-11`.
+
+**THE MEASUREMENT THAT DECIDES IT, named so it is not re-litigated by argument:** over a
+**cosmetics-routed capture**, (a) how often is `unscented` the SOLE matched term for
+`fragrance_free`, and (b) do those same stores publish a retained term anywhere on a product
+surface? If (a) is near zero, plain REMOVE is correct. If (a) is material, the SPLIT is.
+
+**Who decides:** the owner of the claim dictionary. Not a term-list session.
+
+---
+
+## P-24 · `lab tested` inside `third_party_tested`, and the prioritisation objection
+
+**Filed at v4.0 CP-1a**, raised by a refuter and unanswered by anyone. `ENGINE_GAPS` already
+names `lab tested` in `third_party_tested`'s supporting list as the highest-value
+letter-versus-spirit hazard in the set — **an in-house lab satisfies a THIRD-PARTY
+requirement** — and it sits unfixed while v4.0 acted on the two equivalences a collision author
+happened to file. **That is prioritisation by what got written down rather than by what got
+measured.** The adversarial pass independently reached the same shape from the other side,
+classifying *"Independently tested suppliers provide every input."* as a residual: the SUPPLIER
+is tested, not the product. Not fixed here; named so the next dictionary session starts from
+the measured worst rather than the most recently filed.
+
+---
+
+## P-25 · The raw/normalised index alignment is asserted in a COMMENT, and `toLowerCase` is not length-preserving
+
+**Filed at v4.0 CP-3**, found by the adversarial pass against a guard that has since been
+reverted — **the defect is independent of that guard's fate and is live today.**
+
+`testEvidence.ts` documents that `normalize(s)` and `s.replace(/\s+/g," ").trim()` have equal
+length and identical index alignment, and CP-1b's windowed quote relies on it. The invariant is
+asserted over a fixture set in `test/productTest.test.ts`, **not enforced at runtime**. But
+`String.prototype.toLowerCase` is not length-preserving in general: U+0130 (Latin capital I
+with dot above) lowercases to **two** UTF-16 units, so a single such character anywhere earlier
+in a sentence desynchronises `raw` from `n` for everything after it.
+
+Today the consequence is a quote window cut a character or two off. `referentVeto` was the
+first consumer to make a **decision** out of that alignment (its proper-name test read `raw` at
+an index computed against `n`), which is how the hazard surfaced. **The fix is a runtime length
+check that DECLINES rather than mis-reads** — same discipline as every other instrument here:
+an unreadable input is not a readable one.
+
+---
+
+## P-26 · The 17 reinstated capability groups are `comparative` and `review_quote`, not referent
+
+**Filed at v4.0 CP-2.** Suite 2.0's `v4_capability_target` lists 17 groups / 73 false passes as
+a secondary target for a referent guard. **They are not a referent class, and three judges
+measured this independently and agreed: a referent guard closes 0 of 17, structurally.**
+
+Every one of the 14 generated `wrong_subject` templates uses the literal head noun `product` —
+*"Better value than a typical Aluminum-Free product."*, *"The best Single Origin product I have
+ever tried." — Sarah M.* — and `product` is the one noun that can never enter a supply-chain
+entity list, because *"vegan product"* is what an honest merchant writes about the thing they
+are selling. These belong to `subject.ts`'s existing `COMPARATIVE` and `REVIEW_VOICE`, which
+under-cover them.
+
+**Their real-copy frequency is near zero**: `comparative` is 34 sentences over 18 stores and
+`review_quote` **3 sentences over 3 stores**, in 3,349 sentences across 335 stores — among the
+rarest shapes v3.6 measured, and `review_quote` is one v3.6 already declined a guard for on
+frequency. **Stop scoring referent designs against them; a design that reports moving them has
+miscounted its own target.**
+
+---
+
+## P-22 · THE RENDERED QUOTE CAN OMIT THE TERM IT PROVES — 🟢 **APPLIED at v4.0 CP-1b (`9f9ace3`)**
+
+> **CLOSED.** `presentableQuote(sentence, mustInclude?)` slides a 180-character window onto the
+> matched span instead of always cutting from character 0 — the WINDOW, not the cut, because
+> lengthening the cut trades one defect for a wall of text and still fails on the next longer
+> sentence. With no span, or a span already inside the head window, the output is
+> **byte-identical**, so the blast radius is exactly the broken rows. `findSupport` and
+> `findViolation` pass the span they already computed; `findAttributeSupport` and
+> `findTimingSupport` delegate to `findSupport`, so one fix covers claim, attribute and delivery
+> rows.
+>
+> ⚠️ **THE FOOTPRINT WAS 5× WHAT THIS ROW FILED.** The measurement below is claim rows only —
+> 2 of 69. Measured over all asked rows on the same corpus: **10 rows over 8 stores**, including a
+> *"Measurements are stated"* row whose quote ended `…fully loft to 2.75…`, a delivery row cut at
+> `allow two (2) to…`, and a materials row cut at `80%…`. 349-store A/B: **0 status changes, 0
+> detail changes, 10 quote changes; `contractVersion` moved for 0 of 349.**
+>
+> Also fixed one tier over: `semanticTier` rendered a head cut that need not contain the model's
+> own verified `exactQuote`. Replay cannot exercise it (`PRODUCT_TEST_SEMANTIC=0`), so it is
+> covered by construction and a unit test, not by measurement — stated rather than glossed.
+>
+> `ENGINE_VERSION` v2.2.0 → v2.3.0. The v4.0 brief predicted the tripwire would stay quiet on the
+> grounds that this is "renderer surface, not matcher"; it was wrong about the mechanism — the pin
+> is a content hash over whole files and `testEvidence.ts` is one of them.
 
 **Filed at v3.9 CP-3, found while building acceptance suite 2.0 — not by looking for it.**
 

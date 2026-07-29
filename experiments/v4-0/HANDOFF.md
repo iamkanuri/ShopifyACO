@@ -35,11 +35,36 @@ commit that superseded it**, which is the only way that file can go stale. Produ
 | CP-1b | P-22 — the quote that omits its proving term | ✅ **`9f9ace3`** |
 | CP-1a | the two term-list defects | ✅ **`5f124bd`** |
 | **Pause 1** | **push Phase A** | ✅ **PUSHED + VERIFIED IN PRODUCTION** |
-| CP-2 | referent guard design | ⏳ design panel running (`wf_857441ad-fdf`) |
-| CP-3 | the gate, full strength | ⏳ |
-| CP-4 | the capability × frequency block's third row | ⏳ |
-| CP-5 | read-only Shopify app inventory | ⏳ running (`wf_8077708b-860`) |
-| CP-6 | filings and register hygiene | ⏳ |
+| CP-2 | referent guard design — 4 designs, 3 judges, 1 synthesis | ✅ |
+| CP-3 | the gate, full strength — **REVERT_AND_PIN** | ✅ **`deb0fe1` reverted** |
+| CP-4 | the block's third row | ✅ filled · **publish decision at Pause 2, NOT taken** |
+| CP-5 | read-only Shopify app inventory | ✅ REPORT.md §4 |
+| CP-6 | filings and register hygiene | ✅ |
+
+## PHASE B'S FATE — REVERTED AND PINNED
+
+G-15-R was designed, implemented, wired, measured and reverted in one session. `main` never
+carried it. The record is `deb0fe1` on this branch, reverted in the commit after it.
+
+```
+CLOSED   6 of its own 8 primary real-copy targets
+COST     119 confirmed true-row losses (126 claimed, refuter re-executed every one)
+RATIO    19.8 true rows per defect closed · BAR 2.33 · 8.5x over
+```
+
+**Every instrument the author could run said ship** — 349-store A/B: 4 status changes, all on
+adjudicated-misleading rows, 0 true rows lost; suite 1.0 `4/37→5/37`, `19/19`; suite 2.0
+`0/8→6/8`, `17/17`; G-14 13 cells down. A fourth attacker measured **0 occurrences of the
+blocking frame across 319 snapshots**.
+
+**The blocking class, re-executed by me rather than read from prose**
+(`experiments/v4-0/verify_kill.ts`, three-legged canary, 13 of 13 lost): Rule 1 reads only
+FORWARD and never checks predication BEHIND the term, so the bridge crosses a bare `and` —
+which `CLAUSE_SPLIT` does not cut on — and vetoes on the subject of the next clause.
+*"The granola is gluten free and family farms in Montana grow the oats."* → `not_proven`.
+**One comma flips the verdict.**
+
+Full pin with the successor's five prerequisites: `standards/ENGINE_GAPS.md` § G-15.
 
 ## PHASE A IS LIVE
 
