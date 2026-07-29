@@ -21,6 +21,11 @@ import { registrableDomain } from "../analysis/citedSources.js";
 
 export type FunnelEventName =
   | "test_requested"
+  // v4.1 — a visitor explicitly asked for a PUBLISHED STANDARD run rather than the
+  // generated buyer task. Counted separately because it is the only funnel step that
+  // demonstrates the product's actual proposition, and because it costs two fetch
+  // sequences with no cache relief: its volume is a spend signal as well as a demand one.
+  | "standard_test_requested"
   | "test_completed"
   | "test_failed"
   | "install_clicked"

@@ -82,6 +82,7 @@ import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
 import { runProductTest } from "./productTest.js";
+import { runStandardTest } from "./publicStandard.js";
 import { discoverProduct } from "./discover.js";
 import { newTestToken, storePublicTest } from "../db/buyerTests.js";
 import { recordFunnelEvent, classifyReferrer } from "../db/funnel.js";
@@ -656,6 +657,53 @@ app.post(
       return res.json({ costUsd: result.costUsd, competitors: [], prompts: [], error: "lookup exceeded cost cap" });
     }
     res.json(result);
+  }),
+);
+
+// --- RUN A PUBLISHED STANDARD against a live product URL (v4.1) -------------
+//
+// The route that makes "executes a published buying standard against the page" TRUE. Until
+// v4.1 no public route ever did: `/api/product-test` runs GENERATED requirements and its
+// response carries no `standard` and no `contractVersion`, and the only place Coffee
+// Standard v1.3 executed was `/demo`, against a frozen capture of one store.
+//
+// It is a SEPARATE, EXPLICIT action rather than something `/api/product-test` does
+// automatically, and the reason is cost rather than taste: applying a standard means
+// reading the product first (you cannot classify a page nobody has fetched), so this runs
+// two fetch sequences — and a pinned run bypasses the 7-day result cache in BOTH
+// directions by design, because that cache is keyed on URL alone and would otherwise serve
+// a conformance result to the public funnel. Never free, never cached.
+//
+// ⚠️ TIGHTER RATE LIMIT THAN THE GENERAL TEST, for exactly that reason: 3 per 15 minutes
+// against the general route's 5 per 10.
+app.post(
+  "/api/product-test/standard",
+  wrap(async (req, res) => {
+    const body = (req.body ?? {}) as { url?: unknown; slug?: unknown };
+    const url = typeof body.url === "string" ? body.url.trim() : "";
+    const slug = typeof body.slug === "string" && /^[a-z0-9-]{1,40}$/.test(body.slug) ? body.slug : "coffee";
+    const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
+    const referrerClass = classifyReferrer(req.get("referer"), req.get("host"));
+    void recordFunnelEvent({ name: "standard_test_requested", host, referrerClass });
+
+    if (!url || url.length > 400) {
+      return res.status(400).json({ error: "Paste a Shopify product URL." });
+    }
+    if (!rateLimit(`stdtest:${clientIp(req)}`, 3, 15 * 60_000)) {
+      return res.status(429).json({
+        error: "Running a published standard reads the page twice and is never served from cache, so it's limited to a few per quarter-hour. Try again shortly.",
+      });
+    }
+    try {
+      const out = await runStandardTest(url, slug);
+      // ⚠️ A NON-APPLICABLE PRODUCT IS A 200, NOT AN ERROR. "This standard does not cover
+      // this product" is a true and useful answer — it is the answer that teaches a reader
+      // what a published standard is — and the client renders it as a result.
+      return res.json(out);
+    } catch (err) {
+      console.error(`[standard-test] ${(err as Error).message}`);
+      return res.status(500).json({ ok: false, error: "Couldn't run the standard against that URL." });
+    }
   }),
 );
 

@@ -771,6 +771,59 @@ tbody tr.you td { color: var(--ink); font-weight: 600; }
 .pt-cta .btn-primary { display: inline-block; }
 .pt-enrich { font-size: 13px; color: var(--ink-2); margin-top: 12px; }
 
+/* ---- v4.1: the two layers, the published-standard block, the guided refusal ---- */
+
+/* The layer label. Deliberately quiet — it is orientation, not a warning. */
+.pt-layer {
+  font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
+  margin: 10px 0 4px; padding: 9px 11px;
+  background: var(--slate-2, rgba(127, 127, 127, .06));
+  border-left: 2px solid var(--slate); border-radius: 3px;
+}
+.pt-layer b { color: var(--ink); }
+
+/* The standard block sits BELOW the general table and above the evidence trace, so the
+   reading order is: what ran → what it found → what a published standard would ask. */
+.pt-standard { margin-top: 22px; padding-top: 16px; border-top: 2px solid var(--slate); }
+.pt-standard > b { display: block; font-size: 15px; margin-bottom: 5px; }
+.pt-standard p { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 0 0 11px; }
+.pt-cachenote { font-size: 11.5px !important; color: var(--ink-3, var(--ink-2)); margin-top: 8px !important; }
+
+.pt-stdresult { margin-top: 4px; }
+.pt-stdhead { margin-bottom: 12px; }
+.pt-stdhead > b { display: block; font-size: 15px; }
+.pt-stdmeta { font-size: 12px; color: var(--ink-2); margin: 4px 0 8px; }
+.pt-stdmeta code { font-size: 11.5px; }
+
+/* The entry id is the citation. Monospace so it reads as an identifier a reader can
+   quote back, not as a label. */
+.pt-entryid { margin-top: 4px; }
+.pt-entryid a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: var(--ink-2); text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.pt-entryid a:hover { color: var(--ink); }
+
+/* The peer line. Distinct from the evidence quote (which is bordered on the pass colour)
+   because it is a statement about OTHER stores, not about this one. */
+.pt-peer {
+  font-size: 12px; color: var(--ink-2); margin-top: 6px;
+  padding-left: 8px; border-left: 2px dashed var(--slate);
+}
+.pt-stdfoot { font-size: 11.5px; color: var(--ink-2); margin-top: 12px; line-height: 1.55; }
+
+/* The guided refusal. A card, not a red banner: a stranger who pastes a store root has
+   done nothing wrong and this is often their entire first impression. */
+.pt-guide h2 { font-size: 17px; margin: 0 0 8px; }
+.pt-guide p { font-size: 13.5px; line-height: 1.65; margin: 0 0 10px; }
+.pt-guide code { font-size: 12px; word-break: break-all; }
+
+@media print {
+  .pt-standard button, .pt-cachenote, .pt-cta { display: none !important; }
+  .pt-peer, .pt-entryid { break-inside: avoid; }
+}
+
 /* ---- hero proof / example module ---- */
 .hero-proof {
   max-width: 560px; margin: 34px auto 0; padding: 20px 22px; text-align: left;
