@@ -303,7 +303,7 @@ export function ProductTestPage() {
               </p>
             )}
             <p className="muted">
-              Want to see one first? <Link to="/demo">Here's a real result on a real store</Link>,
+              Want to see one first? <a href="/demo">Here's a real result on a real store</a>,
               run against a published buying standard. Or read{" "}
               <a href={COFFEE_STANDARD_URL}>the standard itself</a> — every question, and what
               counts as evidence for it, before any test runs.

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lintStrings, lintText } from "../src/server/claimLinter.js";
@@ -374,4 +374,69 @@ test("[copy] the landing page states NO measured figure", () => {
       assert.ok(!re.test(s), `a measured figure reached landing copy that cannot derive it: ${s.slice(0, 120)}`);
     }
   }
+});
+
+// ===========================================================================
+// v4.1 — THE SPA ROUTER MUST NEVER `<Link>` TO A SERVER-RENDERED ROUTE.
+//
+// Found in production by the user, on a surface shipped hours earlier. `/demo`,
+// `/standards/*` and `/llms.txt` are STANDALONE DOCUMENTS served by Express ahead of the
+// SPA catch-all — deliberately, so they render with JavaScript off. `<Link>` does
+// client-side navigation: it pushes history and re-renders the SPA, which has no route for
+// any of them, so the visitor lands on the SPA's own "Page not found".
+//
+// ⚠️ IT FAILS ONLY ON THE SECOND HOP, WHICH IS WHY IT SURVIVED EVERY CHECK. Typing the URL
+// or following the link from outside works perfectly — Express serves the document. It
+// breaks only for someone already inside the SPA who clicks it. Typecheck is silent (both
+// are valid JSX), the build is silent, and a curl of the target is silent because curl is
+// always a fresh page load. The one reader who hits it is the one this session was written
+// for: a stranger who just pasted a URL, got a refusal, and clicked "here's a real result".
+//
+// The rule: server-rendered target ⇒ plain `<a href>`, forcing a full page load.
+// ===========================================================================
+test("[routing] no SPA <Link> points at a server-rendered document", () => {
+  const SERVER_RENDERED = ["/demo", "/standards", "/llms.txt", "/og/"];
+  const pagesDir = join(ROOT, "viewer", "src");
+  const offenders: string[] = [];
+
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) { walk(full); continue; }
+      if (!/\.tsx?$/.test(e.name)) continue;
+      const src = readFileSync(full, "utf8");
+      // `<Link to="…">` and `navigate("…")` both do client-side routing.
+      for (const m of src.matchAll(/<Link\s+to=\{?["'`]([^"'`]+)["'`]/g)) {
+        const target = m[1]!;
+        if (SERVER_RENDERED.some((p) => target === p || target.startsWith(`${p}/`) || target.startsWith(p))) {
+          offenders.push(`${full.replace(ROOT, "")}: <Link to="${target}">`);
+        }
+      }
+      for (const m of src.matchAll(/navigate\(\s*["'`]([^"'`]+)["'`]/g)) {
+        const target = m[1]!;
+        if (SERVER_RENDERED.some((p) => target === p || target.startsWith(`${p}/`))) {
+          offenders.push(`${full.replace(ROOT, "")}: navigate("${target}")`);
+        }
+      }
+    }
+  };
+  walk(pagesDir);
+  assert.deepEqual(
+    offenders, [],
+    "these targets are server-rendered documents and must use a plain <a href> so the browser " +
+    `does a full page load — a <Link> lands the visitor on the SPA's 404:\n${offenders.join("\n")}`,
+  );
+
+  // Anti-vacuity: the walker must actually be reading files, or an empty offender list
+  // means nothing. Assert it found the anchors we know exist.
+  let sawDemoAnchor = false;
+  const check = (dir: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) { check(full); continue; }
+      if (/\.tsx?$/.test(e.name) && readFileSync(full, "utf8").includes('href="/demo"')) sawDemoAnchor = true;
+    }
+  };
+  check(pagesDir);
+  assert.ok(sawDemoAnchor, "no plain <a href=\"/demo\"> found anywhere — the walker is not reading the files it thinks it is");
 });

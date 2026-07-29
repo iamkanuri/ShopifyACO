@@ -100,7 +100,7 @@ export function MethodologyPage() {
       <p>
         The rules above were enforced throughout a controlled, staged validation on a Shopify development
         store (labeled as such). A production merchant case will replace that demonstration as one becomes
-        available. <Link to="/demo">See a real result on a real store →</Link>
+        available. <a href="/demo">See a real result on a real store →</a>
       </p>
     </div>
   );
