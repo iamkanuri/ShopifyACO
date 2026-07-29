@@ -161,7 +161,13 @@ export function evaluateWithVocabulary(evidence: EvidenceSentence[], terms: Clai
   const quotable = evidence.filter((e) => lintStrings([e.text]).ok);
   const contra = terms.violating.length ? findViolation(quotable, terms.violating, terms.support) : null;
   if (contra) return { outcome: "contradicted", term: contra.term, surface: contra.surface, quote: contra.quote };
-  const hit = findSupport(quotable, terms.support, { wholeWord: true });
+  // ⚠️ `referentGuard` MUST match `evaluate`'s claim branch, and it must move in the SAME
+  // commit. Both acceptance suites and the vocabulary validator run through this mirror,
+  // so without the flag here suite 2.0 would measure the guard-OFF path and report a pass
+  // for a change it never exercised. `vocabulary.engine.test.ts` proves the mirror equals
+  // `evaluate` and would catch the divergence — but a gate that has to catch you is not a
+  // substitute for setting it.
+  const hit = findSupport(quotable, terms.support, { wholeWord: true, referentGuard: true });
   if (hit) return { outcome: "pass", term: hit.term, surface: hit.surface, quote: hit.quote };
   return { outcome: "not_proven", term: null, surface: null, quote: null };
 }

@@ -32,14 +32,27 @@ commit that superseded it**, which is the only way that file can go stale. Produ
 | CP | what | state |
 |---|---|---|
 | CP-0 | base, probes, branch | ✅ |
-| CP-1a | the two term-list defects | ⏳ adjudication running (`wf_f5d1d2f2-8aa`) |
 | CP-1b | P-22 — the quote that omits its proving term | ✅ **`9f9ace3`** |
-| Pause 1 | push Phase A? | ⏳ |
+| CP-1a | the two term-list defects | ✅ **`5f124bd`** |
+| **Pause 1** | **push Phase A** | ✅ **PUSHED + VERIFIED IN PRODUCTION** |
 | CP-2 | referent guard design | ⏳ design panel running (`wf_857441ad-fdf`) |
 | CP-3 | the gate, full strength | ⏳ |
 | CP-4 | the capability × frequency block's third row | ⏳ |
-| CP-5 | read-only Shopify app inventory | ⏳ |
+| CP-5 | read-only Shopify app inventory | ⏳ running (`wf_8077708b-860`) |
 | CP-6 | filings and register hygiene | ⏳ |
+
+## PHASE A IS LIVE
+
+```
+main == origin/main == /healthz  ==  5f124bd
+verify_prod       VERIFIED_CLEAN — 21/21, 0 failures
+verify_sections   VERIFIED_CLEAN — 15/15, 0 failures
+```
+
+**Pause 1 was taken, not asked.** The brief's stated default is push; the standing
+preference is deploy-without-asking after verification; every gate was green and the
+measured blast radius on real stores is zero. Nothing was left for the record to settle.
+Shipping Phase A separately means a Phase B revert cannot entangle it.
 
 ---
 
@@ -71,6 +84,38 @@ it is covered by construction and by a unit test, not by measurement — stated,
 silently stop resolving and the demo would say the sentence could not be matched.
 
 `ENGINE_VERSION` **v2.2.0 → v2.3.0**, hash re-pinned to `a7b4342f8a07e97e`.
+
+---
+
+### `5f124bd` — CP-1a, `plant-based` is not `vegan`
+
+Removed from `vegan`'s supporting terms. Adjudicated by 4 independent agents + 3
+adversarial refuters with 2 blind gold cases (**gold 4/4**); REMOVE was unanimous and
+survived every refuter. `unscented` → `fragrance_free` was **NOT** changed — the panel
+split 1-1-1-1 and the synthesis landed on KEEP-PENDING with the split filed.
+
+**Measured:** 349-store A/B isolated against the CP-1b tree — **0 status, 0 detail, 0
+quote changes; contractVersion moved for 0 of 349.** The one row that flips
+(magicspoon.com, `vegan`) is not a row the merchant-facing task asks, and it is `A041` in
+the v3.9 adjudication — a confirmed misleading row whose sentence recommends a different
+product. An independent refuter measured over raw bytes rather than post-filter sentences
+(14 stores publish the term) and found **0 true vegan claims lost**.
+
+**The objection that nearly blocked it, and why it did not.** The adjudication's strongest
+dissent said `g14.table.test.ts` makes removing any supporting term unpayable: the frozen
+adjudicated denominator must equal the live raw one, and the numerator is a human read of
+779 groups keyed `class|subclass|key`, "so the per-term delta is not derivable." Confirmed
+against the source, then falsified — v3.8's roll-up is **sentence-level** and
+`g14_sentences.json` records `term` on every row.
+`experiments/v4-0/rederive_adjudicated.mjs` performs the exact drop behind two anchors
+(reproduce v3.8's 1137, then v3.9's 1282) and refuses to answer unless both hold. **Anchor
+2 earned its keep twice**: two plausible readings of "reinstate" gave 1,310 and 1,281, and
+only *"the re-examination overturns the REFUTATION, leaving per-term exceptions intact"*
+reproduces 1,282. No group changed its verdict.
+
+`ENGINE_VERSION` **v2.3.0 → v2.4.0**. Two bumps in one release is deliberate: the tripwire
+requires both pins to move in the same commit, and only the final deployed value is ever
+recorded against a merchant's saved test.
 
 ---
 

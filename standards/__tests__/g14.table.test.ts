@@ -140,11 +140,25 @@ const PER_CELL = 999; // uncapped: at the default of 6, 1,056 sentences are drop
 // collisions. `null` means the class does not attack that key's term roles — nothing is
 // owed, and it is NOT the same as `[0, n]`, which means attacked and never passed.
 // ---------------------------------------------------------------------------
+// ⚠️ v4.0 CP-3 — THE SECOND MOVEMENT, AND IT IS THE GATE DOING THE JOB IT WAS BUILT FOR.
+// G-15-R (`src/server/referent.ts`) vetoes a claim match whose governing noun phrase
+// denotes a supply-chain party, a landholding or a cultivation practice. Exactly THIRTEEN
+// cells move — one per claim key, ALL in `wrong_subject`, ALL DOWNWARD (fewer hostile
+// sentences pass, which is the direction a working guard produces). Per-cell arithmetic:
+//   aluminum_free 77->70 (-7) · baking_soda_free 55->50 (-5) · cruelty_free 44->40 (-4)
+//   vegan 22->20 (-2) · fragrance_free 55->50 (-5) · paraben_free 44->40 (-4)
+//   sulfate_free 44->40 (-4) · single_origin 55->50 (-5) · organic 33->30 (-3)
+//   fair_trade 33->30 (-3) · gluten_free 33->30 (-3) · third_party_tested 55->50 (-5)
+//   bpa_free 44->40 (-4)                                        sum -54, 594 -> 540
+// SEVEN class totals are delta 0, INCLUDING `tense_modality` and `denial` — movement in
+// either would be a DEFECT (the guard reaching out of its charter), not a bonus. No
+// denominator moves, so `ADJUDICATED_V38` is untouched: the corpus is the same corpus and
+// the frozen human adjudication still describes it.
 type Cell = [pass: number, total: number] | null;
 const EXPECTED: Record<string, Record<string, Cell>> = {
-  aluminum_free: { letter_not_spirit: [35, 35], adjacent_vocabulary: [10, 43], wrong_subject: [77, 128], merchant_controlled_string: [35, 60], orthography: [32, 86], violation: [4, 24], tense_modality: [56, 90], denial: [35, 59] },
-  baking_soda_free: { letter_not_spirit: [25, 25], adjacent_vocabulary: [12, 22], wrong_subject: [55, 80], merchant_controlled_string: [25, 36], orthography: [22, 60], violation: [1, 8], tense_modality: [40, 54], denial: [25, 41] },
-  cruelty_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [17, 27], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 47], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
+  aluminum_free: { letter_not_spirit: [35, 35], adjacent_vocabulary: [10, 43], wrong_subject: [70, 128], merchant_controlled_string: [35, 60], orthography: [32, 86], violation: [4, 24], tense_modality: [56, 90], denial: [35, 59] },
+  baking_soda_free: { letter_not_spirit: [25, 25], adjacent_vocabulary: [12, 22], wrong_subject: [50, 80], merchant_controlled_string: [25, 36], orthography: [22, 60], violation: [1, 8], tense_modality: [40, 54], denial: [25, 41] },
+  cruelty_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [17, 27], wrong_subject: [40, 66], merchant_controlled_string: [20, 30], orthography: [18, 47], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
   // ⚠️ v4.0 CP-1a — THE ONLY ROW THAT MOVED, and it moved because the DICTIONARY moved.
   // `plant-based` and `plant based` were removed from `vegan`'s supporting terms (a false
   // equivalence: plant-based is a dietary-predominance term in food and a carbon-FEEDSTOCK
@@ -162,16 +176,16 @@ const EXPECTED: Record<string, Record<string, Cell>> = {
   // 115 hostile sentences and 6 controls leave the corpus. No other key's cell moves, which
   // is the gate doing its job: a dictionary change is visible per cell and confined to
   // its key.
-  vegan: { letter_not_spirit: [10, 10], adjacent_vocabulary: [13, 23], wrong_subject: [22, 48], merchant_controlled_string: [10, 24], orthography: [13, 30], violation: [3, 16], tense_modality: [16, 36], denial: [10, 18] },
-  fragrance_free: { letter_not_spirit: [25, 25], adjacent_vocabulary: [19, 30], wrong_subject: [55, 80], merchant_controlled_string: [25, 36], orthography: [22, 51], violation: [1, 8], tense_modality: [40, 54], denial: [25, 41] },
-  paraben_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [0, 12], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
-  sulfate_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [3, 17], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
-  single_origin: { letter_not_spirit: [25, 25], adjacent_vocabulary: [22, 28], wrong_subject: [55, 70], merchant_controlled_string: [25, 30], orthography: [24, 40], violation: null, tense_modality: [40, 45], denial: [25, 40] },
-  organic: { letter_not_spirit: [15, 15], adjacent_vocabulary: [29, 31], wrong_subject: [33, 42], merchant_controlled_string: [15, 18], orthography: [22, 25], violation: null, tense_modality: [24, 27], denial: [15, 24] },
-  fair_trade: { letter_not_spirit: [15, 15], adjacent_vocabulary: [14, 16], wrong_subject: [33, 42], merchant_controlled_string: [15, 18], orthography: [14, 20], violation: null, tense_modality: [24, 27], denial: [15, 24] },
-  gluten_free: { letter_not_spirit: [15, 15], adjacent_vocabulary: [0, 18], wrong_subject: [33, 62], merchant_controlled_string: [15, 30], orthography: [14, 45], violation: [1, 16], tense_modality: [24, 45], denial: [15, 26] },
-  third_party_tested: { letter_not_spirit: [25, 25], adjacent_vocabulary: [22, 32], wrong_subject: [55, 70], merchant_controlled_string: [25, 30], orthography: [21, 52], violation: null, tense_modality: [40, 45], denial: [25, 40] },
-  bpa_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [6, 17], wrong_subject: [44, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [1, 8], tense_modality: [32, 45], denial: [20, 33] },
+  vegan: { letter_not_spirit: [10, 10], adjacent_vocabulary: [13, 23], wrong_subject: [20, 48], merchant_controlled_string: [10, 24], orthography: [13, 30], violation: [3, 16], tense_modality: [16, 36], denial: [10, 18] },
+  fragrance_free: { letter_not_spirit: [25, 25], adjacent_vocabulary: [19, 30], wrong_subject: [50, 80], merchant_controlled_string: [25, 36], orthography: [22, 51], violation: [1, 8], tense_modality: [40, 54], denial: [25, 41] },
+  paraben_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [0, 12], wrong_subject: [40, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
+  sulfate_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [3, 17], wrong_subject: [40, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [0, 8], tense_modality: [32, 45], denial: [20, 33] },
+  single_origin: { letter_not_spirit: [25, 25], adjacent_vocabulary: [22, 28], wrong_subject: [50, 70], merchant_controlled_string: [25, 30], orthography: [24, 40], violation: null, tense_modality: [40, 45], denial: [25, 40] },
+  organic: { letter_not_spirit: [15, 15], adjacent_vocabulary: [29, 31], wrong_subject: [30, 42], merchant_controlled_string: [15, 18], orthography: [22, 25], violation: null, tense_modality: [24, 27], denial: [15, 24] },
+  fair_trade: { letter_not_spirit: [15, 15], adjacent_vocabulary: [14, 16], wrong_subject: [30, 42], merchant_controlled_string: [15, 18], orthography: [14, 20], violation: null, tense_modality: [24, 27], denial: [15, 24] },
+  gluten_free: { letter_not_spirit: [15, 15], adjacent_vocabulary: [0, 18], wrong_subject: [30, 62], merchant_controlled_string: [15, 30], orthography: [14, 45], violation: [1, 16], tense_modality: [24, 45], denial: [15, 26] },
+  third_party_tested: { letter_not_spirit: [25, 25], adjacent_vocabulary: [22, 32], wrong_subject: [50, 70], merchant_controlled_string: [25, 30], orthography: [21, 52], violation: null, tense_modality: [40, 45], denial: [25, 40] },
+  bpa_free: { letter_not_spirit: [20, 20], adjacent_vocabulary: [6, 17], wrong_subject: [40, 66], merchant_controlled_string: [20, 30], orthography: [18, 45], violation: [1, 8], tense_modality: [32, 45], denial: [20, 33] },
 };
 
 /** Class totals, asserted separately so a compensating pair of per-cell errors cannot
@@ -179,7 +193,7 @@ const EXPECTED: Record<string, Record<string, Cell>> = {
 const EXPECTED_CLASS_TOTALS: Record<string, [number, number]> = {
   letter_not_spirit: [270, 270],          // v4.0 CP-1a: 280/280 - 10/10
   adjacent_vocabulary: [167, 316],        //             181/332 - 14/16
-  wrong_subject: [594, 886],              //             616/914 - 22/28
+  wrong_subject: [540, 886],              // CP-1a 616/914 - 22/28; CP-3 594 -> 540, the guard
   merchant_controlled_string: [270, 402], //             280/414 - 10/12
   orthography: [256, 591],                //             266/606 - 10/15
   violation: [11, 104],                   //             unchanged
