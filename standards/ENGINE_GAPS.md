@@ -2815,6 +2815,37 @@ round-robin independently; never rely on a stride being coprime by luck.
 
 ---
 
+## P-27 · A COFFEE STANDARD v1.4 CANDIDATE — put the referent limitation in `residual_risk`, where citing agencies read
+
+**Filed at v4.0 CP-4. FILED, NOT DONE** — a reissue is a version bump, a hash, a corpus pin
+and a supersession chain, and this session was scoped to publishing the site-level block.
+
+The capability × frequency block now publishes the referent limitation at
+`/standards/coffee/1.3#capability-frequency`, in the site's own voice. **That is not where a
+citing agency reads.** An agency writing *"your product pages fail
+`ALS-COFFEE-1.3-CLAIM-00x`"* resolves the ENTRY page and reads that entry's
+`residual_risk` — the field `IDENT-001` already uses for exactly this purpose, carrying the
+honesty clause *"a stock code that is neither a placeholder nor the storefront's key is
+outside this clause"*.
+
+**The proposal:** every `claim`-kind entry in a v1.4 reissue gains a `residual_risk` entry
+in `IDENT-001`'s pattern — the term's presence on a product surface is what a pass
+establishes; where the term's governing noun phrase denotes a supplier, a farm, a region or a
+bundled item, the pass does not establish that the claim was asserted of the product, and the
+rendered evidence sentence is what a reader must check. **Measured, so the clause carries a
+number rather than a hedge:** the shape occurs in 11 of 71 passing claim rows, and 8 of those
+are attributable to it alone.
+
+**Why a reissue rather than an edit:** `standard_hash` covers `standard.json`'s bytes and
+every citation resolves through it, so adding the clause to v1.3 would invalidate every
+citation made against it. v1.0 → v1.3 already demonstrate the pattern: a new version, the old
+one byte-frozen and still served, `supersedes` walked by the entry-id router.
+
+**Who decides:** the standard's owner. It is a content change to a published document, not a
+renderer change.
+
+---
+
 ## P-23 · The `unscented` → `fragrance_free` equivalence, and the SPLIT that would resolve it
 
 **Filed at v4.0 CP-1a.** Adjudicated by 4 independent agents + 3 refuters with 2 blind gold

@@ -6,6 +6,7 @@ import {
   loadPublishedStandards, standardsPageFor, standardJsonFor, standardsSitemapPaths,
   llmsTxt, renderFitness, findStandard, groundingOf, fitnessOf, measuredOf, predictionOf,
   esc, renderStandaloneDocument, FONT_LINKS, orderedTiers, currentOf, isCurrent, renderComparison,
+  renderCapabilityBlock,
   type FitnessSample,
   type PublishedStandard,
 } from "../src/server/standardsSite.js";
@@ -1179,4 +1180,87 @@ test("the landing page's standard link points at the CURRENT version, not a supe
   );
   // And the link must actually resolve, not merely be well-formed.
   assert.ok(standardsPageFor(copy.COFFEE_STANDARD_URL, BASE), `${copy.COFFEE_STANDARD_URL} does not resolve to a page`);
+});
+
+// ===========================================================================
+// THE CAPABILITY × FREQUENCY BLOCK — PUBLISHED at v4.0 CP-4.
+//
+// Completed at v3.9 and held dark under a pre-committed rule: publication follows the
+// patch OR the pin, security-disclosure style. v4.0 built a guard for the open axis,
+// measured it at 19.8 true rows lost per defect closed against a bar of 2.33, reverted it,
+// and recorded the limitation as G-15 — which satisfies the pin half of the rule.
+//
+// ⚠️ THE THREE THINGS THIS TEST EXISTS FOR, each a defect this file has already shipped:
+//   1. A SECTION THAT RENDERS NOTHING LOOKS EXACTLY LIKE ONE WITH NOTHING TO SHOW
+//      (`grounding.sources`, three times). So this asserts CONTENT — the derived figures
+//      themselves — not the presence of a heading.
+//   2. A BLOCK THAT PUBLISHES ONLY UNDER A PRODUCTION ENV VAR IS "PUBLISHED" IN THE REPO
+//      AND DARK ON THE SITE (v3.5's `PUBLISHED` stopping at v1.2). The flag is now an
+//      OPT-OUT, and that inversion is asserted here rather than assumed.
+//   3. IT SHIPS WHOLE OR NOT AT ALL. Selective disclosure was rejected on the record at
+//      v3.9; all three axes must be present.
+// ===========================================================================
+/** Rendered text, tags stripped and entities decoded — the same reading a JS-off visitor
+ *  gets. Local to this group so the assertions below are about CONTENT, never about markup. */
+const capText = (html: string): string =>
+  html.replace(/<[^>]+>/g, " ").replace(/&mdash;/g, "—").replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"')
+      .replace(/\s+/g, " ").trim();
+
+test("[capability] the block is SERVED, with all three axes and the figures derived", () => {
+  const page = standardsPageFor("/standards/coffee/1.3", BASE);
+  assert.ok(page, "the current standard page does not resolve");
+  const txt = capText(page!.bodyHtml);
+
+  assert.match(txt, /What a passing claim row cannot rule out/, "the block's heading is not served");
+
+  // All three axes, by their reader-facing description — whole or not at all.
+  assert.match(txt, /does not assert it of this product/, "the letter-not-spirit row is missing");
+  assert.match(txt, /past, future, conditional or merely possible/, "the tense row is missing");
+  assert.match(txt, /attaches to something other than the product/, "the referent row is missing");
+
+  // The derived figures, from standards/capability-frequency.json.
+  const block = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "standards", "capability-frequency.json"), "utf8"),
+  ) as { axes: Array<{ capability_confirmed: number; capability_total: number }>; fate: { ratio: number }; cost_bar: { strict: number } };
+  for (const a of block.axes) {
+    assert.ok(
+      txt.includes(`${a.capability_confirmed} of ${a.capability_total}`),
+      `the served page does not carry the derived pair ${a.capability_confirmed} of ${a.capability_total}`,
+    );
+  }
+  // The fate sentence's two load-bearing numbers.
+  assert.ok(txt.includes(String(block.fate.ratio)), "the measured cost ratio is not served");
+  assert.ok(txt.includes(String(block.cost_bar.strict)), "the derived bar is not served");
+
+  // The DISCLOSURE POLICY renders beside the outcome — the rule is visible, not just its result.
+  assert.match(txt, /security-disclosure practice/, "the disclosure policy is not stated beside the outcome");
+  assert.match(txt, /whole or not at all/, "the against-selective-disclosure commitment is not stated");
+});
+
+test("[capability] the flag is an OPT-OUT, so the default deploy publishes it", () => {
+  // v3.5's defect one level up: a version committed, hashed, gated and corpus-pinned while
+  // nothing served it, because every gate checked the artifact and none asserted the page
+  // was REACHABLE. An opt-IN flag would reproduce it exactly — green in the repo, dark live.
+  const prev = process.env.STANDARDS_SHOW_CAPABILITY_BLOCK;
+  try {
+    delete process.env.STANDARDS_SHOW_CAPABILITY_BLOCK;
+    assert.ok(renderCapabilityBlock().length > 400, "with no flag set the block must RENDER — it is opt-out");
+    process.env.STANDARDS_SHOW_CAPABILITY_BLOCK = "0";
+    assert.equal(renderCapabilityBlock(), "", "STANDARDS_SHOW_CAPABILITY_BLOCK=0 must suppress it");
+  } finally {
+    if (prev === undefined) delete process.env.STANDARDS_SHOW_CAPABILITY_BLOCK;
+    else process.env.STANDARDS_SHOW_CAPABILITY_BLOCK = prev;
+  }
+});
+
+test("[capability] the block carries no hand-typed figure that the artifact contradicts", () => {
+  // ⚠️ THE BRIEF AND THE PUBLISH INSTRUCTION BOTH SAY THE BAR IS "2.13-5.13". No artifact
+  // contains 2.13: experiments/v3-9/out/robust.json gives 14/6 = 2.33 and 41/8 = 5.13.
+  // The rule that settles it is the instruction's own — every figure derived, none typed.
+  // This asserts the wrong number never reaches a reader.
+  const page = standardsPageFor("/standards/coffee/1.3", BASE);
+  const txt = capText(page!.bodyHtml);
+  assert.ok(!txt.includes("2.13"), 'the retired bar figure "2.13" reached the served page');
+  assert.match(txt, /2\.33/, "the derived strict bar is not served");
 });

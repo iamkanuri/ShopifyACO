@@ -1,0 +1,64 @@
+{
+  "generated_by": "experiments/v4-0/build_capability_block.ts",
+  "measured_at": "2026-07-28",
+  "engine_version": "v2.4.0",
+  "sources": {
+    "capability": "standards/__tests__/g14.table.test.ts ADJUDICATED_V38 (frozen adjudicated table)",
+    "occurrence": "experiments/v3-9/out/sole.json — the 71 passing claim rows over 54 stores",
+    "cost_bar": "experiments/v3-9/out/robust.json — derived as honest_carriers / defects_SOLE",
+    "fate": "the v4.0 adversarial pass: 4 independent attackers, 805 probes, refuter re-executed every claim"
+  },
+  "disclosure_policy": "This table was completed on 2026-07-28 and deliberately NOT published until the open axis had either a fix or a recorded limitation — security-disclosure practice, decided before the outcome was known. Publishing selectively was considered and rejected: a table showing two axes at 'attacks well, occurs never' while omitting the third would read as a clean bill of health. It ships whole or not at all.",
+  "axes": [
+    {
+      "key": "letter_not_spirit",
+      "reader": "The term is present, but the sentence does not assert it of this product — an invitation, a capability offer, a placeholder.",
+      "fate": "descoped",
+      "occurrence": 3,
+      "capability_confirmed": 252,
+      "capability_total": 270,
+      "capability_pct": 93.3,
+      "occurrence_total": 71,
+      "occurrence_pct": 4.2
+    },
+    {
+      "key": "tense_modality",
+      "reader": "The property is described as past, future, conditional or merely possible rather than as holding now.",
+      "fate": "descoped",
+      "occurrence": 0,
+      "capability_confirmed": 425,
+      "capability_total": 603,
+      "capability_pct": 70.5,
+      "occurrence_total": 71,
+      "occurrence_pct": 0
+    },
+    {
+      "key": "wrong_subject",
+      "reader": "The term attaches to something other than the product — a supplier, a farm, a region, a bundled item, a practice.",
+      "fate": "pinned",
+      "occurrence": 11,
+      "capability_confirmed": 425,
+      "capability_total": 886,
+      "capability_pct": 48,
+      "occurrence_total": 71,
+      "occurrence_pct": 15.5
+    }
+  ],
+  "cost_bar": {
+    "strict": 2.33,
+    "raw": 5.13,
+    "derivation": "14 honest carriers / 6 defects only this axis closes = 2.33; 41 / 8 = 5.13"
+  },
+  "fate": {
+    "confirmed_regressions": 119,
+    "defects_closed": 6,
+    "claimed": 126,
+    "attackers": 4,
+    "probes": 805,
+    "ratio": 19.8,
+    "sentence": "A guard for this axis was designed, implemented and measured in full. It closed 6 of its 8 real-copy targets and lost no true row on a 349-store replay. An independent adversarial pass — four attackers who wrote neither the guard nor its acceptance suite, 805 probes, every claimed regression re-executed by a refuter — confirmed 119 true statements it would have stopped reporting, against 6 defects closed. That is 19.8 true rows lost per defect closed, against a bar of 2.33–5.13. It was reverted and the limitation recorded as G-15."
+  },
+  "reader_guidance": "What a passing claim row cannot rule out: on copy where the claim term sits next to a supplier, a farm, a region or a bundled item, the row establishes that the page states the term — not that the term was asserted of this product. Read the quoted sentence, which every passing row shows, and check what it is about.",
+  "completion": "VERIFIED_CLEAN",
+  "problems": []
+}
