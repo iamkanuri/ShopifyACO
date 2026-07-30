@@ -1047,6 +1047,37 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
 .index-promo h2 { margin: 0 0 8px; }
 .index-promo p { max-width: 560px; margin: 0 auto 16px; color: var(--ink-2); font-size: 14.5px; line-height: 1.6; }
 
+/* ============ the agency one-pager (v4.2 CP-3) ============
+   Built to be PRINTED and forwarded, so it is typographically denser than the result page
+   and carries no interactive affordance at all — no <details>, no buttons, nothing that
+   reads as broken on paper. */
+.op-doc { max-width: 720px; margin: 0 auto; }
+.op-kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; margin: 0 0 6px; }
+.op-doc h1 { font-family: var(--font-display); font-size: 25px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
+.op-sub { font-size: 12.5px; color: var(--ink-3); word-break: break-all; margin: 0 0 20px; }
+.op-doc h2 { font-family: var(--font-display); font-size: 16px; margin: 30px 0 10px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+.op-doc h3 { font-size: 15px; margin: 0 0 5px; }
+.op-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px 18px;
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin: 0 0 18px; }
+.op-facts dt { font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 3px; }
+.op-facts dd { margin: 0; font-size: 14px; color: var(--ink); word-break: break-word; }
+.op-what { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); border-left: 2px solid var(--border-strong); padding-left: 14px; margin: 0 0 4px; }
+.op-rule { font-size: 12px; color: var(--ink-3); line-height: 1.55; margin: 0 0 16px; font-style: italic; }
+.op-finding { margin: 0 0 18px; padding: 0 0 16px; border-bottom: 1px dashed var(--border); break-inside: avoid; }
+.op-finding:last-of-type { border-bottom: 0; }
+.op-n { font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; margin: 0 0 3px; }
+.op-finding p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0 0 7px; }
+.op-quote { margin: 8px 0; padding: 8px 12px; border-left: 2px solid var(--pass); background: var(--surface-2);
+  font-size: 13px; line-height: 1.55; color: var(--ink); }
+.op-peer { font-size: 12.5px !important; color: var(--ink-3) !important; }
+.op-check { font-size: 12.5px !important; }
+.op-cite { font-size: 12px !important; color: var(--ink-3) !important; }
+.op-prov { font-size: 12.5px; line-height: 1.7; color: var(--ink-2); padding-left: 18px; margin: 0 0 18px; }
+.op-prov code { font-size: 0.9em; }
+.op-error { font-size: 11.5px; line-height: 1.6; color: var(--ink-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px; margin: 0 0 12px; break-inside: avoid; }
+.op-fine { font-size: 11px; line-height: 1.55; color: var(--ink-3); margin: 0; }
+
 /* ============ print ============ */
 @media print {
   body { background: #fff; }
@@ -1055,6 +1086,47 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
   .card { box-shadow: none; border-color: #ddd; break-inside: avoid; }
   .section { margin-top: 16px; }
   .hero { grid-template-columns: 280px 1fr; }
+
+  /* ⚠️ A COLLAPSED <details> PRINTS NOTHING OF ITS BODY, AND THAT IS WHERE THE EVIDENCE IS.
+     Measured on the shipped artifact, not argued: /standards/coffee/1.3 prints 20 pages as
+     served and 27 with its sections expanded — 7 pages, 18,100 of 60,542 visible characters,
+     29.9% of the document, gone. On /demo the same mechanism drops 20 evidence items that
+     are reachable by no other route on the page, under a comment (buyerTestDemo.ts) that
+     justifies the widget with "its contents are in the document, so a crawler and a JS-off
+     reader both get the full list — a disclosure widget that HID evidence would defeat the
+     purpose of the page." In print, they were not in the document. A printed page cannot be
+     clicked open, and the PDF is the artifact an agency forwards.
+
+     THE MECHANISM IS THE PSEUDO-ELEMENT, AND EVERY FOLKLORE FIX WAS MEASURED INERT.
+     Chromium hides the body via a UA rule on `details::details-content`, not on the author-
+     visible children, so `experiments/v4-2/rule_scan.mjs` scored these at NO EFFECT:
+       details { display: block }
+       details > *:not(summary) { display: revert !important }
+       details > * { display: block !important }
+       details { content-visibility: visible !important }
+       * { content-visibility: visible !important }   ← the universal selector does not
+                                                        match pseudo-elements
+     Only the rule below restores it. It is deliberately NOT scoped to `.std-page`: the same
+     measurement shows a `.std-page`-scoped copy printing 1 page where the unscoped rule
+     prints 4, and eight of the fourteen <details> in this codebase live on SPA surfaces
+     wrapped in `.app` — including /report, which owns the only window.print() in the repo
+     and collapses six of its seven sections by default.
+
+     NO SECOND "FALLBACK" RULE IS SHIPPED BESIDE IT. The obvious pairing — the children rule,
+     for engines older than the pseudo — measured inert here and cannot be justified on a
+     browser this project has not rendered in. A guard whose removal changes nothing is
+     decorative, and this repo already pays for those. `::details-content` is Baseline
+     newly-available (Sept 2025; Chrome/Edge 131, Firefox 143, Safari 18.4), ~83% of readers.
+     That gap does NOT reach the sendable artifact: the one-pager PDF is rendered by our own
+     Chromium, so what the recipient's browser supports never enters into it. It affects only
+     a reader who prints one of these pages themselves, and for them the loss is the status
+     quo, not a regression. */
+  details::details-content { content-visibility: visible !important; }
+  details { break-inside: avoid; }
+
+  /* The disclosure marker is driven by [open], so an expanded-in-print section would still
+     print "+" — an affordance that is both untrue and unusable on paper. */
+  summary::after { content: "" !important; }
 }
 
 

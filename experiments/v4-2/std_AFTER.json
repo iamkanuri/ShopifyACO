@@ -1,0 +1,908 @@
+{
+  "url": "http://127.0.0.1:8787/standards/coffee/1.3",
+  "completion": "VERIFIED_CLEAN",
+  "css_override_replaced": 2,
+  "pagination_headers_found": 7,
+  "pagination_headers_stripped": 5,
+  "media_canary_ok": true,
+  "extractor_canary": {
+    "extractor_live": true,
+    "positive_control_found": true,
+    "negative_control_absent": true,
+    "chars_extracted": 55888
+  },
+  "instruments_agree": true,
+  "h1": "AisleLens Coffee Standard v1.3",
+  "details_total": 3,
+  "details_collapsed": 3,
+  "collapsed_items_total": 142,
+  "collapsed_items_in_pdf": 142,
+  "collapsed_items_MISSING_from_pdf": 0,
+  "rows": [
+    {
+      "i": 0,
+      "open": false,
+      "summary": "Every entry, by tier",
+      "item_count": 42,
+      "summary_in_print_dom": true,
+      "summary_in_pdf": true,
+      "items": [
+        {
+          "text": "FORMAT-001 Can I buy this as whole beans?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "FORMAT-002 Can I buy this already ground, so I do not need a",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "GRIND-001 Can I get this ground for espresso?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "GRIND-002 Can I get this ground for a filter or pour-over br",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "WEIGHT-001 How much coffee do I get — is there a weight anyw",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "CERT-001 Does this page say the coffee is organic?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "CERT-002 Does this page say the coffee is fair trade?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "SOURCE-001 Is this coffee from one place, or is it a blend?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "IDENT-001 Can a shopping assistant match this exact bag to a",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DELIV-001 When will this actually be sent to me?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "PRICE-001 What does this cost?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "STOCK-001 Can I actually buy this right now?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "TERMS-001 Can I buy a single bag without signing up for a re",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DECAF-004 Can I buy a decaf version of this same coffee?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DIET-001 Is this coffee vegan and gluten-free?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "REST-001 How long should I let these beans rest before brewi",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "SHELF-001 How long will this stay good, and does that change",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "ROASTORDER-001 Will this be roasted after I order, and how s",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "GRINDDATE-001 If I choose the ground option, when is it actu",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "VALVE-001 Does the bag have a one-way valve to let the gas o",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "BIRD-001 Is this coffee shade grown, and is that the same as",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "VAR-001 What variety is this, and can a Geisha claim be chec",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "CUP-001 Is there a cupping score, and does it come with enou",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "RETURN-001 If I do not like the coffee, can I send it back a",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "CANCEL-001 If I subscribe, can I cancel online myself, where",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DUTY-001 If this ships to my country, who pays the customs d",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "ROAST-001 How dark is this roast?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "GRIND-003 How coarse is the grind, and what is that measured",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DECAF-001 How was the caffeine taken out of this coffee?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DECAF-002 The page says chemical-free or naturally decaffein",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DECAF-003 How much caffeine is actually left in this decaf?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "FRESH-001 When was this roasted?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "DATEFORM-001 If there is a date on this, is it worded the wa",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "STORAGE-001 How should I store this once it arrives, and sho",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "PROV-001 Which country was this coffee grown in?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "PROC-001 How was this coffee processed after picking — washe",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "NETQ-001 Does the weight shown apply to the exact size I am ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "PRICE-002 What does this cost per kilogram, so I can compare",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "INGR-001 Is there anything in this besides coffee?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "ALLERG-001 Does this contain anything I am allergic to?",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "CERT-003 Does the organic claim on this page resolve against",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "KONA-001 If this says Kona or Hawaiian, how much of it actua",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "open": false,
+      "summary": "Read all 7, with the store, the evidence the engine matched, and why i",
+      "item_count": 28,
+      "summary_in_print_dom": true,
+      "summary_in_pdf": true,
+      "items": [
+        {
+          "text": "deathwishcoffee.com — CAFFEINE CONTENT: Power Surge Single-S",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The only numbers are a caffeine dose (210mg) and a brewed se",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "groundsforchange.com — The essential concept is to brew doub",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "Every quantity in the evidence belongs to a Japanese-iced-co",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "hydrangea.coffee — The farm’s volcanic soils are described a",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "\"soils are described as rich in organic matter\" is the soil-",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "blossomcoffeeroasters.com — Dark roasted to perfection, our ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The evidence says the opposite of the claim: 'our Cold Brew ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "brashcoffee.com — Since 1890, coffee has flourished at Aquia",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "'where organic soils and abundant rainfall have created an i",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "myalmacoffee.com — For a fun and refreshing cup, try this re",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The matched text is a BREWING RECIPE — \"try this recipe : 15",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "thewestbean.com — Composed of three single-origin, estate gr",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "\"Composed of three single-origin, estate grown beans\" says t",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "category-specific",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "open": false,
+      "summary": "Read all 18, with the store, the evidence the engine matched, and why ",
+      "item_count": 72,
+      "summary_in_print_dom": true,
+      "summary_in_pdf": true,
+      "items": [
+        {
+          "text": "askinosie.com — Try our 1/2lb.",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The only quantity in the quoted structured-data evidence is ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "branchbasics.com — (the row renders no quote) Lowest readabl",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "'Lowest readable price is $0.00.' is a null treated as a num",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "fieldcompany.com — (the row renders no quote) Lowest readabl",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The sentence asserts a superlative the page's own bytes refu",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "gardenerskit.com — (the row renders no quote) Lowest readabl",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The number 75 is CANADIAN dollars, not US: the page's JSON-L",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "hismileteeth.com — (the row renders no quote) Lowest readabl",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "This is the AUSTRALIAN storefront: shop hismile.myshopify.co",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "knifewear.com — (the row renders no quote) Lowest readable p",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "$0.00 is not a price. The .json shows product_type \"Referral",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "kosas.com — (the row renders no quote) Lowest readable price",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "$0.00 is not a price: the .json shows product_type \"GWP\", te",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "kytebaby.com — (the row renders no quote) A \"Gilmore Girls\" ",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The row says the variant is \"purchasable\" but every surface ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "kytebaby.com — (the row renders no quote) At least one varia",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The row asserts \"At least one variant is listed as purchasab",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "lesserevil.com — (the row renders no quote) Your structured ",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The product is sold out and the row tells the merchant it is",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "levainbakery.com — (the row renders no quote) Lowest readabl",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The mug costs $10.00, not $1000.00. /products/dad-mug.json s",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "missoma.com — (the row renders no quote) Lowest readable pri",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The number is POUNDS: the JSON-LD offer is \"price\":\"135.00\",",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "mustardmade.com — (the row renders no quote) Lowest readable",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "This is the AU storefront: JSON-LD offer \"price\" : 32.0, \"pr",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "organicbasics.com — (the row renders no quote) Lowest readab",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The captured storefront is the German/EUR market — Shopify.c",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "partakefoods.com — (the row renders no quote) Lowest readabl",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "$0.00 is a zeroed-out record, not a price: this is a real re",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "richer-poorer.com — (the row renders no quote) Lowest readab",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The rendered sentence is false by a factor of 100. product.j",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "studioneat.com — (the row renders no quote) Lowest readable ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The listing is the merchant's own accidentally-published tes",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "tenthousand.cc — (the row renders no quote) Lowest readable ",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "The $0.00 is a masked/unset price on a real, purchasable gar",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "general",
+          "in_screen_dom": true,
+          "in_print_dom": true,
+          "in_pdf": true
+        },
+        {
+          "text": "no guard addresses it",
+          "in_screen_dom": false,
+          "in_print_dom": true,
+          "in_pdf": true
+        }
+      ]
+    }
+  ],
+  "items_matched_across_page_break": 4,
+  "pdf_bytes": 543164,
+  "pdf_chars_extracted": 55888
+}

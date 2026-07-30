@@ -37,10 +37,17 @@ What's shipped end-to-end (verified in prod):
   JavaScript off, and a v1.0 id resolves four hops forward. `/demo` runs a real result on a real
   store, against the current version. Measured error is in
   `standards/coffee/v1.3/fitness.json` — **9.99%** cluster-adjusted on the coffee sample
-  (7 confirmed over 160 audited pass rows) and **7.53%** on the general DTC sample (18 over 488).
-  ⚠️ **Both samples now have every passing row adjudicated individually, and at equal depth they
-  are statistically indistinguishable** — Wilson 2.14–8.75% vs 2.35–5.75%. **No spread between
-  them is published, and the renderer refuses to state one** (v3.7).
+  (7 confirmed over 160 audited pass rows) and **5.17%** on the general DTC sample
+  (11 over 483). ⚠️ **THE GENERAL FIGURE HERE WAS STALE BY A RELEASE UNTIL v4.2.** It read
+  7.53% / 18 over 488 / Wilson 2.35–5.75%, which is the **v3.7** reading at engine `7085b34`;
+  v3.8 shipped a tier-aware cents fix and a non-USD price refusal and re-measured at engine
+  `f5cf74f`. The v3.7 numbers are frozen inside `samples[general].supersedes_measurement`.
+  **Read `fitness.json` through `fitnessOf()`, never this file** — CP-4 caught the stale copy
+  only because its generator reads the artifact.
+  ⚠️ **Both samples have every passing row adjudicated individually, and at equal depth they
+  are statistically indistinguishable** — Wilson 2.14–8.75% vs 1.28–4.03%. **No spread between
+  them is published, and the renderer refuses to state one** (v3.7, generalised at v4.2 — see
+  below; two published versions were serving the retired spread sentence the whole time).
 - **The product-test engine** (`src/server/productTest.ts`) — public-data assertion engine behind
   `/test`, and what a standard compiles down to.
 - **Measurement engine** → **detection** → **analysis** → **report** (CLI + server share it).
@@ -1510,6 +1517,102 @@ Its precondition is that the acceptance suite tests the wrong sentences: `compet
 rivals and **0 of 25** real instances is one, while `site_wide`'s cases are all quantified and the
 two rows that actually cost something carry no quantifier and were classified `trade_form`. **Suite
 1.1 is its own attended session and must not be the session that writes the guard.**
+
+## A result is now a durable artifact, and two things had never rendered (v4.2)
+
+`GET /result/:token` — a stored verdict at a permanent, unguessable, server-rendered URL that
+**never re-runs the engine**. `GET /result/:token/one-pager` is the forwardable version. Both
+are `noindex`, absent from the sitemap, and linked from no page. Migration `0031`;
+`experiments/v4-2/`.
+
+⚠️ **THE BRIEF'S PREMISE WAS FALSE IN THE HALF THAT MATTERED: the STANDARD layer persisted
+nothing.** `POST /api/product-test` wrote to `public_tests`; `POST /api/product-test/standard`
+had no `storePublicTest` call at all and dropped the verdict, the standard identity, the
+per-entry citation URLs and the peer rates on every run. **The layer that makes the site's own
+headline true was the layer with zero durability**, so the strongest artifact this product can
+produce was the one that could not be sent. It now stores the whole `StandardRunResult`.
+
+⚠️ **TWO LIFETIMES WERE SHARING ONE COLUMN, and that is what made "permanent" a lie.**
+`public_tests.expires_at` bounds the OAuth **claim** window (7 days) and every read filtered on
+it, so a result stopped being readable after a week. Fixed by SEPARATING them, never by widening
+the TTL: claims still expire; `getStoredResult` does not consult `expires_at`. Asserted both
+ways — the result survives the window expiring **while `getPublicTest` still refuses it**.
+Nothing purges this table; adding a job would break the URL.
+
+**Results are append-only.** A re-run mints a new token; the older row is never rewritten and
+learns only a `superseded_by` **pointer**, the same shape as the supersession notice a
+byte-frozen standard gets from its renderer. The pages link and say *"linked, not reconciled"*.
+**Sharing is an act**: `shared_at` gates the social card — the thing that makes a link travel —
+and marking is one-way, because a link already sent cannot be recalled.
+
+⚠️ **`/c/:token` IS RETIRED AND SUBSUMED, and the decision was executed rather than read.** The
+real 12-case bundle is on disk at `experiments/stage6/out/hosted/` (gitignored — an agent
+claimed it could not exist; its verifier found it); all 12 minted tokens returned non-200 in
+production under a two-sided canary proving the route was mounted. Residual, stated: that proves
+no minted token is served, not that `HOSTED_CASES_DIR` is unset. Carried across: the header
+posture (`noindex,nofollow` · `private,no-store` · `Referrer-Policy: same-origin`, **not**
+`no-referrer`), the refusal gate as `resultPageDefects`, and — **the trap** — the referrer class,
+because `classifyReferrer` hard-codes the literal path and the outreach-arrival number would
+have read as a collapse in outreach rather than as a rename.
+
+### The peer line joined 0 of 10 rows and had never rendered
+
+`peerRatesFor` set `label` to the entry's **question**; `compileStandard` labels the requirement
+with the **binding's** label. Both renderers joined on label, so v4.1's headline feature — the
+peer benchmark, the standard layer's whole differentiator — rendered **nowhere**, on every row,
+for a release. Nothing threw and no test failed, because **a join that finds nothing looks
+exactly like a standard that has published no measurement**: the `grounding.sources` shape
+again, and the three `s.fitness` ones. Fixed with an explicit `requirementLabel` join key;
+verified **0/10 before, 10/10 after**, and the test fails if the pre-fix path stops reproducing.
+`resolveStored` re-derives peer rates and had to merge the key back, or the fix is undone one
+function later.
+
+### The retired spread sentence was LIVE on two published versions
+
+`/standards/coffee/1.0` and `/standards/coffee/1.1` were both serving *"…higher than the General
+DTC sample bound by about 1.6× … the number that matters to a merchant is the one measured on
+their own category"* — retired three times, revived twice, and live the whole time. Neither
+refusal could fire: v1.0's sidecar predates `interval_95` (overlap branch unreachable) and its
+general sample is a floor with 18 confirmed (x=0 branch unreachable), so execution fell through
+to `12.78 / 7.80`. **The retirements only ever covered the shapes the CURRENT version has**, and
+a superseded document serves its own bytes forever, so a renderer bug on it is permanent and
+silent. Now: **no intervals ⇒ no ratio** and **any floor ⇒ no ratio**, and the test walks
+**every published version**.
+
+### The print path drops the evidence, and the fix everyone cites does nothing
+
+A collapsed `<details>` printed none of its body. Measured by RENDERING (`experiments/v4-2/`, a
+zero-dependency CDP client over Node 22's global `WebSocket` driving the system Chromium — no
+`npm install`), A/B over the same served HTML with only the stylesheet swapped: **`/demo` gained
+20 evidence items, `/standards/coffee/1.3` gained 88, neither lost anything.**
+
+Scored, not guessed: `details > *:not(summary){display:revert}`, `display:block`,
+`content-visibility` on the details, and `*{content-visibility:visible!important}` all measured
+**inert** — the universal selector does not match pseudo-elements. Only
+**`details::details-content { content-visibility: visible !important }`** works, and it ships
+**alone**: a "legacy fallback" beside it measured inert and a guard whose removal changes nothing
+is decorative. **Unscoped** — a `.std-page`-scoped copy printed 1 page where the unscoped rule
+printed 4, and `/report` (the only `window.print()` in the repo, six of seven sections collapsed)
+lives under `.app`. `::details-content` is ~83% Baseline, and that gap **does not reach the
+sendable artifact**: the one-pager PDF is rendered by our Chromium.
+
+⚠️ **Three instruments failed in this session; all three were caught by a canary, none by
+reading.** (1) A checker written via a **bash heredoc** lost one backslash and sent `/s+/g`
+instead of `/\s+/g`, deleting every literal `s` and reporting **124 phantom missing items** —
+the repo's own quoting rule in a new costume; the load-bearing probe used the Write tool and was
+unaffected. (2) The PDF text extractor kept **one global font map** where each PDF page has its
+own `/Font` dict. (3) Chromium **repeats a `<thead>` on every printed page**, wedging it inside a
+cell; the first tolerance allowed an unbounded gap and the BEFORE run began stitching fragments
+from opposite ends of the document into false matches — caught only by the DOM-vs-PDF agreement
+canary. Seam-matched items are counted and reported, never folded into the pass count.
+
+**CP-3's "most material" is a derived rule PRINTED ON THE ARTIFACT** — unmet first, widest peer
+gap, then cheapest to verify, ties on label. A row with **no** peer rate sorts after every row
+that has one: an unmeasured gap is not a small gap. **CP-4's `outreach_final.md` is generated,
+not written**, from the same `selectMaterial()` the PDF uses, and it flags three places where
+the honest value contradicts the pack's copy — including that the pack's *"X of 100 stores state
+this, so this is a peer gap"* **inverts** on the reference store, where every unmet row is one
+most peers also fail. Kept the number; rewrote the line.
 
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 

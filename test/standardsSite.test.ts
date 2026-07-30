@@ -1025,6 +1025,60 @@ test("AN x=0 FLOOR IS NOT A LOW ERROR RATE, and no ratio is drawn against one", 
     "the comparison refuses even a genuinely separated pair — every other assertion here proves nothing");
 });
 
+test("A SAMPLE PAIR WITH NO INTERVALS IS NOT COMPARED — the v1.0/v1.1 hole, which was LIVE", () => {
+  // ⚠️ MEASURED IN PRODUCTION AT COMMIT 46e5c5e, not hypothesised. `/standards/coffee/1.0`
+  // and `/standards/coffee/1.1` were both serving "The Coffee category sample bound is
+  // higher than the General DTC sample bound by about 1.6× … so the number that matters to
+  // a merchant is the one measured on their own category" — the sentence this project has
+  // now retired four times. Neither existing refusal could fire: v1.0's sidecar predates
+  // `interval_95` (so the overlap branch is unreachable) and its general sample is a floor
+  // with 18 confirmed (so the x=0 branch is unreachable). Execution fell through to the
+  // arithmetic. The retirements only ever covered the shapes the CURRENT version happens to
+  // have.
+  const noIntervals = renderComparison([
+    sample({ label: "Coffee category sample", confirmed_false_positives: 10, pass_rows_audited: 162, bound_95_cluster_icc02_pct: 12.78 }),
+    sample({ label: "General DTC sample", confirmed_false_positives: 18, pass_rows_audited: 509, bound_95_cluster_icc02_pct: 7.80, is_floor: true }),
+  ]);
+  assert.match(noIntervals, /No comparison is drawn/i);
+  assert.doesNotMatch(noIntervals, /is higher than the .* bound by/i, "the 1.6× sentence is back");
+  assert.doesNotMatch(noIntervals, /number that matters to a merchant/i);
+
+  // A FLOOR alone must refuse too, even with intervals present: the caveat this renderer
+  // appends says "the gap between them is not a measurement", and it was printed directly
+  // below a sentence stating the size of that gap.
+  const floorWithIntervals = renderComparison([
+    sample({ label: "Complete", confirmed_false_positives: 10, pass_rows_audited: 160, bound_95_cluster_icc02_pct: 12.0, interval_95: { lower_pct: 8.0, upper_pct: 12.0 } }),
+    sample({ label: "Floor", confirmed_false_positives: 3, pass_rows_audited: 500, bound_95_cluster_icc02_pct: 1.5, interval_95: { lower_pct: 0.5, upper_pct: 1.5 }, is_floor: true }),
+  ]);
+  assert.doesNotMatch(floorWithIntervals, /is higher than the .* bound by/i,
+    "a complete audit is compared against a floor as if they were peers");
+
+  // ANTI-VACUITY: a separated pair WITH intervals and no floor must still state its ratio,
+  // or every assertion above is satisfied by a renderer that simply never compares.
+  const drawn = renderComparison([
+    sample({ label: "High", confirmed_false_positives: 40, pass_rows_audited: 200, bound_95_cluster_icc02_pct: 26, interval_95: { lower_pct: 15.0, upper_pct: 26.0 } }),
+    sample({ label: "Low", confirmed_false_positives: 2, pass_rows_audited: 400, bound_95_cluster_icc02_pct: 1.8, interval_95: { lower_pct: 0.1, upper_pct: 1.8 } }),
+  ]);
+  assert.match(drawn, /is higher than the .* bound by/i);
+});
+
+test("NO PUBLISHED VERSION SERVES THE RETIRED SPREAD SENTENCE — every one, not just the current", () => {
+  // The defect was invisible for two releases because every check ran against whichever
+  // version was current. A superseded document keeps serving its own bytes forever, so a
+  // renderer bug on it is permanent and silent.
+  for (const s of loadPublishedStandards()) {
+    const page = standardsPageFor(`/standards/${s.slug}/${s.publicVersion}`, "https://x.test");
+    assert.ok(page, `no page rendered for ${s.slug} v${s.publicVersion} — the walker proves nothing`);
+    const body = page!.bodyHtml;
+    assert.doesNotMatch(body, /bound is higher than the .* bound by/i,
+      `${s.slug} v${s.publicVersion} publishes a spread between samples`);
+    assert.doesNotMatch(body, /the number that matters to a merchant is the one measured on their own category/i,
+      `${s.slug} v${s.publicVersion} revives the retired category-preference sentence`);
+    assert.doesNotMatch(body, /by an order of magnitude/i,
+      `${s.slug} v${s.publicVersion} revives the order-of-magnitude claim`);
+  }
+});
+
 test("NO RATIO IS DRAWN BETWEEN OVERLAPPING INTERVALS, and the live artifact is such a pair", () => {
   // ⚠️ THE SAME REFUSAL, GENERALISED, AND THE REASON IT HAD TO BE. Closing the general
   // sample's audit removed the floor — and with it the branch above — so the arithmetic

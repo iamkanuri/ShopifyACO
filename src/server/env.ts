@@ -277,11 +277,10 @@ export const ENV = {
     // surface aggregates the whole funnel, so it stays dark unless deliberately lit.
     adminEnabled: process.env.FUNNEL_ADMIN_ENABLED === "1" || process.env.FUNNEL_ADMIN_ENABLED === "true",
   },
-  // Directory holding the pre-rendered outreach cases served at /c/:token. UNSET =>
-  // the route 404s everything, which is the correct posture until the links are
-  // meant to be live. Never a bundled asset: the cases describe real third-party
-  // stores and are deployed onto the Railway volume, never committed.
-  hostedCasesDir: str(process.env.HOSTED_CASES_DIR),
+  // ⛔ `hostedCasesDir` / HOSTED_CASES_DIR was removed at v4.2 with the `/c/:token`
+  // route it gated. An outreach result is now a DB row rendered at `/result/:token`,
+  // generated in-repo instead of by a bundle dropped on the volume. If the variable is
+  // still set on Railway it is now inert and should be deleted; nothing reads it.
 };
 
 /** Scan modes. Only `mini` is self-serve for the public; admin can run the rest. */

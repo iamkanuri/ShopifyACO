@@ -395,7 +395,7 @@ test("[copy] the landing page states NO measured figure", () => {
 // The rule: server-rendered target ⇒ plain `<a href>`, forcing a full page load.
 // ===========================================================================
 test("[routing] no SPA <Link> points at a server-rendered document", () => {
-  const SERVER_RENDERED = ["/demo", "/standards", "/llms.txt", "/og/"];
+  const SERVER_RENDERED = ["/demo", "/standards", "/llms.txt", "/og/", "/result/"];
   const pagesDir = join(ROOT, "viewer", "src");
   const offenders: string[] = [];
 

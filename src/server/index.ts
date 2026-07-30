@@ -81,13 +81,14 @@ import {
 import { safeFetch } from "../crawler/fetch.js";
 import { validateUrl } from "../crawler/ssrf.js";
 import { runScanJob } from "./scanJob.js";
-import { runProductTest } from "./productTest.js";
+import { runProductTest, ENGINE_VERSION } from "./productTest.js";
 import { runStandardTest } from "./publicStandard.js";
 import { discoverProduct } from "./discover.js";
-import { newTestToken, storePublicTest } from "../db/buyerTests.js";
+import { newTestToken, storePublicTest, getStoredResult, markResultShared } from "../db/buyerTests.js";
 import { recordFunnelEvent, classifyReferrer } from "../db/funnel.js";
 import { funnelHandler } from "./funnelAdmin.js";
-import { hostedCaseHandler } from "./hostedCase.js";
+import { renderStoredResult, resolveStored, resultPageDefects } from "./resultPage.js";
+import { renderOnePager } from "./onePager.js";
 import {
   claimTestHandler, listTestsHandler, createTestHandler, getTestHandler,
   runTestHandler, confirmQuestionsHandler, confirmHandler,
@@ -329,6 +330,111 @@ app.get(/^\/demo\/?$/, (req, res, next) => {
         }),
       );
     })
+    .catch(next);
+});
+
+// ---- THE PERMANENT RESULT URL (v4.2 CP-1) ---------------------------------
+//
+// A DOCUMENT, for the same reasons /demo and the standards pages are: it is a test
+// RESULT, it does not need the app, so it does not load the app — and it is therefore
+// readable with JavaScript off by construction rather than by luck. Registered HERE,
+// ahead of express.static and the SPA catch-all, or it is dead code that silently serves
+// index.html with a 200 — the failure this file already documents twice.
+//
+// ⚠️ IT NEVER RE-RUNS THE ENGINE. `renderStoredResult` reads the stored blob and nothing
+// else; `test/resultPage.test.ts` asserts that statically and by rendering impossible
+// stored numbers and requiring them on the page.
+app.get("/result/:token", (req, res, next) => {
+  const token = String(req.params.token ?? "");
+  // Same shape as `newTestToken()`. Checked before the DB is touched, so a scanner
+  // cannot use this route to make queries.
+  if (!/^t_[a-f0-9]{20}$/.test(token)) {
+    return res.status(404).type("text/plain").send("Not found");
+  }
+  if (!rateLimit(`result:${clientIp(req)}`, 60, 60_000)) {
+    return res.status(429).type("text/plain").send("Too many requests");
+  }
+  getStoredResult(token)
+    .then((row) => {
+      // ONE indistinguishable 404 for "no such token" and "unreadable row", so a prober
+      // learns nothing from the difference. Inherited from the retired /c/:token.
+      if (!row) return res.status(404).type("text/plain").send("Not found");
+      const resolved = resolveStored(row);
+      if (!resolved) return res.status(404).type("text/plain").send("Not found");
+
+      const page = renderStoredResult(row, resolved, baseUrl(req));
+      const defects = resultPageDefects(page.bodyHtml);
+      if (defects.length) {
+        // Loud on our side, a plain error on theirs. These pages are sent to a named
+        // third-party merchant; one that contradicts itself in front of a prospect spends
+        // credibility the whole product rests on, and unlike a wrong verdict it is not
+        // recoverable by re-running anything.
+        console.error(`[result] REFUSING to serve ${token}: ${defects.join(" | ")}`);
+        return res.status(500).type("text/plain").send("This result could not be rendered.");
+      }
+
+      const referrerClass = classifyReferrer(req.get("referer"), req.get("host"));
+      void recordFunnelEvent({
+        name: "case_viewed", host: row.store_host ?? "unknown", referrerClass, caseToken: token,
+      });
+
+      // SHARING IS AN ACT, NOT A BYPRODUCT (CP-1 decision 1). noindex/nofollow always —
+      // these are never search results. The social card is what actually makes a link
+      // TRAVEL, so it is withheld until a human marks the result shareable.
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.setHeader("Cache-Control", "private, no-store");
+      // `same-origin`, NOT `no-referrer`: no-referrer stripped the Referer from the
+      // recipient's click through to /test, which made the outreach arrival class
+      // structurally impossible to record. Learned on /c/:token; kept here.
+      res.setHeader("Referrer-Policy", "same-origin");
+      res.type("html").send(renderStandaloneDocument(page, {
+        cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req),
+        ogImage: row.shared_at ? `${baseUrl(req)}/og/default.png` : null,
+      }));
+    })
+    .catch(next);
+});
+
+// THE AGENCY ONE-PAGER (v4.2 CP-3). Same stored row, a second rendering — the compact
+// forwardable artifact. Also never re-runs; also noindex.
+app.get("/result/:token/one-pager", (req, res, next) => {
+  const token = String(req.params.token ?? "");
+  if (!/^t_[a-f0-9]{20}$/.test(token)) {
+    return res.status(404).type("text/plain").send("Not found");
+  }
+  if (!rateLimit(`result:${clientIp(req)}`, 60, 60_000)) {
+    return res.status(429).type("text/plain").send("Too many requests");
+  }
+  getStoredResult(token)
+    .then((row) => {
+      if (!row) return res.status(404).type("text/plain").send("Not found");
+      const resolved = resolveStored(row);
+      if (!resolved) return res.status(404).type("text/plain").send("Not found");
+      const page = renderOnePager(row, resolved, baseUrl(req));
+      const defects = resultPageDefects(page.bodyHtml);
+      if (defects.length) {
+        console.error(`[one-pager] REFUSING to serve ${token}: ${defects.join(" | ")}`);
+        return res.status(500).type("text/plain").send("This summary could not be rendered.");
+      }
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Referrer-Policy", "same-origin");
+      res.type("html").send(renderStandaloneDocument(page, {
+        cssHref: builtCssHref(), brand: ENV.publicBrandName, base: baseUrl(req), ogImage: null,
+      }));
+    })
+    .catch(next);
+});
+
+// Marking a result shareable. A POST, because it changes stored state, and deliberately
+// one-way: a link already sent cannot be recalled, so a button that pretended to
+// un-share would be a lie.
+app.post("/api/result/:token/share", (req, res, next) => {
+  const token = String(req.params.token ?? "");
+  if (!/^t_[a-f0-9]{20}$/.test(token)) return res.status(404).json({ error: "Not found" });
+  if (!rateLimit(`share:${clientIp(req)}`, 20, 60_000)) return res.status(429).json({ error: "Too many requests" });
+  markResultShared(token)
+    .then((sharedAt) => (sharedAt ? res.json({ ok: true, sharedAt }) : res.status(404).json({ error: "Not found" })))
     .catch(next);
 });
 
@@ -696,6 +802,40 @@ app.post(
     }
     try {
       const out = await runStandardTest(url, slug);
+
+      // v4.2 CP-1 — PERSIST THE STANDARD-LAYER VERDICT.
+      //
+      // ⚠️ THIS WAS THE LAYER WITH ZERO DURABILITY, AND IT IS THE ONE THAT MATTERS MOST.
+      // The v4.1 brief's premise was that "results ARE persisted on every run"; measured,
+      // that was true only of `/api/product-test`. This route — the one that makes the
+      // site's own headline true by executing a published, content-hashed standard — did
+      // one `res.json(out)` and dropped the verdict, along with the standard identity, the
+      // per-entry citation URLs and the peer rates that exist nowhere else. So the
+      // strongest artifact this product can produce was the one that could not be sent.
+      //
+      // The WHOLE `StandardRunResult` is stored, not just its `.result`: the identity and
+      // the entry URLs are what make a row citable, and re-deriving them later would mean
+      // re-deciding which version ran. Best-effort — a DB hiccup must never cost a
+      // visitor their result — and the token is attached to the response so the client
+      // can offer the permanent link.
+      if (out.ok && out.result) {
+        try {
+          const token = newTestToken();
+          await storePublicTest(token, url, host, out, Date.now(), {
+            kind: "standard",
+            engineVersion: ENGINE_VERSION,
+            standardSlug: out.standard?.slug ?? slug,
+            standardVersion: out.standard?.version ?? null,
+            standardHash: out.standard?.hash ?? null,
+            contractVersion: out.result.contractVersion ?? null,
+            ranAt: out.ranAt ? Date.parse(out.ranAt) : Date.now(),
+          });
+          (out as { resultToken?: string }).resultToken = token;
+        } catch (e) {
+          console.warn(`[standard-test] could not persist result: ${(e as Error).message}`);
+        }
+      }
+
       // ⚠️ A NON-APPLICABLE PRODUCT IS A 200, NOT AN ERROR. "This standard does not cover
       // this product" is a true and useful answer — it is the answer that teaches a reader
       // what a published standard is — and the client renders it as a result.
@@ -763,7 +903,14 @@ app.post(
     if (result.ok) {
       try {
         const token = newTestToken();
-        await storePublicTest(token, url, host, result);
+        await storePublicTest(token, url, host, result, Date.now(), {
+          kind: "general",
+          engineVersion: ENGINE_VERSION,
+          // A general run carries no standard and no contractVersion — only a PINNED run
+          // emits those — so the permanent page says "generated buyer task" rather than
+          // inventing a contract identity it never had.
+          contractVersion: result.contractVersion ?? null,
+        });
         result.testToken = token;
       } catch (e) {
         console.warn(`[product-test] could not persist for install continuity: ${(e as Error).message}`);
@@ -1563,26 +1710,43 @@ async function serveIndex(req: Request, res: Response) {
   res.type("html").send(html);
 }
 
-// --- hosted outreach cases (v2.2 CP4) --------------------------------------
-//     MUST be registered BEFORE the SPA catch-all below: that handler only defers
-//     paths starting with /api, so a /c/:token route registered after it would be
-//     dead code that silently served index.html with a 200. Inert until
-//     HOSTED_CASES_DIR points at a bundle on the volume (see DEPLOY.md).
-//     The `/api` rate limiter does not match `/c/*`, so this carries its own.
-app.get("/c/:token", (req, res) => {
-  if (!rateLimit(`case:${clientIp(req)}`, 60, 60_000)) {
-    return res.status(429).type("text/plain").send("Too many requests");
-  }
-  hostedCaseHandler(req, res);
-});
-// Everything else under /c — `/c`, `/c/`, `/c/a/b`, a mistyped token — is a hard
-// 404, never the SPA. Verified against a running server: without this the catch-all
-// below served the marketing homepage with HTTP 200, so a broken outreach link
-// would have looked like it worked and quietly reported a visit that never happened.
-// There is deliberately no index page: the case set must not be browsable.
-app.use("/c", (_req, res) => {
-  res.status(404).type("text/plain").send("Not found");
-});
+// ---------------------------------------------------------------------------
+// ⛔ `/c/:token` — HOSTED OUTREACH CASES (v2.2 CP4) — RETIRED AT v4.2, SUBSUMED BY
+//    `/result/:token` ABOVE. Not deleted quietly: read this before reviving it.
+//
+// It served ONE pre-rendered outreach case per unguessable token from a bundle on the
+// Railway volume, and it was the same artifact class `/result/:token` now is — an
+// unlisted, noindex, forwardable page about a named third-party store — reached by the
+// opposite architecture: a generator that lived OUTSIDE this repository, HTML dropped
+// onto a volume, no source of truth in the database, no way to re-run, and a
+// last-boundary `caseDefects()` refusal gate that existed precisely because no
+// render-time guard was possible. Two token schemes for one job is the collision shape
+// this project has already paid for with two grammars both called 1.1.
+//
+// RETIRING IT BREAKS NO LIVE LINK, and that was established by execution rather than by
+// reading DEPLOY.md's "leave HOSTED_CASES_DIR unset" checklist. The real 12-case bundle
+// is on disk at `experiments/stage6/out/hosted/` (gitignored, never committed); all 12
+// minted tokens were requested against production at commit 46e5c5e and 0 returned 200,
+// with a two-sided canary proving the route WAS mounted and answering (an invalid token
+// gave 404 text/plain where an unknown path gives the SPA's 200 text/html). The 404 is
+// deliberately indistinguishable between "directory unset" and "no such case", so the
+// residual is narrow and stated: this proves no token anyone ever minted is being served,
+// not that the variable is unset.
+//
+// WHAT WAS CARRIED ACROSS, rather than dropped with it:
+//   • the header posture — noindex/nofollow, private no-store, and `same-origin`
+//     Referrer-Policy. NOT `no-referrer`: that made `referrer_class: "hosted_case"`
+//     structurally impossible to record and every outreach arrival look like direct
+//     traffic. `/result/` inherits the same three.
+//   • the refusal gate, as `resultPageDefects()` — the generator being in-repo removes
+//     `caseDefects`'s stated justification but not the risk it guarded.
+//   • the referrer class, which hard-coded the literal `/c/` path. `classifyReferrer`
+//     now recognises `/result/` too, so the outreach-arrival number does not silently
+//     zero the day the prefix changed.
+// `HOSTED_CASES_DIR`, `src/server/hostedCase.ts` and `test/hostedCase.test.ts` are gone
+// with it. The `case_viewed` enum value and column stay: historical rows carry it, and
+// deleting an enum value that live data references would break the admin funnel read.
+// ---------------------------------------------------------------------------
 
 if (existsSync(dist)) {
   app.use(express.static(dist, { index: false }));
