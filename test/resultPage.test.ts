@@ -192,6 +192,19 @@ test("[result] the status vocabulary is byte-identical to the one /demo publishe
   }
 });
 
+test("[result] the RETIRED /c/ prefix still 404s — it must not fall through to the SPA", () => {
+  // Caught in production after the v4.2 deploy, not by a test: deleting the /c/:token
+  // route also deleted the `app.use("/c", 404)` under it, so /c/<token> answered 200 with
+  // the marketing homepage. A retired outreach URL that returns 200 tells a link checker,
+  // a crawler and a recipient that a dead link is live — the exact failure the retired
+  // module's own comment recorded.
+  const src = readFileSync(join(ROOT, "src/server/index.ts"), "utf8");
+  assert.match(src, /app\.use\("\/c",\s*\(_req, res\) => \{\s*res\.status\(404\)/,
+    "the /c catch-all 404 is gone; /c/<anything> now serves the SPA with HTTP 200");
+  // Anti-vacuity: the file really is the router and really registers the new route too.
+  assert.match(src, /app\.get\("\/result\/:token"/);
+});
+
 test("[result] the peer sentence is the SHARED one, and names its denominator", () => {
   // The trap: five of ten measured coffee entries were asked of fewer than 100 products,
   // and DELIV-001 could be DECIDED on only 74 of the 100 it was asked.

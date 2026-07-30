@@ -1746,7 +1746,18 @@ async function serveIndex(req: Request, res: Response) {
 // `HOSTED_CASES_DIR`, `src/server/hostedCase.ts` and `test/hostedCase.test.ts` are gone
 // with it. The `case_viewed` enum value and column stay: historical rows carry it, and
 // deleting an enum value that live data references would break the admin funnel read.
+//
+// ⚠️ THE 404 STAYS, AND DELETING IT WITH THE ROUTE WAS A REAL REGRESSION — caught by a
+// production probe after the v4.2 deploy, not by a test. Removing `app.get("/c/:token")`
+// also removed the `app.use("/c", 404)` beneath it, so `/c/<any token>` fell through to
+// the SPA catch-all and answered **HTTP 200 with the marketing homepage**. That is the
+// precise failure the retired module's own comment recorded: "a broken outreach link would
+// have looked like it worked". A retired URL must say it is gone; a 200 tells a link
+// checker, a crawler and a recipient that a dead outreach link is live.
 // ---------------------------------------------------------------------------
+app.use("/c", (_req, res) => {
+  res.status(404).type("text/plain").send("Not found");
+});
 
 if (existsSync(dist)) {
   app.use(express.static(dist, { index: false }));
