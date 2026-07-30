@@ -329,6 +329,50 @@ would have been undone one function later.
 
 ---
 
+## PRODUCTION VERIFICATION
+
+Deployed as `6f47641`, then `9d9685d`. `railway.json` runs `npm run migrate && npm start` and
+`migrate.ts` exits 1 on failure, so **a green `/healthz` on this commit is proof migration
+`0031` applied**.
+
+Both standing probes: `experiments/v3-7/verify_prod.mjs` **21/21 VERIFIED_CLEAN**,
+`experiments/v3-8/verify_sections.mjs` **15/15 VERIFIED_CLEAN**.
+
+The retired spread sentence, every published version — `/standards/coffee/1.0` and `1.1` now
+serve "No comparison is drawn", `1.3` serves "No difference is stated", and the canary confirms
+`1.3` still publishes 4.38% / 9.99%.
+
+**A real standard run, executed against klatchcoffee.com through production**, then its
+permanent URL fetched:
+
+```
+POST /api/product-test/standard   → ok, ALS-COFFEE v1.3, 10 peers, 10 carrying requirementLabel
+                                    resultToken t_0db9852c7e19461c49f8
+GET  /result/t_0db98…             → 200 · x-robots-tag: noindex, nofollow
+                                         · cache-control: private, no-store
+                                         · referrer-policy: same-origin
+                                         · no og:image (unshared)
+                                         · 7,064 characters of body text with JS off
+                                         · standard id, content hash, peer lines, 9.99% bound,
+                                           "kept indefinitely", "This result is unlisted"
+GET  /result/t_0db98…/one-pager   → 200 · selection rule printed
+                                         · "92 of 100 coffee stores don't state this either."
+                                         · "92 of 99  coffee stores don't state this either."
+```
+
+Those last two lines are the denominator trap resolved in production: 100 for one entry, **99**
+for another, in the same artifact, each naming its own.
+
+### One regression, introduced and caught by a probe rather than by a test
+
+`/c/2jmh6zli5tn3` returned **HTTP 200 with the marketing homepage** after the first deploy.
+Deleting `app.get("/c/:token")` also deleted the `app.use("/c", 404)` beneath it, so the SPA
+catch-all took the path. That is exactly what the retired module's own comment recorded — *"a
+broken outreach link would have looked like it worked"* — and a 200 tells a link checker, a
+crawler and a recipient that a dead outreach link is live. Restored in `9d9685d` with a test.
+It is worth naming plainly: **the standing production probes caught this and the 1,072-test
+suite did not**, because no test enumerates the Express route table.
+
 ## WHAT THIS BRIEF GOT WRONG
 
 1. **"Results ARE persisted on every run."** The standard layer persisted nothing (D-1). This is
