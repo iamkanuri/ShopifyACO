@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, navigate } from "../router";
 import { ConnectShopify } from "../components/ConnectShopify";
 import { COFFEE_STANDARD_URL, COFFEE_STANDARD_VERSION } from "../copy";
+import { peerSentence } from "../peerSentence";
 
 // ---------------------------------------------------------------------------
 // THE TWO LAYERS, MADE VISIBLE (v4.1).
@@ -17,7 +18,7 @@ import { COFFEE_STANDARD_URL, COFFEE_STANDARD_VERSION } from "../copy";
 // ---------------------------------------------------------------------------
 
 interface PeerRate {
-  entryId: string; label: string;
+  entryId: string; label: string; requirementLabel?: string | null;
   adjudicated: number; failed: number; passed: number;
   failPct: number; undecided: number; asked: number;
 }
@@ -31,26 +32,13 @@ interface StandardRun {
   peers?: PeerRate[];
   result?: TestResult;
   ranAt?: string;
+  /** v4.2 — the permanent, unguessable URL this verdict was stored at. */
+  resultToken?: string;
 }
 
-/**
- * The peer sentence, and the denominator trap it exists to avoid.
- *
- * ⚠️ NEVER "of 100". Five of the ten measured coffee entries were asked of fewer than 100
- * products, each for a recorded reason, and one — the delivery entry — could only be
- * DECIDED on 74 of the 100 it was asked, because 26 returned "requires store access".
- * Counting an undecided row as a pass is a different measurement, and this repo has
- * published both by accident before (v1.1 stated 45%, the adjudicated reading is 60.8%).
- * So the sentence names the denominator it actually used, every time.
- */
-function peerSentence(p: PeerRate, storePassed: boolean): string {
-  const base = p.undecided > 0
-    ? `${p.failed} of the ${p.adjudicated} coffee stores we could decide (of ${p.asked} asked)`
-    : `${p.failed} of ${p.adjudicated} coffee stores`;
-  return storePassed
-    ? `${base} don't state this. This one does.`
-    : `${base} don't state this either.`;
-}
+// The peer sentence and its denominator rule moved to `../peerSentence` at v4.2, because
+// the permanent result page renders the same line server-side and two hand-written copies
+// of a rule this exact is how the `pass`/`proven` drift happened.
 
 /** Which CATEGORY_CLAIMS branch the general engine matched, inferred from the row labels
  *  it produced — zero extra cost, because the response already carries them. `Single-origin`
@@ -439,7 +427,7 @@ export function ProductTestPage() {
                       <thead><tr><th>The buyer's question</th><th>Result</th></tr></thead>
                       <tbody>
                         {std.result.assertions.map((a, i) => {
-                          const peer = std.peers?.find((x) => x.label === a.label || x.entryId === a.label);
+                          const peer = std.peers?.find((x) => x.requirementLabel === a.label || x.label === a.label || x.entryId === a.label);
                           const id = peer?.entryId;
                           const passed = a.status === "pass_evidenced" || a.status === "pass_no_blocking";
                           return (
@@ -476,6 +464,19 @@ export function ProductTestPage() {
                       individually. The method, the sample and this standard's measured
                       false-pass rate are on <a href={std.standard.url}>its page</a>.
                     </p>
+                    {/* v4.2 CP-1 — THE THING AN AGENCY ACTUALLY SENDS.
+                        A plain <a>, never the SPA <Link>: /result/:token is a server-rendered
+                        document and a client-side navigation would land on the SPA's 404 —
+                        the exact production bug v4.1's last commit shipped to fix. */}
+                    {std.resultToken && (
+                      <p className="pt-stdfoot">
+                        <b>This result has a permanent address.</b>{" "}
+                        <a href={`/result/${std.resultToken}`}>{`${location.origin}/result/${std.resultToken}`}</a>
+                        {" — "}unlisted and unguessable, it renders the verdict exactly as it is above and
+                        never re-runs anything, so it still says this a year from now. Re-running produces a
+                        new address; this one is never overwritten.
+                      </p>
+                    )}
                   </>
                 )}
               </div>

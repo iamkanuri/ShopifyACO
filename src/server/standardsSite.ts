@@ -730,6 +730,34 @@ export function renderComparison(samples: FitnessSample[]): string {
     }
   }
 
+  // ⚠️ AND THE SAME REFUSAL AGAIN, FOR THE SAMPLES THAT CARRY NO INTERVAL AT ALL — which
+  // is the hole the two branches above left, and it was LIVE IN PRODUCTION.
+  //
+  // Measured at commit 46e5c5e, not inferred: `/standards/coffee/1.0` and
+  // `/standards/coffee/1.1` were both serving "The Coffee category sample bound is higher
+  // than the General DTC sample bound by about 1.6×. … so the number that matters to a
+  // merchant is the one measured on their own category" — the exact sentence the comment
+  // above records as retired three times. v1.0's sidecar predates `interval_95`, so the
+  // interval branch cannot fire; its general sample is a floor with 18 confirmed, so the
+  // x=0 branch cannot fire either; and execution fell straight through to the arithmetic.
+  //
+  // Two refusals, both of which the v1.3 sidecar already states as its own rule ("publish
+  // only interval-supported statements"):
+  //   • NO INTERVALS ⇒ no ratio. An unmeasured interval is not a narrow one. Without it
+  //     there is nothing to show the two bounds are distinguishable, and the sentence
+  //     asserts they are.
+  //   • A FLOOR ⇒ no ratio. The caveat this function already appends says in full that
+  //     "the gap between them is not a measurement" — printed directly BELOW a sentence
+  //     stating the size of that gap. One of the two had to go, and it is not the caveat.
+  const comparable = samples.filter((s) => s.interval_95);
+  const anyFloor = samples.some((s) => s.is_floor);
+  if (comparable.length < 2 || anyFloor) {
+    const why = anyFloor
+      ? `${esc(samples.filter((s) => s.is_floor).map((s) => s.label).join(" and "))} is a FLOOR — one defect class was checked mechanically and the rest of that sample is unexamined — so it is not a like-for-like counterpart to a sample whose every passing row was read individually.`
+      : "These samples were measured before this project published confidence intervals, so there is nothing here that could show the two bounds are distinguishable.";
+    return `<p class="std-limit"><strong>No comparison is drawn between these samples.</strong> ${why} A ratio between them would be arithmetic rather than a measurement. Every earlier version of the claim that a category sample and a general sample differ turned out to be measuring AUDIT DEPTH rather than category — 0.83% became 7.80% when a single defect class was re-checked mechanically — and at equal audit depth the two are statistically indistinguishable. The current measurement, with intervals, is on the current version's page.</p>`;
+  }
+
   const hi = [...samples].sort((a, b) => b.bound_95_cluster_icc02_pct - a.bound_95_cluster_icc02_pct)[0]!;
   const lo = [...samples].sort((a, b) => a.bound_95_cluster_icc02_pct - b.bound_95_cluster_icc02_pct)[0]!;
   const ratio = lo.bound_95_cluster_icc02_pct > 0 ? hi.bound_95_cluster_icc02_pct / lo.bound_95_cluster_icc02_pct : 0;

@@ -119,3 +119,22 @@ experiments/v4-1/*
 !experiments/v4-1/*.md
 !experiments/v4-1/*.ts
 !experiments/v4-1/*.mjs
+!experiments/v4-2/
+experiments/v4-2/*
+!experiments/v4-2/*.md
+!experiments/v4-2/*.ts
+!experiments/v4-2/*.mjs
+!experiments/v4-2/*.sh
+# The measurement OUTPUTS are the evidence for CP-2's two-sided print proof, so they are
+# tracked like a fitness sidecar rather than treated as scratch.
+!experiments/v4-2/print_BEFORE.json
+!experiments/v4-2/print_AFTER.json
+!experiments/v4-2/std_BEFORE.json
+!experiments/v4-2/std_AFTER.json
+!experiments/v4-2/op_coffee.json
+!experiments/v4-2/op_general.json
+# The two CP-3 reference one-pagers. Unlike the retired /c/ bundle (12 pre-rendered cases
+# kept out of git for size and because they were SERVED to named merchants), these are two
+# exhibits that are never served, one of them for the store /demo already publishes.
+!experiments/v4-2/onepager_coffee_klatchcoffee.pdf
+!experiments/v4-2/onepager_general_barebonesliving.pdf

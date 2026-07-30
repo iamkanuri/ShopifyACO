@@ -8,7 +8,17 @@ import type { Requirement } from "../server/productTest.js";
 // are deliberately NOT, because they run before any shop is known.
 // ===========================================================================
 
-/** Unclaimed public results are short-lived — long enough to install, no longer. */
+/**
+ * The CLAIM window — long enough to install, no longer.
+ *
+ * ⚠️ THIS IS NOT A RETENTION POLICY, AND READING IT AS ONE IS WHAT MADE "PERMANENT" FALSE.
+ * `expires_at` bounds how long an unclaimed result may still be bound to a shop through
+ * OAuth. It never had anything to do with whether a human can read the result, but every
+ * read filtered on it, so a result became unreadable after seven days. v4.2 separates the
+ * two: claims still expire here; rendering goes through `getStoredResult`, which does not
+ * consult this at all. Nothing deletes a `public_tests` row — there is no purge job for
+ * this table and adding one would break the permanent URL.
+ */
 export const PUBLIC_TEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface PublicTestRow {
@@ -51,20 +61,103 @@ export function newTestToken(): string {
   return `t_${randomBytes(10).toString("hex")}`;
 }
 
-/** Persist a rendered public result so it can survive the install redirect. */
+/** Provenance a permanent result URL must state, and which the result blob cannot supply. */
+export interface StoredResultMeta {
+  kind?: "general" | "standard";
+  engineVersion?: string | null;
+  standardSlug?: string | null;
+  standardVersion?: string | null;
+  standardHash?: string | null;
+  contractVersion?: string | null;
+  /** The token this run re-runs. Append-only: the new row points back, never overwrites. */
+  rerunOf?: string | null;
+  ranAt?: number;
+}
+
+/** Persist a rendered public result so it can survive the install redirect — and, since
+ *  v4.2, so it can be served forever at its own URL. */
 export async function storePublicTest(
   token: string,
   productUrl: string,
   storeHost: string | null,
   result: unknown,
   now: number = Date.now(),
+  meta: StoredResultMeta = {},
 ): Promise<void> {
   await pgQuery(
-    `insert into public_tests (token, product_url, store_host, result, expires_at)
-     values ($1,$2,$3,$4::jsonb,$5)
+    `insert into public_tests
+       (token, product_url, store_host, result, expires_at,
+        ran_at, engine_version, kind, standard_slug, standard_version, standard_hash,
+        contract_version, rerun_of)
+     values ($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      on conflict (token) do nothing`,
-    [token, productUrl, storeHost, JSON.stringify(result), new Date(now + PUBLIC_TEST_TTL_MS).toISOString()],
+    [
+      token, productUrl, storeHost, JSON.stringify(result),
+      new Date(now + PUBLIC_TEST_TTL_MS).toISOString(),
+      new Date(meta.ranAt ?? now).toISOString(),
+      meta.engineVersion ?? null,
+      meta.kind ?? "general",
+      meta.standardSlug ?? null,
+      meta.standardVersion ?? null,
+      meta.standardHash ?? null,
+      meta.contractVersion ?? null,
+      meta.rerunOf ?? null,
+    ],
   );
+  // The older result learns that a newer one exists. This is the ONLY field a later run
+  // may write on an earlier row, and it is a pointer rather than a verdict — the same
+  // shape as the supersession notice a byte-frozen standard gets from its renderer.
+  // Never `do update` on the result itself: results are append-only.
+  if (meta.rerunOf) {
+    await pgQuery(`update public_tests set superseded_by=$2 where token=$1`, [meta.rerunOf, token]);
+  }
+}
+
+/** A stored result row, as the permanent URL needs it. */
+export interface StoredResultRow extends PublicTestRow {
+  kind: string;
+  ran_at: string | null;
+  engine_version: string | null;
+  standard_slug: string | null;
+  standard_version: string | null;
+  standard_hash: string | null;
+  contract_version: string | null;
+  shared_at: string | null;
+  rerun_of: string | null;
+  superseded_by: string | null;
+  created_at: string;
+}
+
+/**
+ * Read a stored result FOR RENDERING. Deliberately does not filter on `expires_at`.
+ *
+ * ⚠️ NOT A LOOSENING OF `getPublicTest` — a separate question. `getPublicTest` answers
+ * "may this result still be bound to a shop through OAuth?", which is time-limited and
+ * stays time-limited; this answers "what did we say about this page, and when?", which a
+ * citation requires to be permanent. Widening the existing function would have quietly
+ * extended the claim window too, which is a security-relevant behaviour change nobody
+ * asked for.
+ */
+export async function getStoredResult(token: string): Promise<StoredResultRow | null> {
+  const { rows } = await pgQuery<StoredResultRow>(
+    `select token, product_url, store_host, result, shop_domain, claimed_at,
+            kind, ran_at, engine_version, standard_slug, standard_version, standard_hash,
+            contract_version, shared_at, rerun_of, superseded_by, created_at
+       from public_tests where token=$1`,
+    [token],
+  );
+  return rows[0] ?? null;
+}
+
+/** Mark a result shareable. Idempotent, and it never un-shares — a link already sent
+ *  cannot be recalled, so offering a button that pretends otherwise would be a lie. */
+export async function markResultShared(token: string): Promise<string | null> {
+  const { rows } = await pgQuery<{ shared_at: string }>(
+    `update public_tests set shared_at = coalesce(shared_at, now())
+      where token=$1 returning shared_at`,
+    [token],
+  );
+  return rows[0]?.shared_at ?? null;
 }
 
 /** Read an unexpired public test. Does NOT consume it — claiming is separate, so a

@@ -32,7 +32,8 @@ export type FunnelEventName =
   | "install_completed"
   | "case_viewed";
 
-/** direct = no referrer; hosted_case = arrived from one of our /c/:token pages. */
+/** direct = no referrer; hosted_case = arrived from a sent result page (/result/:token,
+ *  or the retired /c/:token whose links predate v4.2). */
 export type ReferrerClass = "direct" | "hosted_case" | "other";
 
 export interface FunnelEvent {
@@ -116,7 +117,13 @@ export function classifyReferrer(referer: string | null | undefined, ourHost: st
     return "other";
   }
   const sameHost = Boolean(ourHost) && u.host.toLowerCase() === String(ourHost).toLowerCase();
-  if (sameHost && /^\/c\/[A-Za-z0-9_-]+\/?$/.test(u.pathname)) return "hosted_case";
+  // ⚠️ THE PATH IS HARD-CODED, SO A PREFIX CHANGE SILENTLY ZEROES OUTREACH ATTRIBUTION.
+  // `/c/:token` was retired at v4.2 and subsumed by `/result/:token`. Had this kept
+  // matching only `/c/`, every arrival from a sent result would have classified as
+  // "other" and the one number that measures whether outreach works would have read as a
+  // collapse in outreach rather than as a rename. `/c/` stays matched: historical rows
+  // carry it, and a link sent before the retirement should still classify the same way.
+  if (sameHost && /^\/(?:c|result)\/[A-Za-z0-9_-]+\/?$/.test(u.pathname)) return "hosted_case";
   return "other";
 }
 

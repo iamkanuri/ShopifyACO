@@ -94,6 +94,23 @@ test("classifyReferrer: absent referrer is direct, our own /c/:token is hosted_c
   assert.equal(classifyReferrer("https://lens.example.com/c/abc123XYZ/", "lens.example.com"), "hosted_case");
 });
 
+// ⚠️ THE PREFIX CHANGED AT v4.2 AND THE CLASSIFIER HARD-CODES IT. `/c/:token` was retired
+// and subsumed by `/result/:token`. If this had not moved with it, every arrival from a
+// sent result would classify as "other" and the one number that measures whether outreach
+// works would have read as a collapse in outreach rather than as a rename — a silent
+// zero, which is the failure mode this project treats as the dangerous one.
+test("classifyReferrer: the CURRENT result URL is hosted_case, and the retired one still is", () => {
+  const T = "t_0123456789abcdef0123";
+  assert.equal(classifyReferrer(`https://lens.example.com/result/${T}`, "lens.example.com"), "hosted_case");
+  assert.equal(classifyReferrer(`https://lens.example.com/result/${T}/`, "lens.example.com"), "hosted_case");
+  // Links sent before the retirement must keep classifying the same way, or historical
+  // comparisons break at the rename.
+  assert.equal(classifyReferrer("https://lens.example.com/c/2jmh6zli5tn3", "lens.example.com"), "hosted_case");
+  // Two-sided: a neighbouring path must NOT be swept in by a loosened pattern.
+  assert.equal(classifyReferrer("https://lens.example.com/results/x", "lens.example.com"), "other");
+  assert.equal(classifyReferrer(`https://evil.example/result/${T}`, "lens.example.com"), "other");
+});
+
 test("classifyReferrer: a /c/ path on SOMEONE ELSE'S host is not our hosted case", () => {
   // Otherwise anyone could mint fake outreach attribution by linking from
   // https://evil.example/c/xyz — the class would stop meaning anything.

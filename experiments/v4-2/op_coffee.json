@@ -1,0 +1,25 @@
+{
+  "url": "http://127.0.0.1:8787/result/t_a7060bfdd703961be238/one-pager",
+  "completion": "INCOMPLETE",
+  "pagination_headers_found": 0,
+  "pagination_headers_stripped": 0,
+  "media_canary_ok": true,
+  "extractor_canary": {
+    "extractor_live": true,
+    "positive_control_found": true,
+    "negative_control_absent": true,
+    "chars_extracted": 3571
+  },
+  "instruments_agree": true,
+  "h1": "Ethiopia Yirgacheffe Supernatural",
+  "details_total": 0,
+  "details_collapsed": 0,
+  "collapsed_items_total": 0,
+  "collapsed_items_in_pdf": 0,
+  "collapsed_items_MISSING_from_pdf": 0,
+  "rows": [],
+  "items_matched_across_page_break": 0,
+  "pdf_bytes": 298277,
+  "pdf_chars_extracted": 3571,
+  "blocked_on": "no collapsed <details> on this page — nothing to prove either way"
+}

@@ -49,7 +49,14 @@ const repoRoot = path.resolve(
 /** What one entry's peer line says, DERIVED from the published measurement. */
 export interface PeerRate {
   entryId: string;
+  /** The buyer's QUESTION, from the standard. Display only — never join on it. */
   label: string;
+  /**
+   * The label the ENGINE gives the compiled requirement, which is what an `Assertion`
+   * carries. This is the join key; `label` is not, and matching on `label` dropped every
+   * peer line in v4.1 (0 of 10 rows) without failing anything.
+   */
+  requirementLabel?: string | null;
   /** Rows the measured sample could actually decide. NOT always 100 — see below. */
   adjudicated: number;
   /** How many of those the sample's stores FAILED. */
@@ -132,6 +139,21 @@ function loadStandard(slug: string): {
 export function peerRatesFor(
   published: PublishedStandard,
   requirementIds: string[],
+  /**
+   * ⚠️ WITHOUT THIS MAP EVERY PEER LINE IS SILENTLY DROPPED, AND IT WAS.
+   *
+   * Both renderers join a peer record to its row by label. This function set `label` to
+   * the entry's QUESTION ("Can I buy this as whole beans?"); `compileStandard` labels the
+   * requirement with the BINDING's label ("Whole bean option is listed and purchasable").
+   * Those are different strings for all ten executable coffee entries, so the join matched
+   * 0 of 10 rows and the peer benchmark — the whole point of the standard layer, and
+   * v4.1's headline — rendered nowhere. Nothing threw and no test failed: a join that
+   * finds nothing looks exactly like a standard that has published no measurement.
+   *
+   * `requirementLabel` is now carried explicitly and is what the renderers match on.
+   * Callers that have the compiled requirements pass their labels here.
+   */
+  labelById?: Map<string, string>,
 ): PeerRate[] {
   const byId = new Map(published.doc.entries.map((e) => [e.id, e]));
   const out: PeerRate[] = [];
@@ -144,6 +166,7 @@ export function peerRatesFor(
     out.push({
       entryId: id,
       label: entry.question ?? entry.id,
+      requirementLabel: labelById?.get(id) ?? null,
       adjudicated,
       failed: m.fail_count,
       passed: adjudicated - m.fail_count,
@@ -235,11 +258,14 @@ export async function runStandardTest(
   const askedIds = applicability.requirements.map((r) => r.id);
   const entryUrls: Record<string, string> = {};
   for (const id of askedIds) entryUrls[id] = `${base.standard.url}/${encodeURIComponent(id)}`;
+  // The join key the renderers need. `applicability.requirements` is the ONLY place that
+  // holds both the entry id and the label the engine will stamp on the assertion.
+  const labelById = new Map(applicability.requirements.map((r) => [r.id, r.label]));
 
   return {
     ...base, ok: true, result,
     entryUrls,
-    peers: peerRatesFor(published, askedIds),
+    peers: peerRatesFor(published, askedIds, labelById),
     ranAt: new Date().toISOString(),
   };
 }
