@@ -335,4 +335,41 @@ took and an anti-vacuity floor (React mounted, ≥20 targets scanned) on every r
 
 ## 11. PRODUCTION
 
-Deploy and both probes: see §11 of `HANDOFF.md` and the appended result below.
+Merged to `main` and deployed. Final commit **`a098708`**; `/healthz` reports it. No
+migration in this release.
+
+**Both probes, on the deployed SHA, neither loosened:**
+
+```
+experiments/v3-7/verify_prod.mjs       21/21   VERIFIED_CLEAN
+experiments/v3-8/verify_sections.mjs   15/15   VERIFIED_CLEAN
+```
+
+`verify_prod`'s last check — that the landing page links only the CURRENT standard
+version — was the one this release could plausibly have broken. `versions linked from /:
+1.3`.
+
+**The live landing page, verified from production rather than locally:**
+
+| | |
+|---|---|
+| JS-off body text on `/` | **19,250 characters** |
+| `<title>` | `AisleLens — AI commerce QA for ecommerce agencies` |
+| hero artifact block | present |
+| **served counts** | **`5 proven · 5 not proven`, identical across 4 requests** |
+| routes | `/` `/demo` `/standards` `/standards/coffee/1.3` `/methodology` `/test` `/og/default.png` — all 200 |
+
+The counts are the load-bearing line. **Production has an OpenAI key**, which is the exact
+condition under which the semantic tier fires — so before this release the published result
+was being sampled, and 5/5 holding across repeat requests is the pin working where it
+matters rather than only where it was convenient to test.
+
+The nine distinct peer denominators live on the page:
+
+```
+45 of the 74 coffee stores   49 of 100   73 of 99   74 of 76   84 of 99
+89 of 100   92 of 100   92 of 99   96 of 100
+```
+
+Five different denominators, none of them a uniform "of 100" — which is the whole of §2.3's
+of-100 trap, rendered rather than asserted.
