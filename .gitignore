@@ -161,5 +161,8 @@ experiments/v4-4/*
 # fresh clone, which is how a guard quietly stops guarding.
 !experiments/v4-5/
 experiments/v4-5/*
+# The written record travels with the repo — 13 prior REPORT/HANDOFF pairs are tracked.
+!experiments/v4-5/REPORT.md
+!experiments/v4-5/HANDOFF.md
 !experiments/v4-5/evidence/
 !experiments/v4-5/evidence/*.json
