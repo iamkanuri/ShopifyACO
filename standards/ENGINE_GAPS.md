@@ -3110,6 +3110,73 @@ where it will be decided.
 
 ---
 
+## P-29 · THE TIER'S RECALL IS REAL, ITS OUTPUT IS NON-DETERMINISTIC, AND ITS HEADER CLAIMS A PARAMETER IT NEVER SETS
+
+**Filed at v4.4, from a measurement. Partially closed: the tier is pinned off on both public
+routes (durability, P-28 item 4), and its precision/recall trade is measured only at pilot
+scale.** Full record: `experiments/v4-4/REPORT.md`.
+
+### What P-28 asked for, and what came back
+
+P-28 asked for a frequency read, a precision read, a decision that is not "turn it off", and
+a determinism decision for published artifacts. Three of the four are answered.
+
+**Frequency and precision, 20 stores, 3 runs each** (`experiments/v4-4/tier_measure.ts`; store
+bytes replayed, model call live and unswapped; comparisons over status AND detail AND quote
+AND surface):
+
+| | |
+|---|---|
+| stores where the tier was called | 10 of 20 |
+| claim rows asked | 16 |
+| grants | **3 — 18.75% of rows asked** |
+| adjudicated **false** | 1 (klatchcoffee.com, the seeded known-positive) |
+| adjudicated **true — real recall no term list matches** | **2** (`bluebeardcoffee.com`: a named farmer group, district and four producer villages; `mikava.coffee`: `Farm: Finca Bella Vista`) |
+
+**n=3 states no rate.** The full-corpus run is `PILOT_N=338`, projected $0.50, and it is the
+one thing gating the P-28 decision. But 2 of 3 grants being genuine is why the tier was not
+killed: it is doing the paraphrase job it was built for, on real stores.
+
+### The determinism half, and it is the finding
+
+| | |
+|---|---|
+| stores where the tier ran | 10 |
+| stores where the **model's output** differed on two identical runs | **2** |
+| stores where a **merchant-visible row** differed | **0** |
+
+`mikava.coffee` returned granted/vetoed/discarded `1/1/0` then `1/0/1`; `firebellytea.com`
+returned `0/0/0` then `0/0/4`. **The model is non-deterministic on identical input.** On this
+sample the verbatim-quote gate absorbed all of it — it discarded 6 candidates against 3 grants
+and withdrew 7 lexical matches — so the gate is load-bearing rather than decorative. Zero row
+variance at n=10 is not evidence of stability; it is evidence the gate caught *this* sample's
+variance.
+
+⚠️ **AND THE MECHANISM IS NAMED IN THE MODULE AND ABSENT FROM THE CODE.**
+`semanticTier.ts:20` says the tier runs at *"temperature 0"*. `defaultComplete` sends `model`,
+`messages`, `response_format` and `max_completion_tokens` — **no `temperature`** — so it has
+always run at the API default. *A rule stated only in a comment is not a rule*, one more time,
+and this instance is the direct mechanical explanation of the variance above and of v4.3's
+boot-to-boot 5-proven / 6-proven incident.
+
+**Deliberately not fixed.** The measurement runs as-prod-configured; improving the
+configuration mid-measurement measures something production has never run. It is the first
+thing to change if the tier goes back anywhere, and the variance must then be **re-verified at
+≈0**, never assumed from the parameter being present.
+
+### What the tier already cost, permanently
+
+Four stored results at permanent citable URLs carried a tier-granted pass; three publish a
+claim the quoted sentence does not support, one of them a **standard-layer result citing
+Coffee Standard v1.3**. Remediated by render-time notice (`src/server/resultNotices.ts`),
+never by editing or deleting — results are append-only, and the remediation IS the
+disclosure. `ENGINE_VERSION` v2.4.0 → v2.5.0.
+
+⚠️ **The engine-version tripwire could not have caught this.** It is a content hash over
+matcher files, and no matcher logic moved — the change is a route-level dep. Had the version
+literal not happened to live inside `productTest.ts`, the hash would have been identical while
+live verdicts changed. **The hash is a floor, not a ceiling.**
+
 ## P-28 · THE SEMANTIC TIER IS LIVE ON EVERY PUBLIC RUN, IT IS SAMPLED, AND IT PRODUCED A FALSE PASS ON OUR OWN PROOF SURFACE
 
 **Filed at v4.3 (the landing-page session), from a measurement, not a review. Not fixed —
