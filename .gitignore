@@ -160,5 +160,6 @@ experiments/v4-4/*
 # An evidence file the test needs but the repo does not carry makes that test unrunnable on a
 # fresh clone, which is how a guard quietly stops guarding.
 !experiments/v4-5/
+experiments/v4-5/*
 !experiments/v4-5/evidence/
 !experiments/v4-5/evidence/*.json
