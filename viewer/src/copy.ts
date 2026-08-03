@@ -191,7 +191,27 @@ export const HERO_ARTIFACT = {
   note: "Replayed offline from a frozen capture of the live page, against the published standard named above. Every row links to the entry it executes.",
   legend: "✓ proven · ✕ not proven · – no blocking evidence · ○ requires store access",
   more: "Read the complete test →",
+  // v4.5 — THE HERO IS AN EXCERPT AND MUST SAY SO, IN A COUNT.
+  //
+  // The hero card and the §example card render the same store, the same counts and the
+  // same CTA, and on a narrow screen they stack — which reads as the page having
+  // accidentally rendered one card twice. They are differentiated rather than deduped,
+  // because both earn their place: the hero proves the claim above the fold, the section
+  // carries the whole result.
+  //
+  // ⚠️ THE COUNT IS NOT DECORATION. The section states that nothing was selected for
+  // effect. The hero shows the FIRST few rows in the standard's own order, so without a
+  // count a reader could reasonably take those rows for the whole result and read that
+  // claim as covering an excerpt someone chose. Saying "showing 3 of 10" keeps the
+  // section's sentence exactly true instead of approximately true.
+  excerptPrefix: "Showing",
+  excerptSuffix: "rows, in the standard's order",
 } as const;
+
+/** How many hero rows render at each width. Exported so the count in the label and the
+ *  number of rows actually shown come from ONE place — a label that disagreed with the
+ *  list would be worse than no label at all. */
+export const HERO_ROWS = { mobile: 3, desktop: 5 } as const;
 
 /** §3.2 — what an agency hands its client. Deliverables, not features. */
 export const DELIVERABLES = {
@@ -262,6 +282,9 @@ export const REAL_EXAMPLE = {
   heading: "One real store, every row, nothing selected for effect.",
   lead: "This is the complete result the published standard produces on a real coffee product page — not an excerpt chosen to flatter either side. Each row cites the entry it executes, at a version and a content hash that still resolve.",
   peerNote: "Where the standard has published a measurement for an entry, the row says how the rest of the sample did on the same question — with the number of stores that question could actually be decided on, which is not always the whole sample.",
+  // v4.5 — one line naming this card's job, so it cannot be mistaken for the hero card
+  // repeated. The hero says "showing 3 of 10"; this says what the other 7 buy you.
+  job: "The same result the hero card excerpts — complete this time, with the store's own sentence and the surface it was read from under every row.",
 } as const;
 
 /**

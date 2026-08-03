@@ -791,6 +791,7 @@ app.post(
     const slug = typeof body.slug === "string" && /^[a-z0-9-]{1,40}$/.test(body.slug) ? body.slug : "coffee";
     const host = (() => { try { return new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`).host; } catch { return "invalid"; } })();
     const referrerClass = classifyReferrer(req.get("referer"), req.get("host"));
+    const startedAt = Date.now();
     void recordFunnelEvent({ name: "standard_test_requested", host, referrerClass });
 
     if (!url || url.length > 400) {
@@ -852,12 +853,39 @@ app.post(
         }
       }
 
+      // v4.5 — THE COMPLETION EVENT. Until now this route emitted `standard_test_requested`
+      // and nothing else, while the general route emits `test_requested` AND
+      // `test_completed`/`test_failed`. So every funnel figure for the STANDARD layer —
+      // the layer this product's own headline is about — had a denominator and no
+      // numerator, and a completion rate of zero by construction rather than by measurement.
+      // Nothing was broken and nothing looked broken; the number simply did not exist.
+      //
+      // ⚠️ `out.ok` IS THE DISCRIMINATOR, NOT THE STATUS CODE, for the reason stated
+      // directly above: a non-applicable product is a legitimate 200 with `ok: false`
+      // semantics on the run. Reading the HTTP status would count every refusal as a
+      // success — the same trap `test_completed` documents on the general route.
+      const r = (out as { result?: { ok?: boolean; evidencedCount?: number; noBlockingCount?: number; notProvenCount?: number; requiresAccessCount?: number; total?: number; fetchTier?: string | null; cached?: boolean; degraded?: boolean } }).result;
+      void recordFunnelEvent({
+        name: r?.ok ? "standard_test_completed" : "standard_test_failed",
+        host, referrerClass,
+        testToken: (out as { resultToken?: string }).resultToken ?? null,
+        durationMs: Date.now() - startedAt,
+        cached: Boolean(r?.cached),
+        fetchTier: r?.fetchTier ?? null,
+        evidenced: r?.ok ? r.evidencedCount ?? null : null,
+        noBlocking: r?.ok ? r.noBlockingCount ?? null : null,
+        notProven: r?.ok ? r.notProvenCount ?? null : null,
+        requiresAccess: r?.ok ? r.requiresAccessCount ?? null : null,
+        requirements: r?.ok ? r.total ?? null : null,
+      });
+
       // ⚠️ A NON-APPLICABLE PRODUCT IS A 200, NOT AN ERROR. "This standard does not cover
       // this product" is a true and useful answer — it is the answer that teaches a reader
       // what a published standard is — and the client renders it as a result.
       return res.json(out);
     } catch (err) {
       console.error(`[standard-test] ${(err as Error).message}`);
+      void recordFunnelEvent({ name: "standard_test_failed", host, referrerClass, durationMs: Date.now() - startedAt, errorKind: "exception" });
       return res.status(500).json({ ok: false, error: "Couldn't run the standard against that URL." });
     }
   }),

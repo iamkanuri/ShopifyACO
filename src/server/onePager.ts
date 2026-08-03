@@ -24,7 +24,8 @@ import { peerSentence } from "../../viewer/src/peerSentence.js";
 import { findStandard, esc, fitnessOf, type SitePage } from "./standardsSite.js";
 import type { StoredResultRow } from "../db/buyerTests.js";
 import type { ResolvedResult } from "./resultPage.js";
-import { resultNotice, grantForRow, noticeLines } from "./resultNotices.js";
+import { resultNotice, grantForRow, noticeLines, priceCorrections, priceNoticeLines } from "./resultNotices.js";
+import { displayText } from "./renderText.js";
 
 /** Printed verbatim on the artifact. If the rule below changes, this must change with it —
  *  `test/onePager.test.ts` asserts the sentence and the implementation agree on order. */
@@ -156,6 +157,20 @@ export function renderOnePager(row: StoredResultRow, r: ResolvedResult, base: st
 </section>`;
   })() : "";
 
+  // v4.5 — the PRICE correction travels with the artifact for the same reason, and as its
+  // OWN section. This is the copy a recipient forwards; a merchant reading a one-pager
+  // that states a price we know to be wrong, with no correction on the page, is the worst
+  // version of this defect. Kept separate from the tier notice above because only this one
+  // can be answered by re-running.
+  const priceHtml = (() => {
+    const pl = priceNoticeLines(priceCorrections(row));
+    if (!pl) return "";
+    return `<section class="op-correction">
+  <h2>${esc(pl.headline)}</h2>
+  ${pl.body.map((line) => `<p>${esc(line)}</p>`).join("")}
+</section>`;
+  })();
+
   const rowsHtml = material.map((m, i) => `<section class="op-finding">
   <p class="op-n">Finding ${i + 1} · ${esc(m.a.status === "not_proven" ? "not stated on the page"
     : m.a.status === "requires_store_access" ? "not decidable from public data" : "stated on the page")}</p>
@@ -167,7 +182,7 @@ export function renderOnePager(row: StoredResultRow, r: ResolvedResult, base: st
       : "This row was reached by inference, and was reviewed.")}</strong> ${esc(g.why)}</p>` : "";
   })()}
   <p>${esc(m.a.detail)}</p>
-  ${m.a.evidenceQuote ? `<blockquote class="op-quote">${esc(m.a.evidenceQuote)}</blockquote>` : ""}
+  ${m.a.evidenceQuote ? `<blockquote class="op-quote">${esc(displayText(m.a.evidenceQuote))}</blockquote>` : ""}
   ${m.peer ? `<p class="op-peer">${esc(peerSentence(m.peer, PASSING.has(m.a.status)))}</p>` : ""}
   <p class="op-check"><strong>Check it:</strong> ${esc(howToCheck(m, row.product_url))}</p>
   ${m.entryUrl ? `<p class="op-cite">Requirement <a href="${esc(base + m.entryUrl)}"><code>${esc(m.entryId ?? m.a.label)}</code></a> of the published standard.</p>` : ""}
@@ -184,6 +199,7 @@ export function renderOnePager(row: StoredResultRow, r: ResolvedResult, base: st
   <p class="op-sub">${esc(row.product_url)}</p>
 
   ${noticeHtml}
+  ${priceHtml}
 
   <dl class="op-facts">
     <div><dt>Tested</dt><dd>${esc(ranDay)}</dd></div>

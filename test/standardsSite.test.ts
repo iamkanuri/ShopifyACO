@@ -1102,6 +1102,16 @@ test("NO RATIO IS DRAWN BETWEEN OVERLAPPING INTERVALS, and the live artifact is 
   const ivs = f.samples.map((x) => x.interval_95);
   assert.ok(ivs.every(Boolean), "a live sample publishes no 95% interval, so the overlap test cannot run on it");
   const [a, b] = ivs as Array<{ lower_pct: number; upper_pct: number }>;
+  // ⚠️ v4.5 — THE MARGIN IS NOW 0.31 PERCENTAGE POINTS, AND IT USED TO BE 3.40.
+  // Closing P-19's first half moved the general sample from [2.35, 5.75] to [0.45, 2.45]
+  // against coffee's [2.14, 8.75]. The overlap is the interval [2.14, 2.45]. One more
+  // improvement of that size to the general figure and these intervals SEPARATE — at which
+  // point `renderComparison` stops refusing and starts publishing "higher by about N×" plus
+  // "the number that matters to a merchant is the one measured on their own category", a
+  // sentence retired three times and revived by a fix twice. This assertion is what stands
+  // between that and the public site: it fails LOUDLY rather than letting the page start
+  // making a claim nobody decided to make. If it ever fails, the answer is to re-derive the
+  // comparison honestly on the new numbers — NOT to delete the assertion.
   assert.ok(!(a.lower_pct > b.upper_pct || b.lower_pct > a.upper_pct),
     "the live intervals no longer overlap — this test's premise has changed and the page's claim must be re-derived, not left asserting a refusal");
   const html = renderFitness(s);
@@ -1317,4 +1327,49 @@ test("[capability] the block carries no hand-typed figure that the artifact cont
   const txt = capText(page!.bodyHtml);
   assert.ok(!txt.includes("2.13"), 'the retired bar figure "2.13" reached the served page');
   assert.match(txt, /2\.33/, "the derived strict bar is not served");
+});
+
+test("[fitness] every sample's defect_classes SUM to its confirmed count", () => {
+  // ⚠️ THIS SHIPPED WRONG AND WAS LIVE ON THE PUBLISHED PAGE. At v4.5 the general sample's
+  // class table summed to 18 against a `confirmed_false_positives` of 5, and rendered that
+  // way on /standards/coffee/1.3 — including "$0.00 treated as a price · 6 · no guard
+  // addresses it", a sentence the same release made false. Seven of the thirteen had been
+  // stale since v3.8. The cause is structural and will recur without this assertion: a
+  // re-measurement moves the RATE, and the DECOMPOSITION beside it is a separate field that
+  // nothing forced anyone to re-derive. A page disagreeing with its own JSON by 13 is the
+  // "site disagrees with its own numbers" defect one level up.
+  //
+  // Classes an engine release has closed belong in `closed_classes`, not deleted: which
+  // errors this engine used to make, and when it stopped, is what the record is for.
+  let checked = 0;
+  for (const s of loadPublishedStandards()) {
+    const f = fitnessOf(s);
+    if (!f) continue;
+    for (const sample of f.samples) {
+      // ⚠️ TWO SHAPES ARE PUBLISHED AND BOTH MUST BE READ. v1.0's sidecar carries
+      // `defect_classes` as STRINGS with the count in prose — "…own weight (3)" — and v1.3's
+      // as objects with a `count`. A test that knew only the object shape returned NaN on
+      // v1.0 and failed for the wrong reason; one that skipped what it could not parse would
+      // have reported clean over a whole published version. Parse both, and refuse an entry
+      // that states no count at all rather than scoring it zero.
+      const classes = (sample as unknown as { defect_classes?: Array<{ count: number } | string> }).defect_classes;
+      if (!classes?.length) continue;
+      if (sample.confirmed_false_positives == null) continue;
+      const countOf = (c: { count: number } | string): number => {
+        if (typeof c !== "string") return c.count;
+        const m = /\((\d+)\)\s*$/.exec(c.trim());
+        assert.ok(m, `${s.slug} ${s.publicVersion}: defect class ${JSON.stringify(c)} states no count`);
+        return Number(m![1]);
+      };
+      const sum = classes.reduce((n, c) => n + countOf(c), 0);
+      assert.equal(sum, sample.confirmed_false_positives,
+        `${s.slug} ${s.publicVersion} / ${sample.label}: defect_classes sum to ${sum} but confirmed_false_positives is `
+        + `${sample.confirmed_false_positives}. Re-derive the decomposition in the same push as the rate, and move `
+        + `closed classes to closed_classes rather than leaving them in the table.`);
+      checked++;
+    }
+  }
+  // ANTI-VACUITY: a loop that checked nothing passes trivially, which is exactly how this
+  // defect survived — every other assertion about this artifact was about other fields.
+  assert.ok(checked >= 1, "no published sample carries a defect_classes table, so this test checked nothing");
 });

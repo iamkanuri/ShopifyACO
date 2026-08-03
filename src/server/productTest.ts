@@ -762,6 +762,26 @@ export interface PublicProduct {
    * declaration, not an absence.
    */
   declaredCurrency: string | null;
+  /**
+   * v4.5 — EVERY READABLE PRICE ON THIS PRODUCT WAS ZERO, so `minPriceUsd` is null by
+   * refusal rather than by absence. The two are different facts and the row says so.
+   *
+   * ⚠️ WHY THIS IS A SEPARATE FLAG AND NOT JUST `minPriceUsd === 0`. Setting the min to
+   * null is what stops `$0.00` being rendered and stops a cap being manufactured from a
+   * zero (`niceCap(0)` is 10, which is where every one of these stores got its
+   * `Price under $10` label). But null already means "no price was readable at all", and
+   * collapsing the two would make the row tell a merchant who publishes `0.00` the same
+   * thing it tells a merchant who publishes nothing. They deserve different sentences.
+   *
+   * Measured on the 335-store deduped corpus before the rule was written: 11 stores have
+   * a zero minimum, 10 of them RENDER `Lowest readable price is $0.00.` and all 10 are
+   * `pass_evidenced` — a false pass on every one. The collateral this rule could have had
+   * is ZERO stores: not one store in the corpus has a zero minimum alongside a non-zero
+   * variant, so refusing on the minimum cannot refuse a merchant who does publish a real
+   * price. That was checked BEFORE the rule was written, because the plausible-sounding
+   * rule that convicts the compliant case is this repo's standing lesson (v3.5, rule A).
+   */
+  publishedZeroPrice: boolean;
   /** Sentence-level, chrome-free product evidence — the ONLY text we may match or
    *  quote. Raw page text is deliberately excluded (see testEvidence.ts). */
   evidence: EvidenceSentence[];
@@ -954,6 +974,73 @@ const priceToUsd = (p: string | number | undefined, tier: PriceTier): number | n
   }
   return null;
 };
+
+/**
+ * v4.5 (ENGINE_GAPS P-19, first half) — `$0.00` IS NOT A PRICE.
+ *
+ * The old expression was `prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null)`
+ * and it had no opinion about zero, so a published `0.00` flowed all the way to the
+ * merchant as `Lowest readable price is $0.00.` — `pass_evidenced`, against a cap that
+ * `niceCap` had manufactured from that same zero. On the deduped corpus that is 10 stores
+ * and 10 false passes, including `tenthousand.cc`, whose stored PERMANENT result at
+ * `/result/:token` still carries the sentence (v4.5 A1).
+ *
+ * ⚠️ IT REFUSES; IT DOES NOT SUBSTITUTE. When the minimum is zero this returns
+ * `minPriceUsd: null` — it does NOT fall through to the JSON-LD offer to find some other
+ * number. Falling through is available and is exactly the forbidden direction: v3.8's
+ * standing invariant is that a wrong price may never become a DIFFERENTLY-wrong price,
+ * because nobody looks twice at a plausible number. Refusal is the only acceptable
+ * failure here, and it is also why the zero is not simply treated as "absent".
+ *
+ * ⚠️ THE ZERO IS TAKEN OVER WHICHEVER SOURCE ANSWERED, variant tier or JSON-LD offer.
+ * Measured: 8 of the 11 zero-minimum stores come from the variant tier and 2 from the
+ * offer fallback, so a rule that looked at only one source would leave the other class
+ * shipping. Closing three sentences is not closing a class.
+ *
+ * What a `0.00` MEANS is deliberately not decided here. It can be a withheld price, a
+ * gift-with-purchase, a referral stub, or a genuinely free item, and public bytes do not
+ * separate them — `studioneat.com`'s is titled `SYDNEY TEST PRODUCT`. A rule keyed on the
+ * number alone would convict the merchant who really does give something away, so the row
+ * says what we can support: a zero was published, and this test does not read it as a
+ * price. A free item is a different claim from a price bound and this test does not
+ * adjudicate it.
+ */
+export function zeroAwareMin(prices: number[], offerFallback: number | null): { minPriceUsd: number | null; publishedZeroPrice: boolean } {
+  // ⚠️ A ZERO BESIDE A REAL PRICE IS NOT A ZERO-PRICED PRODUCT — and the first version of
+  // this function got that wrong. It computed `Math.min(...prices)` and refused when the
+  // result was 0, i.e. whenever ANY variant was free, so a $45 serum with a
+  // "Free gift with purchase" variant stopped reporting a price at all. The prose above
+  // already said "EVERY readable price was zero"; the code said "any". A rule stated only
+  // in a comment is not a rule.
+  //
+  // ⚠️ NO REAL-STORE SAMPLE COULD HAVE CAUGHT IT. The 335-store corpus contains ZERO
+  // stores with a zero minimum beside a non-zero variant — that absence is exactly what
+  // was measured before writing the rule, and it made the bug invisible to replay. The
+  // frozen fetch corpus caught it on the first run (`znn-02`, whose honest answer is $45).
+  // Sampling real stores catches artefacts; only chosen input catches logic.
+  // ⚠️ THE TEST IS ON WHAT RENDERS, NOT ON THE VALUE. Every surface prints
+  // `$${n.toFixed(2)}`, so a price of 0.004 is not zero but IS published as
+  // `Lowest readable price is $0.00.` — the exact sentence this function exists to stop,
+  // one significant figure away from the guard. An independent verifier found it by
+  // executing `zeroAwareMin([0.004], null)`, which returned `{0.004, false}`. Rounding to
+  // cents first makes the guard test the thing the merchant actually sees.
+  const cents = (n: number) => Math.round(n * 100) / 100;
+  // ⚠️ AND THE DOMAIN IS CHECKED HERE RATHER THAN ASSUMED FROM THE CALLER. `priceToUsd`
+  // fails closed on negatives, NaN and Infinity today, so none can reach this — but the
+  // same verifier showed the consequences if one ever did: `[-5]` answered "every price
+  // readable on this product is zero", which is a false statement about a real store, and
+  // `[Infinity]` rendered `$Infinity`. A guard that is only correct because of what its
+  // caller happens to filter is one call-site change from being wrong.
+  const usable = prices.filter((p) => Number.isFinite(p) && p >= 0);
+  const nonZero = usable.filter((p) => cents(p) > 0);
+  if (nonZero.length) return { minPriceUsd: Math.min(...nonZero), publishedZeroPrice: false };
+  // Nothing above zero from the variant tier. If the tier answered at all, everything it
+  // published was zero; otherwise fall back to the offer, which is subject to the same rule.
+  const candidate = usable.length ? 0 : offerFallback;
+  if (candidate == null || !Number.isFinite(candidate) || candidate < 0) return { minPriceUsd: null, publishedZeroPrice: false };
+  if (cents(candidate) === 0) return { minPriceUsd: null, publishedZeroPrice: true };
+  return { minPriceUsd: candidate, publishedZeroPrice: false };
+}
 
 /** Pull the JSON-LD Product node's own `description` (main's extractPage keeps only
  *  identifiers/offer, not the prose) — a legitimate structured_data text surface. */
@@ -1420,7 +1507,7 @@ export async function fetchPublicProduct(
       // theme-generated `Product.category` is the weaker signal of the two, and on a
       // real store it was the breadcrumb root "Home".
       vendor: js?.vendor ?? ld?.brand ?? null, productType: js?.product_type ?? pageProductType ?? ldCategory, tags,
-      descriptionText, variants, minPriceUsd: prices.length ? Math.min(...prices) : (ld?.offer?.price ?? null),
+      descriptionText, variants, ...zeroAwareMin(prices, ld?.offer?.price ?? null),
       optionNames, optionValues, extracted, evidence, ldAvailability,
       storefrontObjectId: pageStorefrontObjectId,
       // PRECEDENCE, measured rather than guessed (see `shopifyActiveCurrency`):
@@ -1619,8 +1706,15 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * a claim row the tier would have promoted to `pass_evidenced` now stays `not_proven`
  * on identical input. That is precisely the "status could differ" condition above, and
  * a config-shaped change that moves live verdicts is a behaviour change like any other.
+ *
+ * v2.6.0 — v4.5: ENGINE_GAPS P-19, both halves. A published `0.00` stops being read as a
+ * price (`zeroAwareMin`), and the JSON-LD offer price becomes the MINIMUM readable offer
+ * rather than whichever one the theme emitted first (`readablePrices` in extract.ts).
+ * Measured on the 335-store deduped corpus: 10 stores lose a false `$0.00` pass and 2
+ * stores have their stated price corrected downward to the one their own markup
+ * publishes.
  */
-export const ENGINE_VERSION = "v2.5.0";
+export const ENGINE_VERSION = "v2.6.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency
@@ -2007,8 +2101,35 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     }
     case "price_under": {
       const checked = ["variant prices", "structured data"];
-      if (p.minPriceUsd == null) {
-        return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "No public price is exposed on this product.") };
+      // v4.5 — ⚠️ THE ZERO IS RE-TESTED HERE, NOT TRUSTED FROM THE CONSTRUCTOR.
+      // `zeroAwareMin` is the only producer of `minPriceUsd` on both product paths and it
+      // can no longer emit a zero, so this reads as redundant. It is not. `evaluate` is a
+      // PURE function over a SUPPLIED `PublicProduct`, and the adversarial corpus, the
+      // reconstructed-contract path and any future constructor can hand it one directly —
+      // the corpus case that pins this very defect does exactly that. A guard that is
+      // correct only because of what its current caller happens to filter is one call-site
+      // away from being wrong, and here the failure mode is silent: `0 < capUsd` is true of
+      // every cap ever generated, so the row passes and says `$0.00`.
+      const zeroPrice = p.minPriceUsd != null && Math.round(p.minPriceUsd * 100) === 0;
+      if (p.minPriceUsd == null || zeroPrice) {
+        // A PUBLISHED ZERO AND A PUBLISHED NOTHING ARE DIFFERENT FACTS. Both leave us
+        // unable to state a price, so both refuse; but telling a merchant who publishes
+        // `0.00` that "no public price is exposed" would be false about their own markup,
+        // and it would hide the thing they can act on. See `zeroAwareMin`.
+        return {
+          label: req.label,
+          status: "requires_store_access",
+          surfacesChecked: checked,
+          // ⚠️ THIS SENTENCE MAY NOT CONTAIN `$0.00` OR THE WORD "free", and that is a
+          // gate, not a preference. `znn-01` in the frozen fetch corpus lists both in
+          // `must_not_render`, and it flagged the first draft of this detail — which had
+          // the right STATUS and quoted the zero back at the merchant anyway. The corpus
+          // is blunt on purpose: a merchant skimming a row does not parse the disclaimer
+          // around a number, they read the number. Say what we did without restating it.
+          detail: (p.publishedZeroPrice || zeroPrice)
+            ? accessDetail(p, "Every price readable on this product is zero, which this test does not treat as a stated price. Whether the product is given away or its price is simply not published is not something public data settles, and this test does not adjudicate it.")
+            : accessDetail(p, "No public price is exposed on this product."),
+        };
       }
       // v3.8 — THE NON-USD REFUSAL, and it comes BEFORE any number is rendered.
       //

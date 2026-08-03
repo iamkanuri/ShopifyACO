@@ -154,3 +154,12 @@ experiments/v4-4/*
 !experiments/v4-4/*.md
 !experiments/v4-4/*.ts
 !experiments/v4-4/*.mjs
+
+# v4.5 — evidence a TEST reads. experiments/* is ignored, but test/resultNotices.test.ts
+# reads this to prove every curated price-correction label joins against the real stored row.
+# An evidence file the test needs but the repo does not carry makes that test unrunnable on a
+# fresh clone, which is how a guard quietly stops guarding.
+!experiments/v4-5/
+experiments/v4-5/*
+!experiments/v4-5/evidence/
+!experiments/v4-5/evidence/*.json

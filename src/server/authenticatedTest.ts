@@ -3,7 +3,7 @@ import { buildEvidence, SURFACE_LABEL, type EvidenceSentence } from "./testEvide
 import { lintStrings } from "./claimLinter.js";
 import {
   evaluate, buildBuyerTask, contractVersion, ENGINE_VERSION, PASSING,
-  isPlaceholderIdentifier, isPublishableGtin,
+  isPlaceholderIdentifier, isPublishableGtin, zeroAwareMin,
   type Assertion, type AssertionStatus, type ProductTestResult, type PublicProduct, type Requirement,
 } from "./productTest.js";
 
@@ -208,7 +208,15 @@ export function snapshotFromCatalog(p: NormalizedProduct, ctx: AuthenticatedCont
     tags: p.tags,
     descriptionText: p.description ?? "",
     variants,
-    minPriceUsd: prices.length ? Math.min(...prices) : null,
+    // v4.5 — the SAME zero rule as the public path (`zeroAwareMin`). The authenticated
+    // path builds its own PublicProduct and would otherwise keep publishing
+    // `Lowest readable price is $0.00.` after the public path stopped: the row would be
+    // right for a merchant who has not connected their store and wrong for one who has,
+    // which is the worse way round. This shares the function rather than restating the
+    // rule — a second copy is a second engine that drifts.
+    // ⚠️ This does NOT close P-18. That gap is the authenticated path having no currency
+    // and no cents guard at all, which is a wider change and stays filed.
+    ...zeroAwareMin(prices, null),
     optionNames: [...new Set(p.variants.flatMap((v) => v.options.map((o) => o.name)))],
     optionValues,
     // G-07 (v3.0 CP3): the catalog's own identifiers, so the `identifiers` row stops

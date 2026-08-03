@@ -266,19 +266,19 @@
       "description": "172 products over 172 stores captured without regard to category — the shape a broad fitness sweep produces. Replayed at v3.7 through runProductTest itself with only the transport swapped: 172/172 evaluated, 0 replay misses, 0 hard errors, and 488 pass rows, which is byte-for-byte the denominator this sidecar already published.",
       "stores": 169,
       "products_evaluated": 172,
-      "pass_rows_audited": 483,
-      "confirmed_false_positives": 11,
+      "pass_rows_audited": 473,
+      "confirmed_false_positives": 5,
       "borderline_counted_as_passes": 13,
-      "point_estimate_pct": 2.28,
+      "point_estimate_pct": 1.06,
       "interval_95": {
-        "lower_pct": 1.28,
-        "upper_pct": 4.03
+        "lower_pct": 0.45,
+        "upper_pct": 2.45
       },
-      "bound_95_naive_pct": 3.77,
-      "bound_95_cluster_icc02_pct": 5.17,
+      "bound_95_naive_pct": 2.22,
+      "bound_95_cluster_icc02_pct": 3.05,
       "per_store_pct": 5.92,
       "icc": 0.2,
-      "rows_per_store": 2.86,
+      "rows_per_store": 2.87,
       "deff_icc02": 1.37,
       "is_floor": false,
       "completion_state": "DEFECTS_FOUND",
@@ -419,24 +419,6 @@
       "method": "Every one of the 488 pass rows was adjudicated individually against its FULL untruncated evidence, in 13 kind-scoped batches, with every row assigned exactly once by (host,label) and the merge refusing to produce any number if a single row were unadjudicated. Each of the 18 confirmed defects was then RE-EXECUTED against the raw captured bytes by a mechanical rule that does not read the adjudicator's sentence, because auditor prose is a candidate and never a verdict: 18 candidates, 18 confirmed, 0 refuted, 0 uncheckable, with a two-sided canary of 108 executions of the same checks against adjudicated TRUE passes and 0 false alarms. That canary caught a defect in one of the checks on its first run — an availability check that read only the /products/{handle}.json tier fired on four true passes whose available flags live in the .js tier — so four extra defects would have been published without it. The 95% upper bound is a Poisson upper limit inflated by a design effect for clustering within store (ICC 0.2); a Wilson interval is published beside it because the per-kind cells are where small n arrives and the Poisson/n form stops being a probability there.",
       "supersedes": "0.85% with x=0 over 488 rows, which this sidecar published as a FLOOR and labelled INCOMPLETE — zero confirmed in the ONE defect class anyone had mechanically re-checked. That floor was correct about its class: `identifiers` is 0 of 29 here, so rule D really did close it. It was not an error rate. The published sequence 0.83% -> 7.80% -> 8.81% -> 0.85% now ends at this figure, measured over a complete row-by-row audit of all seven kinds.",
       "defect_classes": [
-        {
-          "klass": "$0.00 treated as a price",
-          "count": 6,
-          "example": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
-          "addressed_by_a_guard": false
-        },
-        {
-          "klass": "A non-USD price rendered with a US dollar sign",
-          "count": 5,
-          "example": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
-          "addressed_by_a_guard": false
-        },
-        {
-          "klass": "Integer CENTS read as dollars — a factor of 100",
-          "count": 2,
-          "example": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
-          "addressed_by_a_guard": false
-        },
         {
           "klass": "A MISSING availability field defaulted to purchasable",
           "count": 2,
@@ -662,72 +644,161 @@
         "Borderlines are counted as PASSES, the same convention as the coffee sample, and there are 13. Three are deliberate free gifts whose $0.00 the merchant's own title states, three are variant option values that are really the product's name, three are delivery timings whose scope is arguable, two are materials rows stating a property rather than a constituent, one is an ingredient-scoped organic claim, and one is a shipping sentence whose antecedent is the order rather than the product.",
         "A general sample estimates the error rate on copy that looks like the average of every category at once, which is copy no individual merchant writes. That limit is unchanged by this measurement and is the reason a category standard is still fitness-measured on its own category."
       ],
-      "measured_at": "2026-07-28",
-      "engine_commit": "f5cf74f",
+      "measured_at": "2026-08-03",
+      "engine_commit": "21b9ba7",
       "engine_commit_note": "measured at f5cf74f (the last matcher commit); branch tip at publication was dbd523e, and every commit between them is measurement, documentation or the ENGINE_VERSION bump — none changes a row.",
-      "engine_version_tag": "v2.1.0",
+      "engine_version_tag": "v2.6.0",
       "supersedes_measurement": {
         "measured_at": "2026-07-28",
-        "engine_commit": "7085b34",
-        "engine_description": "v3.5 rule D; unchanged through v3.6 and v3.7 (both measurement-only)",
-        "pass_rows_audited": 488,
-        "confirmed_false_positives": 18,
+        "engine_commit": "f5cf74f",
+        "engine_version_tag": "v2.1.0",
+        "engine_description": "v3.8's tier-aware cents conversion and non-USD price refusal; unchanged through v4.4 (semantic-tier pin, no matcher movement)",
+        "pass_rows_audited": 483,
+        "confirmed_false_positives": 11,
         "borderline_counted_as_passes": 13,
-        "point_estimate_pct": 3.69,
+        "point_estimate_pct": 2.28,
         "interval_95": {
-          "lower_pct": 2.3457,
-          "upper_pct": 5.7548
+          "lower_pct": 1.28,
+          "upper_pct": 4.03
         },
-        "bound_95_naive_pct": 5.47,
-        "bound_95_cluster_icc02_pct": 7.53,
-        "rows_per_store": 2.89,
-        "deff_icc02": 1.38,
-        "why_displaced": "Not withdrawn and not an error. It is a correct measurement OF THE ENGINE AT 6a3e5d7, and the engine changed: v3.8 shipped a tier-aware cents conversion and a non-USD price refusal. Both figures are true of their own engine SHA, which is why both are pinned to one."
+        "bound_95_naive_pct": 3.77,
+        "bound_95_cluster_icc02_pct": 5.17,
+        "rows_per_store": 2.86,
+        "deff_icc02": 1.37,
+        "why_displaced": "Not withdrawn and not an error. It is a correct measurement OF THE ENGINE AT f5cf74f, and the engine changed: v4.5 closed ENGINE_GAPS P-19's first half, so a published $0.00 is no longer read as a price. Six of this block's eleven confirmed false passes were that class and are gone; the ten rows they lived among left the pass set with them.",
+        "surviving_defects": [
+          "askinosie.com — Measurements are stated (attribute)",
+          "branchbasics.com — Price under $10 (price_under)",
+          "fieldcompany.com — Price under $140 (price_under)",
+          "knifewear.com — Price under $10 (price_under)",
+          "kosas.com — Price under $10 (price_under)",
+          "kytebaby.com — Gilmore Girls option available (variant_option)",
+          "kytebaby.com — In stock and purchasable (in_stock)",
+          "lesserevil.com — In stock and purchasable (in_stock)",
+          "partakefoods.com — Price under $10 (price_under)",
+          "studioneat.com — Price under $10 (price_under)",
+          "tenthousand.cc — Price under $10 (price_under)"
+        ],
+        "defect_classes": [
+          {
+            "klass": "$0.00 treated as a price",
+            "count": 6,
+            "example": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
+            "addressed_by_a_guard": false
+          },
+          {
+            "klass": "A non-USD price rendered with a US dollar sign",
+            "count": 5,
+            "example": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
+            "addressed_by_a_guard": false
+          },
+          {
+            "klass": "Integer CENTS read as dollars — a factor of 100",
+            "count": 2,
+            "example": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
+            "addressed_by_a_guard": false
+          },
+          {
+            "klass": "A MISSING availability field defaulted to purchasable",
+            "count": 2,
+            "example": "kytebaby.com — (the row renders no quote) A \"Gilmore Girls\" variant is listed and purchasable.",
+            "addressed_by_a_guard": false
+          },
+          {
+            "klass": "A SIBLING product's size read as this product's",
+            "count": 1,
+            "example": "askinosie.com — Try our 1/2lb.",
+            "addressed_by_a_guard": false
+          },
+          {
+            "klass": "\"Lowest readable price\" is the page's MAXIMUM",
+            "count": 1,
+            "example": "fieldcompany.com — (the row renders no quote) Lowest readable price is $135.00.",
+            "addressed_by_a_guard": false
+          },
+          {
+            "klass": "Structured data says in stock; the store's own variant data says otherwise",
+            "count": 1,
+            "example": "lesserevil.com — (the row renders no quote) Your structured data marks this product in stock.",
+            "addressed_by_a_guard": false
+          }
+        ],
+        "supersedes_measurement": {
+          "measured_at": "2026-07-28",
+          "engine_commit": "7085b34",
+          "engine_description": "v3.5 rule D; unchanged through v3.6 and v3.7 (both measurement-only)",
+          "pass_rows_audited": 488,
+          "confirmed_false_positives": 18,
+          "borderline_counted_as_passes": 13,
+          "point_estimate_pct": 3.69,
+          "interval_95": {
+            "lower_pct": 2.3457,
+            "upper_pct": 5.7548
+          },
+          "bound_95_naive_pct": 5.47,
+          "bound_95_cluster_icc02_pct": 7.53,
+          "rows_per_store": 2.89,
+          "deff_icc02": 1.38,
+          "why_displaced": "Not withdrawn and not an error. It is a correct measurement OF THE ENGINE AT 6a3e5d7, and the engine changed: v3.8 shipped a tier-aware cents conversion and a non-USD price refusal. Both figures are true of their own engine SHA, which is why both are pinned to one."
+        }
       },
       "denominator_change": {
-        "statement": "488 - 5 + 0 = 483. Every row that left the pass set is named; none entered it.",
-        "pass_rows_before": 488,
+        "statement": "483 - 10 + 0 = 473",
+        "pass_rows_before": 483,
         "left_the_pass_set": [
           {
-            "store": "gardenerskit.com",
-            "row": "Price under $80",
-            "from": "pass_evidenced",
-            "to": "not_proven",
-            "now_says": "Your store publishes prices in CAD, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+            "host": "branchbasics.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
           },
           {
-            "store": "hismileteeth.com",
-            "row": "Price under $35",
-            "from": "pass_evidenced",
-            "to": "not_proven",
-            "now_says": "Your store publishes prices in AUD, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+            "host": "dedcool.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
           },
           {
-            "store": "missoma.com",
-            "row": "Price under $140",
-            "from": "pass_evidenced",
-            "to": "not_proven",
-            "now_says": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+            "host": "knifewear.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
           },
           {
-            "store": "mustardmade.com",
-            "row": "Price under $35",
-            "from": "pass_evidenced",
-            "to": "not_proven",
-            "now_says": "Your store publishes prices in AUD, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+            "host": "kosas.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
           },
           {
-            "store": "organicbasics.com",
-            "row": "Price under $55",
-            "from": "pass_evidenced",
-            "to": "not_proven",
-            "now_says": "Your store publishes prices in EUR, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+            "host": "partakefoods.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
+          },
+          {
+            "host": "puracy.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
+          },
+          {
+            "host": "studioneat.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
+          },
+          {
+            "host": "supergoop.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
+          },
+          {
+            "host": "tenthousand.cc",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
+          },
+          {
+            "host": "voluspa.com",
+            "label": "Price under $10",
+            "was": "Lowest readable price is $0.00."
           }
         ],
         "entered_the_pass_set": [],
-        "pass_rows_after": 483,
-        "reconciles": true,
-        "why_it_shrank": "The five rows are the non-USD stores whose price row now refuses instead of stating a dollar figure. They did not stop being rows; they stopped being PASSING rows, which is the intended effect of the fix. A denominator that moves without an itemised reason is a number that looks measured and is actually a side effect, so the itemisation is published rather than the delta."
+        "note": "Ten rows left the pass set and only SIX of them were adjudicated defects. The other four — dedcool.com, puracy.com, supergoop.com, voluspa.com — publish a deliberate free gift their own product title names, and the row-by-row audit had counted them as TRUE passes. So the honest accounting of this change is six false statements removed AND four true ones no longer stated, not six defects closed. Public bytes do not separate a giveaway from a withheld price, and this test now declines to guess which it is looking at."
       },
       "defects_closed_by_v3_8": {
         "count": 7,
@@ -746,18 +817,53 @@
       },
       "surviving_defects": [
         "askinosie.com — Measurements are stated (attribute)",
-        "branchbasics.com — Price under $10 (price_under)",
         "fieldcompany.com — Price under $140 (price_under)",
-        "knifewear.com — Price under $10 (price_under)",
-        "kosas.com — Price under $10 (price_under)",
         "kytebaby.com — Gilmore Girls option available (variant_option)",
         "kytebaby.com — In stock and purchasable (in_stock)",
-        "lesserevil.com — In stock and purchasable (in_stock)",
-        "partakefoods.com — Price under $10 (price_under)",
-        "studioneat.com — Price under $10 (price_under)",
-        "tenthousand.cc — Price under $10 (price_under)"
+        "lesserevil.com — In stock and purchasable (in_stock)"
       ],
-      "method_v3_8": "Replay of experiments/v2-9/snaps through runProductTest with only the transport swapped, at dbd523e and at the pre-fix parent, from separate git WORKTREES rather than a file swap. Pass rows are keyed on PRODUCT URL, not host: deathwishcoffee.com appears in this sample and again in a coffee set, and keying on host pooled three of another sample's rows, giving 491 where 488 is published. The bound uses the exact Poisson CDF inversion from experiments/v3-7/perkind.mjs, anchored against the published table at x = 0..10 — x = 11 is past the end of general_bound.mjs's hand-typed table, whose fallback returns 19.501 against an exact 18.208."
+      "method_v3_8": "Replay of experiments/v2-9/snaps through runProductTest with only the transport swapped, at dbd523e and at the pre-fix parent, from separate git WORKTREES rather than a file swap. Pass rows are keyed on PRODUCT URL, not host: deathwishcoffee.com appears in this sample and again in a coffee set, and keying on host pooled three of another sample's rows, giving 491 where 488 is published. The bound uses the exact Poisson CDF inversion from experiments/v3-7/perkind.mjs, anchored against the published table at x = 0..10 — x = 11 is past the end of general_bound.mjs's hand-typed table, whose fallback returns 19.501 against an exact 18.208.",
+      "defects_closed_by_v4_5": {
+        "count": 6,
+        "klass": "$0.00 treated as a price",
+        "rows": [
+          "branchbasics.com — Price under $10",
+          "knifewear.com — Price under $10",
+          "kosas.com — Price under $10",
+          "partakefoods.com — Price under $10",
+          "studioneat.com — Price under $10",
+          "tenthousand.cc — Price under $10"
+        ],
+        "mechanism": "zeroAwareMin refuses when every readable price on the product is zero, and evaluate re-tests the zero at the branch that renders. The row is no longer generated at all on the public path, because buildBuyerTask skips a price candidate whose minPriceUsd is null and no published standard binds price_under."
+      },
+      "method_v4_5": "Replay of experiments/v2-9/snaps through runProductTest with only the transport swapped, at 21b9ba7 and at the pre-change parent, from separate git WORKTREES rather than a file swap. Method carried verbatim from experiments/v3-8/remeasure.mjs: pass rows keyed by PRODUCT URL (not host — keyed on host, v3.8 recovered 491 general rows where 488 was published, pooling three rows of a coffee set), labels money-normalised because the price row's label embeds its cap, and three outcomes rather than two so that a row which is still a pass with a CHANGED rendered detail is re-adjudicated explicitly instead of assumed either way. Zero rows landed in that third bucket here. experiments/v4-5/remeasure.mjs.",
+      "closed_classes": [
+        {
+          "klass": "$0.00 treated as a price",
+          "count": 6,
+          "example": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "addressed_by_a_guard": false,
+          "closed_by": "v4.5",
+          "closed_how": "zeroAwareMin refuses when every readable price on the product is zero, and evaluate re-tests the zero at the branch that renders."
+        },
+        {
+          "klass": "A non-USD price rendered with a US dollar sign",
+          "count": 5,
+          "example": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
+          "addressed_by_a_guard": false,
+          "closed_by": "v3.8",
+          "closed_how": "declaredCurrency is read from the store's own bytes and the price row refuses a US-dollar cap against a non-USD price rather than converting one it never measured."
+        },
+        {
+          "klass": "Integer CENTS read as dollars — a factor of 100",
+          "count": 2,
+          "example": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
+          "addressed_by_a_guard": false,
+          "closed_by": "v3.8",
+          "closed_how": "priceToUsd became tier-aware: .json serves decimal dollars, .js serves integer cents, measured across 349 stores with zero exceptions."
+        }
+      ],
+      "defect_classes_note": "The classes below sum to 5, which is this sample's confirmed_false_positives. Classes an engine release has closed move to closed_classes rather than being deleted — which errors this engine used to make, and when it stopped, is the most useful thing this record holds. ⚠️ Until v4.5 this table summed to 18 against a confirmed count of 5, and it was rendered on the published page that way. Seven of the thirteen had been stale since v3.8; six were closed by v4.5. The rate was re-measured without the decomposition beside it being re-derived."
     }
   ],
   "entry_discrimination": {

@@ -1094,8 +1094,14 @@ const V37_FOUND: Case[] = [
     "renders `Lowest readable price is $0.00.` The honest answer is the one the branch beside it " +
     "already gives when no price is exposed at all: requires_store_access. Three further stores " +
     "(puracy, supergoop, voluspa) publish a deliberate 0.00 free gift and were adjudicated BORDERLINE, " +
-    "counted as passes — which is why the fix is a decision about zero and not a filter on it.",
-    "pass_evidenced", { minPriceUsd: 0 }),
+    "counted as passes — which is why the fix is a decision about zero and not a filter on it. " +
+    "CLOSED v4.5: `zeroAwareMin` refuses at the constructor and `evaluate` re-tests the zero at the " +
+    "branch that renders. ⚠️ THE SECOND GUARD IS WHAT MAKES THIS CASE MEAN ANYTHING — it hands " +
+    "`evaluate` a `minPriceUsd: 0` DIRECTLY, a value the constructor can no longer produce, so with " +
+    "only the constructor fixed this case would have gone on asserting `pass_evidenced` and the gap " +
+    "count would still have reported P-19 open. An independent verifier found that; the case was " +
+    "vacuous with respect to its own fix, which is v3.4's lesson understating the work this time.",
+    undefined, { minPriceUsd: 0 }),
 
   C("", stockReq(), "not_proven", "surface-scoping",
     "lesserevil.com, reproduced from its captured bytes. JSON-LD says `InStock`; the page's own inline " +
@@ -1876,7 +1882,12 @@ test("the open-gap count is exactly what was measured — a new gap fails here",
   // price" that is the page's maximum. Read the gap as "the fetch and normalisation layer
   // has no adversarial corpus at all", not as four defects quietly dropped. ENGINE_GAPS
   // P-17 carries them with the numbers.
-  const EXPECTED_OPEN_GAPS = 60;
+  // v4.5: 60 − 1 = 59. ENGINE_GAPS P-19's first half closed — `$0.00` is no longer read as
+  // a price. One case, `price_under` / "placeholder", dropped its `actual`. Nothing else
+  // moved: the second half of P-19 (the minimum over an offers array) was built, measured,
+  // and REVERTED after an independent pass showed it let a junk sibling offer coerce to 0
+  // and beat a real published price, so no case changes for it.
+  const EXPECTED_OPEN_GAPS = 59;
   assert.equal(
     gaps.length, EXPECTED_OPEN_GAPS,
     `open gaps changed (${gaps.length} vs ${EXPECTED_OPEN_GAPS}).\n${gaps.join("\n")}`,

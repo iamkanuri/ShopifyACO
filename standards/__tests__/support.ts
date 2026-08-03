@@ -69,6 +69,13 @@ export function mkProduct(o: MkOptions = {}): PublicProduct {
     descriptionText: description,
     variants: o.variants ?? [{ title: "Default", priceUsd: 12, available: true, options: ["Default"] }],
     minPriceUsd: o.minPriceUsd === undefined ? 12 : o.minPriceUsd,
+    // v4.5 — false: this fixture publishes a real price, so it is not the zero case.
+    // The field is REQUIRED rather than optional on purpose — an optional flag would let
+    // a new PublicProduct constructor forget it and silently inherit "not a zero", which
+    // is the flattering default. Being required is what made the standards typecheck fail
+    // when v4.5 added it, and that failure is the gate working: root tsc covers only
+    // src/**, so the standards project is the half that catches an engine change.
+    publishedZeroPrice: false,
     optionNames: [],
     optionValues: o.optionValues ?? [],
     extracted: o.extracted ?? null,

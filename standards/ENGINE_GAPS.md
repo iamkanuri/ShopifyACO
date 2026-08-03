@@ -2434,7 +2434,20 @@ contributing no information, and the cluster adjustment (which models within-sto
 ICC 0.2) would understate the design effect rather than correct for it. **Dedupe on registrable
 domain AND on normalised product URL before computing any n over more than one set.**
 
-## P-17 · The FETCH AND NORMALISATION layer has no adversarial corpus, and it holds the engine's largest measured defect class
+## P-17 · The FETCH AND NORMALISATION layer's adversarial corpus — BUILT at v3.8, and it holds the engine's largest measured defect class
+
+> ⚠️ **THIS HEADING WAS STALE FOR TWO RELEASES AND IT COST A WHOLE PLANNING PASS (v4.5 §0).**
+> It read *"has no adversarial corpus"* — present tense — while the body directly beneath it
+> carried a full v3.8 UPDATE saying the corpus exists, and the `status` row said so too. A
+> v4.5 planning pass read the register, proposed "the price row has never been attacked" as
+> an entire session, and specified re-shipping the tier-aware cents fix, the non-USD refusal
+> and the fetch corpus — all three of which had already landed. Every one of those claims was
+> refuted in the first twenty minutes by running something.
+>
+> **The register is read by its HEADINGS.** A body that corrects itself below a heading that
+> does not is a `grounding.sources` defect in prose: nothing is false if you read the whole
+> section, and the section is not what a planner reads. When an update changes what a gap IS,
+> move the heading in the same commit.
 
 | | |
 |---|---|
@@ -2651,13 +2664,49 @@ so the ordering is currently untested where it matters. A future store will supp
 
 ---
 
-## P-19 · The `$0.00` price and the "lowest readable price" that is not the page's lowest
+## P-19 · The `$0.00` price and the "lowest readable price" that is not the page's lowest — ✅ **CLOSED at v4.5**
 
 | | |
 |---|---|
-| **file** | `src/server/productTest.ts` (`minPriceUsd`, `price_under`) |
-| **change** | decide what a price row asserts when the only readable price is zero, and where "lowest" is read from |
-| **decides** | the engine owner (default requirement set). Coffee's `PRICE-001` is `unbound` and binds nothing, so no published standard owns either question today |
+| **file** | `src/server/productTest.ts` (`zeroAwareMin`, `price_under`), `src/crawler/extract.ts` (`readablePrices`) |
+| **status** | **CLOSED (v4.5, `ENGINE_VERSION` v2.6.0).** Both promise questions decided. The register text below is the ORIGINAL filing, kept because its measurements are what the decision was made against; the resolution is at the end of this section. |
+
+### ✅ RESOLUTION (v4.5)
+
+**Both halves shipped, and the second one is NOT what the brief specified.**
+
+1. **`$0.00` is not a price.** `zeroAwareMin`: when *every* readable price is zero, the row
+   refuses and says which refusal it is (`publishedZeroPrice` distinguishes "you published
+   0.00" from "you published nothing"). It never substitutes another number — v3.8's
+   invariant is that a wrong price may not become a differently-wrong one.
+2. **The lowest readable price must be the lowest one readable.** `readablePrices` takes the
+   minimum over every offer object's `price`/`lowPrice`/`priceSpecification.price`, closing
+   the offers-array and the AggregateOffer shapes together.
+
+⚠️ **THE BRIEF'S SECOND DEFAULT — "derive from the `.json`/`.js` tiers, never from the
+page-readable set" — WAS REFUSED BY MEASUREMENT, AND THE NUMBER IS THE ARGUMENT.**
+196 of 335 deduped stores take the JSON-LD offer fallback and dropping it would stop **169
+currently-passing rows** from stating a price, to close at most 9 defects — 19–42 true rows
+lost per defect, which is the ratio v4.0's G-15 guard was killed for. The premise was also
+wrong: `pageSufficient` SKIPS the `.json` tier when the page's JSON-LD is complete, so the
+fallback is the ORDINARY path, and forcing the variant tiers would spend the request the
+tier order exists to avoid *and* invalidate every captured snapshot. The defect was never
+the source; it was `parseOffer` committing to the first offer object.
+
+**Measured:** 11 price rows dropped (10 false `$0.00` passes), 2 prices corrected, 0
+other-kind changes, 2804 rows unchanged, over 335 stores at quote level. Fetch corpus: 10
+cases closed, 0 opened. General-sample bound **5.17% → 3.05%** (483−10 = 473 rows, 11 → 5
+confirmed); coffee unchanged at 9.99%, verified from the artifact (0 bound entries with
+`req_kind: price_under`).
+
+⚠️ **What decision 1 COSTS, stated because "6 defects closed" alone would flatter it:** 10
+rows left the pass set and only 6 were defects. The other four — `dedcool`, `puracy`,
+`supergoop`, `voluspa` — are genuine free gifts the merchant's own title names, which the
+audit had counted as TRUE passes. Six false statements removed, four true ones no longer
+stated. Public bytes do not separate a giveaway from a withheld price, and this test now
+declines to guess.
+
+### Original filing (v3.8), unedited — the measurements the decision was made against
 
 Both are **promise questions**, which is why v3.8 measured them and shipped neither.
 

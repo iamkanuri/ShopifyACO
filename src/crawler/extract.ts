@@ -117,6 +117,57 @@ function typesOf(node: Record<string, unknown>): string[] {
 }
 const isType = (node: Record<string, unknown>, name: string) => typesOf(node).some((t) => t.toLowerCase() === name.toLowerCase());
 
+/**
+ * ⛔ v4.5 — TOMBSTONE: "TAKE THE MINIMUM OVER ALL OFFERS" WAS BUILT, MEASURED, AND
+ * REVERTED. Do not rebuild it without first hardening `num()`. (ENGINE_GAPS P-19)
+ *
+ * The intent was right and is still right: an offers ARRAY has no ordering semantics in
+ * schema.org, so reading the FIRST object means `templecoffee.com` reports $29.50 against
+ * a true minimum of $23.00 for a row whose whole promise is the word "lowest". The
+ * implementation — `Math.min` over every readable price on every offer — corrected exactly
+ * 2 real stores and opened seven regression classes on chosen input.
+ *
+ * ⚠️ THE CAUSE IS `num()` ABOVE, NOT THE MINIMUM. It strips to `[0-9.\-]` and accepts
+ * anything finite, and `Number("") === 0`. While only ONE offer was ever read, a junk
+ * price field produced a lone bad answer. Under a minimum it produces a `0` that BEATS a
+ * genuinely published price. Executed by an independent verifier against a product
+ * publishing a real `45.00` beside one hostile sibling offer — 11 of 12 values regressed:
+ *
+ *     ""  "   "  "Sold out"  "Free with any order"  "Contact us"  "N/A"  "TBD"
+ *     "$"  "USD"  "0.00"   ->  offer price 45 becomes 0
+ *     "-5.00"                 ->  becomes -5, and renders "$-5.00"
+ *
+ * `priceToUsd` on the VARIANT path refuses all twelve — v3.9 CP-4 hardened it to
+ * `/^\d+(\.\d+)?$/` for precisely this reason. `num()` is its unhardened sibling, so this
+ * change re-opened, on the offer surface, the defect family v3.9 had closed on the variant
+ * surface. The frozen corpus could not see it: `mm-17` and `znn-05` put the hostile string
+ * in `json_tier.variants`, where it is already closed, and no case puts one in an offers
+ * array beside a real price. "0 newly opened" was a statement about where the cases live.
+ *
+ * ⚠️ AND IT TURNED THE OTHER HALF OF THIS COMMIT AGAINST ITSELF. `zeroAwareMin` refuses
+ * when every readable price is zero, and its safety argument is that no real store has a
+ * zero minimum beside a non-zero price. That was measured on the VARIANT array. This
+ * change manufactured exactly that condition on the OFFER path — which supplies the price
+ * for 226 of 397 captured pages, because `pageSufficient` skips the variant tier — so a
+ * product publishing $45 beside one junk offer stopped reporting a price at all.
+ *
+ * ⚠️ AND AN UNMEASURED CONSUMER MOVED ON REAL BYTES. `src/artifacts/merchantFacts.ts`
+ * joins the catalog variant whose price matches the JSON-LD offer, by its own comment, so
+ * that the price and the sale flag describe the variant the shopper actually SEES. A
+ * minimum is not the displayed price, so that join's stated invariant became false by
+ * construction, and the published price range in `llms.txt` moved with it.
+ *
+ * A 335-store replay reported this change clean, with 2 stores corrected and 0 other-kind
+ * changes. It was right about the stores it had and blind to the shape it did not — the
+ * ninth instance of the standing rule, and the second inside this one commit.
+ *
+ * WHAT A CORRECT VERSION NEEDS, in this order: harden `num()` to the tier contract
+ * `priceToUsd` already enforces; decide whether a subscription/selling-plan offer is the
+ * same commitment as the one-time purchase the `no_subscription` row asserts (it is not);
+ * keep `priceSpecification` narrow — reading it unconditionally pulled in
+ * `UnitPriceSpecification` (per-100g) and `DeliveryChargeSpecification` (shipping) as
+ * product prices, both observed in real markup. Filed, not built.
+ */
 function parseOffer(raw: unknown): OfferInfo | null {
   const offers = arr(raw).find((o) => o && typeof o === "object") as Record<string, unknown> | undefined;
   if (!offers) return null;

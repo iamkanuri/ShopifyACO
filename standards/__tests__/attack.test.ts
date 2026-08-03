@@ -383,7 +383,7 @@ test("[attack] every template declares a real class and at least one role and sh
 const mk = (surface: QuotableSurface, text: string, productType = "Thing"): PublicProduct => ({
   origin: "https://store.example", handle: "p", title: "Thing", vendor: "Acme", productType,
   tags: [], descriptionText: "", variants: [{ title: "Default", priceUsd: 12, available: true, options: ["Default"] }],
-  minPriceUsd: 12, optionNames: [], optionValues: [], extracted: null,
+  minPriceUsd: 12, publishedZeroPrice: false, optionNames: [], optionValues: [], extracted: null,
   evidence: buildEvidence([{ surface, text }]), ldAvailability: null, storefrontObjectId: null,
   // v3.8 — null: this fixture declares no currency, so the non-USD price refusal
   // cannot fire and every attack expectation here is unchanged by it.
