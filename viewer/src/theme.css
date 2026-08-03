@@ -1382,7 +1382,16 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
   padding: 72px 24px;
   border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
 }
-.v43-band > * { max-width: 1140px; margin-left: auto; margin-right: auto; }
+/* ⚠️ THE BAND CENTRED ITS NARROW CHILDREN AND LEFT-ALIGNED ITS WIDE ONES, so inside a
+   band the heading sat centred over content that started 200px to its left. Caught by
+   rendering the section, not by reading: `margin-inline: auto` on a 600px .v43-measure
+   centres it, while a full-width .v43-ba beside it spans the 1140 column — two different
+   left edges in one section, and the same rule produced both. The 1140 column is now
+   established by the band PADDING, so every child starts at the same left edge and a
+   narrow one simply stops sooner. Sections outside a band already worked this way,
+   inheriting .app padding, which is why only the bands looked wrong. */
+.v43-band { padding-inline: max(24px, calc((100% - 1140px) / 2)); }
+.v43-band > * { max-width: none; margin-left: 0; margin-right: 0; }
 .v43-measure { max-width: var(--v43-measure); }
 
 .v43 h1, .v43 h2, .v43 h3 { font-family: var(--font-display); font-weight: 600; }
