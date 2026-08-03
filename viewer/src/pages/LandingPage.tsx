@@ -15,6 +15,7 @@ import {
   FAQ,
   HERO,
   HERO_ARTIFACT,
+  HERO_ROWS,
   PILOT,
   REAL_EXAMPLE,
   RESULT_GLYPH,
@@ -61,10 +62,10 @@ function Glyph({ state }: { state: ResultState }) {
 /** One executed requirement, as the page shows it: the buyer's question, the verdict,
  *  the store's own sentence where there is one, how the rest of the sample did, and the
  *  entry id that makes the whole row checkable. */
-function EvidenceRow({ row, compact = false }: { row: HeroArtifactRow; compact?: boolean }) {
+function EvidenceRow({ row, compact = false, className }: { row: HeroArtifactRow; compact?: boolean; className?: string }) {
   const passed = row.state === "proven" || row.state === "neutral";
   return (
-    <li className={`v43-row v43-row-${row.state}`}>
+    <li className={`v43-row v43-row-${row.state}${className ? ` ${className}` : ""}`}>
       <p className="v43-row-q">
         <Glyph state={row.state} />
         <span>{row.question}</span>
@@ -119,15 +120,33 @@ function HeroArtifactCard({ a }: { a: HeroArtifact }) {
         </dd></div>
       </dl>
 
+      {/* v4.5 — the hero renders `desktop` rows and CSS hides the tail below 700px, so
+          the JS-off document carries the same rows the CSS-on one does. The two count
+          labels are both in the markup for the same reason; only one is ever visible. */}
       <ol className="v43-rows v43-rows-compact">
-        {a.rows.slice(0, 5).map((r) => <EvidenceRow key={r.entryId ?? r.question} row={r} compact />)}
+        {a.rows.slice(0, HERO_ROWS.desktop).map((r, i) => (
+          <EvidenceRow
+            key={r.entryId ?? r.question}
+            row={r}
+            compact
+            className={i >= HERO_ROWS.mobile ? "v43-row-wide-only" : undefined}
+          />
+        ))}
       </ol>
 
-      <p className="v43-artifact-foot">
-        {/* Plain <a>: /demo is a server-rendered document, so the SPA router must not
-            swallow it — a <Link> lands the visitor on the SPA's own 404. */}
-        <a href={a.demoUrl}>{HERO_ARTIFACT.more}</a>
+      <p className="v43-artifact-count">
+        <span className="v43-count-sm">
+          {HERO_ARTIFACT.excerptPrefix} {Math.min(HERO_ROWS.mobile, a.rows.length)} of {a.rows.length} {HERO_ARTIFACT.excerptSuffix}
+        </span>
+        <span className="v43-count-lg">
+          {HERO_ARTIFACT.excerptPrefix} {Math.min(HERO_ROWS.desktop, a.rows.length)} of {a.rows.length} {HERO_ARTIFACT.excerptSuffix}
+        </span>
       </p>
+      {/* ⚠️ NO CTA HERE. The hero's own form and its "run a test" button are three inches
+          up the same viewport; a second call to action inside the artifact was the thing
+          that made this card and the §example card read as duplicates of each other. The
+          section card keeps its CTA, because by then the visitor has scrolled past the
+          form and the button is the only way onward. */}
       <p className="v43-legend">{HERO_ARTIFACT.legend}</p>
     </figure>
   );
@@ -322,6 +341,10 @@ export function LandingPage() {
               </dl>
             </header>
 
+            {/* v4.5 — the line that tells a reader why this card is not the hero card
+                again. It names the difference the hero's own count label implies:
+                complete, and with the store's own sentence under every row. */}
+            <p className="v43-example-job">{REAL_EXAMPLE.job}</p>
             <p className="v43-note">{HERO_ARTIFACT.note}</p>
             <ol className="v43-rows">
               {artifact.rows.map((r) => <EvidenceRow key={r.entryId ?? r.question} row={r} />)}

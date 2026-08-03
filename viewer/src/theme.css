@@ -1497,6 +1497,23 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
 .v43-artifact-foot a { color: var(--pass); font-weight: 600; }
 .v43-legend { font-size: 11.5px; color: var(--ink-3); margin: 8px 0 0; }
 
+/* v4.5 — THE HERO CARD IS AN EXCERPT AND THE PAGE SAYS WHICH ONE.
+   Both count labels ship in the markup and CSS chooses; a JS-off reader gets the
+   wide one, which is the one the JS-off document's row list actually matches. The
+   700px breakpoint is where the hero art stops sitting beside the copy and starts
+   stacking above the §example card — the moment the two cards read as duplicates. */
+.v43-artifact-count { margin: 12px 0 0; font-size: 11.5px; color: var(--ink-3); }
+.v43-count-sm { display: none; }
+.v43-count-lg { display: inline; }
+@media (max-width: 700px) {
+  .v43-row-wide-only { display: none; }
+  .v43-count-sm { display: inline; }
+  .v43-count-lg { display: none; }
+}
+/* The §example card's one-line job description — it answers "why am I seeing this
+   store again", so it reads as a lead-in rather than as fine print. */
+.v43-example-job { margin: 0 0 10px; font-size: 14px; color: var(--ink-2); font-weight: 600; }
+
 /* ---- one executed requirement ------------------------------------------- */
 .v43-rows { list-style: none; padding: 0; margin: 0; }
 .v43-rows > li { padding: 16px 0; border-top: 1px solid var(--border); }
