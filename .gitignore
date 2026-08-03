@@ -138,3 +138,8 @@ experiments/v4-2/*
 # exhibits that are never served, one of them for the store /demo already publishes.
 !experiments/v4-2/onepager_coffee_klatchcoffee.pdf
 !experiments/v4-2/onepager_general_barebonesliving.pdf
+!experiments/v4-3/
+experiments/v4-3/*
+!experiments/v4-3/*.md
+!experiments/v4-3/*.ts
+!experiments/v4-3/*.mjs

@@ -227,6 +227,60 @@ test("THE FIXTURE IS A FAITHFUL RECORD, and the audit sidecar is clean", () => {
   }
 });
 
+// ===========================================================================
+// THE EXAMPLE TEST IS A REPLAY, NOT A SAMPLE (v4.3).
+//
+// ⚠️ AN ASSERTION THAT CANNOT FIRE IN THE ENVIRONMENT IT RUNS IN IS NOT A GUARD, AND
+// THIS FILE ALREADY HAD ONE. The test above at "EVERY NUMBER ON THE PAGE TRACES TO THE
+// RUN" asserts `audited === d.counts.pass` — every proven row is an adjudicated row —
+// which is precisely the invariant the defect below broke. It stayed green through the
+// entire period the defect was live, because `ENV.keys.openai` is UNSET when the suite
+// runs, so the semantic tier returns empty and the extra pass never appears here.
+//
+// THE DEFECT, MEASURED. `judgeClaims` is gated only on an OpenAI key existing and
+// `PRODUCT_TEST_SEMANTIC !== "0"` — both true in production. So every fresh boot of the
+// server made a live, sampled model call during this run. Two boots on the identical
+// commit and the identical frozen capture produced "5 proven · 5 not proven" and
+// "6 proven · 4 not proven", and the sixth pass was ALS-COFFEE-1.3-SOURCE-001 —
+// "Is this coffee from one place, or is it a blend?" — evidenced by "Discover Ethiopia
+// Yirgacheffe Supernatural; bursting with flavor notes", a sentence that names the
+// product and says nothing about origin. A false pass, on the page whose entire gate is
+// that every pass was individually adjudicated.
+//
+// So the OUTCOME assertion is kept and the MECHANISM is asserted here as well, at the
+// source level, where it is reachable without a key. This is the same shape as the v2.5
+// finding that a semantic aboutness gate "could close no corpus case and could not be
+// reached by the mutation proof": when a tier is invisible offline, the only assertion
+// that bites offline is one about the call site.
+// ===========================================================================
+test("the Example test PINS THE SEMANTIC TIER OFF — it is a replay, not a sampled call", () => {
+  const src = fs.readFileSync(path.join(process.cwd(), "src/server/buyerTestDemo.ts"), "utf8");
+
+  // The deps object handed to the replay must disable the tier. Matched on the shape
+  // rather than on an exact line so a reformat does not fail it, and anchored to `deps`
+  // so a `disabled: true` somewhere else in the file cannot satisfy it.
+  // ⚠️ NOT `[^}]*`. The deps object contains `async () => {}`, so a character class that
+  // cannot cross a closing brace stops at the arrow function and never reaches the
+  // `semantic` key — the first version of this assertion failed against a file that
+  // plainly contained the text. Matched within one line instead (no `s` flag).
+  const depsLine = /const deps = \{.*semantic:\s*\{\s*disabled:\s*true\s*\}.*\};/.exec(src);
+  assert.ok(
+    depsLine,
+    "src/server/buyerTestDemo.ts no longer disables the semantic tier for the replay.\n" +
+      "Without it this page makes a LIVE, SAMPLED model call on every fresh run: two boots on " +
+      "the same commit and the same frozen capture returned 5 proven and 6 proven, and the extra " +
+      "pass was a single-origin claim read out of a sentence that states no origin. The published " +
+      "Example test would stop being a replay and stop being adjudicated at the same moment.",
+  );
+
+  // Anti-vacuity: the regex must be reading the real call site, not matching a comment.
+  // If `runProductTest` stops receiving this deps object the assertion above is decorative.
+  assert.match(
+    src, /runProductTest\(capture\.url, \{\s*\.\.\.deps,/,
+    "the replay deps object is no longer spread into runProductTest — the pin above proves nothing",
+  );
+});
+
 test("THE EXAMPLE TEST CITES THE CURRENT VERSION, and its version label is DERIVED", async () => {
   // ⚠️ THE PIN SAID "the current version" IN A COMMENT AND NAMED v1.1, two reissues
   // behind. Nothing was false — a superseded document keeps serving its own bytes and

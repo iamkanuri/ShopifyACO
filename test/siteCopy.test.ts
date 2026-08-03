@@ -11,6 +11,7 @@ import {
   HERO,
   PUBLIC_MARKETING_STRINGS,
   STANDARD_SECTION,
+  ENGINE_VALIDATION,
   STANDARDS_INDEX_URL,
   TAGLINE,
   TAGLINE_SHORT,
@@ -128,17 +129,42 @@ test("nothing on the public surface speaks about the standards in the future ten
   );
 });
 
-test("the standard leads, and the line only this company can write is on the page", () => {
+test("the two lines only this company can write are on the page, and the standard still leads its own section", () => {
+  // ⚠️ v4.3 RE-PIN, AND THE INTENT IS PRESERVED RATHER THAN DROPPED.
+  //
+  // This used to assert `HERO.sub` matched /publishes versioned buying standards/ — "the
+  // hero must lead with the standard, it is the thing nobody else has". v4.3 re-sequences
+  // the page for an agency principal: value first, rigor after, with the standard leading
+  // the RIGOR section instead of the hero. Nothing about the standard is removed from the
+  // site; it moves down and the hero leads with what the reader gets.
+  //
+  // So the assertion moves with it. What must stay true is (a) the standard leads the
+  // section that argues it, (b) both linter-clean asset lines are on the page, and (c)
+  // both are inside the LINTED set rather than buried in a component — which is the
+  // failure mode the whole module exists to close.
+  assert.match(
+    STANDARD_SECTION.body[0]!,
+    /buying standard is the set of questions/,
+    "the rigor section must still open by defining the standard — it is the thing nobody else has",
+  );
   assert.match(
     HERO.sub,
-    /publishes versioned buying standards/,
-    "the hero must lead with the standard — it is the thing nobody else has",
+    /defined buyer tests against real storefront evidence/,
+    "the hero must state what the test does against real evidence",
   );
-  assert.equal(STANDARD_SECTION.pull, "We publish what we cannot test, and why.");
-  assert.ok(
-    PUBLIC_MARKETING_STRINGS.includes("We publish what we cannot test, and why."),
-    "the line has to be in the linted set, not just in the component",
-  );
+
+  const ASSETS = [
+    "We publish what we cannot test, and why.",
+    "AI buyers treat your store like an API. We test it like one.",
+  ];
+  assert.equal(STANDARD_SECTION.pull, ASSETS[0]);
+  assert.equal(ENGINE_VALIDATION.pull, ASSETS[1]);
+  for (const line of ASSETS) {
+    assert.ok(
+      PUBLIC_MARKETING_STRINGS.includes(line),
+      `"${line}" has to be in the linted set, not just in the component`,
+    );
+  }
 });
 
 test("the counts quoted on the page match the CURRENT standard, not a superseded one", () => {
@@ -347,16 +373,44 @@ test("[copy] the standard's version label is DERIVED and agrees with its own hre
   // A stale version label carries no banned word and no false token — it is a true
   // sentence about an older document beside a link to a newer one, which is exactly why
   // four of them survived every lint in this repo until v4.1.
+  //
+  // ⚠️ v4.3 — THIS NOW WALKS THE WHOLE MODULE INSTEAD OF A HAND-LISTED SUBSET, and the
+  // rewrite is the point rather than a tidy-up. The list named three strings, two of them
+  // on `HERO_TEST`, which v4.3 deleted. A test that enumerates its own inputs stops
+  // covering anything the moment one is renamed, and it does so SILENTLY unless the floor
+  // below happens to catch it — the identical shape as `STANDARD_FILES` in
+  // schema.test.ts, whose loop only ever listed two filenames while a third standard went
+  // unvalidated. Walking every string means a version label typed into a section that
+  // does not exist yet is still caught the day it is written.
   const fromUrl = `v${copy.COFFEE_STANDARD_URL.split("/").pop()}`;
   assert.equal(copy.COFFEE_STANDARD_VERSION, fromUrl);
-  const stringsWithAVersion = [
-    copy.HERO.readStandard, copy.HERO_TEST.head, copy.HERO_TEST.ariaLabel,
-    ...copy.STANDARD_SECTION.body,
-  ].filter((s) => /Coffee Standard v\d/.test(s));
-  assert.ok(stringsWithAVersion.length >= 3, "no versioned strings found — this assertion has stopped covering anything");
-  for (const s of stringsWithAVersion) {
-    const m = /Coffee Standard (v[\d.]+)/.exec(s)!;
-    assert.equal(m[1], copy.COFFEE_STANDARD_VERSION, `a hand-typed version label survived: ${s.slice(0, 90)}`);
+
+  const found: Array<{ path: string; label: string; text: string }> = [];
+  const walk = (v: unknown, path: string): void => {
+    if (typeof v === "string") {
+      for (const m of v.matchAll(/Coffee Standard (v[\d.]+)/g)) {
+        found.push({ path, label: m[1]!, text: v });
+      }
+      return;
+    }
+    if (Array.isArray(v)) { v.forEach((x, i) => walk(x, `${path}[${i}]`)); return; }
+    if (v && typeof v === "object") {
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) walk(x, `${path}.${k}`);
+    }
+  };
+  walk(copy, "copy");
+
+  // Floor measured before it was written down: the surviving versioned strings are
+  // HERO.readStandard and STANDARD_SECTION.body[0]. Two, not three — HERO_TEST is gone.
+  assert.ok(
+    found.length >= 2,
+    `only ${found.length} versioned string(s) found in viewer/src/copy.ts — this assertion has stopped covering anything`,
+  );
+  for (const f of found) {
+    assert.equal(
+      f.label, copy.COFFEE_STANDARD_VERSION,
+      `a hand-typed version label survived at ${f.path}: ${f.text.slice(0, 90)}`,
+    );
   }
 });
 

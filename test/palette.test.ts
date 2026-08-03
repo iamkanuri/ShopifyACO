@@ -35,9 +35,15 @@ const read = (p: string) => readFileSync(p, "utf8");
 const rel = (p: string) => relative(ROOT, p).replace(/\\/g, "/");
 
 // The reserved values, per theme (dark lifts crimson for readability on navy,
-// light darkens tan for readability on ice — both are the same hue).
-const CRIMSON = ["#C7304A", "#EC657C"];
-const TAN = ["#D9B478", "#876022"];
+// light darkens sand for readability on the off-white field — both keep their hue).
+//
+// ⚠️ v4.3 re-pin. The site flipped to a light default and both reserved colours moved
+// with it: crimson #C7304A → #BF3A4F (light) and sand #876022 → #826738 (light). The dark
+// values are unchanged because the dark theme's surfaces did not move. Every value here
+// was recomputed against the four surfaces actually in use rather than carried over —
+// see experiments/v4-3/tokens.mjs and the contrast table in viewer/src/theme.css.
+const CRIMSON = ["#BF3A4F", "#EC657C"];
+const TAN = ["#D9B478", "#826738"];
 
 // A rule may reach a reserved token only if EVERY comma-separated part of its
 // selector names the state it belongs to.
@@ -287,27 +293,87 @@ test("no colour literal anywhere lands in the reserved crimson or tan band", () 
 });
 
 // ---------------------------------------------------------------------------
-// 5. The two light-theme blocks must stay identical.
-//    The media-query copy used to be missing --border-strong, so a visitor on
-//    system-light who had never touched the toggle silently lost every
-//    emphasized hairline. A duplicated block that drifts is worse than a
-//    duplicated block, so the duplication is now asserted rather than trusted.
+// 5. EVERY THEME DECLARES EVERY TOKEN, and there is only one theme to keep up.
+//
+//    THE BUG THIS REPLACES, AND WHY THE REPLACEMENT IS STRONGER. There used to be
+//    two hand-maintained LIGHT blocks — `[data-theme="light"]` and a
+//    `prefers-color-scheme: light` copy — and the assertion here was that their
+//    declarations matched. What had actually gone wrong was narrower and worse: the
+//    media copy was MISSING `--border-strong`, so system-light visitors who had never
+//    touched the toggle silently lost every emphasized hairline. The old test caught
+//    that only as a side effect of comparing two duplicates.
+//
+//    v4.3 removed the duplication rather than asserting it: light is the base `:root`
+//    and dark is one explicit opt-in block, with no media query anywhere. So the
+//    assertion is now the DEFECT ITSELF — a theme override that omits a token the base
+//    declares falls back to the base's value, which is the wrong theme's colour, and
+//    nothing throws. That is the silent-render family, in CSS.
+//
+//    It also refuses a SECOND override block, because the moment there are two the old
+//    drift is back and this test would be comparing one of them against nothing.
 // ---------------------------------------------------------------------------
-test("the two light-theme token blocks declare an identical set of tokens", () => {
-  const light = themeRules.filter((r) => /^:root\[data-theme="light"\]$/.test(r.selector.trim()));
-  const media = themeRules.filter((r) => /^:root:not\(\[data-theme\]\)$/.test(r.selector.trim()));
-  assert.equal(light.length, 1, "expected exactly one :root[data-theme=\"light\"] block");
-  assert.equal(media.length, 1, "expected exactly one prefers-color-scheme:light block");
+test("every theme-override block declares exactly the tokens the base declares", () => {
+  const base = themeRules.filter((r) => r.selector.trim() === ":root");
+  assert.equal(base.length, 1, "expected exactly one base :root block (the light theme)");
 
-  const norm = (r: Rule) =>
-    declarations(r.body).map((d) => `${d.prop}: ${d.value.replace(/\s+/g, " ")}`).sort();
+  const overrides = themeRules.filter(
+    (r) => isTokenBlock(r.selector) && r.selector.trim() !== ":root",
+  );
+  assert.equal(
+    overrides.length, 1,
+    "expected exactly ONE theme-override block. Two hand-maintained copies is the shape " +
+      "that drifted before — the bug reached only visitors who never touched the toggle, " +
+      "which is the hardest group to notice.\nFound: " +
+      overrides.map((r) => r.selector.trim()).join(", "),
+  );
+  assert.equal(
+    overrides[0]!.selector.trim(), ':root[data-theme="dark"]',
+    "the one override must be the explicit dark opt-in. A `prefers-color-scheme` block " +
+      "would hand a dark-OS visitor a different product from the one every screenshot, " +
+      "share card and standards page is designed as — and viewer/src/theme.ts defaults " +
+      "to light unconditionally, so the two would disagree.",
+  );
+
+  // Token NAMES, not values — the values are meant to differ, that is what a theme is.
+  //
+  // ⚠️ SCOPED TO THE TOKENS THAT CARRY COLOUR, AND MECHANICALLY RATHER THAN BY A LIST.
+  // `--radius: 14px` and `--font-display: "Source Serif 4", …` are theme-INVARIANT: they
+  // belong in the base exactly once, and re-declaring them in every theme is the
+  // duplication this test just finished removing. A hand-kept exception list would be a
+  // closed list used as the protector — the failure shape this repo has recorded four
+  // times, where the miss always fails in the damaging direction. So the partition is
+  // computed from the VALUE: anything carrying a hex, an rgb/rgba, a color-mix or a
+  // reference to another token is theme-dependent and owes a dark declaration.
+  const colourish = (v: string) =>
+    /#[0-9a-fA-F]{3,8}\b/.test(v) || /\brgba?\(/.test(v) || /\bcolor-mix\(/.test(v) || /\bvar\(--/.test(v);
+  const tokens = (r: Rule) =>
+    declarations(r.body).filter((d) => d.prop.startsWith("--"));
+
+  const baseColour = tokens(base[0]!).filter((d) => colourish(d.value)).map((d) => d.prop).sort();
+  const baseInvariant = tokens(base[0]!).filter((d) => !colourish(d.value)).map((d) => d.prop).sort();
+  const darkNames = tokens(overrides[0]!).map((d) => d.prop).sort();
+
+  const missing = baseColour.filter((n) => !darkNames.includes(n));
+  const extra = darkNames.filter((n) => !baseColour.includes(n));
   assert.deepEqual(
-    norm(media[0]),
-    norm(light[0]),
-    "The explicit light theme and the system-light theme must declare the same " +
-      "tokens with the same values. They are a hand-maintained duplicate — when " +
-      "they drift, the bug only reaches visitors who never touched the toggle, " +
-      "which is the hardest group to notice.",
+    { missing, extra }, { missing: [], extra: [] },
+    "The dark theme must declare every COLOUR token the base does, and no others. One it " +
+      "omits silently falls back to the LIGHT value — an off-white surface or a near-black " +
+      "ink on the wrong theme — and nothing throws; `--border-strong` went missing exactly " +
+      "that way. One it adds that the base lacks has no light counterpart at all.\n" +
+      `  missing from dark: ${missing.join(", ") || "(none)"}\n` +
+      `  present only in dark: ${extra.join(", ") || "(none)"}`,
+  );
+
+  // Anti-vacuity, both halves. If the colour set were empty the deepEqual above passes
+  // while asserting nothing, and if the invariant set were empty the partition is not
+  // actually partitioning — either way the test has quietly stopped covering the file.
+  assert.ok(baseColour.length > 25, `only ${baseColour.length} colour tokens found — the base block looks truncated`);
+  assert.ok(baseInvariant.length > 0, "no theme-invariant tokens found — the colourish() split is matching everything");
+  assert.ok(
+    baseInvariant.includes("--font-display"),
+    "--font-display is being read as a colour token. It is the display typeface and belongs " +
+      "in the base exactly once; if colourish() now matches it, the split is wrong.",
   );
 });
 

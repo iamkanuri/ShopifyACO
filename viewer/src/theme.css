@@ -1,27 +1,38 @@
 /* ===========================================================================
-   THE SHARED PALETTE
+   THE SHARED PALETTE — LIGHT IS THE SITE (v4.3)
 
    Six colours, and two of them are RESERVED.
 
-     navy         #1B2131   base / ink
-     slate        #4F6890   primary accent, borders, structure
-     slate-light  #7B9BC7   the PROVEN state on dark backgrounds (base slate is
-                            ~2.5:1 on navy — unreadable at text size — so dark
-                            uses slate-light and light uses slate itself)
-     ice          #CBD8E4   body text on dark, surfaces on light
-     tan          #D9B478   REQUIRES STORE ACCESS. Nothing else, ever.
-     crimson      #C7304A   NOT PROVEN. Nothing else, ever.
+     navy         #24273A   primary text, nav, PRIMARY CTA BACKGROUND
+     slate        #596C8E   links, evidence chrome, the PROVEN state
+     pale         #C7D1DA   borders, quiet containers, alternating bands
+     band         #E9EDF1   the pale blue-gray section band
+     sand         #826738   REQUIRES STORE ACCESS. Nothing else, ever.
+     crimson      #BF3A4F   NOT PROVEN. Nothing else, ever.
 
    THE GOVERNING RULE: CRIMSON APPEARS ONLY WHERE SOMETHING FAILED. Not buttons,
    not links, not the logo, not headings, not hover states, not error banners,
    not invalid-input borders, not "danger" tiles, not regression bars. In a
    product whose entire pitch is proof, the rarest colour on the page must be
-   the one that means *not proven*. Tan is reserved the same way for the third
+   the one that means *not proven*. Sand is reserved the same way for the third
    state — the honesty machinery made visible.
 
-   Everything that used to be red is now NEUTRAL. `--attention` (an error, an
-   invalid field, a destructive action, a weak engine) and `--advisory` (a
-   caveat, a sample badge, a moderate-confidence pill) are ice/slate
+   ⚠️ SAND IS NOT A HIGHLIGHT COLOUR, AND THAT IS A DELIBERATE NARROWING. The
+   v4.3 palette brief assigned sand to "requires-store-access states AND selective
+   highlights". Those are two meanings for one hue, which is the exact collision the
+   same brief cited when it moved the primary CTA OFF sand and onto navy. A reader
+   cannot tell a decorative sand rule from a row that says "public data cannot
+   settle this" — and the enforcement below could not let them coexist anyway:
+   the hue-band rule rejects every literal at hue 25–55°, and the selector rule
+   rejects `var(--requires-access)` outside a requires-access selector. Highlights
+   come from the navy/band pair instead. Sand keeps its one meaning.
+
+   THE CTA IS NAVY, for the same reason. A button that says "click me" in the
+   colour that elsewhere says "we could not decide this" spends the signal.
+
+   Everything that is not a requirement result is NEUTRAL. `--attention` (an
+   error, an invalid field, a destructive action, a weak engine) and `--advisory`
+   (a caveat, a sample badge, a moderate-confidence pill) are navy/slate
    derivatives. They keep their glyph and their wording; they do not get the
    failure colour, because none of them is a failed requirement.
 
@@ -29,137 +40,142 @@
    ✕ not proven · ○ requires store access ride alongside it, so the three states
    survive colourblindness and greyscale print.
 
-   Contrast, measured on the ACTUAL surfaces (WCAG 2.1, small text needs 4.5:1):
-     dark  --pass 5.6:1 · --requires-access 8.2:1 · --not-proven 5.1:1 on --surface
-           (4.9 / 7.2 / 4.5 on the raised --surface-2)
-     light --pass 5.6:1 · --requires-access 5.6:1 · --not-proven 5.3:1 on white
-           (4.8 / 4.8 / 4.5 on the recessed --surface-2)
-   The dark crimson is the published crimson lifted in lightness at the same
-   hue (349.7°); base #C7304A is only 3.0:1 on navy, which is not readable at
-   13px. Same for tan on light: #D9B478 is 2.0:1 on white, so the light theme
-   darkens it at hue 37°. Both are stated here rather than shipped unreadable.
+   ---- CONTRAST, COMPUTED RATHER THAN EYEBALLED (experiments/v4-3/tokens.mjs) ----
+   Every text token against every surface it is actually used on. Floor 4.5:1
+   (WCAG 2.1 small text). Surfaces: --bg #F7F5F1 · --surface #FFFFFF ·
+   --surface-2 #EFEDE8 · --band #E9EDF1.
 
-   `test/palette.test.ts` enforces the reservation against these files.
+     token              hex       --bg   surf   surf-2  band
+     --ink              #24273A   13.52  14.72  12.58   12.51
+     --ink-2            #484C6B    7.65   8.33   7.12    7.08
+     --ink-3            #64698A    4.91   5.34   4.57    4.54
+     --pass             #596C8E    4.87   5.30   4.53    4.51
+     --not-proven       #BF3A4F    4.90   5.34   4.56    4.54
+     --requires-access  #826738    4.89   5.32   4.55    4.52
+     white on --ink (the primary button) 14.72:1
+
+   TWO ADJUSTMENTS, STATED RATHER THAN SILENT — the established precedent is that
+   a hex which cannot clear the floor is moved in LIGHTNESS AT ITS OWN HUE, and
+   the move is written down:
+     • slate #5B6F92 → #596C8E. As supplied it is 4.34:1 on --surface-2 and
+       4.32:1 on --band — it clears white and fails the two recessed tiers, which
+       is the half of the page a reader spends longest on. L 46.5% → 45.3%,
+       hue 218.2° → 218.5°.
+     • sand #CEB78E → #826738. As supplied it is 1.65–1.95:1 — not readable at
+       any text size on any surface here. L 68.2% → 36.5% at hue 38°. This is the
+       same move the previous light theme already made for the same reason.
+   navy #24273A and crimson #BF3A4F cleared every surface unchanged.
+
+   A hairline (`--border`) is decorative and carries no floor. A form-control
+   edge is a UI component under WCAG 1.4.11, so it gets `--border-ui` #728BA2,
+   measured 3.01–3.54:1 against the same four surfaces.
+
+   ---- WHY THERE IS NO prefers-color-scheme BLOCK ----
+   There used to be two hand-maintained light blocks, `[data-theme="light"]` and a
+   `prefers-color-scheme: light` copy, and they had already drifted once: the media
+   copy was missing --border-strong, so every system-light visitor who had never
+   touched the toggle silently lost emphasized hairlines. Light is now the BASE
+   `:root`, so there is nothing to duplicate and that whole class of bug is gone.
+   Dark is one explicit opt-in block. The site is light for every visitor who has
+   not chosen otherwise, including one whose OS is dark — "never a dark site"
+   is about identity, and a visitor who wants dark still has the toggle.
+
+   `test/palette.test.ts` enforces all of the above against these files, and
+   `experiments/v4-3/mutate_palette.mjs` proves each assertion still bites.
    =========================================================================== */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* the six-colour palette, by name */
+  /* the palette, by name */
+  --navy: #24273A;
+  --slate: #596C8E;
+  --slate-light: #8FA6C6;
+  --ice: #C7D1DA;
+
+  /* Surfaces: a warm off-white field, a white card, a recessed tier, and one
+     cool band used to alternate section density without adding a card grid. */
+  --bg: #F7F5F1;
+  --surface: #FFFFFF;
+  --surface-2: #EFEDE8;
+  --band: #E9EDF1;
+  --ink: #24273A;      /* navy — 14.72:1 on --surface */
+  --ink-2: #484C6B;    /* secondary — 7.12:1 on --surface-2 */
+  --ink-3: #64698A;    /* tertiary — 4.54:1 on --band (the a11y floor) */
+  --border: #C7D1DA;
+  --border-ui: #728BA2;         /* a control edge — WCAG 1.4.11, 3:1 */
+  --accent: #24273A;            /* the high-contrast highlight / CTA ground */
+  --accent-soft: rgba(89, 108, 142, 0.09);
+  --border-strong: rgba(89, 108, 142, 0.38); /* an emphasized hairline */
+  --ink-hover: #3A3F5E;
+  --line: var(--border);
+
+  /* ---- the three requirement-result states. RESERVED. ---- */
+  --pass: #596C8E;                 /* ✓ slate */
+  --pass-soft: color-mix(in srgb, var(--pass) 12%, transparent);
+  --requires-access: #826738;      /* ○ sand darkened at hue 38° for small text */
+  --requires-access-soft: color-mix(in srgb, var(--requires-access) 12%, transparent);
+  --not-proven: #BF3A4F;           /* ✕ crimson */
+  --not-proven-soft: color-mix(in srgb, var(--not-proven) 10%, transparent);
+
+  /* ---- everything that is NOT a requirement result ---- */
+  --attention: #24273A;            /* errors, invalid input, destructive actions */
+  --attention-soft: color-mix(in srgb, var(--navy) 6%, transparent);
+  --advisory: #484C6B;             /* caveats, sample badges, weaker signal */
+  --advisory-soft: color-mix(in srgb, var(--advisory) 7%, transparent);
+
+  --shadow: 0 1px 2px rgba(36, 39, 58, 0.05), 0 1px 1px rgba(36, 39, 58, 0.03);
+  --shadow-lg: 0 8px 28px rgba(36, 39, 58, 0.09);
+  --ring-soft: 0 0 0 1px rgba(36, 39, 58, 0.08);
+  --radius: 14px;
+  --radius-sm: 10px;
+  /* EDITORIAL, RESTRAINED (v4.3 §1c). Source Serif 4 is a real reading serif with an
+     optical-size axis, not a display novelty — it makes a heading read as a
+     publication rather than as a template. Body/UI/tables stay Inter. */
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ============ dark theme — an explicit opt-in, never the default ============
+   The same six colours inverted: navy becomes the surface family and ice becomes
+   the ink. slate-light carries the proven state here (base slate is ~2.5:1 on
+   navy — unreadable at text size). Crimson is lifted in lightness at the same
+   hue for the same reason: #BF3A4F is only 2.8:1 on this surface.
+   ⚠️ This block must declare the SAME TOKEN NAMES as :root above. The bug that
+   the old duplicated-block test existed for was a MISSING token, not a wrong
+   value — `test/palette.test.ts` now asserts the name sets agree. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
   --navy: #1B2131;
   --slate: #4F6890;
   --slate-light: #7B9BC7;
   --ice: #CBD8E4;
-
-  /* Surfaces: navy IS the card. The page field sits one step under it and the
-     raised tier one step over, so a card reads without a shadow. */
   --bg: #171C29;
   --surface: #1B2131;
   --surface-2: #232B3D;
+  --band: #1F2637;
   --ink: #CBD8E4;      /* ice — 11.1:1 on --surface */
   --ink-2: #9BAEC6;    /* secondary — 6.2:1 on --surface-2 */
   --ink-3: #8598B2;    /* tertiary — 4.8:1 on --surface-2 (the a11y floor) */
   --border: #2E3850;
-  --accent: #E3EBF4;            /* the high-contrast highlight / CTA */
+  --border-ui: #55648A;
+  --accent: #E3EBF4;
   --accent-soft: rgba(123, 155, 199, 0.10);
-  --border-strong: rgba(123, 155, 199, 0.34); /* an emphasized hairline */
+  --border-strong: rgba(123, 155, 199, 0.34);
   --ink-hover: #F2F6FA;
   --line: var(--border);
-
-  /* ---- the three requirement-result states. RESERVED. ---- */
   --pass: #7B9BC7;                 /* ✓ slate-light */
   --pass-soft: color-mix(in srgb, var(--pass) 14%, transparent);
-  --requires-access: #D9B478;      /* ○ tan */
+  --requires-access: #D9B478;      /* ○ sand, lifted for navy */
   --requires-access-soft: color-mix(in srgb, var(--requires-access) 13%, transparent);
   --not-proven: #EC657C;           /* ✕ crimson, lifted for navy */
   --not-proven-soft: color-mix(in srgb, var(--not-proven) 13%, transparent);
-
-  /* ---- everything that is NOT a requirement result ---- */
-  --attention: #CBD8E4;            /* errors, invalid input, destructive actions */
+  --attention: #CBD8E4;
   --attention-soft: color-mix(in srgb, var(--ice) 7%, transparent);
-  --advisory: #9BAEC6;             /* caveats, sample badges, weaker signal */
+  --advisory: #9BAEC6;
   --advisory-soft: color-mix(in srgb, var(--advisory) 10%, transparent);
-
   --shadow: none;
   --shadow-lg: none;
   --ring-soft: 0 0 0 1px rgba(203, 216, 228, 0.10);
-  --radius: 14px;
-  --radius-sm: 10px;
-  --font-display: "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-/* ============ light theme ============
-   Same six colours, inverted: ice becomes the surface family and navy becomes
-   the ink. slate carries the proven state here (it is 5.6:1 on white, where
-   slate-light would be 2.1:1). Applied two ways:
-   (1) the visitor's system preference when they HAVEN'T chosen (`:not([data-theme])`),
-   (2) an explicit choice (`[data-theme="light"]`). An explicit "dark" keeps the default
-   above and suppresses the system-light media query.
-   ⚠️ The two light blocks below MUST declare an identical token set — the media
-   copy used to be missing --border-strong, which silently dropped emphasized
-   hairlines for system-light visitors who had never touched the toggle.
-   `test/palette.test.ts` now asserts the two blocks are identical. */
-:root[data-theme="light"] {
-  color-scheme: light;
-  --navy: #1B2131;
-  --slate: #4F6890;
-  --slate-light: #7B9BC7;
-  --ice: #CBD8E4;
-  --bg: #EEF2F7;
-  --surface: #FFFFFF;
-  --surface-2: #E7EDF5;
-  --ink: #1B2131;      /* navy — 16.1:1 on white */
-  --ink-2: #3A4457;    /* 9.8:1 on white */
-  --ink-3: #566379;    /* 6.1:1 on white, 5.2:1 on --surface-2 */
-  --border: #C8D5E4;
-  --accent: #24304A;
-  --accent-soft: rgba(79, 104, 144, 0.08);
-  --border-strong: rgba(79, 104, 144, 0.34);
-  --ink-hover: #33405A;
-  --line: var(--border);
-  --pass: #4F6890;                 /* ✓ slate */
-  --pass-soft: color-mix(in srgb, var(--pass) 14%, transparent);
-  --requires-access: #876022;      /* ○ tan darkened at hue 37° for small text */
-  --requires-access-soft: color-mix(in srgb, var(--requires-access) 13%, transparent);
-  --not-proven: #C7304A;           /* ✕ crimson */
-  --not-proven-soft: color-mix(in srgb, var(--not-proven) 12%, transparent);
-  --attention: #1B2131;
-  --attention-soft: color-mix(in srgb, var(--navy) 6%, transparent);
-  --advisory: #3A4457;
-  --advisory-soft: color-mix(in srgb, var(--advisory) 7%, transparent);
-  --ring-soft: 0 0 0 1px rgba(27, 33, 49, 0.08);
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --navy: #1B2131;
-    --slate: #4F6890;
-    --slate-light: #7B9BC7;
-    --ice: #CBD8E4;
-    --bg: #EEF2F7;
-    --surface: #FFFFFF;
-    --surface-2: #E7EDF5;
-    --ink: #1B2131;      /* navy — 16.1:1 on white */
-    --ink-2: #3A4457;    /* 9.8:1 on white */
-    --ink-3: #566379;    /* 6.1:1 on white, 5.2:1 on --surface-2 */
-    --border: #C8D5E4;
-    --accent: #24304A;
-    --accent-soft: rgba(79, 104, 144, 0.08);
-    --border-strong: rgba(79, 104, 144, 0.34);
-    --ink-hover: #33405A;
-    --line: var(--border);
-    --pass: #4F6890;                 /* ✓ slate */
-    --pass-soft: color-mix(in srgb, var(--pass) 14%, transparent);
-    --requires-access: #876022;      /* ○ tan darkened at hue 37° for small text */
-    --requires-access-soft: color-mix(in srgb, var(--requires-access) 13%, transparent);
-    --not-proven: #C7304A;           /* ✕ crimson */
-    --not-proven-soft: color-mix(in srgb, var(--not-proven) 12%, transparent);
-    --attention: #1B2131;
-    --attention-soft: color-mix(in srgb, var(--navy) 6%, transparent);
-    --advisory: #3A4457;
-    --advisory-soft: color-mix(in srgb, var(--advisory) 7%, transparent);
-    --ring-soft: 0 0 0 1px rgba(27, 33, 49, 0.08);
-  }
 }
 
 * { box-sizing: border-box; }
@@ -172,11 +188,14 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "ss01";
 }
 
-/* All text form controls inherit the dark theme (they otherwise default to a
-   white browser background, which is wrong on near-black). Checkboxes/radios are
-   excluded — they use accent-color. */
+/* All text form controls take the THEME's surface and ink rather than the browser
+   default. This was written for the dark theme (a white UA background on near-black)
+   and it is what makes the light flip safe: the rule was already token-driven, so it
+   needs no per-theme copy. Checkboxes/radios are excluded — they use accent-color.
+   The EDGE is --border-ui, not --border: a control outline is a UI component under
+   WCAG 1.4.11 and owes 3:1, where a decorative hairline owes nothing. */
 input:not([type="checkbox"]):not([type="radio"]), textarea, select {
-  background: var(--surface); color: var(--ink);
+  background: var(--surface); color: var(--ink); border-color: var(--border-ui);
 }
 input::placeholder, textarea::placeholder { color: var(--ink-3); }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--ink); }
@@ -1328,4 +1347,334 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
 @media (max-width: 560px) {
   .bt-options ul { columns: 1; }
   .std-toc-tiers { grid-template-columns: 1fr; }
+}
+
+/* ===========================================================================
+   v4.3 — THE LANDING PAGE.
+   ---------------------------------------------------------------------------
+   Namespaced `.v43-` so it cannot collide with the report/scan/app surfaces that
+   share this stylesheet, and so a future rewrite can be read as one block.
+
+   THE RHYTHM IS NOT A CARD GRID. Six sections of identical tiles is the genre this
+   page is trying to leave, and it is also the thing a reader stops seeing after the
+   second one. Density alternates instead: a wide document, a numbered list with
+   rules, a horizontal rail, a definition grid, a two-column diff, three stacked
+   columns, and two blocks of plain prose at reading measure. Sections alternate
+   between the page field and one cool band, so the boundaries come from the surface
+   rather than from a border on every element.
+
+   NO GRADIENTS, NO GLASS, NO SHADOW-STACKED CARDS. Structure is carried by
+   hairlines, type scale and space.
+
+   MOBILE IS A FIRST-CLASS TARGET, so every multi-column construct below is declared
+   as a single column FIRST and widened at a breakpoint — a stacked layout is the base
+   case, not the fallback. Nothing in the core story scrolls sideways.
+   =========================================================================== */
+
+.v43 { --v43-measure: 68ch; }
+
+/* Sections alternate field / band. The band is a full-bleed surface, so it escapes
+   `.app`'s max-width without needing a wrapper element. */
+.v43-section { padding: 72px 0; }
+.v43-band {
+  background: var(--band);
+  margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);
+  padding: 72px 24px;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.v43-band > * { max-width: 1140px; margin-left: auto; margin-right: auto; }
+.v43-measure { max-width: var(--v43-measure); }
+
+.v43 h1, .v43 h2, .v43 h3 { font-family: var(--font-display); font-weight: 600; }
+.v43 h2 {
+  font-size: 30px; line-height: 1.22; letter-spacing: -0.012em; color: var(--ink);
+  margin: 0 0 14px; text-wrap: balance;
+}
+.v43 h3 { font-size: 17px; line-height: 1.35; margin: 0 0 6px; color: var(--ink); }
+.v43-lead { font-size: 17px; line-height: 1.62; color: var(--ink-2); margin: 0 0 34px; }
+.v43-prose { font-size: 16px; line-height: 1.72; color: var(--ink-2); margin: 0 0 18px; }
+.v43-prose-sm { font-size: 14.5px; line-height: 1.7; color: var(--ink-3); margin: 0 0 14px; }
+.v43-note { font-size: 13px; line-height: 1.6; color: var(--ink-3); margin: 12px 0 0; }
+.v43-kicker {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em;
+  color: var(--ink-3);
+}
+.v43-pull {
+  font-family: var(--font-display); font-size: 22px; line-height: 1.42; font-weight: 600;
+  color: var(--ink); border: 0; border-left: 2px solid var(--ink); margin: 30px 0;
+  padding: 2px 0 2px 22px; max-width: 34ch; letter-spacing: -0.01em;
+}
+
+/* ---- hero --------------------------------------------------------------- */
+.v43-hero { display: grid; grid-template-columns: 1fr; gap: 44px; padding: 56px 0 68px; }
+.v43-eyebrow {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+  color: var(--ink-3); margin: 0 0 20px;
+}
+.v43-hero h1 {
+  font-size: 46px; line-height: 1.1; letter-spacing: -0.02em; color: var(--ink);
+  margin: 0 0 22px; text-wrap: balance; max-width: 17ch;
+}
+.v43-hero-sub { font-size: 18px; line-height: 1.6; color: var(--ink-2); margin: 0 0 30px; max-width: 54ch; }
+.v43-hero-form { display: flex; gap: 10px; max-width: 520px; }
+.v43-hero-form input {
+  flex: 1; min-width: 0; padding: 13px 16px; border: 1px solid var(--border-ui);
+  border-radius: 10px; font-size: 15px; font-family: inherit;
+}
+.v43-hero-form input:focus { outline: none; border-color: var(--ink); }
+.v43-hero-form .btn-primary { white-space: nowrap; }
+.v43-hero-micro { font-size: 13px; line-height: 1.55; color: var(--ink-3); margin: 14px 0 0; max-width: 52ch; }
+.v43-hero-alt { margin: 10px 0 0; font-size: 14px; }
+.v43-hero-alt a { color: var(--pass); font-weight: 600; text-decoration: none; }
+.v43-hero-alt a:hover { text-decoration: underline; }
+
+/* The credibility strip. A rule above it, no boxes — it is a caption on the headline,
+   not five more cards. */
+.v43-cred {
+  list-style: none; padding: 20px 0 0; margin: 32px 0 0; border-top: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; gap: 8px 22px;
+}
+.v43-cred li { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: baseline; gap: 7px; }
+.v43-cred li::before { content: "\00b7"; color: var(--pass); font-weight: 800; }
+
+/* ---- the artifact: a document, not a dashboard --------------------------- */
+.v43-artifact {
+  margin: 0; padding: 22px 24px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.v43-artifact-head { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+.v43-artifact-store { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.v43-artifact-meta {
+  display: grid; grid-template-columns: 1fr; gap: 10px 20px; margin: 0 0 16px;
+  padding: 14px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.v43-artifact-meta dt {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3);
+  margin-bottom: 2px;
+}
+.v43-artifact-meta dd { margin: 0; font-size: 13.5px; color: var(--ink); word-break: break-word; }
+.v43-artifact-meta a { color: var(--pass); }
+.v43-artifact-meta code { font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.v43-artifact-foot { margin: 16px 0 0; font-size: 13.5px; }
+.v43-artifact-foot a { color: var(--pass); font-weight: 600; }
+.v43-legend { font-size: 11.5px; color: var(--ink-3); margin: 8px 0 0; }
+
+/* ---- one executed requirement ------------------------------------------- */
+.v43-rows { list-style: none; padding: 0; margin: 0; }
+.v43-rows > li { padding: 16px 0; border-top: 1px solid var(--border); }
+.v43-rows > li:first-child { border-top: 0; }
+.v43-rows-compact > li { padding: 9px 0; }
+.v43-row-q {
+  display: flex; gap: 10px; align-items: baseline; margin: 0;
+  font-size: 14.5px; font-weight: 600; color: var(--ink); line-height: 1.45;
+}
+.v43-glyph { flex: none; width: 14px; font-weight: 800; font-size: 13px; }
+/* The four states. Colour is half the signal; the glyph is the other half, so a
+   greyscale print and a colourblind reader lose nothing. */
+.v43-glyph.v43-proven { color: var(--pass); }
+.v43-glyph.v43-neutral { color: var(--ink-3); }
+/* RESERVED — crimson means one thing, and tan means one thing. test/palette.test.ts
+   fails the build if a selector that does not NAME the state reaches either token. */
+.v43-glyph.v43-unproven { color: var(--not-proven); }
+.v43-glyph.v43-requires-access { color: var(--requires-access); }
+.v43-row-detail { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 6px 0 0 24px; }
+.v43-quote {
+  margin: 10px 0 0 24px; padding: 10px 14px; background: var(--surface-2);
+  border-left: 2px solid var(--pass); border-radius: 0 6px 6px 0;
+  font-size: 13.5px; line-height: 1.6; color: var(--ink);
+}
+.v43-quote cite {
+  display: block; margin-top: 6px; font-style: normal; font-size: 11.5px; color: var(--ink-3);
+  word-break: break-word;
+}
+.v43-quote cite a { color: var(--ink-3); }
+/* The illustrative half of the before/after. Dashed and unfilled, so it can never be
+   mistaken for a store's own sentence — a receipt and an example must not look alike. */
+.v43-quote-illustrative { border-left-style: dashed; background: transparent; }
+.v43-peer {
+  font-size: 12.5px; line-height: 1.55; color: var(--ink-2); margin: 8px 0 0 24px;
+  padding-left: 10px; border-left: 2px dashed var(--border-ui);
+}
+.v43-cite { margin: 8px 0 0 24px; }
+.v43-cite a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  color: var(--ink-3); text-decoration: none; border-bottom: 1px dotted currentColor;
+}
+.v43-cite a:hover { color: var(--ink); }
+
+/* ---- deliverables: a numbered list with rules, not six tiles -------------- */
+.v43-deliver { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; }
+.v43-deliver > li {
+  display: grid; grid-template-columns: 46px 1fr; gap: 4px 16px; align-items: start;
+  padding: 22px 0; border-top: 1px solid var(--border);
+}
+.v43-deliver > li:last-child { border-bottom: 1px solid var(--border); }
+.v43-num {
+  font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--pass);
+  font-variant-numeric: tabular-nums; padding-top: 2px;
+}
+.v43-deliver p { margin: 0; font-size: 14.5px; line-height: 1.65; color: var(--ink-2); }
+
+/* ---- workflow rail ------------------------------------------------------- */
+.v43-rail { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr; gap: 0; }
+.v43-rail > li { padding: 20px 0; border-top: 1px solid var(--border); }
+.v43-rail > li:last-child { border-bottom: 1px solid var(--border); }
+.v43-rail-n {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--border-ui); color: var(--ink-2); font-size: 12px; font-weight: 700;
+  margin-bottom: 10px; font-variant-numeric: tabular-nums;
+}
+.v43-rail p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+
+/* ---- surfaces ------------------------------------------------------------ */
+.v43-surfaces { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0 0 34px; }
+.v43-surfaces > div { padding: 16px 0; border-top: 1px solid var(--border); }
+.v43-surfaces > div:last-child { border-bottom: 1px solid var(--border); }
+.v43-surfaces dt { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+.v43-surfaces dd { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+.v43-stops { border-left: 2px solid var(--ink); padding-left: 22px; }
+.v43-stops p { font-size: 15px; line-height: 1.68; color: var(--ink-2); margin: 0; }
+
+/* ---- the full example ---------------------------------------------------- */
+.v43-example {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 26px 28px; box-shadow: var(--shadow);
+}
+.v43-example-head { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 4px; }
+.v43-example-store { font-size: 16px; font-weight: 600; color: var(--ink); margin: 4px 0 0; }
+.v43-example-store a { color: var(--ink); }
+.v43-example-foot { margin: 22px 0 0; }
+
+/* ---- before / after ------------------------------------------------------ */
+.v43-invariant {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 20px; margin: 0 0 18px;
+}
+.v43-invariant dl { display: grid; grid-template-columns: 1fr; gap: 10px 20px; margin: 12px 0 0; }
+.v43-invariant dt {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3);
+  margin-bottom: 2px;
+}
+.v43-invariant dd { margin: 0; font-size: 13.5px; color: var(--ink); word-break: break-word; }
+.v43-invariant dd a { color: var(--pass); }
+.v43-invariant-q {
+  font-family: var(--font-display); font-size: 17px; color: var(--ink); margin: 14px 0 0;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.v43-ba { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: stretch; }
+.v43-ba-col {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.v43-ba-col h3 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3);
+  font-family: inherit; font-weight: 700;
+}
+.v43-ba-verdict {
+  display: flex; gap: 9px; align-items: baseline; font-size: 15px; font-weight: 700;
+  color: var(--ink); margin: 10px 0 0;
+}
+.v43-ba-col .v43-row-detail { margin-left: 0; }
+.v43-ba-col .v43-quote { margin-left: 0; }
+.v43-ba-arrow { display: none; }
+.v43-demo { margin-top: 34px; padding-top: 26px; border-top: 1px solid var(--border); }
+.v43-demo p { font-size: 14.5px; line-height: 1.65; color: var(--ink-2); margin: 0 0 8px; }
+.v43-demo p b { color: var(--ink); }
+
+/* ---- differentiation: three stacked columns, never a matrix -------------- */
+.v43-compare { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.v43-compare-col {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px;
+  background: var(--surface);
+}
+.v43-compare-col h3 {
+  font-family: inherit; font-size: 12.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-3); margin: 0 0 12px;
+}
+.v43-compare-col ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; }
+.v43-compare-col li { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.v43-compare-us { border-color: var(--ink); }
+.v43-compare-us h3 { color: var(--ink); }
+.v43-compare-us li { color: var(--ink); }
+
+/* ---- pilot --------------------------------------------------------------- */
+.v43-cta-band {
+  border: 1px solid var(--ink); border-radius: var(--radius); padding: 40px 32px;
+  background: var(--surface); max-width: var(--v43-measure);
+}
+.v43-cta-band h2 { margin-bottom: 10px; }
+.v43-cta-band > p { font-size: 15.5px; line-height: 1.65; color: var(--ink-2); margin: 0 0 22px; }
+.v43-cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.v43-appstore { font-size: 13px; color: var(--pass); font-weight: 600; }
+
+/* ---- rigor links + faq --------------------------------------------------- */
+.v43-rigor-links { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 26px 0 0; }
+.v43-rigor-links a { font-size: 13.5px; font-weight: 600; color: var(--pass); text-decoration: none; }
+.v43-rigor-links a:hover { text-decoration: underline; }
+.v43-faq { display: grid; gap: 0; }
+.v43-faq details { border-top: 1px solid var(--border); padding: 16px 0; }
+.v43-faq details:last-child { border-bottom: 1px solid var(--border); }
+.v43-faq summary {
+  cursor: pointer; font-size: 15px; font-weight: 600; color: var(--ink); list-style: none;
+  display: flex; justify-content: space-between; gap: 16px;
+}
+.v43-faq summary::-webkit-details-marker { display: none; }
+.v43-faq summary::after { content: "+"; color: var(--ink-3); font-weight: 400; }
+.v43-faq details[open] summary::after { content: "\2013"; }
+.v43-faq p { font-size: 14.5px; line-height: 1.7; color: var(--ink-2); margin: 12px 0 0; max-width: 62ch; }
+
+/* ---- WIDER THAN A PHONE. Everything above is the single-column base case. -- */
+@media (min-width: 720px) {
+  .v43-artifact-meta { grid-template-columns: repeat(3, 1fr); }
+  .v43-invariant dl { grid-template-columns: repeat(3, 1fr); }
+  .v43-surfaces { grid-template-columns: 1fr 1fr; column-gap: 34px; }
+  .v43-surfaces > div:nth-child(2) { border-top: 1px solid var(--border); }
+  .v43-ba { grid-template-columns: 1fr 44px 1fr; }
+  .v43-ba-arrow { display: grid; place-items: center; color: var(--ink-3); font-size: 20px; }
+  .v43-compare { grid-template-columns: repeat(3, 1fr); }
+  .v43-rail { grid-template-columns: repeat(5, 1fr); gap: 22px; }
+  .v43-rail > li { border-top: 1px solid var(--border); border-bottom: 0; padding: 18px 0 0; }
+}
+@media (min-width: 960px) {
+  .v43-hero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px;
+    align-items: start; padding: 76px 0 84px;
+  }
+  .v43-hero h1 { font-size: 54px; }
+  .v43 h2 { font-size: 34px; }
+  .v43-deliver { grid-template-columns: 1fr 1fr; column-gap: 46px; }
+  .v43-deliver > li:nth-child(2) { border-top: 1px solid var(--border); }
+  .v43-deliver > li:nth-last-child(2) { border-bottom: 1px solid var(--border); }
+}
+
+/* ---- SMALL PHONES. Headline wrapping and touch targets. ------------------ */
+@media (max-width: 560px) {
+  .v43-section { padding: 48px 0; }
+  .v43-band { padding: 48px 14px; }
+  .v43-hero { padding: 36px 0 48px; gap: 34px; }
+  .v43-hero h1 { font-size: 32px; max-width: none; }
+  .v43-hero-sub { font-size: 16px; }
+  .v43 h2 { font-size: 25px; }
+  .v43-hero-form { flex-direction: column; }
+  .v43-hero-form .btn-primary { width: 100%; padding: 13px 20px; }
+  .v43-cta-row { flex-direction: column; }
+  .v43-cta-row .btn { width: 100%; text-align: center; }
+  .v43-cta-band { padding: 28px 20px; }
+  .v43-artifact, .v43-example { padding: 18px 16px; }
+  .v43-pull { font-size: 19px; }
+  /* Touch targets: nothing tapped is thinner than a fingertip. */
+  .v43-faq summary { padding: 8px 0; }
+  .v43-rigor-links a { padding: 6px 0; }
+  .v43-hero-alt a { display: inline-block; padding: 6px 0; }
+}
+
+/* The BETA badge beside the wordmark. Neutral by construction: it is a status, not a
+   failed requirement and not a requires-access row, so it gets the border/ink pair
+   rather than either reserved colour. */
+.beta-badge {
+  display: inline-block; margin-left: 8px; vertical-align: 2px;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.11em;
+  color: var(--ink-3); border: 1px solid var(--border-ui); border-radius: 999px;
+  padding: 2px 7px; line-height: 1;
 }

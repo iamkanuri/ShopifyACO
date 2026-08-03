@@ -136,38 +136,192 @@ export const PRODUCT_CAPABILITIES =
 export const PRODUCT_KIND = "Buying standards, published and run as tests";
 
 export const HERO = {
-  eyebrow: "PUBLISHED BUYING STANDARDS · EXECUTABLE TESTS",
-  headline: "The questions a competent buyer asks, written as executable tests.",
+  eyebrow: "AI COMMERCE QA FOR ECOMMERCE AGENCIES",
+  headline: "Test whether your clients' product pages can support an AI shopping task.",
   sub:
-    "AisleLens publishes versioned buying standards — one per category, fixed at a version and a content hash so a result can cite the exact contract that produced it — and runs them against your real product pages. AI buyers treat your store like an API. We test it like one.",
+    "AisleLens runs defined buyer tests against real storefront evidence. See what the store can answer, where the evidence runs out, what your agency can correct, and whether the same test passes after the change.",
   inputLabel: "Shopify product URL",
   inputPlaceholder: "Paste a Shopify product URL",
-  cta: "Run a free test",
-  micro: "One product. One buyer task. Proven, not proven, or requires store access — with the evidence.",
+  cta: "Run a real test",
+  ctaSecondary: "See a complete example →",
+  micro: "One product. One buying task. Every requirement proven, not proven, or requires store access — with the sentence that decided it.",
   seeExample: "See an example test →",
   readStandard: `Read Coffee Standard ${COFFEE_STANDARD_VERSION} →`,
   connect: "Get it on the Shopify App Store →",
 } as const;
 
-/** The hero test-runner card. Every assertion below is an entry class that
- *  really is in Coffee Standard v1.0; the values are an example, and the card
- *  says so in its own label and its aria-label. */
-export const HERO_TEST = {
-  head: `BUYER TEST · AisleLens Coffee Standard ${COFFEE_STANDARD_VERSION}`,
-  task: "Task: 250 g of single-origin whole-bean coffee, dispatch timing stated, under £20.",
-  ariaLabel:
-    `Example Buyer Test result against Coffee Standard ${COFFEE_STANDARD_VERSION}: one requirement not proven, one requires store access.`,
-  assertions: [
-    { state: "proven", label: "Whole-bean option listed and purchasable" },
-    { state: "proven", label: "Net weight stated on the page" },
-    { state: "unproven", label: "Dispatch timing — no statement found on any surface" },
-    { state: "neutral", label: "Single origin — no blocking evidence" },
-    { state: "requires-access", label: "Rerun history and applied corrections — requires store access" },
-  ] as ReadonlyArray<{ state: ResultState; label: string }>,
-  result: "RESULT: 1 of 5 requirements not proven · 1 requires store access",
-  evidence: "Evidence checked: product copy · product options · variant availability · structured data",
-  trace: "[ Open failure trace ]",
+/**
+ * THE CREDIBILITY STRIP — five things, and every one of them is backed by an artifact
+ * a reader can open. That constraint is the whole point of the strip: it sits directly
+ * under the headline, which is where a page is most tempted to say something it cannot
+ * show.
+ *
+ * ⚠️ "No ranking promises" IS THE OBVIOUS FIFTH ITEM AND IT CANNOT BE WRITTEN THAT WAY.
+ * `ranking` is on the permanently-banned list in test/siteCopy.test.ts — it is the
+ * vocabulary of the category this product is not in, and the ban has no exception for
+ * using the word to disown it. The claim survives; the word does not.
+ */
+export const CREDIBILITY = [
+  "Published criteria, before the test runs",
+  "An exact evidence trace for every result",
+  "A published error bound, with its method",
+  "Reruns that repeat exactly",
+  "No promises about assistant behaviour",
+] as const;
+
+/** The BETA badge beside the wordmark. Honest and staying: no second party has applied
+ *  a standard of ours, and `independently_applied` is `false` in the artifact itself. */
+export const BETA_BADGE = "BETA";
+
+/**
+ * THE HERO ARTIFACT'S FRAMING. The numbers, rows, quotes, entry ids and hash are NOT
+ * here — they are derived at request time from the pinned Klatch run and injected by
+ * the server (see src/server/heroArtifact.ts). What lives here is only the prose that
+ * frames them, so the claim linter can still see it.
+ *
+ * ⚠️ THE CONCEPT THIS PAGE WAS DRAWN FROM INVENTED FAILING VERDICTS FOR A REAL, NAMED
+ * ROASTER. A fabricated result about a real business is the one class of false statement
+ * this project treats as unrecoverable, and a hero is the worst place to put one because
+ * it is the part of the page that travels. Everything in the hero artifact is the real
+ * replayed result on klatchcoffee.com, whose every passing row was individually
+ * adjudicated in the v3.2 audit.
+ */
+export const HERO_ARTIFACT = {
+  kicker: "A REAL RESULT, ON A REAL STORE",
+  note: "Replayed offline from a frozen capture of the live page, against the published standard named above. Every row links to the entry it executes.",
+  legend: "✓ proven · ✕ not proven · – no blocking evidence · ○ requires store access",
+  more: "Read the complete test →",
 } as const;
+
+/** §3.2 — what an agency hands its client. Deliverables, not features. */
+export const DELIVERABLES = {
+  heading: "What your agency hands the client.",
+  lead: "Six artifacts, all of them checkable by someone who was not in the room.",
+  items: [
+    [
+      "A client-ready evidence audit",
+      "Every requirement in the standard, with the store's own sentence beside it and the surface that sentence was read from. Nothing to take on trust.",
+    ],
+    [
+      "The exact buyer questions the store cannot answer",
+      "Not a category of weakness — the specific questions, quoted from a published standard, that public evidence could not settle on this page.",
+    ],
+    [
+      "A line between what the store controls and what it does not",
+      "Some failures are a missing sentence on a product page. Some are outside the store entirely. The report says which, and refuses to propose an edit it cannot justify.",
+    ],
+    [
+      "Corrections tied to the assertion that failed",
+      "Each proposed change names the requirement it is meant to satisfy and the evidence form the standard accepts for it. Reviewed and approved by you, and reversible.",
+    ],
+    [
+      "A before-and-after rerun",
+      "The identical test, same standard, same content hash, run again after the change — reported either way, including when nothing moved.",
+    ],
+    [
+      "A regression baseline you keep",
+      "A requirement that passes becomes a check that keeps running, so a theme update or a catalog edit that undoes the work is visible rather than silent.",
+    ],
+  ] as ReadonlyArray<readonly [string, string]>,
+} as const;
+
+/** §3.3 — the workflow. Five steps, one concrete sentence each. */
+export const WORKFLOW = {
+  heading: "Test · Trace · Correct · Rerun · Retain",
+  lead: "The same five steps on every client, in the same order, with an artifact at each one.",
+  steps: [
+    ["Test", "A published buying standard for the category is executed against the client's live product page."],
+    ["Trace", "Every result names the surface it was read from and quotes the sentence that decided it, or states that no sentence existed."],
+    ["Correct", "The failures the store controls get a proposed, reversible change, tied to the requirement it is meant to satisfy."],
+    ["Rerun", "The identical test runs again against the same version and content hash, so the question cannot have moved between the two runs."],
+    ["Retain", "The passing test stays as a regression check, and reports when a later change takes it back."],
+  ] as ReadonlyArray<readonly [string, string]>,
+} as const;
+
+/** §3.4 — what the test actually reads, and where it stops. */
+export const TEST_EXPLAINED = {
+  heading: "What an executable buyer test actually does.",
+  lead: "A buying task becomes a list of assertions. Each assertion is settled from evidence that is retrieved, quoted and attributed — or it is not settled, and the result says so.",
+  surfaces: [
+    ["Product description", "The readable copy a shopper sees, sentence by sentence."],
+    ["Options and variants", "The purchasable option list, and whether the matching variant is actually available."],
+    ["Structured data", "The JSON-LD product node — identifiers, offers, availability, category."],
+    ["Policy pages", "Shipping and returns, fetched separately and attributed separately."],
+    ["Page metadata", "Title, canonical, description — the machine-facing summary of the page."],
+    ["Authorized store data", "Only with a connected store, and only where public data provably cannot settle the question."],
+  ] as ReadonlyArray<readonly [string, string]>,
+  stops: {
+    lead: "And where it stops.",
+    body:
+      "The evaluator is deterministic: it matches evidence, it does not reason about the product. A requirement with no retrievable sentence behind it is reported as not proven, never inferred from context, never softened into a maybe. A requirement that public data cannot settle at all is reported as requires store access — a third state that exists so the first two stay honest.",
+  },
+} as const;
+
+/** §3.5 — the real example. Prose only; every figure is derived from the artifact. */
+export const REAL_EXAMPLE = {
+  heading: "One real store, every row, nothing selected for effect.",
+  lead: "This is the complete result the published standard produces on a real coffee product page — not an excerpt chosen to flatter either side. Each row cites the entry it executes, at a version and a content hash that still resolve.",
+  peerNote: "Where the standard has published a measurement for an entry, the row says how the rest of the sample did on the same question — with the number of stores that question could actually be decided on, which is not always the whole sample.",
+} as const;
+
+/**
+ * §3.6 — before and after. THE CONTRACT, NOT A CLIENT RESULT.
+ *
+ * ⚠️ WHAT THIS SECTION IS AND IS NOT. The only matched before/after pair this project
+ * holds end to end is the v2.1 CP3 live walk on a Shopify DEVELOPMENT store, and it is
+ * described as exactly that in DEMONSTRATION below. So this section renders the
+ * CONTRACT: the same standard, the same content hash, the same entry id, before and
+ * after — where the only thing that changes is the store's text. The "after" sentence
+ * is not written here and is not invented: it is the accepted-evidence EXAMPLE the
+ * standard itself publishes for that entry, and it is labeled illustrative on the page.
+ * The point a visitor has to leave with is that the result moved because the evidence
+ * moved, and not because the question did.
+ */
+export const BEFORE_AFTER = {
+  heading: "The result moves when the evidence moves. Never when the question does.",
+  lead: "Same standard. Same version. Same content hash. Same entry id. The only difference between the two columns is a sentence on the product page.",
+  beforeLabel: "Before — the page as it is today",
+  afterLabel: "After — the page with the evidence the standard accepts",
+  illustrative:
+    "The right-hand sentence is illustrative: it is the accepted-evidence example the standard itself publishes for this entry, not text from any store. The left-hand column is the real current result.",
+  invariant: "Unchanged across the rerun:",
+} as const;
+
+/** §3.8 — how the engine is validated. All of it is on the record. */
+export const ENGINE_VALIDATION = {
+  heading: "The engine improves by finding where it was wrong.",
+  body: [
+    "A test engine that is never measured against itself is a rubric with a user interface. So this one is run against large samples of real storefronts, and then every row it passed is read individually against that store's full page text — not sampled, not spot-checked. The passes that turn out to be wrong are counted, named, and published as an error bound with the sample and the method beside it.",
+    "Each confirmed wrong pass becomes a named defect class and a pinned case in an adversarial corpus, which fails in both directions: fix the defect and its case fails until the record is updated, reintroduce it and the case fails again. Defects we have chosen not to close are numbered, published with their measured cost, and left visible rather than quietly carried.",
+    "The bound has moved several times, and every move so far has come from the audit getting better rather than the engine getting worse — including one occasion when a figure we had published about ourselves turned out to measure what that audit had thought to look for, rather than the error rate. That correction is on the record too, at the version where it was made.",
+  ],
+  pull: "AI buyers treat your store like an API. We test it like one.",
+} as const;
+
+/** §3.10 — the pilot. Honest mechanics only: a real mail link, no fabricated booking. */
+export const PILOT = {
+  heading: "Run it on one client.",
+  body:
+    "The fastest way to judge this is to point it at a page you already know well and see whether the result matches what you would have said yourself. That takes one URL and no account. If you want to scope a category standard or a client engagement, say so and a person answers.",
+  primary: "Run a real test",
+  secondary: "Ask about an agency pilot",
+  mailSubject: "Agency pilot",
+  mailBody:
+    "Hi — I run an ecommerce agency and I'd like to scope a pilot.\n\nClients / category:\nNumber of product pages:\nWhat I'd want out of it:\n",
+  fine: "No account is needed for a test. A pilot is a conversation, not a checkout.",
+} as const;
+
+/** The rasterised line on /og/default.png — the share image for the landing page and
+ *  every utility page.
+ *
+ *  ⚠️ IT LIVES HERE SO A SWEEP CAN READ IT. v3.3 found this card rendering
+ *  `ChatGPT · Gemini · Perplexity` under a heading reading PUBLISHED BUYING STANDARDS,
+ *  advertising the product this one replaced — and every copy check in the repo passed,
+ *  because they all read SOURCE STRINGS and no absence sweep over source can see a
+ *  phrase rasterised into a PNG. The card now imports this constant, and this constant
+ *  is in PUBLIC_MARKETING_STRINGS, so the linter and the banned-vocabulary check reach
+ *  the share image for the first time. */
+export const OG_DEFAULT_LINE = "Executable buyer tests, against the evidence your store publishes.";
 
 /** Section 2 — the standard. This is the lead argument, not a feature. */
 export const STANDARD_SECTION = {
@@ -184,7 +338,12 @@ export const STANDARD_SECTION = {
   ],
 } as const;
 
-/** Section 3 — the category break. The contrast IS the pitch. */
+/** §3.7 — the category break. The contrast IS the pitch.
+ *  Rendered STACKED, not as a grid table: three columns of five rows is unreadable on a
+ *  phone and reads as a feature matrix on a desktop, which is the genre this section
+ *  exists to leave. The JS-off snapshot keeps a real <table>, because a comparison of
+ *  three things across five dimensions is exactly what table semantics are for and a
+ *  machine reader benefits from the structure a sighted reader does not need. */
 export const CATEGORY_BREAK = {
   heading: "A summary number tells you that something moved. A test tells you what broke.",
   columns: ["Mention monitoring", "Readiness checklists", "AisleLens"],
@@ -206,44 +365,24 @@ export const CATEGORY_BREAK = {
   pull: "A machine can't act on a fact your store can't prove.",
 } as const;
 
-/** Section 4 — how testing works. */
-export const HOW_IT_WORKS = {
-  heading: "How testing works",
-  steps: [
-    [
-      "1",
-      "Take the standard, or state the task",
-      "A published category standard supplies the requirements and the evidence rules. Outside a published category, state the buying task yourself: attributes, price, variant, inventory, subscription terms, delivery, returns, compatibility.",
-    ],
-    [
-      "2",
-      "Execute the test",
-      "Each requirement becomes a testable assertion, run against the evidence your store actually exposes — using explicit retrieval tools and traceable evidence checks.",
-    ],
-    [
-      "3",
-      "Trace the failure",
-      "Which requirement failed, which surfaces were checked, what evidence was found, and where the test stopped rather than guessed.",
-    ],
-    [
-      "4",
-      "Correct what your store controls",
-      "Approve a targeted, reversible change linked to the failed assertion. When the cause is external, AisleLens says so and does not manufacture a store fix.",
-    ],
-    [
-      "5",
-      "Rerun and retain",
-      "The identical test runs again — pass or fail, reported either way. Passing tests become permanent regression checks against future catalog, policy, variant, and model changes.",
-    ],
-  ],
-  note: {
-    lead: "Real-world signals can become tests.",
-    body:
-      "AisleLens converts shopping questions observed across external AI systems into executable store tests — including which requirements those systems emphasized and which stores they surfaced. Observed behavior seeds the tests; the tests do the proving.",
-  },
-} as const;
+// ⚠️ `HOW_IT_WORKS` WAS RETIRED HERE AT v4.3, DELIBERATELY, AND ONE OF ITS CLAIMS
+// SURVIVES ELSEWHERE. Its five paragraph-length steps are replaced by two sections that
+// each do one job: WORKFLOW states the five steps in one concrete sentence apiece (§3.3),
+// and TEST_EXPLAINED carries the detail about surfaces and stopping conditions (§3.4).
+// Running both would have said the same thing twice at different lengths.
+//
+// Its `note` — that shopping questions observed across external AI systems can seed
+// executable store tests — is a real capability and is NOT deleted from the site: it is
+// the fourth FAQ answer, which states it as an input rather than as the product. That is
+// the right altitude for it on a page whose §3.7 argument is precisely that observation
+// and execution are different things.
 
-/** Section 5 — the demonstration. Labeled for exactly what it is. */
+/** §3.6, second half — the demonstration. Labeled for exactly what it is.
+ *
+ *  This is the ONE matched before/after pair this project holds end to end, and it is a
+ *  Shopify DEVELOPMENT store, not a client. It sits under the contract diagram rather
+ *  than replacing it: the diagram shows what a rerun holds fixed, this shows that a rerun
+ *  has actually been walked through in full, and the label says which is which. */
 export const DEMONSTRATION = {
   heading: "One failed test. One isolated cause. One verified rerun.",
   lines: [
@@ -318,14 +457,29 @@ export const PUBLIC_MARKETING_STRINGS: readonly string[] = [
   PRODUCT_DESCRIPTION,
   PRODUCT_CAPABILITIES,
   PRODUCT_KIND,
+  OG_DEFAULT_LINE,
   ...Object.values(HERO),
-  HERO_TEST.head,
-  HERO_TEST.task,
-  HERO_TEST.ariaLabel,
-  ...HERO_TEST.assertions.map((a) => a.label),
-  HERO_TEST.result,
-  HERO_TEST.evidence,
-  HERO_TEST.trace,
+  ...CREDIBILITY,
+  BETA_BADGE,
+  ...Object.values(HERO_ARTIFACT),
+  DELIVERABLES.heading,
+  DELIVERABLES.lead,
+  ...DELIVERABLES.items.flat(),
+  WORKFLOW.heading,
+  WORKFLOW.lead,
+  ...WORKFLOW.steps.flat(),
+  TEST_EXPLAINED.heading,
+  TEST_EXPLAINED.lead,
+  ...TEST_EXPLAINED.surfaces.flat(),
+  TEST_EXPLAINED.stops.lead,
+  TEST_EXPLAINED.stops.body,
+  REAL_EXAMPLE.heading,
+  REAL_EXAMPLE.lead,
+  REAL_EXAMPLE.peerNote,
+  ...Object.values(BEFORE_AFTER),
+  ENGINE_VALIDATION.heading,
+  ...ENGINE_VALIDATION.body,
+  ENGINE_VALIDATION.pull,
   STANDARD_SECTION.heading,
   ...STANDARD_SECTION.body,
   STANDARD_SECTION.pull,
@@ -334,14 +488,17 @@ export const PUBLIC_MARKETING_STRINGS: readonly string[] = [
   ...CATEGORY_BREAK.columns,
   ...CATEGORY_BREAK.rows.flat(),
   CATEGORY_BREAK.pull,
-  HOW_IT_WORKS.heading,
-  ...HOW_IT_WORKS.steps.flat(),
-  HOW_IT_WORKS.note.lead,
-  HOW_IT_WORKS.note.body,
   DEMONSTRATION.heading,
   ...DEMONSTRATION.lines.flat(),
   DEMONSTRATION.label,
   DEMONSTRATION.cta,
+  PILOT.heading,
+  PILOT.body,
+  PILOT.primary,
+  PILOT.secondary,
+  PILOT.mailSubject,
+  PILOT.mailBody,
+  PILOT.fine,
   ...FAQ.flat(),
   ...FOOTER.externalLinks.map(([, label]) => label),
   ...FOOTER.links.map(([, label]) => label),
