@@ -21,6 +21,16 @@ import { __resetCaches } from "../../src/server/productTestCache.js";
 import { newTestToken, storePublicTest } from "../../src/db/buyerTests.js";
 import { ENGINE_VERSION } from "../../src/server/productTest.js";
 
+// ⚠️ v4.5 — EXPLICIT DEFAULT-OFF. The semantic tier is pinned off in production's two
+// public ROUTES (v4.4), not in the engine module, so a harness that imports the engine
+// directly inherits whatever `PRODUCT_TEST_SEMANTIC` happens to be in the environment.
+// On a developer machine with a model key that means real spend and, worse, a
+// NON-DETERMINISTIC result: v4.4 measured the tier answering differently on 11% of claim
+// rows across two identical runs. A harness whose output silently depends on whose
+// machine ran it is not an instrument. Set it here rather than relying on the caller.
+process.env.PRODUCT_TEST_SEMANTIC = process.env.PRODUCT_TEST_SEMANTIC ?? "0";
+
+
 const HOST = process.env.SEED_HOST ?? "vaerwatches.com";
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const repoRoot = path.resolve(here, "..", "..");
