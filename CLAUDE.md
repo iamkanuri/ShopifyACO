@@ -37,8 +37,9 @@ What's shipped end-to-end (verified in prod):
   JavaScript off, and a v1.0 id resolves four hops forward. `/demo` runs a real result on a real
   store, against the current version. Measured error is in
   `standards/coffee/v1.3/fitness.json` — **9.99%** cluster-adjusted on the coffee sample
-  (7 confirmed over 160 audited pass rows) and **5.17%** on the general DTC sample
-  (11 over 483). ⚠️ **THE GENERAL FIGURE HERE WAS STALE BY A RELEASE UNTIL v4.2.** It read
+  (7 confirmed over 160 audited pass rows) and **3.05%** on the general DTC sample
+  (5 over 473, v4.5; the 5.17%/11/483 reading is frozen one level down in
+  `supersedes_measurement`, which is now a chain of depth 2). ⚠️ **THE GENERAL FIGURE HERE WAS STALE BY A RELEASE UNTIL v4.2.** It read
   7.53% / 18 over 488 / Wilson 2.35–5.75%, which is the **v3.7** reading at engine `7085b34`;
   v3.8 shipped a tier-aware cents fix and a non-USD price refusal and re-measured at engine
   `f5cf74f`. The v3.7 numbers are frozen inside `samples[general].supersedes_measurement`.
@@ -1699,6 +1700,81 @@ what perfectly-correlated duplicates predict (P-16, inside our own harness this 
 because a grant landing on an already-passing row is counted and then dropped. The direction is
 safe — the disclosure detector over-flags — but "4 affected results" is a **ceiling**, not a
 floor. Full record: `experiments/v4-4/`, `ENGINE_GAPS` **P-29**.
+
+## A replay said "ship it" and an adversarial pass said "eleven regressions" (v4.5)
+
+**P-19 is closed — half of it.** A published `$0.00` is no longer read as a price
+(`zeroAwareMin`); the other half, taking the MINIMUM over a JSON-LD offers array, was
+built, measured, refuted and reverted inside the session. `ENGINE_VERSION` v2.5.0 → **v2.6.0**.
+
+| instrument | verdict on the offers-minimum |
+|---|---|
+| replay over **335 deduped real stores**, quote-level, status + detail | **2 prices corrected, 0 rows lost, 0 other-kind changes** |
+| an independent verifier's **chosen input**, A/B'd from a worktree at the parent | **11 of 12 hostile values regress** |
+
+`num()` in `extract.ts` strips to `[0-9.\-]` and `Number("") === 0`. While only ONE offer
+was ever read, a junk price field produced a lone bad answer; under a minimum it produces a
+`0` that **beats a genuinely published price**. `""`, `"Sold out"`, `"N/A"`, `"Contact us"`,
+`"$"`, `"USD"` all drove a real `45.00` offer to `0`; `"-5.00"` rendered `$-5.00`.
+`priceToUsd` refuses all twelve — **v3.9 CP-4 hardened it for exactly this** — so the change
+re-opened on the OFFER surface a defect family already closed on the VARIANT surface. It
+also turned the session's other half against itself: `zeroAwareMin`'s safety argument was
+measured on the variant array, and the minimum manufactured "a zero beside a real price" on
+the offer path, which supplies the price for **226 of 397** captured pages.
+
+⚠️ **THE FROZEN CORPUS CAUGHT A REGRESSION NO REAL-STORE REPLAY COULD.** The first
+`zeroAwareMin` refused when ANY price was zero, killing a $45 product with a free-gift
+variant. Its own comment said "EVERY readable price"; the code said "any". **Zero stores in
+the 335-store corpus have that shape** — measured before the rule was written, which is
+precisely what made the bug invisible to replay. `znn-02` caught it on the first run.
+
+⚠️ **`npm run typecheck` IS THE GATE, NOT `tsc --noEmit -p .`** — the root project is
+`include: ["src/**/*.ts"]` and the STANDARDS project is the half that catches an engine
+change. Making `publishedZeroPrice` a required field broke two standards fixtures and I did
+not see it, because I had been running the root project alone all session. This is verbatim
+the scenario the "do not un-wire it" note above describes, and it nearly shipped.
+
+⚠️ **A CORPUS CASE CAN BE VACUOUS WITH RESPECT TO ITS OWN FIX.** The adversarial case pinning
+P-19 hands `evaluate` a `minPriceUsd: 0` DIRECTLY — a value `zeroAwareMin` can no longer
+produce. With only the constructor fixed it would have gone on asserting `pass_evidenced`
+and `EXPECTED_OPEN_GAPS` would still report the gap open. `evaluate` now **re-tests the
+zero at the branch that renders**, which is also defence in depth: `0 < capUsd` is true of
+every cap ever generated, so the failure mode is a silent pass. `EXPECTED_OPEN_GAPS` 60 → **59**.
+
+⚠️ **A CLASS TABLE THAT DOES NOT SUM TO ITS OWN COUNT WAS LIVE ON THE PUBLISHED PAGE.**
+`defect_classes` summed to **18** against `confirmed_false_positives: 5`, and said
+*"$0.00 treated as a price · 6 · no guard addresses it"* — false as of this release. Seven of
+the thirteen had been stale since **v3.8**. The cause is structural: a re-measurement moves
+the RATE, and the DECOMPOSITION beside it is a separate field nothing forced anyone to
+re-derive. A test now asserts every published sample's table sums to its confirmed count —
+and it immediately found that **v1.0 publishes the same field as STRINGS** with the count in
+prose, so it reads both shapes rather than skipping what it cannot parse.
+
+⚠️ **THE OVERLAP MARGIN IS NOW 0.31 PERCENTAGE POINTS**, down from 3.40. General moved to
+[0.45, 2.45] against coffee's [2.14, 8.75]. `renderComparison` refuses a ratio only while
+those overlap; one more improvement of that size and the page starts publishing *"the number
+that matters to a merchant is the one measured on their own category"* — retired three times,
+revived by a fix twice. The live-artifact assertion in `standardsSite.test.ts` fails first,
+and its comment now carries the number.
+
+⚠️ **Five permanent results carried a false price and are disclosed, not edited.** One
+`$0.00` (`tenthousand.cc`) and four CAD-rendered-as-dollars (`gardenerskit.com`). The
+remediation wording DIFFERS from v4.4's tier notice on purpose: **a price defect can be
+corrected by re-running**, and that was verified by executing the current engine against the
+same bytes before the page was allowed to promise it. Detection is DERIVED for the zero class
+and CURATED for the currency class — `public_tests` stores no `declaredCurrency` — and the
+module says so rather than letting a reader who saw the tier notice assume otherwise.
+
+⚠️ **A stale REGISTER HEADING cost a whole planning pass.** P-17 read *"has no adversarial
+corpus"* while its own body carried a v3.8 update saying it exists. A planning pass proposed
+re-shipping the cents fix, the non-USD refusal and the corpus — all landed. **The register is
+read by its headings**; when an update changes what a gap IS, move the heading in the same commit.
+
+⚠️ **Two stale SERVERS nearly produced two wrong conclusions**, one hour apart: a published
+page showing the old error bound after a sidecar write, and a funnel event reported missing
+when the request had been served by a process running the old build (`EADDRINUSE`, silently).
+Restart through the tool that owns the process, and re-check `/healthz`'s commit before
+believing any local page.
 
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
