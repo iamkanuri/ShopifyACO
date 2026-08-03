@@ -1678,3 +1678,111 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
   color: var(--ink-3); border: 1px solid var(--border-ui); border-radius: 999px;
   padding: 2px 7px; line-height: 1;
 }
+
+/* ---- TOUCH TARGETS (WCAG 2.5.8, 24×24 minimum) --------------------------
+   MEASURED, NOT ASSUMED. Read off the live DOM at a 423px viewport: the entry-id
+   citations render 13px tall, the "Read the complete test" links and the standard
+   title in the artifact metadata 17px. WCAG 2.5.8 exempts a link INLINE IN A
+   SENTENCE, and none of these is one — each is a standalone link on its own line,
+   which is exactly the case the exception does not cover. The store name inside
+   `.v43-example-store` IS inline in its sentence and is deliberately left alone.
+
+   THE HIT AREA GROWS, THE PIXELS DO NOT MOVE. Padding would push the citation's
+   dotted underline away from its text and re-space every evidence row; an absolutely
+   positioned pseudo-element expands the target in place. `position: relative` on the
+   anchor scopes it, and `inset` negative values reach outward. Nothing overlaps: the
+   rows are 16px apart and the reach is 6px.
+
+   The parent needs no stacking context — the pseudo-element is transparent and
+   pointer events land on the anchor, which is what a target is. */
+.v43-cite a,
+.v43-artifact-foot a,
+.v43-artifact-meta dd a,
+.v43-invariant dd a,
+.v43-hero-alt a,
+.v43-appstore {
+  position: relative;
+  display: inline-block;
+}
+.v43-cite a::after,
+.v43-artifact-foot a::after,
+.v43-artifact-meta dd a::after,
+.v43-invariant dd a::after,
+.v43-hero-alt a::after,
+.v43-appstore::after {
+  content: "";
+  position: absolute;
+  inset: -6px -4px;
+}
+
+/* ---- THE HEADER AND FOOTER ROWS MUST WRAP (v4.3 §4) ----------------------
+   MEASURED AT A TRUE 320px AND 375px, and found only because the harness was made to
+   report the width the page ACTUALLY got. Its first run asked Chromium for 320 and 375,
+   silently received 423 for both, and printed PASS twice — two rows of the same
+   measurement wearing different labels. With `mobile: false` the emulation takes, and
+   the document overflows: `.topbar-actions` renders 408px, `.nav` 362px and
+   `.foot-links` 409px inside a 320px viewport, so the whole page scrolls sideways.
+
+   `.foot-links` is UNCHANGED BY THIS SESSION and overflows on its own, so this is a
+   pre-existing defect on every narrow phone rather than something the redesign
+   introduced — the nav is the same shape it has always been, one label longer. It is
+   fixed here because it is on the page being shipped, and because §4 makes horizontal
+   scrolling of the core story a gate.
+
+   Three `flex-wrap`s, nothing else. The rows already carry a gap and already stack the
+   topbar at ≤560px; what they lacked was permission to break onto a second line, which
+   is why they pushed the document instead. */
+.topbar-actions, .nav, .foot-links { flex-wrap: wrap; }
+@media (max-width: 560px) {
+  /* Once wrapped, the nav reads better left-aligned under the wordmark than centred
+     against a toggle that is now on its own line. */
+  .topbar-actions { width: 100%; justify-content: flex-start; }
+  .nav { row-gap: 4px; }
+  .foot-links { row-gap: 6px; }
+}
+
+/* ---- THE FULL-BLEED BAND AND THE SCROLLBAR (v4.3) ------------------------
+   `.v43-band` escapes the 1140px column with `margin-inline: calc(50% - 50vw)`, and
+   `100vw` INCLUDES the classic vertical scrollbar. So the band renders 15px wider than
+   the content box on every desktop browser that reserves one: measured at four widths,
+   the band sits at left:-7px and the document scrollWidth exceeds clientWidth by 8px at
+   320, 375, 768 and 1280 alike. The page scrolled sideways at every size.
+
+   ⚠️ THE PROBE COULD NOT SEE IT, AND THAT IS THE MORE USEFUL HALF. responsive.mjs
+   compared scrollWidth against `innerWidth`, which also counts the scrollbar, so an
+   overflow of exactly the scrollbar width is invisible to it — four widths reported
+   VERIFIED_CLEAN over a live defect. A CDP SCREENSHOT caught it, because a rendered
+   scrollbar is not a number that can be measured against the wrong reference. The probe
+   now compares against clientWidth, and experiments/v4-3/scrollbar.mjs measures both.
+
+   `clip`, NOT `hidden`. `overflow-x: hidden` makes the element a scroll container, which
+   silently kills `position: sticky` for every descendant; `clip` does not. It is Baseline
+   widely available (Chrome 90, Firefox 81, Safari 16). NO FALLBACK IS SHIPPED BESIDE IT:
+   this repo does not ship guards it has not rendered, and on a pre-Safari-16 browser the
+   loss is an 8px sideways scroll — the status quo, not a regression. */
+/* MEASURED: `body { overflow-x: clip }` IS INERT HERE, and it is what this session first
+   shipped. Scored across two widths with the baseline as a two-sided canary
+   (experiments/v4-3/bleed_ab.mjs), the page still scrolled 8px sideways with it applied.
+   The propagation rule is why: when html is `visible`, body s value is what propagates to
+   the VIEWPORT and body itself computes back to `visible`, so nothing clips at the body box.
+   Four candidates were scored; three work:
+     body { overflow-x: clip }        alone: INERT when html is untouched
+     html { overflow-x: clip }        alone: INERT when body is untouched
+     html { overflow-x: hidden }      alone: same, and it would make html a scroll
+                                                    container, silently killing position:sticky
+     html, body { overflow-x: clip }  0px at BOTH widths in BOTH runs — the only rule that did
+     band without 100vw               0px, by giving up full-bleed entirely
+                                                    (band 1092px inside a 1280px viewport)
+ ⚠️ THE FIRST A/B NAMED THE WRONG WINNER, AND ONLY RE-RUNNING IT AGAINST THE NEW BASELINE
+   CAUGHT THAT. Scored while `body{clip}` was shipped, `html{clip}` looked like the fix.
+   Scored again while `html{clip}` was shipped, the results INVERTED: `body{clip}` now
+   looked like the fix and `html{clip}` read inert. Neither is true on its own — whichever
+   one is already present, adding the OTHER is what stops the scroll, because the root s
+   value propagates to the viewport while the element itself reverts to visible, so the
+   viewport and the body box need clipping separately. Only `html, body` scored 0px in both
+   runs. A single A/B would have shipped a rule that does nothing.
+
+   Same shape as the v4.2 print finding, where four of five folklore fixes measured inert
+   and only `details::details-content` did anything — with the extra lesson that a fix
+   measured against ONE baseline is measured against the thing it is replacing. */
+html, body { overflow-x: clip; }

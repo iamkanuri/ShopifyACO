@@ -333,7 +333,15 @@ export const STANDARD_SECTION = {
   pull: "We publish what we cannot test, and why.",
   after: [
     "Ten of forty-two is the honest ratio. A standard that listed only its own strengths would be marketing, and the second number is the one a merchant needs in order to know what a passing result did not cover.",
-    "A category standard is fitness-measured on its own category before we publish an error rate for it. It has been run against 100 real coffee products across 77 storefronts, and every single requirement it passed was then read individually against that store's full page text — not sampled. The passes that turned out to be wrong are counted, and the measured upper bound on the error rate a coffee roaster should expect is published on the standard's own page with the method and the defect classes behind it. We do not restate those figures here: this page cannot derive them, and a number typed beside a generated one is how a page goes quietly false.",
+    // ⚠️ THE SAMPLE SIZES CAME OUT AT v4.3, AND THE PARAGRAPH USED TO CONTRADICT ITSELF
+    // INSIDE THREE SENTENCES. It read "run against 100 real coffee products across 77
+    // storefronts" and then, two sentences later, "we do not restate those figures here:
+    // this page cannot derive them." Both halves cannot be true. The module header states
+    // the rule — STRUCTURAL counts only, no measurement — and v4.1 already pulled two
+    // paragraphs for breaking it; this one survived because the numbers it typed happened
+    // to be right on the day, which is exactly what makes the class invisible. The
+    // argument does not need them, and the page it points at generates them.
+    "A category standard is fitness-measured on its own category before we publish an error rate for it. It has been run against real coffee products on real storefronts, and every single requirement it passed was then read individually against that store's full page text — not sampled. The passes that turned out to be wrong are counted, and the measured upper bound on the error rate a coffee roaster should expect is published on the standard's own page with the sample size, the method and the defect classes behind it. We do not restate those figures here: this page cannot derive them, and a number typed beside a generated one is how a page goes quietly false.",
     "The same discipline corrected a number we had published about ourselves. Our broad, non-category sample had been audited row by row and reported zero errors. Checking one defect class mechanically — a product identifier that is really the store's own internal id — found errors in that same sample that no reader could have caught, because that row shows the merchant no quote to be suspicious of. The figure had not been an error rate. It was a measurement of what that audit had thought to look for. The bound has moved three times since, each time because the audit got better, and every move is on the record.",
   ],
 } as const;
