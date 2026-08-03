@@ -1,0 +1,83 @@
+{
+  "completion": "DEFECTS_FOUND",
+  "canary": {
+    "live": true,
+    "bad": [
+      "</p>",
+      "<p>"
+    ],
+    "good": []
+  },
+  "stored_results": 94,
+  "assertion_rows_scanned": 5563,
+  "hits": 6,
+  "distinct_tokens": 3,
+  "distinct_stores": 2,
+  "tag_histogram": {
+    "&amp;": 4,
+    "</p>": 1,
+    "<p>": 1
+  },
+  "detail": [
+    {
+      "token": "t_3b5124885ea042c5a921",
+      "store": "greatjonesgoods.com",
+      "kind": "general",
+      "path": "result.task",
+      "tags": [
+        "&amp;"
+      ],
+      "value": "Find the Big Deal &amp; Saucy, purchasable one-time with fast US shipping."
+    },
+    {
+      "token": "t_3b5124885ea042c5a921",
+      "store": "greatjonesgoods.com",
+      "kind": "general",
+      "path": "result.productName",
+      "tags": [
+        "&amp;"
+      ],
+      "value": "Big Deal &amp; Saucy"
+    },
+    {
+      "token": "t_3273ccbc308aabb8f8cd",
+      "store": "greatjonesgoods.com",
+      "kind": "general",
+      "path": "result.task",
+      "tags": [
+        "&amp;"
+      ],
+      "value": "Find the Big Deal &amp; Saucy, purchasable one-time with fast US shipping."
+    },
+    {
+      "token": "t_3273ccbc308aabb8f8cd",
+      "store": "greatjonesgoods.com",
+      "kind": "general",
+      "path": "result.productName",
+      "tags": [
+        "&amp;"
+      ],
+      "value": "Big Deal &amp; Saucy"
+    },
+    {
+      "token": "t_5996b5618d2d5f9988eb",
+      "store": "magicspoon.com",
+      "kind": "general",
+      "path": "result.assertions[1].evidenceQuote",
+      "tags": [
+        "</p>"
+      ],
+      "value": "Try our Cereal, Treats, and Granola to fuel your own kind of high-protein, gluten-free, keto-friendly magic!</p>"
+    },
+    {
+      "token": "t_5996b5618d2d5f9988eb",
+      "store": "magicspoon.com",
+      "kind": "general",
+      "path": "result.assertions[5].evidenceQuote",
+      "tags": [
+        "<p>"
+      ],
+      "value": "<p>We process most orders within 1 business day, and delivery typically takes 5-7 days within the US."
+    }
+  ]
+}

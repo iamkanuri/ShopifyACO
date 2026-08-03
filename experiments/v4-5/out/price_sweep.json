@@ -1,0 +1,819 @@
+{
+  "completion": "DEFECTS_FOUND",
+  "reasons": [],
+  "canary": {
+    "live": true
+  },
+  "rows": 94,
+  "findings": {
+    "d1": [
+      {
+        "token": "t_dcd9b617cfa726661c11",
+        "store": "tenthousand.cc",
+        "url": "https://tenthousand.cc/products/output-muscle-tee",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $10",
+        "detail": "Lowest readable price is $0.00.",
+        "status": "pass_evidenced"
+      }
+    ],
+    "d2": [],
+    "d3_candidates": [
+      {
+        "token": "t_532e1614478a675f24cb",
+        "store": "wildone.com",
+        "url": "https://wildone.com/products/dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $48.00."
+      },
+      {
+        "token": "t_c9b86fd0d6a9073d600e",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_f91647af60a4e58fada1",
+        "store": "www.shopdogandco.com",
+        "url": "https://www.shopdogandco.com/products/wild-one-cushioned-dog-harness-in-tan",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $20",
+        "detail": "Lowest readable price is $19.99."
+      },
+      {
+        "token": "t_dd4fe21b683450f61fae",
+        "store": "www.boundarysupply.com",
+        "url": "https://www.boundarysupply.com/products/errant-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $170",
+        "detail": "Lowest readable price is $169.00."
+      },
+      {
+        "token": "t_7b154c7891f6305bd8fe",
+        "store": "www.peakdesign.com",
+        "url": "https://www.peakdesign.com/products/everyday-backpack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $300",
+        "detail": "Lowest readable price is $299.95."
+      },
+      {
+        "token": "t_42d82db8c8f616802805",
+        "store": "baronfig.com",
+        "url": "https://baronfig.com/products/confidant-hardcover-notebook",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $28.00."
+      },
+      {
+        "token": "t_45603720edd885425ef3",
+        "store": "blackwing602.com",
+        "url": "https://blackwing602.com/products/blackwing-602-set-of-12",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_d272b11dc30966284ec2",
+        "store": "pencils.com",
+        "url": "https://pencils.com/products/blackwing-602-pencils-12-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_e63087f2c244cece5b23",
+        "store": "pfcandleco.com",
+        "url": "https://pfcandleco.com/products/amber-moss-standard-candle",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.00."
+      },
+      {
+        "token": "t_b2a3564bc1e770791436",
+        "store": "www.wolftoothcomponents.com",
+        "url": "https://www.wolftoothcomponents.com/products/alloy-bar-end-plugs",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_891da1c5284b9d1b1a3f",
+        "store": "barebonesliving.com",
+        "url": "https://barebonesliving.com/products/forest-lantern",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $47.99."
+      },
+      {
+        "token": "t_1541c69ee3dc3da92381",
+        "store": "gardenerskit.com",
+        "url": "https://gardenerskit.com/products/niwaki-hori-hori-pro",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $80",
+        "detail": "Lowest readable price is $75.00."
+      },
+      {
+        "token": "t_68b7601f6dcc97c53707",
+        "store": "www.daddario.com",
+        "url": "https://www.daddario.com/products/tri-action-guitar-capo",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $25.99."
+      },
+      {
+        "token": "t_4771766d9fd71641c87d",
+        "store": "worldwidecyclery.com",
+        "url": "https://worldwidecyclery.com/products/wolf-tooth-alloy-bar-end-plugs-black",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_356f4cb23eb7f2ea587e",
+        "store": "wildone.com",
+        "url": "https://wildone.com/products/dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $48.00."
+      },
+      {
+        "token": "t_a3806a9ed26f5efb7f26",
+        "store": "wildone.com",
+        "url": "https://wildone.com/products/dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $48.00."
+      },
+      {
+        "token": "t_9888b19d7a4ddfd46fcb",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_1336d22e7c13a65d56e8",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_dbb507f62caa3439e139",
+        "store": "www.shopdogandco.com",
+        "url": "https://www.shopdogandco.com/products/wild-one-cushioned-dog-harness-in-tan",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $20",
+        "detail": "Lowest readable price is $19.99."
+      },
+      {
+        "token": "t_f776d9d9438e4c979c28",
+        "store": "www.boundarysupply.com",
+        "url": "https://www.boundarysupply.com/products/errant-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $170",
+        "detail": "Lowest readable price is $169.00."
+      },
+      {
+        "token": "t_9550cd1999da9063c93f",
+        "store": "www.peakdesign.com",
+        "url": "https://www.peakdesign.com/products/everyday-backpack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $300",
+        "detail": "Lowest readable price is $299.95."
+      },
+      {
+        "token": "t_0801b01173befc1b296c",
+        "store": "baronfig.com",
+        "url": "https://baronfig.com/products/confidant-hardcover-notebook",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $28.00."
+      },
+      {
+        "token": "t_69ee8ba32a1e45088580",
+        "store": "blackwing602.com",
+        "url": "https://blackwing602.com/products/blackwing-602-set-of-12",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_e3bf9dbe1fb94fea12f4",
+        "store": "pencils.com",
+        "url": "https://pencils.com/products/blackwing-602-pencils-12-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_6e1255746c388c0a54cd",
+        "store": "pfcandleco.com",
+        "url": "https://pfcandleco.com/products/amber-moss-standard-candle",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.00."
+      },
+      {
+        "token": "t_b2f610d97f1ac06629e8",
+        "store": "www.wolftoothcomponents.com",
+        "url": "https://www.wolftoothcomponents.com/products/alloy-bar-end-plugs",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_30788bf2cc5191f5476d",
+        "store": "barebonesliving.com",
+        "url": "https://barebonesliving.com/products/forest-lantern",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $47.99."
+      },
+      {
+        "token": "t_00f25444221b0aca7a92",
+        "store": "gardenerskit.com",
+        "url": "https://gardenerskit.com/products/niwaki-hori-hori-pro",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $80",
+        "detail": "Lowest readable price is $75.00."
+      },
+      {
+        "token": "t_9a8f9dffcb13cb69fbc5",
+        "store": "www.daddario.com",
+        "url": "https://www.daddario.com/products/tri-action-guitar-capo",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $25.99."
+      },
+      {
+        "token": "t_fc8d41f6d0687522eced",
+        "store": "baronfig.com",
+        "url": "https://baronfig.com/products/confidant-hardcover-notebook",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $28.00."
+      },
+      {
+        "token": "t_5d769a76393ce81da48c",
+        "store": "baronfig.com",
+        "url": "https://baronfig.com/products/confidant-hardcover-notebook",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $28.00."
+      },
+      {
+        "token": "t_edf0dec213a7233dd84e",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_574840f149dd4b90567c",
+        "store": "www.shopdogandco.com",
+        "url": "https://www.shopdogandco.com/products/wild-one-cushioned-dog-harness-in-tan",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $20",
+        "detail": "Lowest readable price is $19.99."
+      },
+      {
+        "token": "t_9f13e2a2443f8b49591b",
+        "store": "www.boundarysupply.com",
+        "url": "https://www.boundarysupply.com/products/errant-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $170",
+        "detail": "Lowest readable price is $169.00."
+      },
+      {
+        "token": "t_b3d4139f990e792d748a",
+        "store": "www.peakdesign.com",
+        "url": "https://www.peakdesign.com/products/everyday-backpack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $300",
+        "detail": "Lowest readable price is $299.95."
+      },
+      {
+        "token": "t_eb344291ea2d78c851c3",
+        "store": "baronfig.com",
+        "url": "https://baronfig.com/products/confidant-hardcover-notebook",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $28.00."
+      },
+      {
+        "token": "t_738d197de4bac037e738",
+        "store": "blackwing602.com",
+        "url": "https://blackwing602.com/products/blackwing-602-set-of-12",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_826458dff5651050abd0",
+        "store": "pencils.com",
+        "url": "https://pencils.com/products/blackwing-602-pencils-12-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_7c8d3f7c0ce638f18225",
+        "store": "pfcandleco.com",
+        "url": "https://pfcandleco.com/products/amber-moss-standard-candle",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.00."
+      },
+      {
+        "token": "t_7b82da26eddfd36fc0a5",
+        "store": "www.wolftoothcomponents.com",
+        "url": "https://www.wolftoothcomponents.com/products/alloy-bar-end-plugs",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_e3923f5071c749a8b6e1",
+        "store": "gardenerskit.com",
+        "url": "https://gardenerskit.com/products/niwaki-hori-hori-pro",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $80",
+        "detail": "Lowest readable price is $75.00."
+      },
+      {
+        "token": "t_3e0c2d102caa6aed3ade",
+        "store": "www.daddario.com",
+        "url": "https://www.daddario.com/products/tri-action-guitar-capo",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $25.99."
+      },
+      {
+        "token": "t_05cf7ffe533658616aa0",
+        "store": "parachutehome.com",
+        "url": "https://parachutehome.com/products/percale-sheet-set-ink-k-ck",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $300",
+        "detail": "Lowest readable price is $299.00."
+      },
+      {
+        "token": "t_3b5124885ea042c5a921",
+        "store": "greatjonesgoods.com",
+        "url": "https://greatjonesgoods.com/products/big-deal-saucy",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $195",
+        "detail": "Lowest readable price is $190.00."
+      },
+      {
+        "token": "t_8ea2fe22a532ae97461b",
+        "store": "www.wolftoothcomponents.com",
+        "url": "https://www.wolftoothcomponents.com/products/alloy-bar-end-plugs",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_3895d6ecfb7d8ed5f3db",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_5a3a1024f2d1b846c12b",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_08e66f03c7eb0192dd50",
+        "store": "wildone.com",
+        "url": "https://wildone.com/products/dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $48.00."
+      },
+      {
+        "token": "t_14859ec1cdd6726376e9",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_8e4767edc3884a6ecead",
+        "store": "www.shopdogandco.com",
+        "url": "https://www.shopdogandco.com/products/wild-one-cushioned-dog-harness-in-tan",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $20",
+        "detail": "Lowest readable price is $19.99."
+      },
+      {
+        "token": "t_69d1d396ace61e142697",
+        "store": "www.boundarysupply.com",
+        "url": "https://www.boundarysupply.com/products/errant-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $170",
+        "detail": "Lowest readable price is $169.00."
+      },
+      {
+        "token": "t_0b7fb82ef06ddb993667",
+        "store": "www.peakdesign.com",
+        "url": "https://www.peakdesign.com/products/everyday-backpack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $300",
+        "detail": "Lowest readable price is $299.95."
+      },
+      {
+        "token": "t_be8e34d76311edf62fda",
+        "store": "baronfig.com",
+        "url": "https://baronfig.com/products/confidant-hardcover-notebook",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $28.00."
+      },
+      {
+        "token": "t_ccf5c640ec3274381a0b",
+        "store": "blackwing602.com",
+        "url": "https://blackwing602.com/products/blackwing-602-set-of-12",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_7fe2771876d211a58ca0",
+        "store": "pencils.com",
+        "url": "https://pencils.com/products/blackwing-602-pencils-12-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $35",
+        "detail": "Lowest readable price is $34.00."
+      },
+      {
+        "token": "t_db1f85b6346b46f7a612",
+        "store": "pfcandleco.com",
+        "url": "https://pfcandleco.com/products/amber-moss-standard-candle",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.00."
+      },
+      {
+        "token": "t_e00747dcc6b6e1d11f4b",
+        "store": "www.explodingkittens.com",
+        "url": "https://www.explodingkittens.com/products/exploding-kittens-board-game",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.99."
+      },
+      {
+        "token": "t_f60f274939df21933f67",
+        "store": "www.wolftoothcomponents.com",
+        "url": "https://www.wolftoothcomponents.com/products/alloy-bar-end-plugs",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_ddd37336b4185b0eb073",
+        "store": "barebonesliving.com",
+        "url": "https://barebonesliving.com/products/forest-lantern",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $47.99."
+      },
+      {
+        "token": "t_9d29260b05ebf35ac1c1",
+        "store": "gardenerskit.com",
+        "url": "https://gardenerskit.com/products/niwaki-hori-hori-pro",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $80",
+        "detail": "Lowest readable price is $75.00."
+      },
+      {
+        "token": "t_c23e08bc3b574692cad5",
+        "store": "www.daddario.com",
+        "url": "https://www.daddario.com/products/tri-action-guitar-capo",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $25.99."
+      },
+      {
+        "token": "t_014f071e86e7343e7e29",
+        "store": "parachutehome.com",
+        "url": "https://parachutehome.com/products/percale-sheet-set-ink-k-ck",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $300",
+        "detail": "Lowest readable price is $299.00."
+      },
+      {
+        "token": "t_3273ccbc308aabb8f8cd",
+        "store": "greatjonesgoods.com",
+        "url": "https://greatjonesgoods.com/products/big-deal-saucy",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $195",
+        "detail": "Lowest readable price is $190.00."
+      },
+      {
+        "token": "t_272afe2d39010f2e27bf",
+        "store": "allbirds.com",
+        "url": "https://allbirds.com/products/mens-cruiser-shadow-blue-natural-white-sole",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $110",
+        "detail": "Lowest readable price is $105.00."
+      },
+      {
+        "token": "t_015fa49eb8fdbf9b0893",
+        "store": "thursdayboots.com",
+        "url": "https://thursdayboots.com/products/womens-ruffle-rib-quarter-sock-studio-4-pack",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $46.00."
+      },
+      {
+        "token": "t_e7f9f66e99764d36cec0",
+        "store": "tecovas.com",
+        "url": "https://tecovas.com/products/the-claire-braid-midnight-suede",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $100",
+        "detail": "Lowest readable price is $99.00."
+      },
+      {
+        "token": "t_71a774ecc409b9ac67b6",
+        "store": "taylorstitch.com",
+        "url": "https://taylorstitch.com/products/jack-in-smoked-olive-oxford-2601",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $130",
+        "detail": "Lowest readable price is $128.00."
+      },
+      {
+        "token": "t_5e7efdf4fce5086de7c6",
+        "store": "marinelayer.com",
+        "url": "https://marinelayer.com/products/5-pocket-flex-terry-pant-athletic-fit-6",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $150",
+        "detail": "Lowest readable price is $148.00."
+      },
+      {
+        "token": "t_f9f3ab5ad62691e9ae0b",
+        "store": "darntough.com",
+        "url": "https://darntough.com/products/womens-merino-wool-elsa-crew-cushioned-lightweight-lifestyle-socks",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $30",
+        "detail": "Lowest readable price is $25.00."
+      },
+      {
+        "token": "t_dcd9b617cfa726661c11",
+        "store": "tenthousand.cc",
+        "url": "https://tenthousand.cc/products/output-muscle-tee",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $10",
+        "detail": "Lowest readable price is $0.00."
+      },
+      {
+        "token": "t_dd7e2298ef3a2eaf53a4",
+        "store": "ridgewallet.com",
+        "url": "https://ridgewallet.com/products/mystery-wallet",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $70",
+        "detail": "Lowest readable price is $69.00."
+      },
+      {
+        "token": "t_1ef32678e7c4d773dd70",
+        "store": "gorjana.com",
+        "url": "https://gorjana.com/products/lou-stacking-ring",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $55.00."
+      },
+      {
+        "token": "t_a389b7a670f70e4534a3",
+        "store": "felixgray.com",
+        "url": "https://felixgray.com/products/jemison-reader",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $125",
+        "detail": "Lowest readable price is $124.00."
+      },
+      {
+        "token": "t_ebf7b557ecc071f9ab09",
+        "store": "diffeyewear.com",
+        "url": "https://diffeyewear.com/products/jordan-dove-tortoise-brown-gradient-polarized-sunglasses",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $140",
+        "detail": "Lowest readable price is $138.00."
+      },
+      {
+        "token": "t_6b023717a5d5006dc0b8",
+        "store": "artoftea.com",
+        "url": "https://artoftea.com/products/just-for-her-bundle",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $65",
+        "detail": "Lowest readable price is $64.00."
+      },
+      {
+        "token": "t_07cf4fef603643be2514",
+        "store": "smithtea.com",
+        "url": "https://smithtea.com/products/limited-release-iced-tea-bundle",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $50",
+        "detail": "Lowest readable price is $48.57."
+      },
+      {
+        "token": "t_55933d9c88fc56ef50be",
+        "store": "heatonist.com",
+        "url": "https://heatonist.com/products/keiths-steak-sauce-keiths",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $15",
+        "detail": "Lowest readable price is $12.00."
+      },
+      {
+        "token": "t_44da35ba0b916928c4a0",
+        "store": "burlapandbarrel.com",
+        "url": "https://burlapandbarrel.com/products/gazpacho-sangria-vinegars",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $20.00."
+      },
+      {
+        "token": "t_da5d2cdcad4f539d7d85",
+        "store": "diasporaco.com",
+        "url": "https://diasporaco.com/products/chef-baking-duo",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $70",
+        "detail": "Lowest readable price is $66.00."
+      },
+      {
+        "token": "t_cd421af7c5de45b30aeb",
+        "store": "graza.co",
+        "url": "https://graza.co/products/hot-n-sweet-olive-oil-potato-chips",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $10",
+        "detail": "Lowest readable price is $5.99."
+      },
+      {
+        "token": "t_5996b5618d2d5f9988eb",
+        "store": "magicspoon.com",
+        "url": "https://magicspoon.com/products/variety-6-pack-ac-bva",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $55",
+        "detail": "Lowest readable price is $54.00."
+      },
+      {
+        "token": "t_646a1521b333c75a24f6",
+        "store": "ruffwear.com",
+        "url": "https://ruffwear.com/products/front-range-everyday-dog-harness",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $60",
+        "detail": "Lowest readable price is $59.99."
+      },
+      {
+        "token": "t_8a856a0039463c79eb67",
+        "store": "www.dropps.com",
+        "url": "https://www.dropps.com/products/ultrawash-dishwasher-detergent-case-unscented",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $185",
+        "detail": "Lowest readable price is $180.00."
+      },
+      {
+        "token": "t_1602dbb3737169ee9759",
+        "store": "onyxcoffeelab.com",
+        "url": "https://onyxcoffeelab.com/products/monarch",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $10",
+        "detail": "Lowest readable price is $6.00."
+      },
+      {
+        "token": "t_02bbdd5915555fbe9db6",
+        "store": "www.stumptowncoffee.com",
+        "url": "https://www.stumptowncoffee.com/products/hair-bender",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $20",
+        "detail": "Lowest readable price is $19.00."
+      },
+      {
+        "token": "t_62b4e2914f601dab6888",
+        "store": "www.stumptowncoffee.com",
+        "url": "https://www.stumptowncoffee.com/products/hair-bender",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $20",
+        "detail": "Lowest readable price is $19.00."
+      },
+      {
+        "token": "t_15802547df13b8daf273",
+        "store": "www.klatchcoffee.com",
+        "url": "https://www.klatchcoffee.com/products/ethiopia-yirgacheffe-supernatural",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      },
+      {
+        "token": "t_91db6f4c309fcf6734c9",
+        "store": "www.klatchcoffee.com",
+        "url": "https://www.klatchcoffee.com/products/ethiopia-yirgacheffe-supernatural",
+        "kind": "general",
+        "engine": null,
+        "label": "Price under $25",
+        "detail": "Lowest readable price is $24.95."
+      }
+    ]
+  },
+  "rows_with_a_rendered_price_row": 88,
+  "d3_note": "D3 is a CANDIDATE SET, not a finding. The stored blob holds no declaredCurrency, so whether any of these stores publishes a non-USD priceCurrency must be decided from the store's bytes — see price_sweep_currency.mjs."
+}

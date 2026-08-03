@@ -1,0 +1,26 @@
+{
+  "completion": "DEFECTS_FOUND",
+  "reasons": [
+    "stores=39 checked=39 unreachable=0"
+  ],
+  "canary": {
+    "gbp": "GBP",
+    "usd": "USD",
+    "live": true
+  },
+  "checked": 39,
+  "unreachable": [],
+  "currencies": {
+    "USD": 38,
+    "CAD": 1
+  },
+  "non_usd": [
+    {
+      "store": "gardenerskit.com",
+      "token": "t_1541c69ee3dc3da92381",
+      "url": "https://gardenerskit.com/products/niwaki-hori-hori-pro",
+      "kind": "general",
+      "declared_today": "CAD"
+    }
+  ]
+}

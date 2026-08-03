@@ -420,24 +420,6 @@
       "supersedes": "0.85% with x=0 over 488 rows, which this sidecar published as a FLOOR and labelled INCOMPLETE — zero confirmed in the ONE defect class anyone had mechanically re-checked. That floor was correct about its class: `identifiers` is 0 of 29 here, so rule D really did close it. It was not an error rate. The published sequence 0.83% -> 7.80% -> 8.81% -> 0.85% now ends at this figure, measured over a complete row-by-row audit of all seven kinds.",
       "defect_classes": [
         {
-          "klass": "$0.00 treated as a price",
-          "count": 6,
-          "example": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
-          "addressed_by_a_guard": false
-        },
-        {
-          "klass": "A non-USD price rendered with a US dollar sign",
-          "count": 5,
-          "example": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
-          "addressed_by_a_guard": false
-        },
-        {
-          "klass": "Integer CENTS read as dollars — a factor of 100",
-          "count": 2,
-          "example": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
-          "addressed_by_a_guard": false
-        },
-        {
           "klass": "A MISSING availability field defaulted to purchasable",
           "count": 2,
           "example": "kytebaby.com — (the row renders no quote) A \"Gilmore Girls\" variant is listed and purchasable.",
@@ -854,7 +836,34 @@
         ],
         "mechanism": "zeroAwareMin refuses when every readable price on the product is zero, and evaluate re-tests the zero at the branch that renders. The row is no longer generated at all on the public path, because buildBuyerTask skips a price candidate whose minPriceUsd is null and no published standard binds price_under."
       },
-      "method_v4_5": "Replay of experiments/v2-9/snaps through runProductTest with only the transport swapped, at 21b9ba7 and at the pre-change parent, from separate git WORKTREES rather than a file swap. Method carried verbatim from experiments/v3-8/remeasure.mjs: pass rows keyed by PRODUCT URL (not host — keyed on host, v3.8 recovered 491 general rows where 488 was published, pooling three rows of a coffee set), labels money-normalised because the price row's label embeds its cap, and three outcomes rather than two so that a row which is still a pass with a CHANGED rendered detail is re-adjudicated explicitly instead of assumed either way. Zero rows landed in that third bucket here. experiments/v4-5/remeasure.mjs."
+      "method_v4_5": "Replay of experiments/v2-9/snaps through runProductTest with only the transport swapped, at 21b9ba7 and at the pre-change parent, from separate git WORKTREES rather than a file swap. Method carried verbatim from experiments/v3-8/remeasure.mjs: pass rows keyed by PRODUCT URL (not host — keyed on host, v3.8 recovered 491 general rows where 488 was published, pooling three rows of a coffee set), labels money-normalised because the price row's label embeds its cap, and three outcomes rather than two so that a row which is still a pass with a CHANGED rendered detail is re-adjudicated explicitly instead of assumed either way. Zero rows landed in that third bucket here. experiments/v4-5/remeasure.mjs.",
+      "closed_classes": [
+        {
+          "klass": "$0.00 treated as a price",
+          "count": 6,
+          "example": "knifewear.com — (the row renders no quote) Lowest readable price is $0.00.",
+          "addressed_by_a_guard": false,
+          "closed_by": "v4.5",
+          "closed_how": "zeroAwareMin refuses when every readable price on the product is zero, and evaluate re-tests the zero at the branch that renders."
+        },
+        {
+          "klass": "A non-USD price rendered with a US dollar sign",
+          "count": 5,
+          "example": "gardenerskit.com — (the row renders no quote) Lowest readable price is $75.00.",
+          "addressed_by_a_guard": false,
+          "closed_by": "v3.8",
+          "closed_how": "declaredCurrency is read from the store's own bytes and the price row refuses a US-dollar cap against a non-USD price rather than converting one it never measured."
+        },
+        {
+          "klass": "Integer CENTS read as dollars — a factor of 100",
+          "count": 2,
+          "example": "levainbakery.com — (the row renders no quote) Lowest readable price is $1000.00.",
+          "addressed_by_a_guard": false,
+          "closed_by": "v3.8",
+          "closed_how": "priceToUsd became tier-aware: .json serves decimal dollars, .js serves integer cents, measured across 349 stores with zero exceptions."
+        }
+      ],
+      "defect_classes_note": "The classes below sum to 5, which is this sample's confirmed_false_positives. Classes an engine release has closed move to closed_classes rather than being deleted — which errors this engine used to make, and when it stopped, is the most useful thing this record holds. ⚠️ Until v4.5 this table summed to 18 against a confirmed count of 5, and it was rendered on the published page that way. Seven of the thirteen had been stale since v3.8; six were closed by v4.5. The rate was re-measured without the decomposition beside it being re-derived."
     }
   ],
   "entry_discrimination": {

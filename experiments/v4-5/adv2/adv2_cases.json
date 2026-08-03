@@ -1,0 +1,164 @@
+[
+  {
+    "id": "adv2-01",
+    "attack_class": "offers_array_minimum",
+    "subclass": "a $0 gift offer LATER in the offers array erases a real price published FIRST",
+    "intent": "This is znn-02 one layer over. The commit fixed 'any zero refuses' on the VARIANT tier (zeroAwareMin filters non-zero prices) but the JSON-LD path collapses the whole offers array to a single MINIMUM inside readablePrices, BEFORE zeroAwareMin ever sees it. So the offer fallback still refuses when ANY offer is zero, which is the exact rule the commit's own comment says it stopped applying.",
+    "why": "A product whose markup publishes a purchasable $45.00 offer must not stop reporting a price because the same array also lists a $0 gift-with-purchase line. The commit's stated invariant is 'EVERY readable price was zero', not 'any'.",
+    "unreachable_by_real_store_sample": true,
+    "store": {
+      "jsonld": {
+        "price": "45.00",
+        "priceCurrency": "USD",
+        "availability": "InStock",
+        "offers_shape": "array",
+        "offers": [
+          { "@type": "Offer", "price": "45.00", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
+          { "@type": "Offer", "name": "Free gift with purchase", "price": "0.00", "priceCurrency": "USD", "availability": "https://schema.org/InStock" }
+        ]
+      },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Skincare" },
+      "json_tier": null,
+      "js_tier": null
+    },
+    "honest_answer": {
+      "min_price_usd": 45,
+      "currency": "USD",
+      "verdict": "pass",
+      "must_not_render": ["$0.00", "Every price readable on this product is zero"]
+    }
+  },
+  {
+    "id": "adv2-02",
+    "attack_class": "offers_array_minimum",
+    "subclass": "the PRICE now comes from one offer object and the CURRENCY from another",
+    "intent": "parseOffer takes `price` as the minimum across every offer but keeps `currency` from offers[0] only. Make the minimum land on a non-USD offer so the engine renders a euro number behind a US dollar sign — the exact class v3.8's non-USD refusal exists to close, re-opened by a different route.",
+    "why": "Before this change price and currency were read off the SAME object, so they could not disagree. Taking the min across objects without re-selecting the currency breaks that pairing.",
+    "unreachable_by_real_store_sample": true,
+    "store": {
+      "jsonld": {
+        "price": "200.00",
+        "priceCurrency": "USD",
+        "availability": "InStock",
+        "offers_shape": "array",
+        "offers": [
+          { "@type": "Offer", "price": "200.00", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
+          { "@type": "Offer", "price": "150.00", "priceCurrency": "EUR", "availability": "https://schema.org/InStock" }
+        ]
+      },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Apparel" },
+      "json_tier": null,
+      "js_tier": null
+    },
+    "honest_answer": {
+      "min_price_usd": 200,
+      "currency": "USD",
+      "verdict": "pass",
+      "must_not_render": ["$150.00", "150.00"]
+    }
+  },
+  {
+    "id": "adv2-03",
+    "attack_class": "offers_array_minimum",
+    "subclass": "ANTI-VACUITY ANCHOR — AggregateOffer(price=high, lowPrice=low), the shape the change is FOR",
+    "intent": "The claimed win. If this case does not move between base and fix, the A/B is not reaching the changed code and every other result here is an artefact.",
+    "why": "An AggregateOffer sets `price` to the high price; the `??` chain preferred it. Taking the minimum is the fix.",
+    "store": {
+      "jsonld": {
+        "price": "99.00",
+        "priceCurrency": "USD",
+        "availability": "InStock",
+        "offers_shape": "object",
+        "offers": { "@type": "AggregateOffer", "price": "99.00", "lowPrice": "23.00", "highPrice": "99.00", "priceCurrency": "USD", "availability": "https://schema.org/InStock" }
+      },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Coffee" },
+      "json_tier": null,
+      "js_tier": null
+    },
+    "honest_answer": {
+      "min_price_usd": 23,
+      "currency": "USD",
+      "verdict": "pass",
+      "must_not_render": ["$99.00"]
+    }
+  },
+  {
+    "id": "adv2-04",
+    "attack_class": "offers_array_minimum",
+    "subclass": "CONTROL — one plain Offer, nothing to choose between",
+    "intent": "Pin the behaviour that must NOT change. A single scalar Offer must read identically before and after.",
+    "why": "Without a case that is identical on both sides, 'these cases moved' cannot be separated from 'everything moved'.",
+    "store": {
+      "jsonld": { "price": "45.00", "priceCurrency": "USD", "availability": "InStock" },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Coffee" },
+      "json_tier": null,
+      "js_tier": null
+    },
+    "honest_answer": { "min_price_usd": 45, "currency": "USD", "verdict": "pass", "must_not_render": [] }
+  },
+  {
+    "id": "adv2-05",
+    "attack_class": "offers_array_minimum",
+    "subclass": "a UnitPriceSpecification (price PER 100g) is taken as the product's price",
+    "intent": "readablePrices reads `priceSpecification.price` unconditionally and mins it against the product price. A UnitPriceSpecification carries a per-reference-quantity figure, which is by construction lower than the pack price, so the minimum is always the unit rate.",
+    "why": "The old `??` chain only consulted priceSpecification when `price` and `lowPrice` were both absent, so a unit rate could never outrank a stated product price. The min consults it always.",
+    "unreachable_by_real_store_sample": true,
+    "store": {
+      "jsonld": {
+        "price": "30.00",
+        "priceCurrency": "USD",
+        "availability": "InStock",
+        "offers_shape": "object",
+        "offers": {
+          "@type": "Offer",
+          "price": "30.00",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+          "priceSpecification": { "@type": "UnitPriceSpecification", "price": "3.50", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": 100, "unitCode": "GRM" } }
+        }
+      },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Coffee" },
+      "json_tier": null,
+      "js_tier": null
+    },
+    "honest_answer": { "min_price_usd": 30, "currency": "USD", "verdict": "pass", "must_not_render": ["$3.50", "3.50"] }
+  },
+  {
+    "id": "adv2-06",
+    "attack_class": "offers_array_minimum",
+    "subclass": "a cheap ADD-ON offer in the array becomes the product's price",
+    "intent": "An offers array is not required to be a variant list. A gift-wrap or accessory Offer attached to the same Product node now wins the minimum.",
+    "why": "Whichever way this is decided, it is a decision the change makes silently: before, position 0 decided; now, cheapness decides.",
+    "unreachable_by_real_store_sample": true,
+    "store": {
+      "jsonld": {
+        "price": "89.00",
+        "priceCurrency": "USD",
+        "availability": "InStock",
+        "offers_shape": "array",
+        "offers": [
+          { "@type": "Offer", "price": "89.00", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
+          { "@type": "Offer", "name": "Gift wrap", "price": "9.99", "priceCurrency": "USD", "availability": "https://schema.org/InStock" }
+        ]
+      },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Bags" },
+      "json_tier": null,
+      "js_tier": null
+    },
+    "honest_answer": { "min_price_usd": 89, "currency": "USD", "verdict": "pass", "must_not_render": ["$9.99"] }
+  },
+  {
+    "id": "adv2-07",
+    "attack_class": "zero_null_negative",
+    "subclass": "ANTI-VACUITY ANCHOR — znn-02's shape on the VARIANT tier, which the commit DID fix",
+    "intent": "The variant-tier half of the same rule. If this reads $45 at fix and $0 at base, zeroAwareMin's non-zero filter is live, which is what makes adv2-01 a scope hole rather than a general failure.",
+    "why": "The two halves must be compared side by side or 'the offer path still refuses on any zero' is unfalsifiable.",
+    "store": {
+      "jsonld": { "price": "45.00", "priceCurrency": "USD", "availability": null },
+      "bootstrap": { "currency": null, "country": null, "product_type": "Skincare" },
+      "json_tier": { "status": 200, "variants": [{ "title": "Full size", "price": "45.00", "available": true }, { "title": "Free gift", "price": "0.00", "available": true }] },
+      "js_tier": null
+    },
+    "honest_answer": { "min_price_usd": 45, "currency": "USD", "verdict": "pass", "must_not_render": ["$0.00"] }
+  }
+]

@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   semanticStatsIn, resultNotice, grantForRow, noticeLines, TIER_GRANT_ATTRIBUTIONS,
+  PRICE_CORRECTIONS, priceCorrections, priceNoticeLines,
 } from "../src/server/resultNotices.js";
 import { renderStoredResult, resolveStored } from "../src/server/resultPage.js";
 import { renderOnePager } from "../src/server/onePager.js";
@@ -190,4 +191,90 @@ test("[notice] grantForRow is label-scoped, not token-scoped", () => {
   const row = baseRow({ token, result: testResult(["Single-origin", "Price under $25"], stats) as never });
   assert.ok(grantForRow(row, "Single-origin"));
   assert.equal(grantForRow(row, "Price under $25"), null);
+});
+
+// ===========================================================================
+// v4.5 — THE PRICE CORRECTION. Five stored results, two stores, two mechanisms.
+// ===========================================================================
+
+const PRICE_AFFECTED = join(process.cwd(), "experiments", "v4-5", "evidence", "price_affected_rows.json");
+
+test("[price-notice] every curated price label resolves against the row it describes", () => {
+  // ⚠️ THE ANTI-VACUITY ANCHOR, and this evidence file is deliberately TRACKED where
+  // v4.4's is not. `experiments/*` is gitignored, so the equivalent tier test reads a file
+  // a fresh clone does not have and fails there — a guard that cannot run is not a guard.
+  // `.gitignore` carries an explicit exception for this directory for that reason.
+  assert.ok(existsSync(PRICE_AFFECTED),
+    "experiments/v4-5/evidence/price_affected_rows.json is missing; without it this test proves nothing and must fail.");
+  const rows = JSON.parse(readFileSync(PRICE_AFFECTED, "utf8")) as Array<Record<string, any>>;
+  assert.equal(rows.length, 5, "the production sweep found exactly five affected results");
+
+  let joined = 0;
+  for (const r of rows) {
+    const curated = PRICE_CORRECTIONS[r.token];
+    assert.ok(curated?.length, `no price correction recorded for ${r.token}`);
+    const labels = new Set<string>((r.price_rows ?? []).map((a: any) => a.label));
+    for (const c of curated) {
+      assert.ok(labels.has(c.label),
+        `price-correction label ${JSON.stringify(c.label)} does not appear on ${r.token}. `
+        + `The join is byte-for-byte; a drifted label renders NO notice and looks identical `
+        + `to a result that needs none — the grounding.sources shape, five releases running.`);
+      // The row it names must be a PASS: correcting a row that never claimed anything
+      // would be a notice about nothing.
+      const a = (r.price_rows ?? []).find((x: any) => x.label === c.label);
+      assert.equal(a.status, "pass_evidenced", `${r.token}: ${c.label} is not a pass row`);
+      // And the quoted sentence must be the one actually stored, or the notice tells the
+      // reader to look for a string that is not on the page.
+      assert.ok(String(a.detail).includes(c.stated),
+        `${r.token}: the notice quotes ${JSON.stringify(c.stated)} but the stored row says ${JSON.stringify(a.detail)}`);
+      joined++;
+    }
+  }
+  assert.equal(joined, 5, "all five production price rows must join");
+});
+
+test("[price-notice] BOTH mechanisms are represented, and they say different things", () => {
+  // A notice that only ever describes one failure mode is a template, not a finding.
+  const all = Object.values(PRICE_CORRECTIONS).flat();
+  assert.ok(all.some((c) => /zero/i.test(c.why)), "no correction describes the $0.00 mechanism");
+  assert.ok(all.some((c) => /Canadian dollars|currency/i.test(c.why)), "no correction describes the currency mechanism");
+  // Every entry states what the engine answers NOW — that claim is the remedy this notice
+  // offers, and it was verified by executing the current engine against the same bytes.
+  assert.ok(all.every((c) => c.nowAnswers.length > 20), "a correction offers no current answer");
+});
+
+test("[price-notice] the remedy differs from the tier notice — a price CAN be re-run", () => {
+  const lines = priceNoticeLines(priceCorrections({
+    token: "t_dcd9b617cfa726661c11",
+    result: { assertions: [{ label: "Price under $10", status: "pass_evidenced", detail: "Lowest readable price is $0.00." }] },
+  } as any));
+  assert.ok(lines, "no price notice for a token that has one");
+  const body = lines!.body.join(" ");
+  assert.match(body, /has not been edited/i, "the notice does not state that the result is unedited");
+  assert.match(body, /re-?running gives the current/i,
+    "the price notice must offer the remedy the tier notice cannot: a fresh run is correct");
+  // And it must NOT claim the result was corrected in place.
+  assert.doesNotMatch(body, /we have corrected this result|this row has been removed/i);
+});
+
+test("[price-notice] detection is DERIVED for the zero class, not only curated", () => {
+  // A result minted later, carrying a rendered $0.00 this file has never heard of, is
+  // still disclosed. The currency class cannot work this way and the module says so.
+  const c = priceCorrections({
+    token: "t_not_in_the_map",
+    result: { assertions: [{ label: "Price under $25", status: "pass_evidenced", detail: "Lowest readable price is $0.00." }] },
+  } as any);
+  assert.equal(c.entries.length, 0, "an uncurated token must not get an invented attribution");
+  assert.equal(c.derivedUnnamed, 1, "a rendered $0.00 on an unknown token must still be detected");
+  const lines = priceNoticeLines(c);
+  assert.ok(lines, "a derived-only detection renders no notice");
+  assert.match(lines!.body.join(" "), /has not been individually adjudicated/i,
+    "an underived row must be reported as unadjudicated rather than described");
+
+  // Two-sided: an ordinary result gets NOTHING.
+  const clean = priceCorrections({
+    token: "t_clean",
+    result: { assertions: [{ label: "Price under $30", status: "pass_evidenced", detail: "Lowest readable price is $24.00." }] },
+  } as any);
+  assert.equal(priceNoticeLines(clean), null, "a correct result was given a correction notice");
 });

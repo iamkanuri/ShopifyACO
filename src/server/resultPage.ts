@@ -32,7 +32,8 @@ import {
   findStandard, esc, fitnessOf, shortName, type SitePage,
 } from "./standardsSite.js";
 import type { StoredResultRow } from "../db/buyerTests.js";
-import { resultNotice, grantForRow, noticeLines } from "./resultNotices.js";
+import { resultNotice, grantForRow, noticeLines, priceCorrections, priceNoticeLines } from "./resultNotices.js";
+import { displayText } from "./renderText.js";
 
 /** ⚠️ pg returns timestamptz as a Date OBJECT, and String(date).slice(0,10) yields
  *  "Mon Jul 27" — a day and month with no year, which on a dated artifact is worse than
@@ -151,14 +152,29 @@ export function resultPageDefects(html: string): string[] {
  * standard's posture paragraph rendering first and verbatim.
  */
 function noticeSection(row: StoredResultRow): string {
+  const out: string[] = [];
   const n = resultNotice(row);
-  if (!n) return "";
-  const { headline, body } = noticeLines(n);
-  return `<aside class="bt-correction" role="note" id="correction">
+  if (n) {
+    const { headline, body } = noticeLines(n);
+    out.push(`<aside class="bt-correction" role="note" id="correction">
   <p class="bt-correction-head"><strong>${esc(headline)}</strong></p>
   ${body.map((line) => p(line)).join("")}
   <p class="bt-note"><a href="/test?url=${encodeURIComponent(row.product_url)}">Run this test again →</a> A fresh run does not use that tier and produces the same verdict every time it is run against the same page.</p>
-</aside>`;
+</aside>`);
+  }
+  // v4.5 — the PRICE correction, rendered as its own notice. Deliberately NOT merged with
+  // the tier notice above: that one cannot be fixed by re-running and this one can, and a
+  // single paragraph carrying both remedies would make the stronger claim for both.
+  const pc = priceCorrections(row);
+  const pl = priceNoticeLines(pc);
+  if (pl) {
+    out.push(`<aside class="bt-correction" role="note" id="price-correction">
+  <p class="bt-correction-head"><strong>${esc(pl.headline)}</strong></p>
+  ${pl.body.map((line) => p(line)).join("")}
+  <p class="bt-note"><a href="/test?url=${encodeURIComponent(row.product_url)}">Run this test again →</a></p>
+</aside>`);
+  }
+  return out.join("\n");
 }
 
 function rowHtml(a: Assertion, r: ResolvedResult, row: StoredResultRow): string {
@@ -176,7 +192,7 @@ function rowHtml(a: Assertion, r: ResolvedResult, row: StoredResultRow): string 
 
   const receipt: string[] = [];
   if (a.evidenceQuote) {
-    receipt.push(`<blockquote class="bt-quote">${esc(a.evidenceQuote)}</blockquote>`);
+    receipt.push(`<blockquote class="bt-quote">${esc(displayText(a.evidenceQuote))}</blockquote>`);
     // ⚠️ SAY WHY IT MAY BE CUT, AND SAY THE TRUE REASON. /demo can recover the untruncated
     // sentence because it re-runs the engine over a frozen capture and still holds the
     // product's evidence index. A STORED result does not: the engine persists the

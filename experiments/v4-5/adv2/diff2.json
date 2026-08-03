@@ -1,0 +1,341 @@
+{
+  "hosts": 335,
+  "base_rows_total": 2817,
+  "fix_rows_total": 2806,
+  "pos": {
+    "same": 2734,
+    "label_changed": 72,
+    "status_changed": 0,
+    "detail_changed": 0,
+    "missing_side": 11,
+    "examples": [
+      {
+        "host": "branchbasics.com",
+        "i": 0,
+        "from": "Price under $10",
+        "to": "In stock and purchasable"
+      },
+      {
+        "host": "branchbasics.com",
+        "i": 1,
+        "from": "In stock and purchasable",
+        "to": "Available as a one-time purchase"
+      },
+      {
+        "host": "branchbasics.com",
+        "i": 2,
+        "from": "Available as a one-time purchase",
+        "to": "Delivery timing is stated"
+      },
+      {
+        "host": "branchbasics.com",
+        "i": 3,
+        "from": "Delivery timing is stated",
+        "to": "Materials are stated"
+      },
+      {
+        "host": "branchbasics.com",
+        "i": 4,
+        "from": "Materials are stated",
+        "to": "Measurements are stated"
+      },
+      {
+        "host": "branchbasics.com",
+        "i": 5,
+        "from": "Measurements are stated",
+        "to": "Product identifier (GTIN or MPN) is published"
+      },
+      {
+        "host": "dedcool.com",
+        "i": 0,
+        "from": "Price under $10",
+        "to": "1.70z option available"
+      },
+      {
+        "host": "dedcool.com",
+        "i": 1,
+        "from": "1.70z option available",
+        "to": "In stock and purchasable"
+      }
+    ]
+  },
+  "lbl": {
+    "joined": 2804,
+    "unchanged": 2804,
+    "edited": 0,
+    "disappeared": 13,
+    "appeared": 2
+  },
+  "ms": {
+    "hosts_identical": 322,
+    "hosts_differing": 13,
+    "rows_only_in_base": 13,
+    "rows_only_in_fix": 2
+  },
+  "change_by_kind": {
+    "price_under": 13
+  },
+  "nonprice_changes": [],
+  "price_hosts_changed": [
+    {
+      "host": "branchbasics.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 7,
+      "fixRowCount": 6
+    },
+    {
+      "host": "dedcool.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 8,
+      "fixRowCount": 7
+    },
+    {
+      "host": "knifewear.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 7,
+      "fixRowCount": 6
+    },
+    {
+      "host": "kosas.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 8,
+      "fixRowCount": 7
+    },
+    {
+      "host": "partakefoods.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 7,
+      "fixRowCount": 6
+    },
+    {
+      "host": "puracy.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 8,
+      "fixRowCount": 7
+    },
+    {
+      "host": "studioneat.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 7,
+      "fixRowCount": 6
+    },
+    {
+      "host": "supergoop.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 7,
+      "fixRowCount": 6
+    },
+    {
+      "host": "tenthousand.cc",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 8,
+      "fixRowCount": 7
+    },
+    {
+      "host": "voluspa.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 7,
+      "fixRowCount": 6
+    },
+    {
+      "host": "templecoffee.com",
+      "base": [
+        {
+          "label": "Price under $30",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $29.50."
+        }
+      ],
+      "fix": [
+        {
+          "label": "Price under $25",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $23.00."
+        }
+      ],
+      "baseRowCount": 9,
+      "fixRowCount": 9
+    },
+    {
+      "host": "balancecoffee.co.uk",
+      "base": [
+        {
+          "label": "Price under $30",
+          "status": "not_proven",
+          "detail": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+        }
+      ],
+      "fix": [
+        {
+          "label": "Price under $20",
+          "status": "not_proven",
+          "detail": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+        }
+      ],
+      "baseRowCount": 9,
+      "fixRowCount": 9
+    },
+    {
+      "host": "colonnacoffee.com",
+      "base": [
+        {
+          "label": "Price under $10",
+          "status": "not_proven",
+          "detail": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+        }
+      ],
+      "fix": [],
+      "baseRowCount": 9,
+      "fixRowCount": 8
+    }
+  ],
+  "rowcount_delta": {
+    "0": 324,
+    "-1": 11
+  },
+  "hosts_with_rowcount_change": [
+    {
+      "host": "branchbasics.com",
+      "base": 7,
+      "fix": 6,
+      "delta": -1
+    },
+    {
+      "host": "dedcool.com",
+      "base": 8,
+      "fix": 7,
+      "delta": -1
+    },
+    {
+      "host": "knifewear.com",
+      "base": 7,
+      "fix": 6,
+      "delta": -1
+    },
+    {
+      "host": "kosas.com",
+      "base": 8,
+      "fix": 7,
+      "delta": -1
+    },
+    {
+      "host": "partakefoods.com",
+      "base": 7,
+      "fix": 6,
+      "delta": -1
+    },
+    {
+      "host": "puracy.com",
+      "base": 8,
+      "fix": 7,
+      "delta": -1
+    },
+    {
+      "host": "studioneat.com",
+      "base": 7,
+      "fix": 6,
+      "delta": -1
+    },
+    {
+      "host": "supergoop.com",
+      "base": 7,
+      "fix": 6,
+      "delta": -1
+    },
+    {
+      "host": "tenthousand.cc",
+      "base": 8,
+      "fix": 7,
+      "delta": -1
+    },
+    {
+      "host": "voluspa.com",
+      "base": 7,
+      "fix": 6,
+      "delta": -1
+    },
+    {
+      "host": "colonnacoffee.com",
+      "base": 9,
+      "fix": 8,
+      "delta": -1
+    }
+  ],
+  "CANARY": {
+    "hosts_identical": 322,
+    "hosts_differing": 13,
+    "live": true,
+    "note": "must see BOTH hosts that changed and hosts that did not; otherwise the two files may be one run twice or the join may have failed"
+  },
+  "COMPLETION": "DEFECTS_FOUND"
+}

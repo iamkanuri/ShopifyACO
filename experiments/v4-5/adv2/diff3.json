@@ -1,0 +1,553 @@
+{
+  "snapshots": 466,
+  "Q1_deduped_subset": {
+    "snapshots": 335,
+    "rows_base": 2817,
+    "rows_fix": 2806,
+    "dropped": 13,
+    "appeared": 2,
+    "edited": 0,
+    "nonprice_changed": 0,
+    "cap_moves": [
+      {
+        "host": "templecoffee.com",
+        "from": {
+          "label": "Price under $30",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $29.50."
+        },
+        "to": {
+          "label": "Price under $25",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $23.00."
+        }
+      },
+      {
+        "host": "balancecoffee.co.uk",
+        "from": {
+          "label": "Price under $30",
+          "status": "not_proven",
+          "detail": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+        },
+        "to": {
+          "label": "Price under $20",
+          "status": "not_proven",
+          "detail": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+        }
+      }
+    ],
+    "dropped_rows": [
+      {
+        "host": "branchbasics.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "dedcool.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "knifewear.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "kosas.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "partakefoods.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "puracy.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "studioneat.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "supergoop.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "tenthousand.cc",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "voluspa.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "pass_evidenced",
+          "detail": "Lowest readable price is $0.00."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      },
+      {
+        "host": "colonnacoffee.com",
+        "row": {
+          "label": "Price under $10",
+          "status": "not_proven",
+          "detail": "Your store publishes prices in GBP, and this check states a US-dollar cap. We don't convert currencies, so we can't answer it from your public data."
+        },
+        "minBase": 0,
+        "minFix": null,
+        "zeroFlagFix": true
+      }
+    ]
+  },
+  "Q2_dropped_by_dedup": {
+    "snapshots": 131,
+    "hosts_with_change": [
+      {
+        "host": "templecoffee.com",
+        "file": "templecoffee.com.json",
+        "corpus": "coffee-v3.2",
+        "url": "https://templecoffee.com/products/java-mt-ijen-natural-single-origin-espresso-1",
+        "dropped": [
+          {
+            "label": "Price under $30",
+            "status": "pass_evidenced",
+            "detail": "Lowest readable price is $29.50."
+          }
+        ],
+        "appeared": [
+          {
+            "label": "Price under $25",
+            "status": "pass_evidenced",
+            "detail": "Lowest readable price is $23.00."
+          }
+        ],
+        "edited": [],
+        "minBase": 29.5,
+        "minFix": 23
+      }
+    ],
+    "zero_price_hosts": [],
+    "price_corrections": [
+      {
+        "host": "templecoffee.com",
+        "file": "templecoffee.com.json",
+        "base": 29.5,
+        "fix": 23
+      }
+    ]
+  },
+  "Q3_assertions_vs_deferred": {
+    "snapshots_with_move": [],
+    "total_moves": 0
+  },
+  "Q4_counter_moves": {
+    "snapshots": [
+      {
+        "host": "branchbasics.com",
+        "file": "branchbasics.com.json",
+        "base": {
+          "evidencedCount": 1,
+          "noBlockingCount": 1,
+          "notProvenCount": 4,
+          "requiresAccessCount": 1,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 4,
+          "notInspectable": "product metafields|full shipping & returns policy",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 0,
+          "noBlockingCount": 1,
+          "notProvenCount": 4,
+          "requiresAccessCount": 1,
+          "total": 6,
+          "deferredCount": 0,
+          "suggestedCorrections": 4,
+          "notInspectable": "product metafields|full shipping & returns policy",
+          "error": null
+        }
+      },
+      {
+        "host": "dedcool.com",
+        "file": "dedcool.com.json",
+        "base": {
+          "evidencedCount": 1,
+          "noBlockingCount": 1,
+          "notProvenCount": 6,
+          "requiresAccessCount": 0,
+          "total": 8,
+          "deferredCount": 0,
+          "suggestedCorrections": 6,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 0,
+          "noBlockingCount": 1,
+          "notProvenCount": 6,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 6,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "knifewear.com",
+        "file": "knifewear.com.json",
+        "base": {
+          "evidencedCount": 3,
+          "noBlockingCount": 1,
+          "notProvenCount": 3,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 3,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 2,
+          "noBlockingCount": 1,
+          "notProvenCount": 3,
+          "requiresAccessCount": 0,
+          "total": 6,
+          "deferredCount": 0,
+          "suggestedCorrections": 3,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "kosas.com",
+        "file": "kosas.com.json",
+        "base": {
+          "evidencedCount": 4,
+          "noBlockingCount": 1,
+          "notProvenCount": 3,
+          "requiresAccessCount": 0,
+          "total": 8,
+          "deferredCount": 0,
+          "suggestedCorrections": 3,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 3,
+          "noBlockingCount": 1,
+          "notProvenCount": 3,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 3,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "partakefoods.com",
+        "file": "partakefoods.com.json",
+        "base": {
+          "evidencedCount": 1,
+          "noBlockingCount": 1,
+          "notProvenCount": 5,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 5,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 0,
+          "noBlockingCount": 1,
+          "notProvenCount": 5,
+          "requiresAccessCount": 0,
+          "total": 6,
+          "deferredCount": 0,
+          "suggestedCorrections": 5,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "puracy.com",
+        "file": "puracy.com.json",
+        "base": {
+          "evidencedCount": 3,
+          "noBlockingCount": 1,
+          "notProvenCount": 4,
+          "requiresAccessCount": 0,
+          "total": 8,
+          "deferredCount": 0,
+          "suggestedCorrections": 4,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 2,
+          "noBlockingCount": 1,
+          "notProvenCount": 4,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 4,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "studioneat.com",
+        "file": "studioneat.com.json",
+        "base": {
+          "evidencedCount": 1,
+          "noBlockingCount": 1,
+          "notProvenCount": 5,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 5,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 0,
+          "noBlockingCount": 1,
+          "notProvenCount": 5,
+          "requiresAccessCount": 0,
+          "total": 6,
+          "deferredCount": 0,
+          "suggestedCorrections": 5,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "supergoop.com",
+        "file": "supergoop.com.json",
+        "base": {
+          "evidencedCount": 3,
+          "noBlockingCount": 1,
+          "notProvenCount": 2,
+          "requiresAccessCount": 1,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 2,
+          "notInspectable": "product metafields|full shipping & returns policy",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 2,
+          "noBlockingCount": 1,
+          "notProvenCount": 2,
+          "requiresAccessCount": 1,
+          "total": 6,
+          "deferredCount": 0,
+          "suggestedCorrections": 2,
+          "notInspectable": "product metafields|full shipping & returns policy",
+          "error": null
+        }
+      },
+      {
+        "host": "tenthousand.cc",
+        "file": "tenthousand.cc.json",
+        "base": {
+          "evidencedCount": 3,
+          "noBlockingCount": 1,
+          "notProvenCount": 4,
+          "requiresAccessCount": 0,
+          "total": 8,
+          "deferredCount": 0,
+          "suggestedCorrections": 4,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 2,
+          "noBlockingCount": 1,
+          "notProvenCount": 4,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 4,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "voluspa.com",
+        "file": "voluspa.com.json",
+        "base": {
+          "evidencedCount": 4,
+          "noBlockingCount": 1,
+          "notProvenCount": 2,
+          "requiresAccessCount": 0,
+          "total": 7,
+          "deferredCount": 0,
+          "suggestedCorrections": 2,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 3,
+          "noBlockingCount": 1,
+          "notProvenCount": 2,
+          "requiresAccessCount": 0,
+          "total": 6,
+          "deferredCount": 0,
+          "suggestedCorrections": 2,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      },
+      {
+        "host": "colonnacoffee.com",
+        "file": "colonnacoffee.com.json",
+        "base": {
+          "evidencedCount": 2,
+          "noBlockingCount": 1,
+          "notProvenCount": 6,
+          "requiresAccessCount": 0,
+          "total": 9,
+          "deferredCount": 0,
+          "suggestedCorrections": 6,
+          "notInspectable": "product metafields",
+          "error": null
+        },
+        "fix": {
+          "evidencedCount": 2,
+          "noBlockingCount": 1,
+          "notProvenCount": 5,
+          "requiresAccessCount": 0,
+          "total": 8,
+          "deferredCount": 0,
+          "suggestedCorrections": 5,
+          "notInspectable": "product metafields",
+          "error": null
+        }
+      }
+    ],
+    "total": 11
+  },
+  "Q5_counterfactual_backfill": {
+    "snapshots_at_cap": 118,
+    "snapshots_that_would_gain": 6,
+    "gained_labels": {
+      "In stock and purchasable": 6
+    },
+    "examples": [
+      {
+        "host": "highrisecoffeeroasters.com",
+        "reqCount": 10,
+        "gained": [
+          "In stock and purchasable"
+        ]
+      },
+      {
+        "host": "littlewaves.coffee",
+        "reqCount": 10,
+        "gained": [
+          "In stock and purchasable"
+        ]
+      },
+      {
+        "host": "banffroastingcompany.com",
+        "reqCount": 10,
+        "gained": [
+          "In stock and purchasable"
+        ]
+      },
+      {
+        "host": "highrisecoffeeroasters.com",
+        "reqCount": 10,
+        "gained": [
+          "In stock and purchasable"
+        ]
+      },
+      {
+        "host": "littlewaves.coffee",
+        "reqCount": 10,
+        "gained": [
+          "In stock and purchasable"
+        ]
+      },
+      {
+        "host": "perkyblenders.com",
+        "reqCount": 10,
+        "gained": [
+          "In stock and purchasable"
+        ]
+      }
+    ]
+  },
+  "CANARY": {
+    "snapshots_changed": 14,
+    "snapshots_unchanged": 452,
+    "live": true,
+    "note": "two-sided: the diff must observe both snapshots that moved and snapshots that did not, over all 466 joined pairs"
+  },
+  "COMPLETION": "DEFECTS_FOUND"
+}

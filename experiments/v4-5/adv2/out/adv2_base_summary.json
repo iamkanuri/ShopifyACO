@@ -1,0 +1,18 @@
+{
+  "label": "base",
+  "completion": "VERIFIED_CLEAN",
+  "snapshots_total": 466,
+  "kept_by_dedup": 335,
+  "dropped_by_dedup": 131,
+  "evaluated": 466,
+  "hard_errors": 0,
+  "canary": {
+    "cheapSeen": true,
+    "dearSeen": true,
+    "keptSeen": true,
+    "droppedSeen": true,
+    "live": true
+  },
+  "reasons": [],
+  "out": "C:\\Users\\iamka\\Documents\\projects\\ShopifyACO\\experiments\\v4-5\\adv2\\out\\adv2_base.jsonl"
+}

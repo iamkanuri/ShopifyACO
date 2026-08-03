@@ -1,0 +1,15 @@
+{
+  "label": "fix",
+  "completion": "VERIFIED_CLEAN",
+  "corpora": 5,
+  "deduped_stores": 335,
+  "evaluated": 335,
+  "hard_errors": 0,
+  "canary": {
+    "cheapSeen": true,
+    "dearSeen": true,
+    "live": true
+  },
+  "reasons": [],
+  "out": "C:\\Users\\iamka\\Documents\\projects\\ShopifyACO\\experiments\\v4-5\\out\\p19_fix.jsonl"
+}

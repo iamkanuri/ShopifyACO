@@ -1,0 +1,17 @@
+=== tier-gate mechanism, chosen input, A/B vs 6bac24a ===
+  [price-only-on-later-offer]
+    offer.price     base=null  head=23
+    signals.price   base=false  head=true
+    pageSufficient  base=false  head=true   <- true means /products/{handle}.json is NOT fetched
+  [control-priced-first]
+    offer.price     base=23  head=23
+    signals.price   base=true  head=true
+    pageSufficient  base=true  head=true   <- true means /products/{handle}.json is NOT fetched
+
+=== the ONE real store carrying an offer priceSpecification ===
+  host=organicbasics.com
+  offers={"@type":"Offer","availability":"http://schema.org/InStock","itemCondition":"https://schema.org/NewCondition","url":"https://organicbasics.com/products/womens-core-triangle-bralette-steel-blue","price":50,"priceCurrency":"EUR","priceSpecification":[{"@type":"UnitPriceSpecification","membershipPointsEarned":50,"validForMemberTier":[{"@type":"MemberProgramTier","@id":"https://organicbasics.com/pages/the-organic-basics-club#Caterpillar","url":"https://organicbasics.com/pages/the-organic-basics-club"},{"@type":"MemberProgramTier","@id":"https://organicbasics.com/pages/the-organic-basics-club#Cocoon","url":"https://organicbasics.com/pages/the-organic-basics-club"},{"@type":"MemberProgramTier","@id":"https://organicbasics.com/pages/the-organic-basics-club#Butterfly","url":"https://organicbasics.com/pages/the-organic-basics-club"}]}],"seller":{"@type":"OnlineStore","@id":"https://organicbasics.com/#Organization","url":"https://organicbasics.com"},"inventoryLevel":{"@type":"QuantitativeValue","value":42,"unitCode":"EA"},"acceptedPaymentMethod":[{"@type":"PaymentService","name":"american express","image":"//organicbasics.com/cdn/shopifycloud/storefront/assets/payment_icons/american_express-
+  base price=50  head price=50
+  (1 dumped)
+
+RESOLUTION: DECISIVE.
