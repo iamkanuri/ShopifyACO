@@ -802,7 +802,22 @@ app.post(
       });
     }
     try {
-      const out = await runStandardTest(url, slug);
+      // v4.4 — THE TIER IS PINNED OFF ON EVERY PATH THAT MINTS A PERMANENT RESULT.
+      //
+      // Not a verdict on the tier's precision — that is measured separately. This is
+      // forced by DURABILITY alone, and P-28 item 4 stated it before any rate was
+      // known: "A citable result cannot be a sample. Even at perfect precision,
+      // /demo and any stored result must pin the tier, or two readers of the same URL
+      // can see different verdicts." This route stores its verdict at a permanent,
+      // append-only URL, so it is exactly that case.
+      //
+      // Measured, on production, before this line existed: 4 stored results carry a
+      // tier-granted pass and 3 of them publish a pass the quoted sentence does not
+      // support — including one standard-layer result citing Coffee Standard v1.3.
+      // Those four are disclosed at render time by `resultNotices.ts`; this stops the
+      // fifth. The notice's own words ("an inference tier, since removed from this
+      // path") are true because of this line, so the two must not be separated.
+      const out = await runStandardTest(url, slug, { semantic: { disabled: true } });
 
       // v4.2 CP-1 — PERSIST THE STANDARD-LAYER VERDICT.
       //
@@ -887,7 +902,10 @@ app.post(
     const startedAt = Date.now();
     let result: Awaited<ReturnType<typeof runProductTest>>;
     try {
-      result = await runProductTest(url, { force: body.force === true });
+      // v4.4 — pinned off for the same reason as the standard route above: this route
+      // stores its result at a permanent URL (`storePublicTest`, below), and a citable
+      // artifact cannot be produced by a sampled call. See `resultNotices.ts`.
+      result = await runProductTest(url, { force: body.force === true, semantic: { disabled: true } });
     } catch (err) {
       // The one path that produces a 500. Previously invisible to telemetry, so a
       // systematic crash would have looked like an absence of traffic.

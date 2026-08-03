@@ -1304,6 +1304,35 @@ tbody tr.you td:first-child { box-shadow: inset 2px 0 0 var(--ink); }
 .bt-provenance p { font-size: 13px !important; }
 .bt-limit { color: var(--ink) !important; }
 
+/* v4.4 — THE CORRECTION NOTICE on a permanent result an inference tier touched.
+   It uses --attention, NOT --not-proven, and the palette test is what said so. Crimson
+   means exactly one thing here — a requirement this store could not prove — and this
+   notice is a statement about US, not about the store. Borrowing the colour would have
+   made a correction of ours read as a failure of theirs, on the one page a merchant is
+   most likely to be shown. It renders ABOVE the provenance card, so a reader who
+   forwards the page cannot have missed it. */
+.bt-correction { border: 1px solid var(--attention); border-left-width: 3px; border-radius: var(--radius);
+  background: var(--attention-soft); padding: 18px 20px; margin: 20px 0 24px; }
+.bt-correction .bt-correction-head { font-size: 14px !important; color: var(--ink) !important; margin: 0 0 8px !important; }
+.bt-correction p { font-size: 13px !important; line-height: 1.6; color: var(--ink-2) !important; margin: 0 0 8px !important; }
+.bt-correction p:last-child { margin-bottom: 0 !important; }
+.bt-row-correction { font-size: 13px !important; line-height: 1.6; color: var(--ink) !important;
+  border-left: 2px solid var(--attention); background: var(--attention-soft);
+  padding: 9px 13px; margin: 8px 0 10px !important; border-radius: var(--radius-sm); }
+/* The row keeps its recorded status badge — the verdict is what we published and is not
+   rewritten — but the row itself is visually withdrawn so the badge cannot be read alone. */
+.bt-row-withdrawn h3 { text-decoration: line-through; text-decoration-color: var(--attention);
+  text-decoration-thickness: 1px; }
+
+/* The forwardable copy. Printed, so it must survive a page break as one block. */
+.op-correction { border: 1px solid var(--attention); border-left-width: 3px; border-radius: var(--radius);
+  background: var(--attention-soft); padding: 14px 16px; margin: 0 0 18px; break-inside: avoid; }
+.op-correction h2 { font-size: 15px !important; margin: 0 0 8px !important; }
+.op-correction p { font-size: 12.5px !important; line-height: 1.55; color: var(--ink-2); margin: 0 0 7px; }
+.op-correction p:last-child { margin-bottom: 0; }
+.op-row-correction { font-size: 12.5px !important; color: var(--ink) !important;
+  border-left: 2px solid var(--attention); padding-left: 10px; margin: 0 0 7px !important; }
+
 .bt-row { border-top: 1px solid var(--border); padding: 22px 0 6px; scroll-margin-top: 16px; }
 .bt-row h3 { margin-top: 6px; font-size: 17px; }
 .bt-status { display: inline-block; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;

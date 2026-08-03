@@ -32,6 +32,7 @@ import {
   findStandard, esc, fitnessOf, shortName, type SitePage,
 } from "./standardsSite.js";
 import type { StoredResultRow } from "../db/buyerTests.js";
+import { resultNotice, grantForRow, noticeLines } from "./resultNotices.js";
 
 /** ⚠️ pg returns timestamptz as a Date OBJECT, and String(date).slice(0,10) yields
  *  "Mon Jul 27" — a day and month with no year, which on a dated artifact is worse than
@@ -141,7 +142,26 @@ export function resultPageDefects(html: string): string[] {
   return out;
 }
 
-function rowHtml(a: Assertion, r: ResolvedResult): string {
+/**
+ * The v4.4 correction notice, when the tier moved a verdict on this result.
+ *
+ * ⚠️ IT RENDERS ABOVE THE PROVENANCE CARD AND ABOVE EVERY ROW. A correction placed
+ * below the verdict it corrects is read after the thing it is correcting, and a reader
+ * who forwards the page has already forwarded the wrong number. Same reasoning as the
+ * standard's posture paragraph rendering first and verbatim.
+ */
+function noticeSection(row: StoredResultRow): string {
+  const n = resultNotice(row);
+  if (!n) return "";
+  const { headline, body } = noticeLines(n);
+  return `<aside class="bt-correction" role="note" id="correction">
+  <p class="bt-correction-head"><strong>${esc(headline)}</strong></p>
+  ${body.map((line) => p(line)).join("")}
+  <p class="bt-note"><a href="/test?url=${encodeURIComponent(row.product_url)}">Run this test again →</a> A fresh run does not use that tier and produces the same verdict every time it is run against the same page.</p>
+</aside>`;
+}
+
+function rowHtml(a: Assertion, r: ResolvedResult, row: StoredResultRow): string {
   // ⚠️ `entryUrls` IS KEYED BY ENTRY ID, NOT BY ASSERTION LABEL — a direct
   // `entryUrls[a.label]` renders no citation at all and looks exactly like a row that
   // legitimately has none. The peer record is what carries the id (its own `label` is the
@@ -173,10 +193,22 @@ function rowHtml(a: Assertion, r: ResolvedResult): string {
     ? `<p class="bt-peer">${esc(peerSentence(peer, PASSING.has(a.status)))}</p>`
     : "";
 
-  return `<section class="bt-row bt-${esc(a.status)}">
+  // The row-level half of the v4.4 correction. The page-level notice can be scrolled
+  // past; a reader who lands on an anchor or skims the table must still meet it here.
+  const grant = grantForRow(row, a.label);
+  const grantNote = grant
+    ? `<p class="bt-row-correction"><strong>${
+        grant.verdict === "false_pass"
+          ? "This row's pass does not meet the evidence bar."
+          : "This row was reached by inference, and was reviewed."
+      }</strong> ${esc(grant.why)} <a href="#correction">Why this notice is here →</a></p>`
+    : "";
+
+  return `<section class="bt-row bt-${esc(a.status)}${grant?.verdict === "false_pass" ? " bt-row-withdrawn" : ""}">
   <p class="bt-status">${esc(STATUS_LABEL[a.status] ?? a.status)}</p>
   <h3>${esc(a.label)}</h3>
   ${cite}
+  ${grantNote}
   ${p(a.detail)}
   ${receipt.join("")}
   ${peerLine}
@@ -252,6 +284,7 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
   <h1>${esc(t.productName ?? host)}</h1>
 
   ${supersession}
+  ${noticeSection(row)}
 
   <aside class="bt-provenance" role="note">
     <dl>
@@ -283,7 +316,7 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
     ${p(`Read from: ${(t.surfacesChecked ?? []).join(", ") || "—"}.${
       (t.notInspectable ?? []).length ? ` Not publicly inspectable: ${t.notInspectable.join(", ")}.` : ""}`)}
     ${r.peersRederived ? `<p class="bt-note">The peer line under each row is a measurement of our sample, not of this store, and it is read from the published measurement for the exact standard version this result cites — so a correction we publish later reaches this page, while the verdicts above never move.</p>` : ""}
-    ${t.assertions.map((a) => rowHtml(a, r)).join("")}
+    ${t.assertions.map((a) => rowHtml(a, r, row)).join("")}
   </section>
 
   ${boundSection(row)}

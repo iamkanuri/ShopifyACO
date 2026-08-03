@@ -24,6 +24,7 @@ import { peerSentence } from "../../viewer/src/peerSentence.js";
 import { findStandard, esc, fitnessOf, type SitePage } from "./standardsSite.js";
 import type { StoredResultRow } from "../db/buyerTests.js";
 import type { ResolvedResult } from "./resultPage.js";
+import { resultNotice, grantForRow, noticeLines } from "./resultNotices.js";
 
 /** Printed verbatim on the artifact. If the rule below changes, this must change with it —
  *  `test/onePager.test.ts` asserts the sentence and the implementation agree on order. */
@@ -143,10 +144,28 @@ export function renderOnePager(row: StoredResultRow, r: ResolvedResult, base: st
     ? `Measured false-pass rate of the engine that produced this, executing ${esc(String(published!.doc.standard_id))} v${esc(String(published!.doc.version))} on ${sample.products_evaluated ?? sample.stores} real ${esc(row.standard_slug ?? "")} products across ${sample.stores} storefronts: ${sample.point_estimate_pct.toFixed(2)}% point estimate, ${sample.bound_95_cluster_icc02_pct.toFixed(2)}% 95% upper bound, over ${sample.pass_rows_audited} passing rows each read individually. It is the rate at which this engine calls a requirement proven when the evidence does not support it — not a confidence score for any row above, and not a claim about ${esc(host)}.`
     : `This run used the general engine, not a published standard. The measured false-pass rates we publish are measured while executing a standard on its own category, so none is quoted here: it would attribute a measurement to a different thing than the one that produced this page.`;
 
+  // v4.4 — the correction travels WITH the artifact. This is the forwardable copy: a
+  // recipient who has the PDF and never opens the permanent link must still see it, so
+  // it renders here in full rather than as a pointer back to the page.
+  const notice = resultNotice(row);
+  const noticeHtml = notice ? (() => {
+    const { headline, body } = noticeLines(notice);
+    return `<section class="op-correction">
+  <h2>${esc(headline)}</h2>
+  ${body.map((line) => `<p>${esc(line)}</p>`).join("")}
+</section>`;
+  })() : "";
+
   const rowsHtml = material.map((m, i) => `<section class="op-finding">
   <p class="op-n">Finding ${i + 1} · ${esc(m.a.status === "not_proven" ? "not stated on the page"
     : m.a.status === "requires_store_access" ? "not decidable from public data" : "stated on the page")}</p>
   <h3>${esc(m.a.label)}</h3>
+  ${(() => {
+    const g = grantForRow(row, m.a.label);
+    return g ? `<p class="op-row-correction"><strong>${esc(g.verdict === "false_pass"
+      ? "This row's pass does not meet the evidence bar."
+      : "This row was reached by inference, and was reviewed.")}</strong> ${esc(g.why)}</p>` : "";
+  })()}
   <p>${esc(m.a.detail)}</p>
   ${m.a.evidenceQuote ? `<blockquote class="op-quote">${esc(m.a.evidenceQuote)}</blockquote>` : ""}
   ${m.peer ? `<p class="op-peer">${esc(peerSentence(m.peer, PASSING.has(m.a.status)))}</p>` : ""}
@@ -163,6 +182,8 @@ export function renderOnePager(row: StoredResultRow, r: ResolvedResult, base: st
   <p class="op-kicker">Machine-buyer conformance summary</p>
   <h1>${esc(t.productName ?? host)}</h1>
   <p class="op-sub">${esc(row.product_url)}</p>
+
+  ${noticeHtml}
 
   <dl class="op-facts">
     <div><dt>Tested</dt><dd>${esc(ranDay)}</dd></div>

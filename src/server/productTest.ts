@@ -1611,8 +1611,16 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  *
  * v2.1.0 — v3.8: the tier-aware cents conversion and the non-USD price refusal.
  * Together they change what 44 of 349 captured stores' price rows report.
+ *
+ * v2.5.0 — v4.4: the semantic tier is pinned OFF on both public routes that mint a
+ * permanent result. No matcher file moved, so the content-hash tripwire in
+ * `test/engineVersion.test.ts` stayed silent — and the bump is still required, because
+ * this test's own rule is "if the change can alter ANY row a merchant sees". It can:
+ * a claim row the tier would have promoted to `pass_evidenced` now stays `not_proven`
+ * on identical input. That is precisely the "status could differ" condition above, and
+ * a config-shaped change that moves live verdicts is a behaviour change like any other.
  */
-export const ENGINE_VERSION = "v2.4.0";
+export const ENGINE_VERSION = "v2.5.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency

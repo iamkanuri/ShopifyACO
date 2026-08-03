@@ -1,0 +1,317 @@
+[
+  {
+    "token": "t_5996b5618d2d5f9988eb",
+    "kind": "general",
+    "store_host": "magicspoon.com",
+    "product_url": "https://magicspoon.com/products/variety-6-pack-ac-bva",
+    "created_at": "2026-07-26T19:36:54.594Z",
+    "standard_slug": null,
+    "standard_version": null,
+    "engine_version": null,
+    "result": {
+      "semantic": {
+        "called": true,
+        "vetoed": 1,
+        "costUsd": 0.0033817499999999998,
+        "granted": 1,
+        "discarded": 0
+      },
+      "assertions": [
+        {
+          "label": "Organic",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Gluten-free",
+          "status": "pass_evidenced",
+          "evidenceQuote": "Try our Cereal, Treats, and Granola to fuel your own kind of high-protein, gluten-free, keto-friendly magic!</p>",
+          "evidenceSurface": "FAQ structured data"
+        },
+        {
+          "label": "Price under $55",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant prices"
+        },
+        {
+          "label": "In stock and purchasable",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "structured data"
+        },
+        {
+          "label": "Available as a one-time purchase",
+          "status": "pass_no_blocking",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Delivery timing is stated",
+          "status": "pass_evidenced",
+          "evidenceQuote": "<p>We process most orders within 1 business day, and delivery typically takes 5-7 days within the US.",
+          "evidenceSurface": "FAQ structured data"
+        },
+        {
+          "label": "Materials are stated",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Measurements are stated",
+          "status": "pass_evidenced",
+          "evidenceQuote": "Just one serving of Magic Spoon Cereal, Treats, or Granola has 11-14 grams of high quality protein– that covers 22-26% of an average daily protein intake!",
+          "evidenceSurface": "FAQ structured data"
+        },
+        {
+          "label": "Care or use instructions are stated",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Product identifier (GTIN or MPN) is published",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "structured data"
+        }
+      ]
+    }
+  },
+  {
+    "token": "t_15802547df13b8daf273",
+    "kind": "general",
+    "store_host": "www.klatchcoffee.com",
+    "product_url": "https://www.klatchcoffee.com/products/ethiopia-yirgacheffe-supernatural",
+    "created_at": "2026-07-30T00:47:33.333Z",
+    "standard_slug": null,
+    "standard_version": null,
+    "engine_version": null,
+    "result": {
+      "semantic": {
+        "called": true,
+        "vetoed": 0,
+        "costUsd": 0.0016477500000000003,
+        "granted": 1,
+        "discarded": 0
+      },
+      "assertions": [
+        {
+          "label": "Single-origin",
+          "status": "pass_evidenced",
+          "evidenceQuote": "Discover Ethiopia Yirgacheffe Supernatural; bursting with flavor notes of sweet berries, rose, and silky milk chocolate, this exceptional coffee showcases an enhanced natural \"Supe…",
+          "evidenceSurface": "product copy"
+        },
+        {
+          "label": "Price under $25",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant prices"
+        },
+        {
+          "label": "310 g bag option available",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant options"
+        },
+        {
+          "label": "In stock and purchasable",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant options"
+        },
+        {
+          "label": "Available as a one-time purchase",
+          "status": "pass_no_blocking",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Delivery timing is stated",
+          "status": "pass_evidenced",
+          "evidenceQuote": "Domestic Shipping Policy Shipment processing time All orders are processed within 2-3 business days - please keep in mind that we do fresh-roast all coffee prior to shipment after…",
+          "evidenceSurface": "shipping policy"
+        },
+        {
+          "label": "Materials are stated",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Measurements are stated",
+          "status": "pass_evidenced",
+          "evidenceQuote": "2 lb bag.",
+          "evidenceSurface": "variant options"
+        },
+        {
+          "label": "Product identifier (GTIN or MPN) is published",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        }
+      ]
+    }
+  },
+  {
+    "token": "t_91db6f4c309fcf6734c9",
+    "kind": "general",
+    "store_host": "www.klatchcoffee.com",
+    "product_url": "https://www.klatchcoffee.com/products/ethiopia-yirgacheffe-supernatural",
+    "created_at": "2026-07-30T00:49:13.829Z",
+    "standard_slug": null,
+    "standard_version": null,
+    "engine_version": null,
+    "result": {
+      "semantic": {
+        "called": true,
+        "vetoed": 0,
+        "costUsd": 0.0016477500000000003,
+        "granted": 1,
+        "discarded": 0
+      },
+      "assertions": [
+        {
+          "label": "Single-origin",
+          "status": "pass_evidenced",
+          "evidenceQuote": "Discover Ethiopia Yirgacheffe Supernatural; bursting with flavor notes of sweet berries, rose, and silky milk chocolate, this exceptional coffee showcases an enhanced natural \"Supe…",
+          "evidenceSurface": "product copy"
+        },
+        {
+          "label": "Price under $25",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant prices"
+        },
+        {
+          "label": "310 g bag option available",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant options"
+        },
+        {
+          "label": "In stock and purchasable",
+          "status": "pass_evidenced",
+          "evidenceQuote": null,
+          "evidenceSurface": "variant options"
+        },
+        {
+          "label": "Available as a one-time purchase",
+          "status": "pass_no_blocking",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Delivery timing is stated",
+          "status": "pass_evidenced",
+          "evidenceQuote": "Domestic Shipping Policy Shipment processing time All orders are processed within 2-3 business days - please keep in mind that we do fresh-roast all coffee prior to shipment after…",
+          "evidenceSurface": "shipping policy"
+        },
+        {
+          "label": "Materials are stated",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        },
+        {
+          "label": "Measurements are stated",
+          "status": "pass_evidenced",
+          "evidenceQuote": "2 lb bag.",
+          "evidenceSurface": "variant options"
+        },
+        {
+          "label": "Product identifier (GTIN or MPN) is published",
+          "status": "not_proven",
+          "evidenceQuote": null,
+          "evidenceSurface": null
+        }
+      ]
+    }
+  },
+  {
+    "token": "t_0db9852c7e19461c49f8",
+    "kind": "standard",
+    "store_host": "klatchcoffee.com",
+    "product_url": "https://klatchcoffee.com/products/ethiopia-yirgacheffe-supernatural",
+    "created_at": "2026-07-30T03:10:47.791Z",
+    "standard_slug": "coffee",
+    "standard_version": "1.3",
+    "engine_version": "v2.4.0",
+    "result": {
+      "ok": true,
+      "result": {
+        "semantic": {
+          "called": true,
+          "vetoed": 0,
+          "costUsd": 0.001533,
+          "granted": 1,
+          "discarded": 0
+        },
+        "assertions": [
+          {
+            "label": "Whole bean option is listed and purchasable",
+            "status": "pass_evidenced",
+            "evidenceQuote": null,
+            "evidenceSurface": "variant options"
+          },
+          {
+            "label": "Ground option is listed and purchasable",
+            "status": "not_proven",
+            "evidenceQuote": null,
+            "evidenceSurface": null
+          },
+          {
+            "label": "Espresso grind option is listed and purchasable",
+            "status": "pass_evidenced",
+            "evidenceQuote": null,
+            "evidenceSurface": "variant options"
+          },
+          {
+            "label": "Filter grind option is listed and purchasable",
+            "status": "pass_evidenced",
+            "evidenceQuote": null,
+            "evidenceSurface": "variant options"
+          },
+          {
+            "label": "A weight or measurement is stated in readable text",
+            "status": "pass_evidenced",
+            "evidenceQuote": "2 lb bag.",
+            "evidenceSurface": "variant options"
+          },
+          {
+            "label": "An organic claim is stated in readable text",
+            "status": "not_proven",
+            "evidenceQuote": null,
+            "evidenceSurface": null
+          },
+          {
+            "label": "A fair-trade scheme claim is stated in readable text",
+            "status": "not_proven",
+            "evidenceQuote": null,
+            "evidenceSurface": null
+          },
+          {
+            "label": "A single-origin claim is stated in readable text",
+            "status": "pass_evidenced",
+            "evidenceQuote": "Discover Ethiopia Yirgacheffe Supernatural; bursting with flavor notes of sweet berries, rose, and silky milk chocolate, this exceptional coffee showcases an enhanced natural \"Supe…",
+            "evidenceSurface": "product copy"
+          },
+          {
+            "label": "A product identifier is published in structured data",
+            "status": "not_proven",
+            "evidenceQuote": null,
+            "evidenceSurface": null
+          },
+          {
+            "label": "A dispatch or delivery window is stated",
+            "status": "pass_evidenced",
+            "evidenceQuote": "Domestic Shipping Policy Shipment processing time All orders are processed within 2-3 business days - please keep in mind that we do fresh-roast all coffee prior to shipment after…",
+            "evidenceSurface": "shipping policy"
+          }
+        ]
+      }
+    }
+  }
+]

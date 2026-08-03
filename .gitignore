@@ -143,3 +143,14 @@ experiments/v4-3/*
 !experiments/v4-3/*.md
 !experiments/v4-3/*.ts
 !experiments/v4-3/*.mjs
+
+# v4.4 — the semantic-tier measurement. The .md record, the probes, and the trimmed
+# production fixture the notice test anchors on. `pilot.jsonl` / `full.jsonl` /
+# `affected_rows.json` stay OUT: the first two are regenerable measurement output and the
+# third is the untrimmed production read (the trimmed, committed copy the test actually
+# needs lives at test/fixtures/v4-4-affected-rows.json).
+!experiments/v4-4/
+experiments/v4-4/*
+!experiments/v4-4/*.md
+!experiments/v4-4/*.ts
+!experiments/v4-4/*.mjs

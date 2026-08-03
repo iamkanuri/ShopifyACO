@@ -95,8 +95,19 @@ function matcherHash(): string {
 // prevent". Version numbers are free; a silently-shared version is not. Only the final
 // deployed value is ever recorded against a merchant's saved test, so the intermediate
 // v2.3.0 costs nothing.
-const PINNED_ENGINE_VERSION = "v2.4.0";
-const PINNED_MATCHER_HASH = "b8d2ca02cade979d";
+// v4.4 — v2.5.0. THE TRIPWIRE DID NOT FIND THIS ONE, AND THAT IS THE POINT WORTH
+// RECORDING. The change is a route-level pin (`semantic: { disabled: true }` on the two
+// public routes that store a permanent result) plus this file's own bump; no matcher
+// LOGIC moved. Had the version literal not lived inside `productTest.ts`, the content
+// hash would have stayed identical while live verdicts changed — a claim row the
+// semantic tier would have promoted to `pass_evidenced` now stays `not_proven`.
+//
+// So the hash is a floor, not a ceiling: it catches matcher edits, and it is blind to a
+// behaviour change made anywhere else — a route, a dep, an env var. The rule that
+// governs is the prose one ("if the change can alter ANY row a merchant sees"), and it
+// has to be applied by a person. Do not read a quiet tripwire as "no bump needed".
+const PINNED_ENGINE_VERSION = "v2.5.0";
+const PINNED_MATCHER_HASH = "4ada00aa8e434f50";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();

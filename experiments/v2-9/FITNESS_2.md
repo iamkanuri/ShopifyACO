@@ -158,8 +158,24 @@ documented elsewhere. Everything downstream of the socket is production code.
 
 ### The fidelity gap, stated precisely
 
-1. **The semantic tier is off** (`PRODUCT_TEST_SEMANTIC=0`). It can only understate claim-row
-   pass counts; it cannot manufacture a lexical false pass, so it does not flatter the rate.
+1. **The semantic tier is off** (`PRODUCT_TEST_SEMANTIC=0`).
+
+   > ⛔ **RETIRED AT v4.4 — THE SECOND HALF OF THIS ITEM WAS FALSE, AND EVERY BOUND IN THIS
+   > DOCUMENT RESTED ON IT.** It read: *"It can only understate claim-row pass counts; it
+   > cannot manufacture a lexical false pass, so it does not flatter the rate."* The premise
+   > is true; the conclusion does not follow. The tier cannot manufacture a **lexical** false
+   > pass — which is not the property the argument needed. It grants on its own reading of a
+   > sentence, and the verbatim-quote gate constrains the **quote**, never the **inference**.
+   >
+   > Measured (v4.4, 20 stores, 3 runs each, model call live): the tier was called on 10 of
+   > 20 stores, asked about 16 claim rows and granted 3 — **2 real statements the lexical
+   > pass missed, 1 false pass**. So running it ON would move pass counts up and could move
+   > the false-positive rate **either way**. n=3 states no rate; the full-corpus run is
+   > pending. `experiments/v4-4/REPORT.md`, `ENGINE_GAPS` **P-29**.
+   >
+   > **What replaces it:** as of v4.4 both public routes pin the tier OFF
+   > (`ENGINE_VERSION` v2.5.0), so this setting no longer differs from production — it
+   > matches it. The bounds describe the engine that runs.
 2. No network, so no throttle or negative cache. Tier *selection* is unaffected — a tier that
    429'd on capture day replays as a 429.
 3. The store is frozen at capture time.
