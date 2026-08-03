@@ -1018,13 +1018,28 @@ export function zeroAwareMin(prices: number[], offerFallback: number | null): { 
   // was measured before writing the rule, and it made the bug invisible to replay. The
   // frozen fetch corpus caught it on the first run (`znn-02`, whose honest answer is $45).
   // Sampling real stores catches artefacts; only chosen input catches logic.
-  const nonZero = prices.filter((p) => p > 0);
+  // ⚠️ THE TEST IS ON WHAT RENDERS, NOT ON THE VALUE. Every surface prints
+  // `$${n.toFixed(2)}`, so a price of 0.004 is not zero but IS published as
+  // `Lowest readable price is $0.00.` — the exact sentence this function exists to stop,
+  // one significant figure away from the guard. An independent verifier found it by
+  // executing `zeroAwareMin([0.004], null)`, which returned `{0.004, false}`. Rounding to
+  // cents first makes the guard test the thing the merchant actually sees.
+  const cents = (n: number) => Math.round(n * 100) / 100;
+  // ⚠️ AND THE DOMAIN IS CHECKED HERE RATHER THAN ASSUMED FROM THE CALLER. `priceToUsd`
+  // fails closed on negatives, NaN and Infinity today, so none can reach this — but the
+  // same verifier showed the consequences if one ever did: `[-5]` answered "every price
+  // readable on this product is zero", which is a false statement about a real store, and
+  // `[Infinity]` rendered `$Infinity`. A guard that is only correct because of what its
+  // caller happens to filter is one call-site change from being wrong.
+  const usable = prices.filter((p) => Number.isFinite(p) && p >= 0);
+  const nonZero = usable.filter((p) => cents(p) > 0);
   if (nonZero.length) return { minPriceUsd: Math.min(...nonZero), publishedZeroPrice: false };
   // Nothing above zero from the variant tier. If the tier answered at all, everything it
   // published was zero; otherwise fall back to the offer, which is subject to the same rule.
-  const candidate = prices.length ? 0 : offerFallback;
-  if (candidate === 0) return { minPriceUsd: null, publishedZeroPrice: true };
-  return { minPriceUsd: candidate ?? null, publishedZeroPrice: false };
+  const candidate = usable.length ? 0 : offerFallback;
+  if (candidate == null || !Number.isFinite(candidate) || candidate < 0) return { minPriceUsd: null, publishedZeroPrice: false };
+  if (cents(candidate) === 0) return { minPriceUsd: null, publishedZeroPrice: true };
+  return { minPriceUsd: candidate, publishedZeroPrice: false };
 }
 
 /** Pull the JSON-LD Product node's own `description` (main's extractPage keeps only
@@ -2086,11 +2101,21 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     }
     case "price_under": {
       const checked = ["variant prices", "structured data"];
-      if (p.minPriceUsd == null) {
-        // v4.5 — A PUBLISHED ZERO AND A PUBLISHED NOTHING ARE DIFFERENT FACTS. Both
-        // leave us unable to state a price, so both refuse; but telling a merchant who
-        // publishes `0.00` that "no public price is exposed" would be false about their
-        // own markup, and it would hide the thing they can act on. See `zeroAwareMin`.
+      // v4.5 — ⚠️ THE ZERO IS RE-TESTED HERE, NOT TRUSTED FROM THE CONSTRUCTOR.
+      // `zeroAwareMin` is the only producer of `minPriceUsd` on both product paths and it
+      // can no longer emit a zero, so this reads as redundant. It is not. `evaluate` is a
+      // PURE function over a SUPPLIED `PublicProduct`, and the adversarial corpus, the
+      // reconstructed-contract path and any future constructor can hand it one directly —
+      // the corpus case that pins this very defect does exactly that. A guard that is
+      // correct only because of what its current caller happens to filter is one call-site
+      // away from being wrong, and here the failure mode is silent: `0 < capUsd` is true of
+      // every cap ever generated, so the row passes and says `$0.00`.
+      const zeroPrice = p.minPriceUsd != null && Math.round(p.minPriceUsd * 100) === 0;
+      if (p.minPriceUsd == null || zeroPrice) {
+        // A PUBLISHED ZERO AND A PUBLISHED NOTHING ARE DIFFERENT FACTS. Both leave us
+        // unable to state a price, so both refuse; but telling a merchant who publishes
+        // `0.00` that "no public price is exposed" would be false about their own markup,
+        // and it would hide the thing they can act on. See `zeroAwareMin`.
         return {
           label: req.label,
           status: "requires_store_access",
@@ -2101,7 +2126,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           // the right STATUS and quoted the zero back at the merchant anyway. The corpus
           // is blunt on purpose: a merchant skimming a row does not parse the disclaimer
           // around a number, they read the number. Say what we did without restating it.
-          detail: p.publishedZeroPrice
+          detail: (p.publishedZeroPrice || zeroPrice)
             ? accessDetail(p, "Every price readable on this product is zero, which this test does not treat as a stated price. Whether the product is given away or its price is simply not published is not something public data settles, and this test does not adjudicate it.")
             : accessDetail(p, "No public price is exposed on this product."),
         };

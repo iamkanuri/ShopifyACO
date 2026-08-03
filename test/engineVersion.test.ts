@@ -106,14 +106,26 @@ function matcherHash(): string {
 // behaviour change made anywhere else — a route, a dep, an env var. The rule that
 // governs is the prose one ("if the change can alter ANY row a merchant sees"), and it
 // has to be applied by a person. Do not read a quiet tripwire as "no bump needed".
-// v4.5 — v2.6.0. ENGINE_GAPS P-19. Unlike the v4.4 entry above, this one the tripwire
-// DID catch on its own: `productTest.ts` and `extract.ts` are both hashed files and both
-// moved. Measured effect on the 335-store deduped corpus, quote-level A/B: 11 price rows
-// stop being generated (10 of them false `Lowest readable price is $0.00.` passes), 2
-// stores have their stated price corrected to the minimum their own markup publishes,
-// 0 rows of any other kind change, 2804 rows unchanged.
+// v4.5 — v2.6.0. ENGINE_GAPS P-19, FIRST HALF ONLY. Unlike the v4.4 entry above, this one
+// the tripwire DID catch on its own: `productTest.ts` is a hashed file and it moved.
+//
+// Measured effect on the 335-store deduped corpus, quote-level A/B: **11 price rows stop
+// being generated**, 10 of them false `Lowest readable price is $0.00.` passes; 0 rows of
+// any other kind change; 0 rows appear (so dropping the price candidate does not admit a
+// lower-ranked requirement past MAX_REQUIREMENTS); 2806 rows unchanged.
+//
+// ⚠️ "STOP BEING GENERATED" IS THE ACCURATE PHRASE AND THE ONLY ONE TO USE. On the public
+// path `buildBuyerTask` skips the price candidate when `minPriceUsd` is null, and no
+// published standard binds `price_under` (coffee's PRICE-001 is `unbound`) — so the
+// merchant LOSES THE ROW rather than gaining the honest sentence. That sentence renders
+// only where the requirement is supplied: a reconstructed contract on the rerun path. An
+// independent verifier caught the first draft of this commit describing behaviour the
+// public path cannot show.
+//
+// ⚠️ THE SECOND HALF WAS REVERTED, so the hash below is NOT the one that first shipped.
+// `extract.ts` is byte-identical to `main` again — see the tombstone above `parseOffer`.
 const PINNED_ENGINE_VERSION = "v2.6.0";
-const PINNED_MATCHER_HASH = "e68bd69e98d02a78";
+const PINNED_MATCHER_HASH = "7b3c2008e6f94ba6";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();
