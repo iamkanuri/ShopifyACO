@@ -271,7 +271,16 @@ before it gets spent.
 
 ---
 
-## §4 — NOT YET DECIDED, AND DELIBERATELY
+## §4 — DECIDED IN [`FULL_RUN.md`](FULL_RUN.md)
+
+> **The user gave the go and the full corpus ran.** Headline: on 269 distinct stores the tier
+> **answers differently on 11.0% of claim rows asked** across two identical runs, and the
+> seeded klatchcoffee.com known-positive granted in run C and not in run B. Outcome 2 is
+> refused at its own sub-clause — *"precise but unstable does not ship"*. The bounds do not
+> move and no sidecar is written. The section below is what was true at the pilot; it is kept
+> because its reasoning is what the full run then decided.
+
+## §4 (at the pilot) — NOT YET DECIDED, AND DELIBERATELY
 
 The pilot is n=3 grants. It **falsifies outcome 1** (the tier does grant — 18.75% of rows
 asked) and it does not yet separate outcome 2 from outcome 3. The full corpus decides that.
