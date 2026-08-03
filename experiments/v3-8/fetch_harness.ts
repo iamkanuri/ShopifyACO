@@ -75,15 +75,27 @@ const j = (v: unknown): string => JSON.stringify(v);
  *  after the real captured pages, not invented: `var meta = {...};` on its own
  *  line, `Shopify.currency = {"active":...}`, an `og:price:currency` meta. */
 function synthPage(s: StoreSpec): string {
+  // ⚠️ v4.5 REPAIR — THIS SYNTHESIZER USED TO IGNORE `offers_shape` AND `offers`, so any
+  // case describing an offers ARRAY or an AggregateOffer was silently flattened into ONE
+  // plain Offer built from the scalar `price`. `mm-01` ("offers is an ARRAY and parseOffer
+  // commits to the first object") and `mm-02` (AggregateOffer with price and lowPrice)
+  // therefore never presented the shape they are named for — they were VACUOUS, failing
+  // for the generic reason rather than the authored one, and they flagged identically
+  // before and after a change that demonstrably fixes that shape on real stores.
+  // Same family as v3.4's `[publish]` mutations, which all matched the wrong error because
+  // the unmutated fixture was already rejected. A case that cannot fire proves nothing.
+  const spec = s.jsonld as (typeof s.jsonld & { offers_shape?: string; offers?: unknown }) | null | undefined;
+  const scalarOffer = {
+    "@type": "Offer",
+    ...(s.jsonld?.price === undefined ? {} : { price: s.jsonld.price }),
+    ...(s.jsonld?.priceCurrency == null ? {} : { priceCurrency: s.jsonld.priceCurrency }),
+    ...(s.jsonld?.availability == null ? {} : { availability: `https://schema.org/${s.jsonld.availability}` }),
+  };
+  const offersNode = spec?.offers !== undefined && spec.offers !== null ? spec.offers : scalarOffer;
   const ld = s.jsonld
     ? `<script type="application/ld+json">${j({
       "@context": "https://schema.org", "@type": "Product", name: "Case Product",
-      offers: {
-        "@type": "Offer",
-        ...(s.jsonld.price === undefined ? {} : { price: s.jsonld.price }),
-        ...(s.jsonld.priceCurrency == null ? {} : { priceCurrency: s.jsonld.priceCurrency }),
-        ...(s.jsonld.availability == null ? {} : { availability: `https://schema.org/${s.jsonld.availability}` }),
-      },
+      offers: offersNode,
     })}</script>`
     : "";
   const b = s.bootstrap;

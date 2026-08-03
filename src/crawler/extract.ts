@@ -117,12 +117,47 @@ function typesOf(node: Record<string, unknown>): string[] {
 }
 const isType = (node: Record<string, unknown>, name: string) => typesOf(node).some((t) => t.toLowerCase() === name.toLowerCase());
 
+/**
+ * v4.5 (ENGINE_GAPS P-19, second half) — THE LOWEST READABLE PRICE MUST ACTUALLY BE THE
+ * LOWEST ONE THAT IS READABLE.
+ *
+ * Every readable price on every offer object, so the caller can take a minimum. The old
+ * code read `offers.price ?? offers.lowPrice ?? offers.priceSpecification?.price` off the
+ * FIRST offer object only, which is wrong twice over for a row whose entire promise is
+ * the word "lowest":
+ *   • an offers ARRAY has no ordering semantics in schema.org, so the first entry is
+ *     simply whichever one the theme emitted first — `templecoffee.com` publishes 11
+ *     offers and the first is $29.50 against a true minimum of $23.00;
+ *   • on an `AggregateOffer` emitters set `price` to the HIGH price and put the low one
+ *     in `lowPrice`, so the `??` chain preferred exactly the wrong field.
+ * Taking the minimum over all of them closes both without an `@type` check, because
+ * "the smallest price this markup states" is the same answer in both shapes.
+ */
+function readablePrices(raw: unknown): number[] {
+  const out: number[] = [];
+  for (const o of arr(raw)) {
+    if (!o || typeof o !== "object") continue;
+    const obj = o as Record<string, unknown>;
+    for (const v of [obj.price, obj.lowPrice, (obj.priceSpecification as Record<string, unknown> | undefined)?.price]) {
+      const n = num(v);
+      if (n != null) out.push(n);
+    }
+  }
+  return out;
+}
+
 function parseOffer(raw: unknown): OfferInfo | null {
   const offers = arr(raw).find((o) => o && typeof o === "object") as Record<string, unknown> | undefined;
   if (!offers) return null;
   const availabilityRaw = str(offers.availability);
+  // ⚠️ ONLY THE PRICE IS TAKEN ACROSS ALL OFFERS. `currency`, `availability`,
+  // `hasShippingDetails` and `hasReturnPolicy` still come from the FIRST offer object,
+  // deliberately: this change is scoped to the defect P-19 names, and re-selecting which
+  // offer supplies availability or currency would move rows in three other requirement
+  // kinds that nothing here measured. Where work implies a change elsewhere, file it.
+  const prices = readablePrices(raw);
   return {
-    price: num(offers.price ?? offers.lowPrice ?? (offers.priceSpecification as Record<string, unknown> | undefined)?.price),
+    price: prices.length ? Math.min(...prices) : num(offers.price ?? offers.lowPrice ?? (offers.priceSpecification as Record<string, unknown> | undefined)?.price),
     currency: str(offers.priceCurrency ?? (offers.priceSpecification as Record<string, unknown> | undefined)?.priceCurrency),
     availability: availabilityRaw ? availabilityRaw.replace(/^https?:\/\/schema\.org\//i, "") : null,
     hasShippingDetails: offers.shippingDetails != null,

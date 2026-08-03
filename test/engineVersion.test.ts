@@ -106,8 +106,14 @@ function matcherHash(): string {
 // behaviour change made anywhere else — a route, a dep, an env var. The rule that
 // governs is the prose one ("if the change can alter ANY row a merchant sees"), and it
 // has to be applied by a person. Do not read a quiet tripwire as "no bump needed".
-const PINNED_ENGINE_VERSION = "v2.5.0";
-const PINNED_MATCHER_HASH = "4ada00aa8e434f50";
+// v4.5 — v2.6.0. ENGINE_GAPS P-19. Unlike the v4.4 entry above, this one the tripwire
+// DID catch on its own: `productTest.ts` and `extract.ts` are both hashed files and both
+// moved. Measured effect on the 335-store deduped corpus, quote-level A/B: 11 price rows
+// stop being generated (10 of them false `Lowest readable price is $0.00.` passes), 2
+// stores have their stated price corrected to the minimum their own markup publishes,
+// 0 rows of any other kind change, 2804 rows unchanged.
+const PINNED_ENGINE_VERSION = "v2.6.0";
+const PINNED_MATCHER_HASH = "e68bd69e98d02a78";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();
