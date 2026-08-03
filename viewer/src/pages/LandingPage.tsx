@@ -120,9 +120,16 @@ function HeroArtifactCard({ a }: { a: HeroArtifact }) {
         </dd></div>
       </dl>
 
-      {/* v4.5 — the hero renders `desktop` rows and CSS hides the tail below 700px, so
-          the JS-off document carries the same rows the CSS-on one does. The two count
-          labels are both in the markup for the same reason; only one is ever visible. */}
+      {/* v4.5 — the hero always renders `desktop` rows and CSS hides the tail below 700px;
+          both count labels ship and CSS picks one. The width is never read in JS, so there
+          is no resize listener, no hydration mismatch and no flash of the wrong count on
+          first paint — the label and the list can never disagree, because the same media
+          query decides both.
+          ⚠️ This is NOT a JS-off benefit and an earlier draft of this comment said it was.
+          `/` serves a separate `ssr-snapshot` body to a reader without JS and this card is
+          not in it, so nothing here renders JS-off either way. Checked rather than assumed:
+          the JS-off document is 16,779 characters of real content and contains no `v43-`
+          markup at all. */}
       <ol className="v43-rows v43-rows-compact">
         {a.rows.slice(0, HERO_ROWS.desktop).map((r, i) => (
           <EvidenceRow
