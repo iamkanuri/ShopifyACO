@@ -349,3 +349,33 @@ finished is the interesting half: on a 20-store pilot that step also recovered *
 statements** our word-matching missed — a named farmer group in Tanzania, a named single farm
 in Colombia — which is exactly what it was built for. Whether that trade is worth making is a
 question about a rate, and we are measuring the rate rather than guessing it.
+
+---
+
+## PRODUCTION VERIFICATION (post-deploy, `dcaf1f5`)
+
+Merged and deployed. `/healthz` reports `dcaf1f516b01d71e38c1ddbcbb6991dd4ada0db0`.
+
+```
+EXPECT_SHA=$(git rev-parse HEAD) node experiments/v3-7/verify_prod.mjs      VERIFIED_CLEAN  21/21
+EXPECT_SHA=$(git rev-parse HEAD) node experiments/v3-8/verify_sections.mjs  VERIFIED_CLEAN  15/15
+```
+
+Neither probe was re-pinned. The disclosure, read off the live pages:
+
+| token | store | page notice | row notice | one-pager | headline served |
+|---|---|---|---|---|---|
+| `t_15802547df13b8daf273` | www.klatchcoffee.com | ✓ | ✓ | 200 | Correction: 1 row … did not meet the evidence bar |
+| `t_91db6f4c309fcf6734c9` | www.klatchcoffee.com | ✓ | ✓ | 200 | Correction: 1 row … did not meet the evidence bar |
+| `t_0db9852c7e19461c49f8` | klatchcoffee.com **(standard, Coffee v1.3)** | ✓ | ✓ | 200 | Correction: 1 row … did not meet the evidence bar |
+| `t_5996b5618d2d5f9988eb` | magicspoon.com | ✓ | ✓ | 200 | Notice: a row … was reached by inference |
+
+⚠️ **THE CONTROL IS THE HALF THAT MAKES THIS A MEASUREMENT.** Four pages showing a notice
+proves nothing on its own — a notice that always renders would look identical. A stored
+result with `semantic.granted = 0` (`t_42d82db8c8f616802805`, selected by query rather than
+by hand) was fetched from production and returns **0** occurrences. The notice is
+condition-driven on the live site, not merely present.
+
+Each verdict is served correctly per row: the three adjudicated false say *"did not meet the
+evidence bar"*, and magicspoon — adjudicated as standing — says *"reached by inference"*
+instead. A notice that appeared only on the wrong rows would leak the verdict by its presence.
