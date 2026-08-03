@@ -1102,6 +1102,16 @@ test("NO RATIO IS DRAWN BETWEEN OVERLAPPING INTERVALS, and the live artifact is 
   const ivs = f.samples.map((x) => x.interval_95);
   assert.ok(ivs.every(Boolean), "a live sample publishes no 95% interval, so the overlap test cannot run on it");
   const [a, b] = ivs as Array<{ lower_pct: number; upper_pct: number }>;
+  // ⚠️ v4.5 — THE MARGIN IS NOW 0.31 PERCENTAGE POINTS, AND IT USED TO BE 3.40.
+  // Closing P-19's first half moved the general sample from [2.35, 5.75] to [0.45, 2.45]
+  // against coffee's [2.14, 8.75]. The overlap is the interval [2.14, 2.45]. One more
+  // improvement of that size to the general figure and these intervals SEPARATE — at which
+  // point `renderComparison` stops refusing and starts publishing "higher by about N×" plus
+  // "the number that matters to a merchant is the one measured on their own category", a
+  // sentence retired three times and revived by a fix twice. This assertion is what stands
+  // between that and the public site: it fails LOUDLY rather than letting the page start
+  // making a claim nobody decided to make. If it ever fails, the answer is to re-derive the
+  // comparison honestly on the new numbers — NOT to delete the assertion.
   assert.ok(!(a.lower_pct > b.upper_pct || b.lower_pct > a.upper_pct),
     "the live intervals no longer overlap — this test's premise has changed and the page's claim must be re-derived, not left asserting a refusal");
   const html = renderFitness(s);

@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "aislelens",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "src/server/index.ts"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--import", "tsx", "src/server/index.ts"],
       "port": 8787
     }
   ]
