@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import type { ReportPreview } from "./reportPreview.js";
 import type { IndexOgModel } from "./indexSsr.js";
+import { OG_DEFAULT_LINE } from "../../viewer/src/copy.js";
 
 // ===========================================================================
 // Dynamic 1200×630 OG/social share cards (hand-built SVG → PNG via resvg, with a
@@ -37,16 +38,25 @@ const MX = 140;        // left content margin
 const RX = W - MX;     // right-aligned numbers anchor (1060)
 const CW = W - 2 * MX; // max content width for fitted text (920)
 // The shared palette (see viewer/src/theme.css). NOTE WHAT IS ABSENT: this card
-// family carries NO crimson and NO tan. Those two colours are reserved for a
+// family carries NO crimson and NO sand. Those two colours are reserved for a
 // not-proven and a requires-store-access requirement result, and a share card
 // renders no requirement results — it frames a category question. A poster that
 // borrowed the failure colour for decoration would spend the one signal this
 // product cannot afford to dilute. test/palette.test.ts enforces it.
-const INK = "#CBD8E4";      // ice
-const MUTED = "#8598B2";    // ice, muted
-const ACCENT = "#7B9BC7";   // slate-light — the highlight of the card family
-const SLATE = "#4F6890";    // slate — structure (the un-gated frame rule)
-const BG = "#1B2131";       // navy
+//
+// ⚠️ v4.3 — THESE FOLLOWED THE SITE TO LIGHT, and that is a correctness fix rather
+// than a taste change. `/og/default.png` is the image that travels when anyone posts a
+// link to this site, and a near-black card that opens onto a warm off-white page tells
+// the reader they clicked the wrong link. The same class of defect as the one v3.3
+// found baked into this file: a phrase rasterised into a PNG that no source-string
+// sweep can read. Values are the light tokens, unchanged from theme.css — INK is
+// --ink, MUTED is --ink-3, ACCENT/SLATE are --pass, BG is --bg. All four text colours
+// clear 4.5:1 on BG by the same measurement (experiments/v4-3/tokens.mjs).
+const INK = "#24273A";      // navy — 13.52:1 on BG
+const MUTED = "#64698A";    // navy, muted — 4.91:1 on BG
+const ACCENT = "#596C8E";   // slate — the highlight of the card family, 4.87:1 on BG
+const SLATE = "#596C8E";    // slate — structure (the un-gated frame rule)
+const BG = "#F7F5F1";       // the warm off-white field
 
 const xml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -301,7 +311,16 @@ export function buildIndexListCardSvg(categories: Array<{ label: string; brands:
 export function buildDefaultCardSvg(brandName: string, tagline: string): string {
   const parts: string[] = [];
   parts.push(textEl(MX, 280, 72, INK, xml(brandName), { weight: 700 }));
-  parts.push(textEl(MX, 336, 30, ACCENT, xml("The questions a competent buyer asks, run as tests."), { weight: 700 }));
+  // ⚠️ IMPORTED, NOT TYPED HERE — and that is the whole fix. This line used to be a
+  // string literal in this file reading "The questions a competent buyer asks, run as
+  // tests.", and v3.3 found the same card carrying "ChatGPT · Gemini · Perplexity"
+  // under a PUBLISHED BUYING STANDARDS header: the share image for the landing page and
+  // every utility page was advertising the product this one replaced. Every copy check
+  // in the repo passed, because they all read source STRINGS and no absence sweep over
+  // source can see a phrase rasterised into a PNG. `OG_DEFAULT_LINE` lives in
+  // viewer/src/copy.ts and is in PUBLIC_MARKETING_STRINGS, so the claim linter and the
+  // banned-vocabulary check now reach this image for the first time.
+  parts.push(textEl(MX, 336, 30, ACCENT, xml(OG_DEFAULT_LINE), { weight: 700 }));
   // Four lines, not two: the tagline is 273 characters and is kept byte-identical to
   // viewer/src/copy.ts, so the card has to wrap it rather than shorten it. y=410 with
   // four lines at ≤26px ends well above the footer baseline at 578.

@@ -16,8 +16,8 @@ import { IndexLeaderboardPage } from "./pages/IndexLeaderboardPage";
 import { Footer } from "./components/Footer";
 import { Mark } from "./components/Mark";
 import { ThemeToggle } from "./components/ThemeToggle";
-import { ConnectShopify } from "./components/ConnectShopify";
 import { AppShell } from "./app/AppShell";
+import { BETA_BADGE, STANDARDS_INDEX_URL } from "./copy";
 
 export function App() {
   const path = usePath();
@@ -64,25 +64,40 @@ export function App() {
             <div>
               {/* Brand wordmark is site chrome, not the page title — a span so each page
                   provides the single <h1> (avoids two h1s per page, Codex #23). */}
-              <span className="brandname">{brandName}</span>
+              <span className="brandname">
+                {brandName}
+                {/* Honest, and staying. No second party has applied a standard of ours —
+                    `independently_applied` is `false` in the artifact itself — and Stripe
+                    is still in test mode. A badge that is true costs nothing to show. */}
+                <span className="beta-badge">{BETA_BADGE}</span>
+              </span>
               <div className="sub">AI Commerce QA for Shopify</div>
             </div>
           </Link>
           <div className="topbar-actions">
             {!minimalHeader && (
               <nav className="nav">
-                {/* A plain <a>: /demo is a server-rendered document, not an SPA route. */}
+                {/* Plain <a>: /demo and /standards are server-rendered documents, not SPA
+                    routes — a <Link> would land the visitor on the SPA's own 404. */}
                 <a href="/demo" className="navlink">
                   Example test
+                </a>
+                <a href={STANDARDS_INDEX_URL} className="navlink">
+                  Standards
                 </a>
                 <Link to="/methodology" className={`navlink ${active("/methodology")}`}>
                   Methodology
                 </Link>
-                <ConnectShopify className="navlink as-link" label="Shopify app" />
+                {/* ⚠️ THE APP STORE LINK IS NOT IN THE NAV ANY MORE (v4.3 §3.11). It is not
+                    a login, but it is a second call to action competing with the one that
+                    matters to the reader this page is now written for, and a nav with two
+                    CTAs has none. It is NOT deleted: it keeps its place in the landing
+                    page's pilot section, and the merchant-facing install path (managed
+                    install inside Shopify admin) never went through this link at all. */}
                 {/* The /test page is itself the test runner, so the nav CTA there is redundant. */}
                 {path !== "/test" && (
                   <Link to="/test" className="navlink btn btn-primary">
-                    Run a test
+                    Run a real test
                   </Link>
                 )}
               </nav>

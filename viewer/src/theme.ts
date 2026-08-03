@@ -1,13 +1,25 @@
-// Light/dark theming. The visitor DEFAULTS to their system preference
-// (`prefers-color-scheme`, handled in CSS); a manual choice sets `data-theme` on
-// <html>, overrides the system default, and persists. Clearing the choice returns to
-// "follow system". Kept tiny + framework-free so it can run before React renders.
+// Light/dark theming.
+//
+// ⚠️ v4.3 — THE DEFAULT IS LIGHT, NOT THE SYSTEM PREFERENCE, AND THAT IS THE POINT.
+// This used to return the visitor's `prefers-color-scheme`, with the CSS carrying a
+// matching media block. The site's identity is now the light editorial theme, so a
+// visitor whose OS is dark would otherwise be handed a different product than the one
+// every screenshot, share card and standards page is designed as. "Never a dark site"
+// is a statement about identity — dark remains one click away and persists, it is just
+// no longer something the operating system chooses on the visitor's behalf.
+//
+// The CSS mirror of this decision: `:root` IS the light theme and there is exactly one
+// `[data-theme="dark"]` block. Nothing keys off a media query, so this function and the
+// stylesheet cannot disagree — which the two hand-maintained light blocks previously did.
+//
+// Kept tiny + framework-free so it can run before React renders.
 
 export type Theme = "light" | "dark";
 const KEY = "al_theme";
 
-function systemTheme(): Theme {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+/** The theme a visitor gets before they choose. Light, unconditionally — see above. */
+function defaultTheme(): Theme {
+  return "light";
 }
 
 /** The visitor's explicit choice, or null when they're following their system preference. */
@@ -20,9 +32,9 @@ export function storedTheme(): Theme | null {
   }
 }
 
-/** The theme actually in effect right now (explicit choice, else system). */
+/** The theme actually in effect right now (explicit choice, else the site default). */
 export function effectiveTheme(): Theme {
-  return storedTheme() ?? systemTheme();
+  return storedTheme() ?? defaultTheme();
 }
 
 /** Set an explicit theme (persisted), or pass null to clear and follow the system again. */

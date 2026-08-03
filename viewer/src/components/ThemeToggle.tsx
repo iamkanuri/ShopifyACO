@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
-import { applyTheme, effectiveTheme, storedTheme, type Theme } from "../theme";
+import { applyTheme, effectiveTheme, type Theme } from "../theme";
 
-// A clean two-state light/dark toggle (sun ↔ moon). Defaults to the visitor's system
-// preference until they choose; the choice persists. If they're following system and the
-// OS theme changes, the icon updates to match.
+// A clean two-state light/dark toggle (sun ↔ moon).
+//
+// ⚠️ v4.3 — the site defaults to LIGHT for everyone, not to the OS preference (see the
+// header of ../theme.ts). The `prefers-color-scheme` listener that used to live here is
+// gone with it: nothing in the CSS keys off that media query any more, so a listener
+// would have flipped this icon to describe a theme the stylesheet was not applying.
+// A stale-but-plausible icon is the silent-render family this repo keeps paying for.
 
 function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>(() => effectiveTheme());
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const onChange = () => {
-      if (storedTheme() == null) setTheme(effectiveTheme()); // only when following system
-    };
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
+    // Re-read once on mount: `initTheme()` runs before React and a stored choice must
+    // survive hydration over the server snapshot.
+    setTheme(effectiveTheme());
   }, []);
   const toggle = () => {
     const next: Theme = effectiveTheme() === "dark" ? "light" : "dark";

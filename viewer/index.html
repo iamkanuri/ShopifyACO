@@ -9,19 +9,33 @@
     <!-- Favicon: the AisleLens aperture mark (matches the in-app logo) -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%2316171b'/%3E%3Cg fill='none' stroke='%23dedcd5' stroke-width='7' stroke-linejoin='round' stroke-linecap='round'%3E%3Ccircle cx='50' cy='50' r='30'/%3E%3Cpath d='M50 26 L71 62 L29 62 Z'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='6.5' fill='%23dedcd5'/%3E%3C/svg%3E" />
 
-    <!-- Fonts: Inter (body) + Space Grotesk (display headings) -->
+    <!-- Fonts: Inter (body, UI, tables) + Source Serif 4 (display headings, section leads).
+         ⚠️ BYTE-IDENTICAL to FONT_LINKS in src/server/standardsSite.ts, which the
+         standalone standard/demo documents use — test/standardsSite.test.ts asserts the
+         pair. Two copies of a font URL is exactly the shape that drifts, and when it
+         drifted before, the standards pages rendered --font-display all the way down to
+         a system font while the typography was being tuned against a face that was
+         never on the page. A missing webfont degrades to a system font, not an error. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap"
       rel="stylesheet"
     />
 
     <!-- ⚠️ THE SAME LINE IN ALL THREE PLACES. These used to tell three different
          stories: <title> and twitter:title said "AI Commerce QA for Shopify" while
          og:title carried the API line. A shared link and a search result then
-         described different products. Any change here changes all three. -->
-    <title>__BRAND_NAME__ — Published buying standards, run as executable tests</title>
+         described different products. Any change here changes all three.
+
+         v4.3 — the title now names the READER rather than the mechanism, to match the
+         page it labels: the H1 and the eyebrow both address an ecommerce agency, and a
+         search result that promised "published buying standards" delivered a page whose
+         first screen is about what an agency hands its client. The mechanism did not
+         disappear — it is the meta description immediately below (TAGLINE), which is
+         still the standards sentence, and it is the header label rasterised into
+         /og/default.png. Title says who it is for; description says what it does. -->
+    <title>__BRAND_NAME__ — AI commerce QA for ecommerce agencies</title>
     <meta name="description" content="__DESC__" />
 
     <!-- Open Graph / social preview. og:image must be a raster (PNG) — LinkedIn/Facebook/
@@ -29,7 +43,7 @@
          Per-page values (index cards, report cards, demo) are rewritten server-side. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="__BRAND_NAME__" />
-    <meta property="og:title" content="__BRAND_NAME__ — Published buying standards, run as executable tests" />
+    <meta property="og:title" content="__BRAND_NAME__ — AI commerce QA for ecommerce agencies" />
     <meta property="og:description" content="__DESC__" />
     <meta property="og:image" content="__BASE_URL__/og/default.png" />
     <meta property="og:image:type" content="image/png" />
@@ -38,7 +52,7 @@
     <meta property="og:url" content="__BASE_URL__/" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="__BRAND_NAME__ — Published buying standards, run as executable tests" />
+    <meta name="twitter:title" content="__BRAND_NAME__ — AI commerce QA for ecommerce agencies" />
     <meta name="twitter:description" content="__DESC__" />
     <meta name="twitter:image" content="__BASE_URL__/og/default.png" />
   </head>

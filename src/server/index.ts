@@ -101,6 +101,7 @@ import { demoPageFor } from "./buyerTestDemo.js";
 // publicSsr.ts. A hand-written server copy is the "site disagrees with itself" defect.
 import { PRODUCT_DESCRIPTION, PRODUCT_CAPABILITIES, PRODUCT_KIND } from "../../viewer/src/copy.js";
 import { publicSsrFor } from "./publicSsr.js";
+import { heroArtifact, heroArtifactScript } from "./heroArtifact.js";
 import { reportPreview } from "./reportPreview.js";
 import { stripPaidDelta, paidReportTier } from "./reportProjection.js";
 import { getPaidReportByRun } from "../db/paidReports.js";
@@ -1645,8 +1646,25 @@ async function serveIndex(req: Request, res: Response) {
   // takes the page. These ARE React routes, which is why the injection is correct
   // here and was wrong for /standards — see the header of publicSsr.ts.
   try {
-    const snapshot = publicSsrFor(req.path);
+    // v4.3 — the landing page's hero and example sections render a REAL result on a
+    // real, named store (the pinned klatchcoffee.com replay). It is derived here rather
+    // than typed into the viewer, because the viewer bundle imports nothing from `src/`
+    // and a retyped figure is the class of defect that put "162 requirements … ten of
+    // those passes were wrong" on the live site against an artifact reading 160 and 7.
+    //
+    // It goes into the document TWICE, for two different readers, from one derivation:
+    // rendered into the snapshot for a reader with no JavaScript, and serialised as JSON
+    // for React to read SYNCHRONOUSLY on first render. Fetching it after mount would
+    // flash an empty hero on every load, because React wipes #root when it mounts.
+    //
+    // Any failure falls through to the plain shell. A landing page that 500s because a
+    // fixture moved is worse than a landing page with no artifact on it — and the client
+    // reader refuses a missing or partial payload rather than rendering a placeholder,
+    // so both halves degrade to "absent" rather than to "plausible".
+    const artifact = req.path === "/" ? await heroArtifact().catch(() => null) : null;
+    const snapshot = publicSsrFor(req.path, artifact);
     if (snapshot) html = html.replace(/<div id="root">\s*<\/div>/, `<div id="root">${snapshot}</div>`);
+    if (artifact) html = html.replace("</body>", `${heroArtifactScript(artifact)}\n</body>`);
   } catch {
     /* CSR fallback — a rendering bug must never 500 the landing page */
   }

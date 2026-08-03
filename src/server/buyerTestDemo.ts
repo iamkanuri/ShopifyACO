@@ -255,7 +255,44 @@ export async function runDemo(): Promise<DemoResult> {
     if (!r) throw new Error(`REPLAY MISS: ${url} is not in the frozen capture`);
     return r;
   };
-  const deps = { fetchUrl: replay, sleep: async () => {} };
+  // ⚠️ THE SEMANTIC TIER IS PINNED OFF, AND WITHOUT THIS THE PUBLISHED EXAMPLE TEST WAS
+  // NEITHER A REPLAY NOR ADJUDICATED. Found by measurement at v4.3, on the landing page
+  // that reads this same run: the hero showed "5 proven · 5 not proven" on one server
+  // boot and "6 proven · 4 not proven" on the next, from the identical commit and the
+  // identical frozen capture.
+  //
+  // The mechanism. `judgeClaims` is gated only on an OpenAI key existing and
+  // `PRODUCT_TEST_SEMANTIC !== "0"` — both true in production — so every fresh run of
+  // this page made a LIVE, SAMPLED model call whose grants flip `claim` rows from
+  // not_proven to pass_evidenced. Nothing about that is visible on the page.
+  //
+  // TWO THINGS IT BROKE, AND THE SECOND IS THE SERIOUS ONE.
+  //
+  // 1. It is not a replay. The whole argument for running the engine over a frozen
+  //    capture, stated forty lines above, is that a stored answer drifts. A live model
+  //    call reintroduces exactly that drift, from a source the capture does not cover —
+  //    so the "real result on a real store" was a sample, and two visitors could be shown
+  //    different verdicts about klatchcoffee.com on the same commit.
+  //
+  // 2. It produced a FALSE PASS, on the one page whose selection gate is that every
+  //    passing row was individually adjudicated `true_pass`. Measured on the server:
+  //    ALS-COFFEE-1.3-SOURCE-001 — "Is this coffee from one place, or is it a blend?" —
+  //    came back pass_evidenced quoting "Discover Ethiopia Yirgacheffe Supernatural;
+  //    bursting with flavor notes", a sentence that names the product and states nothing
+  //    about origin. The audit sidecar adjudicated 5 rows; the tier made 6 passes, so the
+  //    sixth was an unadjudicated pass — and on inspection, a wrong one. `single-origin`
+  //    read into a sentence that does not state it is a defect class this project has
+  //    already confirmed twice in the coffee sample.
+  //
+  // So the tier is disabled HERE, at the call site, rather than anywhere in the engine.
+  // No matcher moves, `ENGINE_VERSION` does not move, and every other caller is
+  // untouched. What this page shows is now exactly what the v3.2 audit read.
+  //
+  // ⚠️ THE SAME TIER IS STILL LIVE ON `/test` AND ON EVERY STANDARD RUN, and that is
+  // deliberately NOT fixed here — it is filed as a proposal, because it needs a
+  // measurement of how often it grants and how often the grant is wrong, and this session
+  // is scoped to a landing page. Where work implies a change elsewhere, write it down.
+  const deps = { fetchUrl: replay, sleep: async () => {}, semantic: { disabled: true } };
 
   __resetCaches();
   const pre = await fetchPublicProduct(capture.url, deps);

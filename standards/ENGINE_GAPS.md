@@ -3107,3 +3107,92 @@ where it will be decided.
    **floor**.
 3. **Nothing else.** The frequency read, the standing gate and the derived suite are the three
    preconditions this file named, and two are met outright.
+
+---
+
+## P-28 · THE SEMANTIC TIER IS LIVE ON EVERY PUBLIC RUN, IT IS SAMPLED, AND IT PRODUCED A FALSE PASS ON OUR OWN PROOF SURFACE
+
+**Filed at v4.3 (the landing-page session), from a measurement, not a review. Not fixed —
+the scope of that session was one page, and the fix this needs is a measurement first.**
+
+### What was measured
+
+The v4.3 landing page renders the pinned `/demo` result (`runDemo()`, the frozen
+klatchcoffee.com capture replayed through the real engine). Two server boots, identical
+commit, identical capture:
+
+| boot | result |
+|---|---|
+| 1 | **5 proven · 5 not proven** |
+| 2 | **6 proven · 4 not proven** |
+
+Six requests within a single boot are stable (`experiments/v4-3/probe_determinism.mjs`,
+6/6 identical) because the module caches its run; six *fresh processes* are also stable at
+5/5 (`experiments/v4-3/probe_boots.mjs`, `VERIFIED_CLEAN`). The variance is **across server
+boots**, and the discriminator is measured: `ENV.keys.openai` is unset in a bare `npx tsx`
+process here and set in the server, which is the only gate on the tier
+(`experiments/v4-3/probe_semantic.ts`).
+
+### The mechanism
+
+`judgeClaims` (`src/server/semanticTier.ts`) runs whenever `ENV.keys.openai` exists and
+`PRODUCT_TEST_SEMANTIC !== "0"`. Both are true in production. It makes a live, sampled
+model call, and its grants flip `claim` rows from `not_proven` to `pass_evidenced`.
+
+### The serious half — a FALSE PASS, on the one page whose gate forbids it
+
+On boot 2 the sixth pass was `ALS-COFFEE-1.3-SOURCE-001` — *"Is this coffee from one place,
+or is it a blend?"* — rendered `pass_evidenced` with the evidence quote:
+
+> "Discover Ethiopia Yirgacheffe Supernatural; bursting with flavor notes"
+
+That sentence names the product. It states nothing about origin. The verbatim-quote safety
+gate did its job — the quote really is in the page — and the tier still granted a claim the
+sentence does not make, which is exactly the failure a verbatim gate cannot catch: it
+constrains the QUOTE, not the INFERENCE.
+
+`single-origin` read into a sentence that does not state it is a defect class this project
+has already confirmed twice in the coffee sample ("**`single-origin` inside a sentence
+describing a BLEND (2) — a class no guard addresses**"). The semantic tier does not merely
+fail to close it; it manufactures new instances of it.
+
+### Why it stayed invisible
+
+`test/buyerTestDemo.test.ts` **already asserted the broken invariant** —
+`audited === d.counts.pass`, every proven row is an adjudicated row. It was green
+throughout, because the suite runs without an OpenAI key, so the tier returns empty and
+the extra pass never appears in CI. **An assertion that cannot fire in the environment it
+runs in is not a guard**, and this is the second time this exact property has been recorded
+about this tier: v2.5 CP2 already noted that `judgeClaims` returns empty offline, so a
+semantic gate "could close no corpus case and could not be reached by the mutation proof".
+That was written as a reason not to *use* the tier for aboutness. It is also a reason
+nothing can *test* the tier that is already shipping.
+
+### What v4.3 did and did not do
+
+**Did:** pinned the tier off at one call site — `runDemo`'s deps now carry
+`semantic: { disabled: true }` — restoring the Example test to an actual replay whose every
+pass is one the v3.2 audit adjudicated. No matcher moved; `ENGINE_VERSION` did not move.
+Added a source-level assertion for the mechanism, because the outcome assertion is
+unreachable offline.
+
+**Did not:** touch `/test`, `runStandardTest`, the authenticated path, or the tier itself.
+Every one of those still makes a sampled call on every live run.
+
+### What this needs before anyone changes it
+
+1. **A frequency read.** How often does the tier grant at all, over the 338-store corpus?
+   The corpus replays offline, so this needs a run with a key and a recorded transport —
+   and the grants must be captured, not just counted.
+2. **A precision read on those grants.** Each one adjudicated individually against the
+   store's full evidence, the same discipline as every published bound. The
+   klatchcoffee.com instance is n=1 and proves only that the rate is not zero.
+3. **A decision that is not "turn it off".** The tier exists for PARAPHRASE — recovering
+   true statements no term list can match — which is a real recall problem. Killing it
+   without measuring the recall it buys would repeat the `origin` mistake in reverse.
+4. **A determinism decision for published artifacts regardless of the above.** A citable
+   result cannot be a sample. Even at perfect precision, `/demo` and any stored result must
+   pin the tier, or two readers of the same URL can see different verdicts.
+
+⚠️ **Do not treat the landing-page pin as the fix.** It closes one page. The tier is live
+on the surface a stranger actually pastes a URL into.
