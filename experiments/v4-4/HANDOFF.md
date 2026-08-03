@@ -37,21 +37,31 @@ State: **typecheck clean · viewer build clean · 1091 tests / 1015 pass / 0 fai
    district; a named single farm). Killing it without measuring that would repeat the
    `origin` mistake in reverse.
 
-## THE ONE THING WAITING ON A USER GO
+## THE FULL CORPUS RAN, AND §4 IS DECIDED
 
-The full-corpus measurement. The pilot stopped where §3 said to stop.
+The go was given and the run completed at **$0.39** over 269 distinct stores.
+`experiments/v4-4/FULL_RUN.md` is the record; `ENGINE_GAPS` P-29 carries the headline.
+
+**On two identical runs the tier answers differently on 11.0% of the claim rows it is asked
+about** (18 of 163), 15.8% of stores show a different merchant-visible row, and **only 67.9%
+of its promotions reproduce**. The seeded `klatchcoffee.com` known-positive granted in run C
+and not in run B — which is why the harness resolved `INCOMPLETE`, and that status is left
+standing rather than reasoned away.
+
+**Outcome 2 is refused at its own sub-clause: "precise but unstable does not ship."** The tier
+stays out of the public path. **The bounds do not move and no sidecar was written** — 9.99%
+and 5.17% were measured tier-off, both public routes now run tier-off, so the harness setting
+and the deployment agree.
+
+Re-run it with:
 
 ```bash
 PILOT_N=338 MEASURE_OUT=full.jsonl npx tsx experiments/v4-4/tier_measure.ts
 ```
 
-Projected spend **$0.50** (measured $0.00147/store for runs B+C, × 338). Needs `OPENAI_API_KEY`
-in `.env`. Both canaries must stay green; a grant rate of zero is a broken instrument until
-proven otherwise.
-
-Then §4 decides between outcome 2 (grants with high precision) and outcome 3 (poor
-precision), and the outcome-2 branch must also compute the re-measured bound from run B's
-adjudications plus the existing tier-off ones.
+⚠️ **`pick()` wraps and re-picks** — `(i * step) % arr.length` over corpora of 100 and 172, so
+338 asked-for rows cover 269 distinct hosts. Rates survive deduplication (11.0% vs 10.9%),
+counts do not. **Dedupe by host before quoting any count from that file.**
 
 ## Re-running everything
 
@@ -92,23 +102,22 @@ Neither was re-pinned. Then confirm each of the four tokens serves its notice:
 
 ## Open, in priority order
 
-1. **The full-corpus run + the §4 decision.** Above. Everything else is downstream of it.
-2. **`semanticTier.ts` claims "temperature 0" and sets none.** `defaultComplete`'s body has
+1. **`semanticTier.ts` claims "temperature 0" and sets none.** `defaultComplete`'s body has
    `model`, `messages`, `response_format`, `max_completion_tokens` — no `temperature`. Left
    alone deliberately so the measurement runs as-prod-configured. It is the first thing to
    change if outcome 2 sends the tier back anywhere, and the variance must then be
    **re-verified at ≈0**, not assumed.
-3. **`funnel_events` is blind to the standard route.** It emits `standard_test_requested` and
+2. **`funnel_events` is blind to the standard route.** It emits `standard_test_requested` and
    no completion event, so `semantic_invoked` was 0 there while a standard result carried a
    grant. Telemetry covering one of two public routes reads as "barely runs".
-4. **Raw HTML leaks into evidence sentences and into a published quote.**
+3. **Raw HTML leaks into evidence sentences and into a published quote.**
    `t_5996b5618d2d5f9988eb` publishes `…keto-friendly magic!</p>`; the `product_faq` surface
    carries `<p>`, `<br/>` fragments. Independent of the tier; visible on a permanent page.
-5. **27 inert harnesses** (`harness_default.mjs`). Four are live and could spend on a machine
+4. **27 inert harnesses** (`harness_default.mjs`). Four are live and could spend on a machine
    with a key: `experiments/v4-2/seed_general.ts`, `seed_reference.ts`,
    `experiments/v4-3/probe_demo.ts`, `probe_peers.ts`. Cheap fix: one explicit default-off
    line per entrypoint.
-6. **§5, dropped and carried whole** — the card shown twice. On mobile the hero result card
+5. **§5, dropped and carried whole** — the card shown twice. On mobile the hero result card
    stacks above the later full-section card (same store, counts, CTA) and reads as a bug. Fix
    by differentiation: hero truncates ≤~700px to the summary plus 2–3 rows with an explicit
    **"showing 3 of 10 rows"** label (the label keeps the section's "nothing selected for

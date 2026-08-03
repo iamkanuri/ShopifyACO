@@ -1614,6 +1614,92 @@ the honest value contradicts the pack's copy — including that the pack's *"X o
 this, so this is a peer gap"* **inverts** on the reference store, where every unmet row is one
 most peers also fail. Kept the number; rewrote the line.
 
+## The bounds were measured with a component production had switched ON (v4.4)
+
+`experiments/v2-9/replay.ts` stated the fidelity gap between the measurement harness and
+production, and its first item carried the argument every published bound rested on:
+
+> **THE SEMANTIC TIER IS OFF (`PRODUCT_TEST_SEMANTIC=0`)** … **It cannot manufacture a
+> lexical false pass, so it does not flatter the false-positive rate; it can only understate
+> claim-row PASS COUNTS.**
+
+**The premise is true and the conclusion does not follow.** The tier cannot manufacture a
+*lexical* false pass — which is not the property the argument needed. It grants on its own
+reading of a sentence, and the verbatim-quote gate constrains the **QUOTE**, never the
+**INFERENCE**. Production set no such variable and had a model key, so production ran it ON.
+
+⚠️ **IT HAD ALREADY PUT FALSE STATEMENTS INTO PERMANENT, CITABLE RESULTS.** Four stored rows
+at `/result/:token` carried a tier grant; **three publish a single-origin pass the quoted
+sentence does not support**, about named third-party stores, and **one of them is a
+standard-layer result citing Coffee Standard v1.3** — the content-hashed artifact whose whole
+promise is that it resolves unchanged forever. The fourth (magicspoon gluten-free) was
+adjudicated and **stands**. `/result/:token` never re-runs, so none of this was fixable by
+re-running.
+
+**The remediation is a RENDER-TIME NOTICE, never a byte edit** (`src/server/resultNotices.ts`).
+Editing the blob would destroy the record of what we published; deleting it would break a link
+already sent. **The remediation IS the disclosure.** Two layers, and do not collapse them:
+**DETECTION is DERIVED** from the blob (`semantic.granted > 0`, read at both stored shapes) so
+a row minted later is still disclosed; **ATTRIBUTION is CURATED**, because `SemanticStats`
+records only a **count**. A row with no curated entry reports as *unnamed*, never guessed.
+
+⚠️ **Which row moved had to be established MECHANICALLY.** The tier's detail string
+(`"Stated in your X."`) is *also* produced by the lexical path, so a pattern read matched two
+rows per result and could not separate them. Two legs — the claim-kind filter (exact:
+`applySemanticTier` can only promote `kind === "claim"`) and a tier-off replay — **with the
+basis recorded per row, because a leg that did not run must not read as a leg that agreed.**
+
+### The measurement: it grants, it recovers real statements, and it will not repeat itself
+
+269 distinct stores, three runs each (tier off / on / on again), $0.39.
+
+| | |
+|---|---|
+| claim rows asked | 163 |
+| **rows answering DIFFERENTLY across two identical runs** | **18 — 11.0%** |
+| stores where a merchant would see a different row | **15.8%** |
+| promotions that reproduced | **36 of 53 — 67.9%** |
+
+The seeded `klatchcoffee.com` known-positive **granted in run C and not in run B**, on the
+same capture and commit. Flip directions include **5 quote-only** — rows a status diff, a pass
+count and a merchant reading a green row all see as identical (v3.5's rule again).
+
+**70 of 71 promotions are on ONE requirement, `Single-origin`.** Most are genuine recall no
+term list reaches (*"traces back to just one farm in West Arsi"*; a title reading *"Honduras
+Finca El Jardin"*). The false ones share one shape — **a sentence about a PLACE that is not a
+statement about THIS PRODUCT** — which is the class the coffee sample already carries and that
+no guard addresses. **The tier does not close it; it manufactures new instances.**
+
+**DECISION: "precise but unstable does not ship."** The tier is pinned off on **both public
+routes** — `/api/product-test` and `/api/product-test/standard`, the two that mint permanent
+results — and `ENGINE_VERSION` moved **v2.4.0 → v2.5.0**. That pin was taken for DURABILITY
+before any rate was known (a citable result cannot be a sample) and the variance then confirmed
+it independently. **The bounds do not move and no sidecar was written**: 9.99% and 5.17% were
+measured tier-off, and both public routes now run tier-off, so the harness setting and the
+deployed configuration finally describe the same engine.
+
+⚠️ **`semanticTier.ts`'s header says "temperature 0" and its request body sets no
+temperature.** *A rule stated only in a comment is not a rule* — and this one is the mechanical
+cause of the variance above. Deliberately not fixed: the measurement runs as-prod-configured.
+It is the first thing to change if the tier ever returns, **and variance must then be
+RE-VERIFIED at ≈0, never assumed from the parameter being present.**
+
+⚠️ **The ENGINE_VERSION tripwire could not have caught this, and the reason generalises.**
+`test/engineVersion.test.ts` is a content hash over matcher files; **no matcher logic moved** —
+the change is a route-level dep. Had the version literal not happened to live inside
+`productTest.ts`, the hash would have been identical while live verdicts changed. **The hash is
+a floor, not a ceiling**; it is blind to a behaviour change made in a route, a dep or an env
+var, and the governing rule is the prose one a person has to apply.
+
+⚠️ **Two instrument defects, both found by reading output rather than by a test.** `pick()` in
+the measurement harness wraps and re-picks (`(i * step) % arr.length`), so 338 asked-for rows
+covered **269 distinct hosts** — rates survived deduplication, counts did not, which is exactly
+what perfectly-correlated duplicates predict (P-16, inside our own harness this time). And
+**`semantic.granted` OVERCOUNTS** what a merchant sees: 76 stats-grants produced 60 row changes,
+because a grant landing on an already-passing row is counted and then dropped. The direction is
+safe — the disclosure detector over-flags — but "4 affected results" is a **ceiling**, not a
+floor. Full record: `experiments/v4-4/`, `ENGINE_GAPS` **P-29**.
+
 ## Roadmap & deferred work → [`TODO.md`](TODO.md)
 
 The full backlog — **every deferred security/hardening item** and **all planned

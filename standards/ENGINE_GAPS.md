@@ -3112,9 +3112,59 @@ where it will be decided.
 
 ## P-29 · THE TIER'S RECALL IS REAL, ITS OUTPUT IS NON-DETERMINISTIC, AND ITS HEADER CLAIMS A PARAMETER IT NEVER SETS
 
-**Filed at v4.4, from a measurement. Partially closed: the tier is pinned off on both public
-routes (durability, P-28 item 4), and its precision/recall trade is measured only at pilot
-scale.** Full record: `experiments/v4-4/REPORT.md`.
+**Filed at v4.4, from a measurement. CLOSED for the public path — the tier is pinned off on
+both public routes, first for durability (P-28 item 4) and then confirmed by the variance
+measurement below. OPEN as a question about whether it can ever return.** Full record:
+`experiments/v4-4/REPORT.md` and `experiments/v4-4/FULL_RUN.md`.
+
+### THE HEADLINE, from the full corpus — 269 distinct stores, $0.39
+
+**On two identical runs, minutes apart, on the same commit and the same captured bytes, the
+tier answers differently on 11.0% of the claim rows it is asked about.**
+
+| | |
+|---|---|
+| distinct stores where the tier ran | 114 |
+| claim rows asked | 163 |
+| **claim rows answering differently across two identical runs** | **18 — 11.0%** |
+| stores whose model output differed | 31 of 114 — **27.2%** |
+| stores where a merchant would see a different row | 18 of 114 — **15.8%** |
+| promotions that reproduced | **36 of 53 — 67.9%** |
+
+Flip directions: 14 `not_proven → pass_evidenced`, 9 `pass_evidenced → not_proven`, **5
+quote-only** — rows a status diff, a pass count and a merchant reading a green row all see as
+identical. v3.5's rule, earning itself again.
+
+⚠️ **The seeded known-positive is the cleanest demonstration.** `klatchcoffee.com` granted in
+run C and **not** in run B, on the same capture. The harness resolved `INCOMPLETE` because its
+canary assumed that grant was a stable property of the capture; it is not, and the run proves
+it rather than merely failing on it.
+
+**70 of 71 promotions across the whole corpus are on ONE requirement, `Single-origin`.** The
+tier's entire real-world footprint is a single claim key.
+
+**Precision on the stable set is decent and it does not decide anything.** Most stable grants
+are genuine recall no term list reaches (*"traces back to just one farm in West Arsi"*; a
+product title reading *"Honduras Finca El Jardin"*). The false ones share one shape — a
+sentence about a **place** that is not a statement about **this product**
+(`blackbeardroasters.com`: *"The Yirgacheffe region is located in the southern part of
+Ethiopia."*; `highrisecoffeeroasters.com`: a store-level page description reading *"single
+origins and blends"*). That is the same class the coffee sample already carries and that no
+guard addresses — **the tier does not close it, it manufactures new instances of it.**
+
+**DECISION: "precise but unstable does not ship."** The tier stays out of the public path
+regardless of precision. Returning it anywhere requires hardening to determinism first, and
+**variance re-verified at ≈0** — never assumed from a parameter being present.
+
+⚠️ **`semantic.granted` OVERCOUNTS merchant-visible grants.** Run B recorded 76 grants in its
+stats and produced 60 row changes: `judgeClaims` sets `stats.granted = grants.length`, and
+`applySemanticTier` then drops any grant whose attribute is not in `unresolved`. The direction
+is safe — the v4.4 disclosure detector keys on `granted > 0` and so over-flags — but it means
+"4 affected production results" is a **ceiling** on merchant-visible damage, not a floor.
+
+---
+
+### The pilot, kept because it is what the decision was taken against
 
 ### What P-28 asked for, and what came back
 
