@@ -26,6 +26,13 @@ export type FunnelEventName =
   // demonstrates the product's actual proposition, and because it costs two fetch
   // sequences with no cache relief: its volume is a spend signal as well as a demand one.
   | "standard_test_requested"
+  // v4.5 — the OUTCOME of a standard run. Until this existed the standard layer emitted a
+  // request event and nothing else, so its completion rate was zero by construction rather
+  // than by measurement — a denominator with no numerator, on the layer this product's own
+  // headline is about. Counted separately from `test_completed` because the two routes cost
+  // different amounts and answer different questions; pooling them would hide both.
+  | "standard_test_completed"
+  | "standard_test_failed"
   | "test_completed"
   | "test_failed"
   | "install_clicked"
