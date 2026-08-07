@@ -52,11 +52,18 @@ const CW = W - 2 * MX; // max content width for fitted text (920)
 // sweep can read. Values are the light tokens, unchanged from theme.css — INK is
 // --ink, MUTED is --ink-3, ACCENT/SLATE are --pass, BG is --bg. All four text colours
 // clear 4.5:1 on BG by the same measurement (experiments/v4-3/tokens.mjs).
-const INK = "#24273A";      // navy — 13.52:1 on BG
-const MUTED = "#64698A";    // navy, muted — 4.91:1 on BG
-const ACCENT = "#596C8E";   // slate — the highlight of the card family, 4.87:1 on BG
+//
+// ⚠️ BG FOLLOWED THE BLUE-GROUND CHANGE (2026-08-07, see theme.css). A card is a
+// rasterised copy of the field colour, which is exactly the kind of duplicate
+// that stays warm after the site goes blue — the "wrong link" defect this
+// comment already describes, reintroduced by the fix's own history. Ratios
+// re-measured on the new ground, not carried over: they drop to the values the
+// site's own floor tier carries, and MUTED/ACCENT sit at the 4.5 floor itself.
+const INK = "#24273A";      // navy — 12.51:1 on BG
+const MUTED = "#64698A";    // navy, muted — 4.54:1 on BG
+const ACCENT = "#596C8E";   // slate — the highlight of the card family, 4.51:1 on BG
 const SLATE = "#596C8E";    // slate — structure (the un-gated frame rule)
-const BG = "#F7F5F1";       // the warm off-white field
+const BG = "#E9EDF1";       // the pale blue-gray field, matching --bg
 
 const xml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

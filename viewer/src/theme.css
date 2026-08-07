@@ -6,7 +6,9 @@
      navy         #24273A   primary text, nav, PRIMARY CTA BACKGROUND
      slate        #596C8E   links, evidence chrome, the PROVEN state
      pale         #C7D1DA   borders, quiet containers, alternating bands
-     band         #E9EDF1   the pale blue-gray section band
+     band         #E9EDF1   the pale blue-gray — THE PAGE FIELD since the
+                            blue-ground change below; the --band token now
+                            carries a lighter derivative of the same hue
      sand         #826738   REQUIRES STORE ACCESS. Nothing else, ever.
      crimson      #BF3A4F   NOT PROVEN. Nothing else, ever.
 
@@ -40,18 +42,30 @@
    ✕ not proven · ○ requires store access ride alongside it, so the three states
    survive colourblindness and greyscale print.
 
+   ---- THE BLUE-GROUND CHANGE (2026-08-07), STATED RATHER THAN SILENT ----
+   The field moved from the warm off-white #F7F5F1 to the company's pale
+   blue-gray #E9EDF1, by the owner's decision, so this property and
+   privi.thirdocular.com share one ground. No text token moved a hex digit —
+   what moved is the surfaces, and they moved under a hard constraint: the OLD
+   table had four text tokens sitting at 4.51–4.54:1 on #E9EDF1, the floor.
+   Once that colour is the field, no surface may sit below it in luminance, or
+   those tokens fall under 4.5 there. So all four surfaces compress into
+   [#E9EDF1 … white], and the floor column of the table is now --bg itself.
+   The band keeps its job — alternating section density — but does it from the
+   light side, since the dark side of the range is now the field.
+
    ---- CONTRAST, COMPUTED RATHER THAN EYEBALLED (experiments/v4-3/tokens.mjs) ----
    Every text token against every surface it is actually used on. Floor 4.5:1
-   (WCAG 2.1 small text). Surfaces: --bg #F7F5F1 · --surface #FFFFFF ·
-   --surface-2 #EFEDE8 · --band #E9EDF1.
+   (WCAG 2.1 small text). Surfaces: --bg #E9EDF1 · --surface #FFFFFF ·
+   --surface-2 #EFF2F5 · --band #F1F4F7.
 
      token              hex       --bg   surf   surf-2  band
-     --ink              #24273A   13.52  14.72  12.58   12.51
-     --ink-2            #484C6B    7.65   8.33   7.12    7.08
-     --ink-3            #64698A    4.91   5.34   4.57    4.54
-     --pass             #596C8E    4.87   5.30   4.53    4.51
-     --not-proven       #BF3A4F    4.90   5.34   4.56    4.54
-     --requires-access  #826738    4.89   5.32   4.55    4.52
+     --ink              #24273A   12.51  14.72  13.10   13.34
+     --ink-2            #484C6B    7.08   8.33   7.41    7.54
+     --ink-3            #64698A    4.54   5.34   4.76    4.84
+     --pass             #596C8E    4.51   5.30   4.72    4.80
+     --not-proven       #BF3A4F    4.54   5.34   4.75    4.84
+     --requires-access  #826738    4.52   5.32   4.74    4.82
      white on --ink (the primary button) 14.72:1
 
    TWO ADJUSTMENTS, STATED RATHER THAN SILENT — the established precedent is that
@@ -92,15 +106,17 @@
   --slate-light: #8FA6C6;
   --ice: #C7D1DA;
 
-  /* Surfaces: a warm off-white field, a white card, a recessed tier, and one
-     cool band used to alternate section density without adding a card grid. */
-  --bg: #F7F5F1;
+  /* Surfaces: the company's pale blue-gray as the field, a white card, a
+     recessed tier and a lifted band. All four sit inside [#E9EDF1 … white] —
+     see the blue-ground note above: every text token in the table holds
+     4.5:1 on #E9EDF1 and nothing darker is allowed to carry text. */
+  --bg: #E9EDF1;
   --surface: #FFFFFF;
-  --surface-2: #EFEDE8;
-  --band: #E9EDF1;
+  --surface-2: #EFF2F5;
+  --band: #F1F4F7;
   --ink: #24273A;      /* navy — 14.72:1 on --surface */
-  --ink-2: #484C6B;    /* secondary — 7.12:1 on --surface-2 */
-  --ink-3: #64698A;    /* tertiary — 4.54:1 on --band (the a11y floor) */
+  --ink-2: #484C6B;    /* secondary — 7.08:1 on --bg */
+  --ink-3: #64698A;    /* tertiary — 4.54:1 on --bg (the a11y floor) */
   --border: #C7D1DA;
   --border-ui: #728BA2;         /* a control edge — WCAG 1.4.11, 3:1 */
   --accent: #24273A;            /* the high-contrast highlight / CTA ground */
