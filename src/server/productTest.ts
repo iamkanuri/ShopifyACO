@@ -560,7 +560,7 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     // the evidence-availability claim was true; the LABEL claimed more than its quote
     // supported. Same class as v2.2's "Ships within a week" passing on processing time.
     label: "Measurements are stated",
-    missingDetail: "no readable measurements — size, capacity, weight or fit",
+    missingDetail: "no readable measurements: size, capacity, weight or fit",
     terms: [
       "dimensions", "capacity", "diameter", "inches", "inch", "cm", "mm", "millimeters", "centimeters",
       "liters", "litres", "ml", "oz", "fl oz", "fluid ounces", "ounces", "lbs", "pounds", "grams", "kg",
@@ -839,10 +839,10 @@ export type FetchErrorKind = "bad_url" | "not_shopify" | "not_found" | "rate_lim
 export interface FetchError { kind: FetchErrorKind; message: string }
 
 export const FETCH_ERROR_MESSAGE: Record<FetchErrorKind, string> = {
-  bad_url: "Paste a Shopify product URL — it should contain /products/…",
-  not_shopify: "This looks like it isn't a Shopify store — the test needs Shopify's public product data.",
+  bad_url: "Paste a Shopify product URL. It should contain /products/…",
+  not_shopify: "This looks like it isn't a Shopify store, and the test needs Shopify's public product data.",
   not_found: "We couldn't find a product at that URL.",
-  rate_limited: "This store is limiting automated requests right now. We'll retry — try again in a few minutes.",
+  rate_limited: "This store is limiting automated requests right now. We'll retry; try again in a few minutes.",
   robots_disallowed: "This store asks automated tools not to read this page, and we respect that.",
   unreachable: "We couldn't reach that store's public product data.",
 };
@@ -1714,7 +1714,7 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * stores have their stated price corrected downward to the one their own markup
  * publishes.
  */
-export const ENGINE_VERSION = "v2.6.0";
+export const ENGINE_VERSION = "v2.7.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency
@@ -1984,7 +1984,7 @@ const listPhrase = (items: string[]): string =>
  *  difference between "we couldn't read this" and "you don't publish this" is the
  *  difference between a finding and an accusation, and only one of them is true. */
 const THROTTLED_DETAIL =
-  "The store's product endpoint is limiting automated requests right now, so we couldn't read this surface. That's an upstream limit rather than something about this store — try again in a few minutes.";
+  "The store's product endpoint is limiting automated requests right now, so we couldn't read this surface. That's an upstream limit rather than something about this store. Try again in a few minutes.";
 const accessDetail = (p: PublicProduct, whenReadable: string): string =>
   p.diagnostics?.degraded ? THROTTLED_DETAIL : whenReadable;
 
@@ -1999,12 +1999,12 @@ const accessDetail = (p: PublicProduct, whenReadable: string): string =>
  * rendered as "your store does not state this".
  */
 function unsupportedRow(p: PublicProduct, req: Requirement, reason: string): Assertion {
-  console.error(`[buyer-test] UNSUPPORTED REQUIREMENT id=${req.id} kind=${req.kind} label=${JSON.stringify(req.label)} — ${reason}`);
+  console.error(`[buyer-test] UNSUPPORTED REQUIREMENT id=${req.id} kind=${req.kind} label=${JSON.stringify(req.label)}: ${reason}`);
   return {
     label: req.label,
     status: "requires_store_access",
     surfacesChecked: textSurfaces(p),
-    detail: "We couldn't re-run this check automatically. That's a limitation on our side, not a finding about your store — this row is reported as unchecked rather than as a result.",
+    detail: "We couldn't re-run this check automatically. That's a limitation on our side, not a finding about your store. This row is reported as unchecked rather than as a result.",
   };
 }
 
@@ -2094,9 +2094,20 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           evidenceQuote: hit.quote ?? undefined, evidenceSurface: SURFACE_LABEL[hit.surface],
         };
       }
+      // ⚠️ v4.6 — NAME WHAT WAS LOOKED FOR. This row used to read "Checked <surfaces>, no
+      // statement an AI buyer could verify", which never said WHICH statement was missing.
+      // Because the sentence contained nothing claim-specific, every claim row that failed
+      // produced a BYTE-IDENTICAL detail: `organic`, `fair_trade` and `single_origin` on one
+      // real coffee product all rendered the same string, so a merchant reading three
+      // findings saw one sentence three times and could not act on any of them. The claim key
+      // is right here in `req.claim`; there was never a reason not to use it.
+      const subject = (req.claim ?? "").replace(/_/g, " ").trim();
+      const article = /^[aeiou]/i.test(subject) ? "an" : "a";
       return {
         label: req.label, status: "not_proven", surfacesChecked: checked,
-        detail: `Checked ${listPhrase(checked)} — no statement an AI buyer could verify.`,
+        detail: subject
+          ? `Checked ${listPhrase(checked)}, and none of them state ${article} ${subject} claim in wording an AI buyer could verify.`
+          : `Checked ${listPhrase(checked)}, and none of them carry a statement an AI buyer could verify.`,
       };
     }
     case "price_under": {
@@ -2169,10 +2180,65 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
     }
     case "variant_option": {
       const checked = ["variant options"];
-      const v = p.variants.find((x) => x.options.some((o) => norm(o) === norm(req.optionValue!)) || norm(x.title).includes(norm(req.optionValue!)));
-      if (v && v.available) return { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: `A "${req.optionValue}" variant is listed and purchasable.`, evidenceSurface: "variant options" };
-      if (v) return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `The "${req.optionValue}" variant is listed but shows as unavailable.` };
-      return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `Checked the public variant list — no "${req.optionValue}" variant found.` };
+      const want = req.optionValue!;
+      const v = p.variants.find((x) => x.options.some((o) => norm(o) === norm(want)) || norm(x.title).includes(norm(want)));
+      if (v && v.available) return { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: `A "${want}" variant is listed and purchasable.`, evidenceSurface: "variant options" };
+      if (v) return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `The "${want}" variant is listed but shows as unavailable.` };
+
+      // ⚠️ v4.6 — A SINGLE-FORMAT PRODUCT IS NOT A PRODUCT MISSING A FORMAT, AND SAYING SO
+      // PUT A FALSE SENTENCE ON A PUBLIC RESULT PAGE. Measured on Copper Cow's "Classic
+      // Black Ground Coffee - 10oz": sold ground only, no grind axis, so the variant lookup
+      // missed on all four of FORMAT-001 (Whole Bean), FORMAT-002 (Ground), GRIND-001
+      // (Espresso) and GRIND-002 (Filter). Every one rendered `not_proven`, including the
+      // one contradicted by the product's own title. Four of that run's ten requirements
+      // were artifacts of asking a variant question of a product with no variants, and a
+      // merchant who reads "no 'Ground' variant found" about their ground coffee has every
+      // reason to disbelieve the other nine rows too.
+      //
+      // Two answers are tried, in order, before the miss is allowed to stand.
+
+      // 1. THE PRODUCT'S OWN IDENTITY MAY STATE THE FORMAT. If the title or product type
+      //    says "Ground", a buyer asking "can I get this ground?" has been answered yes by
+      //    the page, dropdown or no dropdown. Title and product type ONLY: the description
+      //    is prose and routinely mentions other products ("try our ground version"), which
+      //    would turn a cross-sell into a pass.
+      const wordRe = new RegExp(`\\b${want.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")}\\b`, "i");
+      for (const [surface, text] of [["product title", p.title], ["product type", p.productType]] as const) {
+        if (text && wordRe.test(text)) {
+          return {
+            label: req.label, status: "pass_evidenced", surfacesChecked: [...checked, surface],
+            detail: `This product is sold as "${want}", stated in the ${surface} rather than offered as a separate variant.`,
+            evidenceQuote: text, evidenceSurface: surface,
+          };
+        }
+      }
+
+      // 2. NO VARIANT AXIS AT ALL means the question has no public answer here. Whether the
+      //    store offers this format as a SEPARATE product is not something this page settles,
+      //    and very often it does: Copper Cow sells whole bean, just not on this URL.
+      //    `requires_store_access` is the engine's existing "we did not adjudicate this"
+      //    bucket, and `accessDetail` keeps the blame on us, per the finding-versus-accusation
+      //    rule this whole file turns on.
+      //
+      //    ⚠️ READ BOTH SOURCES, NOT JUST `optionValues`. The axis is declared in
+      //    `product.options` and echoed on each variant, and a snapshot can carry one without
+      //    the other. Copper Cow's real payload is `options: [{"Title": ["Default Title"]}]`
+      //    with a single `Default Title` variant, which is Shopify's placeholder for "this
+      //    product has no choices" — both sources agree it has no axis. Checking only the
+      //    declaration would have called a fixture with variant-level options axis-less.
+      const DEFAULT_OPTION = /^(default|title)/i;
+      const hasAxis =
+        p.optionValues.length > 0 ||
+        p.variants.some((x) => x.options.some((o) => o.trim() && !DEFAULT_OPTION.test(o.trim())));
+      if (!hasAxis) {
+        return {
+          label: req.label, status: "requires_store_access", surfacesChecked: checked,
+          detail: accessDetail(p, `This product is sold in a single format with no options to choose from, so its public data cannot settle whether ${/^[aeiou]/i.test(want) ? "an" : "a"} "${want}" choice exists elsewhere in the catalogue.`),
+        };
+      }
+
+      // A real axis exists and this value is not on it. Only now is the absence about the product.
+      return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `Checked the public variant list, and no "${want}" variant is offered on this product.` };
     }
     case "in_stock": {
       // Precedence (§3.1): JSON-LD Offer.availability → variants (incl. the `.js`
@@ -2194,7 +2260,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       if (p.variants.length) {
         return p.variants.some((v) => v.available)
           ? { label: req.label, status: "pass_evidenced", surfacesChecked: checked, detail: "At least one variant is listed as purchasable.", evidenceSurface: "variant options" }
-          : { label: req.label, status: "not_proven", surfacesChecked: checked, detail: "Checked the public variant list — no variant shows as available." };
+          : { label: req.label, status: "not_proven", surfacesChecked: checked, detail: "Checked the public variant list, and no variant shows as available." };
       }
       return { label: req.label, status: "requires_store_access", surfacesChecked: checked, detail: accessDetail(p, "This product exposes no availability data publicly.") };
     }
@@ -2236,7 +2302,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // pinned contract with no per-row guard, so one stale requirement destroyed
       // every other row's verdict. It is now loud in the log and honest in the table.
       const spec = ATTRIBUTE_SPECS[req.attribute!];
-      if (!spec) return unsupportedRow(p, req, `unknown attribute '${req.attribute}' — no ATTRIBUTE_SPECS entry (was it removed?)`);
+      if (!spec) return unsupportedRow(p, req, `unknown attribute '${req.attribute}', no ATTRIBUTE_SPECS entry (was it removed?)`);
       // PRODUCT surfaces only. The shipping policy is evidence about ORDERS, not
       // about this product, and matching attributes there produces false passes —
       // measured, not hypothesised: "Size, capacity or weight is stated" passed a
@@ -2285,7 +2351,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       }
       return {
         label: req.label, status: "not_proven", surfacesChecked: checked,
-        detail: `Checked ${listPhrase(checked)} — ${spec.missingDetail}.`,
+        detail: `Checked ${listPhrase(checked)}: ${spec.missingDetail}.`,
       };
     }
     case "identifiers": {
@@ -2346,7 +2412,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           label: req.label, status: "pass_evidenced", surfacesChecked: checked,
           detail: renderIdentifierDetail(
             `Your structured data publishes ${listPhrase(named)}.`,
-            `Your structured data publishes ${listPhrase(bare)}, but we can't reproduce the value here — it contains wording our reporting standard doesn't allow us to repeat.`,
+            `Your structured data publishes ${listPhrase(bare)}, but we can't reproduce the value here, because it contains wording our reporting standard doesn't allow us to repeat.`,
           ),
           evidenceSurface: "structured data",
         };
@@ -2388,8 +2454,8 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
         return {
           label: req.label, status: "not_proven", surfacesChecked: checked,
           detail: renderIdentifierDetail(
-            `The only identifier we can use on your product's own structured-data node is an MPN (${mpnRaw}), and that is the id your own storefront uses for this product — it resolves to nothing outside your store.${readLimit}`,
-            `The only identifier we can use on your product's own structured-data node is an MPN that is the id your own storefront uses for this product — it resolves to nothing outside your store.${readLimit}`,
+            `The only identifier we can use on your product's own structured-data node is an MPN (${mpnRaw}), which is the id your own storefront uses for this product and resolves to nothing outside your store.${readLimit}`,
+            `The only identifier we can use on your product's own structured-data node is an MPN, which is the id your own storefront uses for this product and resolves to nothing outside your store.${readLimit}`,
           ),
         };
       }
@@ -2433,7 +2499,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       if (p.policyStatus === "readable") {
         return {
           label: req.label, status: "not_proven", surfacesChecked: checked,
-          detail: "Checked your product data and shipping policy — neither states a delivery window an AI buyer can read.",
+          detail: "Checked your product data and shipping policy, and neither states a delivery window an AI buyer can read.",
         };
       }
       return {
@@ -2493,7 +2559,7 @@ async function applySemanticTier(
     next[target.i] = {
       ...target.a,
       status: "not_proven",
-      detail: `Checked ${listPhrase(target.a.surfacesChecked)} — the matching text is about something else, not this product.`,
+      detail: `Checked ${listPhrase(target.a.surfacesChecked)}, but the matching text is about something else, not this product.`,
       evidenceQuote: undefined,
       evidenceSurface: undefined,
     };
@@ -2708,7 +2774,7 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     return {
       ...base,
       error:
-        "We couldn't read enough of this store's public data to run a meaningful test — " +
+        "We couldn't read enough of this store's public data to run a meaningful test: " +
         "not enough of the product page, structured data or variants was readable. " +
         "That's a limit on what we could see, not a finding about this product.",
       errorKind: "unreachable",
@@ -2734,13 +2800,13 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
         case "delivery":
           return "State a delivery window (for example \"ships within 2 business days\") in your shipping policy or on the product page.";
         case "in_stock":
-          return "Expose availability publicly — structured data with an in-stock offer, or a purchasable variant an AI buyer can read.";
+          return "Expose availability publicly: structured data with an in-stock offer, or a purchasable variant an AI buyer can read.";
         case "variant_option":
           return `Make the "${a.label.replace(/ option available$/, "")}" option visible and purchasable in your public variant list.`;
         case "no_subscription":
           return "State plainly that a one-time purchase is available, so an AI buyer doesn't have to infer it.";
         case "price_under":
-          return `Your lowest readable price doesn't meet this buyer's cap — no evidence change needed, this is a pricing fact.`;
+          return `Your lowest readable price doesn't meet this buyer's cap. No evidence change needed; this is a pricing fact.`;
         default:
           return `State ${a.label.toLowerCase()} in a form an AI buyer can verify.`;
       }

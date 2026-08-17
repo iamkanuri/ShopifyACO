@@ -58,7 +58,7 @@ export const STATUS_LABEL: Record<string, string> = {
 export const STATUS_MEANS: Record<string, string> = {
   pass_evidenced: "The store publishes a statement that settles this, and the sentence is quoted below.",
   pass_no_blocking: "Nothing on the page contradicts this. That is an inference, not proof, and it is labelled as one.",
-  not_proven: "We read every surface named below and found nothing that settles it. That is a statement about what this page publishes — NOT that the claim is false, and not that the product lacks the property.",
+  not_proven: "We read every surface named below and found nothing that settles it. That is a statement about what this page publishes, NOT that the claim is false, and not that the product lacks the property.",
   requires_store_access: "The surface that would settle this could not be read from public data at all. Reported as unchecked rather than as a result.",
 };
 
@@ -200,7 +200,7 @@ function rowHtml(a: Assertion, r: ResolvedResult, row: StoredResultRow): string 
     // fallback explains a missing sentence as "could not be matched back to a single
     // evidence sentence", which would be a false explanation here — the index was never
     // stored. A wrong reason for a real limit is still a wrong statement.
-    receipt.push(`<p class="bt-note">This is the quote as the engine recorded it, cut to 180 characters. Open the page above and search for it — it is the store's own sentence, not ours.</p>`);
+    receipt.push(`<p class="bt-note">This is the quote as the engine recorded it, cut to 180 characters. Open the page above and search for it: it is the store's own sentence, not ours.</p>`);
   }
   if (a.evidenceSurface) {
     receipt.push(`<p class="bt-surface">Read from <strong>${esc(a.evidenceSurface)}</strong></p>`);
@@ -228,7 +228,7 @@ function rowHtml(a: Assertion, r: ResolvedResult, row: StoredResultRow): string 
   ${p(a.detail)}
   ${receipt.join("")}
   ${peerLine}
-  <p class="bt-checked">Surfaces checked: ${esc((a.surfacesChecked ?? []).join(", ") || "—")}</p>
+  <p class="bt-checked">Surfaces checked: ${esc((a.surfacesChecked ?? []).join(", ") || "none recorded")}</p>
 </section>`;
 }
 
@@ -275,8 +275,8 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
 
   const supersession = row.superseded_by
     ? `<aside class="bt-limit" role="note"><strong>A newer result exists for this page.</strong>
-   This one is kept exactly as it was — results here are never rewritten — so a link already
-   sent still resolves to what it said. <a href="/result/${esc(row.superseded_by)}">See the newer result →</a></aside>`
+   This one is kept exactly as it was, because results here are never rewritten, so a link
+   already sent still resolves to what it said. <a href="/result/${esc(row.superseded_by)}">See the newer result →</a></aside>`
     : "";
   const lineage = row.rerun_of
     ? `<p class="bt-note">This is a re-run. <a href="/result/${esc(row.rerun_of)}">The earlier result →</a> The two are linked, not reconciled: if they disagree, the store changed, and both readings are true of their own day.</p>`
@@ -285,10 +285,10 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
   const stdRow = r.standard
     ? `<div><dt>Standard</dt><dd><a href="/standards/${esc(row.standard_slug ?? "")}/${esc(row.standard_version ?? "")}">${esc(r.standard.id)} v${esc(r.standard.version)}</a></dd></div>
       <div><dt>Content hash</dt><dd><code>${esc(r.standard.hash)}</code></dd></div>`
-    : `<div><dt>Contract</dt><dd>Generated buyer task — not a published standard</dd></div>`;
+    : `<div><dt>Contract</dt><dd>Generated buyer task, not a published standard</dd></div>`;
 
   return {
-    title: `Test result — ${t.productName ?? host}${r.standard ? ` against ${r.standard.id} v${r.standard.version}` : ""}`,
+    title: `Test result: ${t.productName ?? host}${r.standard ? ` against ${r.standard.id} v${r.standard.version}` : ""}`,
     description: `A buyer test run against ${host} on ${ranDay}. ${t.total} requirements, ${summary}, each with the evidence sentence and the surface it was read from.`,
     canonical,
     // No JSON-LD: this page is deliberately not indexable, and emitting structured data
@@ -313,7 +313,7 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
       <div><dt>Result</dt><dd><strong>${esc(summary)}</strong></dd></div>
     </dl>
     <p><strong>This is the verdict as it was recorded on ${esc(ranDay)}, and this page does not re-run anything.</strong>
-    The store may have changed since — that is the point of a dated result. Every sentence quoted below is the store's own; open the page and check.</p>
+    The store may have changed since, and that is the point of a dated result. Every sentence quoted below is the store's own; open the page and check.</p>
     ${lineage}
     <p class="bt-limit"><strong>What a “not proven” row is not.</strong> It means this page did not publish a statement that settles that requirement in a form a machine buyer could read. It is not a claim that the product lacks the property, and it is not a criticism of it.</p>
   </aside>
@@ -329,9 +329,9 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
 
   <section class="bt-rows">
     <h2>The ${t.assertions.length} requirements</h2>
-    ${p(`Read from: ${(t.surfacesChecked ?? []).join(", ") || "—"}.${
+    ${p(`Read from: ${(t.surfacesChecked ?? []).join(", ") || "none recorded"}.${
       (t.notInspectable ?? []).length ? ` Not publicly inspectable: ${t.notInspectable.join(", ")}.` : ""}`)}
-    ${r.peersRederived ? `<p class="bt-note">The peer line under each row is a measurement of our sample, not of this store, and it is read from the published measurement for the exact standard version this result cites — so a correction we publish later reaches this page, while the verdicts above never move.</p>` : ""}
+    ${r.peersRederived ? `<p class="bt-note">The peer line under each row is a measurement of our sample, not of this store, and it is read from the published measurement for the exact standard version this result cites, so a correction we publish later reaches this page, while the verdicts above never move.</p>` : ""}
     ${t.assertions.map((a) => rowHtml(a, r, row)).join("")}
   </section>
 
@@ -347,7 +347,7 @@ export function renderStoredResult(row: StoredResultRow, r: ResolvedResult, base
   <section class="bt-share">
     <h2>Sharing</h2>
     ${p(row.shared_at
-      ? `Marked shareable on ${isoDay(row.shared_at)}. The link is still unlisted and still carries a no-index header — marking it shareable only allows it to show a preview card when someone posts it.`
+      ? `Marked shareable on ${isoDay(row.shared_at)}. The link is still unlisted and still carries a no-index header. Marking it shareable only allows it to show a preview card when someone posts it.`
       : "This result is unlisted. Its address is unguessable, it carries a no-index header, it is in no sitemap, and it is linked from no page of this site. It will not show a preview card if posted anywhere until someone deliberately marks it shareable.")}
     <p class="bt-note">Retention: this result is kept indefinitely and is not deleted on a schedule. A permanent link that expires would be a false statement with a delay, so it does not expire.</p>
   </section>

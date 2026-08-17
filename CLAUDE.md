@@ -1701,6 +1701,60 @@ because a grant landing on an already-passing row is counted and then dropped. T
 safe — the disclosure detector over-flags — but "4 affected results" is a **ceiling**, not a
 floor. Full record: `experiments/v4-4/`, `ENGINE_GAPS` **P-29**.
 
+## A single-format product was told it was missing its own format (v4.6)
+
+**A false sentence reached a public result page, and outreach linked to it.** Copper Cow's
+`Classic Black Ground Coffee - 10oz` is sold ground only: one variant, `options:
+[{"Title": ["Default Title"]}]`, no grind axis. The `variant_option` matcher looks values up
+in the variant list, so **all four** of `FORMAT-001` (Whole Bean), `FORMAT-002` (Ground),
+`GRIND-001` (Espresso) and `GRIND-002` (Filter) missed and rendered `not_proven`, including
+the one contradicted by the product's own title. **Four of that run's ten rows were artifacts
+of asking a variant question of a product with no variants.** `ENGINE_VERSION` v2.6.0 →
+**v2.7.0**.
+
+Found by a founder reading a drafted cold email, not by any instrument here. The corpus has
+no axis-less coffee product, so nothing failed.
+
+**Two answers, tried in order, before a miss is allowed to stand:**
+
+| | before | after |
+|---|---|---|
+| `Ground` on a product titled *Ground Coffee* | `not_proven` — "no 'Ground' variant found" | `pass_evidenced` — stated in the product title, title quoted |
+| `Whole Bean` / `Espresso` / `Filter`, no axis | `not_proven` (an absence claim about the store) | `requires_store_access` — copy blames us |
+| `Espresso` where a real grind axis exists | `not_proven` | `not_proven` (unchanged: now the absence really is about the product) |
+
+Identity is read from **product title and product type only**. The description is prose and
+routinely mentions other products ("try our ground version"), which would turn a cross-sell
+into a pass. The axis check reads **both** `optionValues` and variant-level options, because a
+snapshot can carry one without the other, and Shopify's `Default Title` placeholder is not an
+axis.
+
+⚠️ **`requires_store_access` is right here for the reason it is right everywhere in this
+file.** Whether the store sells whole bean as a SEPARATE product is not something this page
+settles, and very often it does — Copper Cow does. "We could not decide" is the honest row;
+"no Whole Bean variant found" is an absence claim we had not earned.
+
+**Two copy defects fixed in the same pass, both found the same way.**
+
+1. **Every failing claim row rendered one identical sentence.** `Checked <surfaces> — no
+   statement an AI buyer could verify` never named the claim, so `organic`, `fair_trade` and
+   `single_origin` produced byte-identical details on the same product: a merchant with three
+   findings read one line three times. The claim key was in `req.claim` all along.
+2. **Em and en dashes are gone from everything a merchant reads**, and `test/noEmDash.test.ts`
+   keeps them out. The em dash is the most recognisable tell of machine-written text, and every
+   sentence here is a statement about a real store we are asking someone to check; a report that
+   reads as generated gets discounted before it is read. **33 in emitted copy** across
+   `productTest.ts`, `publicStandard.ts` and `resultPage.ts` (the other ~270 hits were code
+   comments). Rewritten so each sentence still flows, never by deleting the dash and leaving a
+   gap.
+
+The guard has two layers, because either alone leaks: a **source scan** with comments stripped,
+which catches new copy the moment it is written; and a **behavioural** pass asserting no
+`detail`, `label` or quote the matcher emits carries one. Three lines are allowlisted, each
+because it PARSES a dash out of a merchant's own text — reading one is fine, emitting one is
+not. The source layer immediately earned itself: it caught a dash in a `<aside>` on the result
+page that had been eyeballed and misfiled as a comment.
+
 ## A replay said "ship it" and an adversarial pass said "eleven regressions" (v4.5)
 
 **P-19 is closed — half of it.** A published `$0.00` is no longer read as a price

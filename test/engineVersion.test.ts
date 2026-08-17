@@ -124,8 +124,8 @@ function matcherHash(): string {
 //
 // ⚠️ THE SECOND HALF WAS REVERTED, so the hash below is NOT the one that first shipped.
 // `extract.ts` is byte-identical to `main` again — see the tombstone above `parseOffer`.
-const PINNED_ENGINE_VERSION = "v2.6.0";
-const PINNED_MATCHER_HASH = "7b3c2008e6f94ba6";
+const PINNED_ENGINE_VERSION = "v2.7.0";
+const PINNED_MATCHER_HASH = "f541ada62c14051e";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();

@@ -110,7 +110,7 @@ function loadStandard(slug: string): {
   const h = hashMatches(standard);
   // A result that cannot name the exact text it tested against is not citable, which is
   // the entire proposition. Refuse rather than run.
-  if (!h.ok) throw new Error("standard hash mismatch — refusing to run a contract that cannot be cited");
+  if (!h.ok) throw new Error("standard hash mismatch, refusing to run a contract that cannot be cited");
   const sidecar = JSON.parse(
     fs.readFileSync(path.join(repoRoot, published.dir, "applicability.json"), "utf8"),
   ) as Sidecar;

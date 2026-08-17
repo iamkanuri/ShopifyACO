@@ -177,7 +177,7 @@ test("[result] a general-layer result never borrows the standard's measured erro
   const bound = /(\d+\.\d+)\s?%/.exec(page.bodyHtml);
   assert.equal(bound, null, `a general-layer result page printed a measured rate: ${bound?.[0]}`);
   assert.match(page.bodyHtml, /general engine/);
-  assert.match(page.bodyHtml, /Generated buyer task — not a published standard/);
+  assert.match(page.bodyHtml, /Generated buyer task, not a published standard/);
 });
 
 test("[result] the status vocabulary is byte-identical to the one /demo publishes", () => {
