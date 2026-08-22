@@ -40,7 +40,7 @@
 // Pure: no network, no filesystem, no clock.
 // ===========================================================================
 
-import type { Requirement } from "../src/server/productTest.js";
+import type { Requirement, Expectation } from "../src/server/productTest.js";
 
 // ---- what we classify against ------------------------------------------------
 //
@@ -156,6 +156,37 @@ export interface SidecarRule {
   /** Quotes the prose this rule is the executable reading of, so a reviewer can
    *  check the two against each other without opening both files. */
   from: string;
+  /**
+   * G-11. Whether the ABSENCE of this entry's information is a deficiency.
+   *
+   * The engine defaults every `claim` requirement to `conditional` and everything
+   * else to `required`, which is correct for the coffee standard as written, so this
+   * field exists to let a STANDARD overrule that reading rather than to carry it. The
+   * standard is the published document; the engine's register is one build's reading
+   * of it, and where they disagree the standard wins — the same precedence the `from`
+   * note already asserts for the conditions above.
+   *
+   * The prose it is the executable reading of is `merchant_remediation`, which the
+   * coffee authors already wrote conditionally where the property may not hold:
+   * CERT-001 "IF a certifying agent certified the operation..." against WEIGHT-001
+   * "State the net quantity...".
+   */
+  expectation?: Expectation;
+  /**
+   * G-11. Option values that answer the same buyer question as this entry's
+   * `option_value`, so a page offering one has answered the shopper even though it
+   * uses a different name.
+   *
+   * ⚠️ CATEGORY KNOWLEDGE, WHICH IS WHY IT LIVES HERE. "Espresso" and "Filter" are
+   * ground coffee; the engine has no way to know that and must not guess, because
+   * guessing category semantics is how a coffee GRINDER became a coffee product once
+   * already. The standard knows, so the standard declares it.
+   *
+   * ⚠️ UNAMBIGUOUS VALUES ONLY. A bare "Medium" is a grind on one store and a SIZE on
+   * the next, and a false equivalence here silences a true finding, which is the more
+   * expensive of the two errors. Every value must name the concept on its own.
+   */
+  satisfied_by_option_values?: string[];
 }
 
 export interface Sidecar {
@@ -259,7 +290,7 @@ export function applyApplicability(
       break;
     }
     if (excluded) decisions.push({ entry: req.id, asked: false, reason: excluded, detail: DETAIL[excluded] });
-    else { decisions.push({ entry: req.id, asked: true }); included.push(req); }
+    else { decisions.push({ entry: req.id, asked: true }); included.push(withExpectation(req, sr)); }
   }
 
   // The loud error. Note it fires on an empty INPUT too: compiling zero requirements
@@ -276,6 +307,24 @@ export function applyApplicability(
     };
   }
   return { state: "APPLIED", classification: cls, includedCount: included.length, decisions, requirements: included };
+}
+
+/**
+ * Carry the sidecar's G-11 declarations onto the requirement the engine will run.
+ *
+ * Separate from the exclusion loop and separately testable, because the two answer
+ * different questions and confusing them is how a gate acquires a second job nobody
+ * reviewed. Exclusion asks "should this be asked at all"; this asks "and how should a
+ * negative answer be read". The engine has usable defaults for both fields, so a
+ * sidecar that declares neither behaves exactly as it did before G-11.
+ */
+export function withExpectation(req: Requirement, rule: SidecarRule): Requirement {
+  if (!rule.expectation && !rule.satisfied_by_option_values?.length) return req;
+  return {
+    ...req,
+    ...(rule.expectation ? { expectation: rule.expectation } : {}),
+    ...(rule.satisfied_by_option_values?.length ? { satisfiedByOptionValues: rule.satisfied_by_option_values } : {}),
+  };
 }
 
 /** Every executable entry needs a rule, or a new entry silently defaults to

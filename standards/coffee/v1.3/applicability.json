@@ -15,7 +15,14 @@
         "in_category",
         "not_preportioned"
       ],
-      "from": "applies_when: the product is roasted coffee sold by mass rather than in pods or capsules; does_not_apply_when: the product is a pod, capsule or pre-dosed sachet, where the state is inherent to the format"
+      "from": "applies_when: the product is roasted coffee sold by mass rather than in pods or capsules; does_not_apply_when: the product is a pod, capsule or pre-dosed sachet, where the state is inherent to the format",
+      "satisfied_by_option_values": [
+        "Whole Beans",
+        "Beans",
+        "Unground",
+        "Bean"
+      ],
+      "satisfied_by_from": "question: 'Can I buy this as whole beans?' Any of these names the same thing. Excluded deliberately: a bare 'Whole', which qualifies other nouns."
     },
     {
       "entry": "ALS-COFFEE-1.3-FORMAT-002",
@@ -23,7 +30,29 @@
         "in_category",
         "not_preportioned"
       ],
-      "from": "applies_when: the product is roasted coffee sold by mass rather than in pods or capsules; does_not_apply_when: pods, capsules and pre-dosed sachets, where the coffee is ground by definition"
+      "from": "applies_when: the product is roasted coffee sold by mass rather than in pods or capsules; does_not_apply_when: pods, capsules and pre-dosed sachets, where the coffee is ground by definition",
+      "satisfied_by_option_values": [
+        "Espresso",
+        "Filter",
+        "Drip",
+        "Pour Over",
+        "Pourover",
+        "French Press",
+        "Moka Pot",
+        "Aeropress",
+        "Percolator",
+        "Chemex",
+        "Cold Brew",
+        "Auto Drip",
+        "Batch Brew",
+        "Espresso Grind",
+        "Filter Grind",
+        "Drip Grind",
+        "Fine Grind",
+        "Medium Grind",
+        "Coarse Grind"
+      ],
+      "satisfied_by_from": "question: 'Can I buy this already ground, so I do not need a grinder?' Every value here IS a grind, so a page offering one has answered yes even where no option is literally named 'Ground'. This is the FORMAT-002 half of the packet G-11 was built from: Bird Rock sells Whole Bean, Espresso and Filter, and was told it offers no ground coffee. Excluded deliberately: bare 'Medium', 'Fine' and 'Coarse', which are sizes on other stores."
     },
     {
       "entry": "ALS-COFFEE-1.3-GRIND-001",
@@ -31,7 +60,13 @@
         "in_category",
         "not_preportioned"
       ],
-      "from": "applies_when: the product is roasted coffee sold by mass and the seller offers any grind choice; does_not_apply_when: pods and capsules, where dose and grind are fixed by the format"
+      "from": "applies_when: the product is roasted coffee sold by mass and the seller offers any grind choice; does_not_apply_when: pods and capsules, where dose and grind are fixed by the format",
+      "satisfied_by_option_values": [
+        "Espresso Grind",
+        "Fine Grind",
+        "Espresso Fine"
+      ],
+      "satisfied_by_from": "question: 'Can I get this ground for espresso?' Deliberately NARROW: a generic 'Ground' option does not answer it, because the default grind of an unnamed ground option is the merchant's choice and is usually not espresso."
     },
     {
       "entry": "ALS-COFFEE-1.3-GRIND-002",
@@ -39,7 +74,20 @@
         "in_category",
         "not_preportioned"
       ],
-      "from": "applies_when: the product is roasted coffee sold by mass and the seller offers any grind choice; does_not_apply_when: pods and capsules"
+      "from": "applies_when: the product is roasted coffee sold by mass and the seller offers any grind choice; does_not_apply_when: pods and capsules",
+      "satisfied_by_option_values": [
+        "Filter Grind",
+        "Drip",
+        "Drip Grind",
+        "Auto Drip",
+        "Batch Brew",
+        "Pour Over",
+        "Pourover",
+        "Chemex",
+        "V60",
+        "Medium Grind"
+      ],
+      "satisfied_by_from": "question: 'Can I get this ground for a filter or pour-over brewer?' Same narrowness as GRIND-001: a generic 'Ground' is left out because its grind is unstated."
     },
     {
       "entry": "ALS-COFFEE-1.3-WEIGHT-001",
@@ -53,21 +101,27 @@
       "requires": [
         "in_category"
       ],
-      "from": "applies_when: the product is roasted coffee offered to consumers in any format"
+      "from": "applies_when: the product is roasted coffee offered to consumers in any format",
+      "expectation": "conditional",
+      "expectation_from": "merchant_remediation: 'If a certifying agent certified the operation that packs this coffee, name that agent in product-page text alongside the legal operation name' — the condition is the standard's own. consumer_note adds that the word organic can be lawful without certification, so a page that does not use it is not necessarily withholding anything. Measured: 92 of 100 coffee stores state no organic claim (measured_discrimination, verdict not_discriminating), which is what 'most coffee is not certified organic' looks like from outside."
     },
     {
       "entry": "ALS-COFFEE-1.3-CERT-002",
       "requires": [
         "in_category"
       ],
-      "from": "applies_when: the product is roasted coffee offered to consumers in any format"
+      "from": "applies_when: the product is roasted coffee offered to consumers in any format",
+      "expectation": "conditional",
+      "expectation_from": "assertion is 'a fair-trade SCHEME claim is stated'. A roaster who buys outside any scheme has nothing to state, and 96 of 100 measured stores state nothing (verdict not_discriminating). Direct-trade and relationship-coffee buying are ordinary in this category and are not the scheme this entry names."
     },
     {
       "entry": "ALS-COFFEE-1.3-SOURCE-001",
       "requires": [
         "in_category"
       ],
-      "from": "applies_when: the product is roasted coffee offered to consumers in any format"
+      "from": "applies_when: the product is roasted coffee offered to consumers in any format",
+      "expectation": "conditional",
+      "expectation_from": "The entry's own question is 'Is this coffee from one place, or is it a blend?' — a question with two legitimate answers, only one of which this entry can evidence. merchant_remediation reads 'State the granularity and the named entity AT THAT LEVEL', which presupposes the lot is single-origin at all. A deliberate blend has answered the shopper correctly by being a blend."
     },
     {
       "entry": "ALS-COFFEE-1.3-IDENT-001",
@@ -85,5 +139,6 @@
       ],
       "from": "applies_when: the product is physically shipped to the buyer; signal: any purchasable physical coffee product"
     }
-  ]
+  ],
+  "_note_g11": "G-11 additions. `expectation` is the executable reading of each entry's `merchant_remediation` prose, which the authors already wrote conditionally wherever the property may simply not hold ('IF a certifying agent certified the operation...') and unconditionally where every product in the envelope has it ('State the net quantity...'). It is read only for entries whose binding is req_kind 'claim', because that is the only kind whose absence can be the absence of a voluntary property; stating it on the others would be inert. `satisfied_by_option_values` names the option values that answer the same buyer QUESTION under a different word, which is category knowledge the engine has no way to derive and must not guess. Values are unambiguous on their own: a bare 'Medium' is a grind on one store and a size on the next, and a false equivalence here silences a true finding, which is the more expensive of the two errors."
 }

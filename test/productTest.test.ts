@@ -716,10 +716,24 @@ test("15. semantic tier grants only on a VERBATIM quote, vetoes lexical matches,
 
 // ---- 16. one correction line per not_proven requirement ---------------------
 
-test("16. a suggested correction is emitted for EVERY unproven requirement", async () => {
+// ⚠️ v2.8 (G-11) — THE INVARIANT NARROWED, DELIBERATELY, AND THIS TEST NOW PINS THE
+// NARROWER ONE. It used to read "for EVERY unproven requirement". That was the right
+// rule while `not_proven` had exactly one meaning; it stopped being right when the
+// engine learned to tell a deficiency from a true observation about a property the
+// product does not have. The line it emitted for the latter was "Confirm whether this
+// product is Organic. If it is, state it..." — a correction whose own first clause
+// concedes the engine does not know whether it applies. A remediation the merchant may
+// be unable to perform truthfully is not a remediation.
+//
+// Both halves are asserted, and the second half is the one that matters: an actionable
+// row must STILL get its line. A gate that suppressed everything would pass the first.
+test("16. a suggested correction is emitted for every ACTIONABLE unproven requirement", async () => {
   const res = await runStub([[/\.json$/, { status: 200, contentType: "application/json", body: shopJson() }]]);
   const notProven = res.assertions.filter((a) => a.status === "not_proven");
-  assert.equal(res.suggestedCorrections.length, notProven.length, "one line per unproven row");
+  const actionable = notProven.filter((a) => !a.notActionable);
+  assert.equal(res.suggestedCorrections.length, actionable.length, "one line per ACTIONABLE unproven row");
+  assert.equal(res.actionableCount, actionable.length, "actionableCount agrees with the rows it counts");
+  assert.ok(actionable.length >= 2, "this fixture must still produce real gaps, or the gate is untested");
   assert.ok(notProven.length >= 2, "this fixture has multiple gaps to cover");
   assert.equal(new Set(res.suggestedCorrections).size, res.suggestedCorrections.length, "no duplicated advice");
   // requires_store_access rows never generate corrections (not the merchant's fault).

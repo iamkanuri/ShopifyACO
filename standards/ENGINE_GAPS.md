@@ -3362,3 +3362,187 @@ Every one of those still makes a sampled call on every live run.
 
 ⚠️ **Do not treat the landing-page pin as the fix.** It closes one page. The tier is live
 on the surface a stranger actually pastes a URL into.
+
+---
+
+## P-30 · 61 MATCHER DEFECTS AN EXECUTING ADVERSARIAL PASS FOUND WHILE G-11 WAS BEING BUILT — recorded, not fixed
+
+**Status: OPEN, and deliberately not addressed in v2.8.** They are recorded here because the
+alternative was to discover them again.
+
+### How they were found, and why that matters
+
+G-11 (expectation gating, `src/server/productTest.ts`) was reviewed by an independent pass that
+did not read the code and argue about it: it **constructed 292 products across six categories and
+executed the real `evaluate` against every one**, then compared the verdict to a hand-authored
+true-correct expectation. 220 agreed. The rest are below.
+
+Only **nine** of the disagreements were about G-11 itself, and every one of those was fixed in the
+same session — including two FALSE SUPPRESSIONS the gate had introduced, which are the expensive
+direction:
+
+* `"Expect a blend of red apple, brown sugar and jasmine in the cup"` is the commonest
+  tasting-note wording in specialty coffee and contains the counter phrase `a blend of` verbatim.
+  It was deleting the single-origin finding on a named Colombian lot. Closed by `counterGuard`.
+* A store's `meta_description` advertising `"our house blend subscriptions"` was suppressing the
+  single-origin row of a product that is not a blend. Closed by `COUNTER_SURFACES`.
+* `"30 ml"` occurs inside `"130 ml"`, so a declared equivalence removed a genuinely missing
+  travel size. Word bounding does NOT close it — the engine bounds on a letter class and `1` is a
+  digit — so equivalences now match exact option values, with multi-axis titles split first.
+
+All nine are pinned in `test/support/legitimacyCorpus.ts` under `ADVERSARIAL`.
+
+**The remaining 61 are older than G-11 and live in the evidence matcher.** They are listed here
+rather than fixed because fixing a matcher is exactly the change this repo has twice measured as a
+net regression, and because none of them is reachable from the coffee standard's ten executable
+entries in the shape the pass constructed. Read the count the way `EXPECTED_OPEN_GAPS` asks to be
+read: a class nobody can count is not progress.
+
+### The defects, by subsystem
+
+### variant_option lookup — 18
+
+| case | category | true-correct | engine today |
+|---|---|---|---|
+| `battery-option-on-mains-only-lamp` | electronics | not_proven/contradicted_by_evidence | not_proven/actionable |
+| `lightning-fast-title-is-not-a-connector` | electronics | not_proven/actionable | pass_evidenced/actionable |
+| `flatpack-declared-equivalent-to-assembled` | furniture | not_proven/actionable | not_proven/contradicted_by_evidence |
+| `queen-anne-title-is-a-style-not-a-size` | furniture | requires_store_access/catalog_level_unknown | pass_evidenced/actionable |
+| `twin-is-not-satisfied-by-twin-xl` | furniture | not_proven/actionable | pass_evidenced/actionable |
+| `outdoor-rating-demanded-of-indoor-sofa` | furniture | not_proven/contradicted_by_evidence | not_proven/optional_unstated |
+| `assembly-asked-of-finish-only-axis` | furniture | requires_store_access/catalog_level_unknown | not_proven/actionable |
+| `waterproofing-demanded-of-open-toe-sandal` | footwear | not_proven/contradicted_by_evidence | not_proven/actionable |
+| `size-10-must-not-match-inside-10-5` | footwear | not_proven/actionable | pass_evidenced/actionable |
+| `wide-calf-is-not-a-foot-width` | footwear | not_proven/actionable | pass_evidenced/actionable |
+| `width-code-w-must-not-match-white-colourway` | footwear | not_proven/actionable | pass_evidenced/actionable |
+| `womens-cut-demanded-of-a-mens-shirt` | apparel | not_proven/contradicted_by_evidence | not_proven/actionable |
+| `size-demanded-of-a-colour-only-axis` | apparel | requires_store_access/catalog_level_unknown | not_proven/actionable |
+| `size-s-false-passes-on-a-slate-variant-title` | apparel | not_proven/actionable | pass_evidenced/actionable |
+| `black-label-in-the-title-is-not-a-black-colourway` | apparel | not_proven/actionable | pass_evidenced/actionable |
+| `instant-classic-title-is-not-a-format` | coffee | not_proven/actionable | pass_evidenced/actionable |
+| `placeholder-optionvalues-defeat-the-no-axis-branch` | coffee | requires_store_access/catalog_level_unknown | not_proven/actionable |
+| `whole-beans-plural-title-not-read-as-format` | coffee | pass_evidenced/actionable | not_proven/actionable |
+
+### claim matcher (aboutness and scope) — 14
+
+| case | category | true-correct | engine today |
+|---|---|---|---|
+| `organic-curves-is-a-design-word-not-a-certification` | furniture | not_proven/optional_unstated | pass_evidenced/actionable |
+| `organic-required-false-passes-on-a-dust-bag` | furniture | not_proven/actionable | pass_evidenced/actionable |
+| `vegan-vs-a-lanolin-and-beeswax-balm` | beauty | not_proven/optional_unstated | not_proven/contradicted_by_evidence |
+| `organic-belongs-to-the-cotton-pouch` | beauty | not_proven/optional_unstated | pass_evidenced/actionable |
+| `quantified-aluminum-defeats-the-violating-phrase` | beauty | not_proven/contradicted_by_evidence | not_proven/optional_unstated |
+| `unlike-other-brands-loses-a-real-claim` | beauty | pass_evidenced/actionable | not_proven/optional_unstated |
+| `animal-free-read-as-contains-animal` | footwear | not_proven/optional_unstated | pass_evidenced/actionable |
+| `vegan-leather-is-a-material-not-an-ethics-claim` | footwear | not_proven/contradicted_by_evidence | pass_evidenced/actionable |
+| `vegan-matched-only-in-an-option-value` | footwear | not_proven/optional_unstated | pass_evidenced/actionable |
+| `organic-claimed-only-of-the-laces` | footwear | not_proven/optional_unstated | pass_evidenced/actionable |
+| `organic-silhouette-is-not-organic-cotton` | apparel | not_proven/optional_unstated | pass_evidenced/actionable |
+| `organic-in-the-page-description-is-store-marketing` | apparel | not_proven/optional_unstated | pass_evidenced/actionable |
+| `organic-matter-is-not-an-organic-claim` | coffee | not_proven/optional_unstated | pass_evidenced/actionable |
+| `above-fair-trade-prices-is-not-certification` | coffee | not_proven/optional_unstated | pass_evidenced/actionable |
+
+### attribute:dimensions — 12
+
+| case | category | true-correct | engine today |
+|---|---|---|---|
+| `battery-capacity-clause-eats-real-thickness` | electronics | pass_evidenced/actionable | not_proven/actionable |
+| `storage-capacity-is-not-a-physical-size` | electronics | not_proven/actionable | pass_evidenced/actionable |
+| `bundled-adapter-weight-is-not-the-laptop` | electronics | not_proven/actionable | pass_evidenced/actionable |
+| `fitment-max-laptop-size-is-not-the-stand` | electronics | not_proven/actionable | pass_evidenced/actionable |
+| `dims-stated-in-a-sentence-that-mentions-shipping` | furniture | pass_evidenced/actionable | not_proven/actionable |
+| `fitment-dimension-is-not-own-size` | furniture | not_proven/actionable | pass_evidenced/actionable |
+| `per-pump-dose-is-not-net-quantity` | beauty | not_proven/actionable | pass_evidenced/actionable |
+| `concentration-is-not-a-net-quantity` | beauty | not_proven/actionable | pass_evidenced/actionable |
+| `fabric-weight-in-ounces-is-not-a-garment-measurement` | apparel | not_proven/actionable | pass_evidenced/actionable |
+| `model-height-is-not-the-garments-measurement` | apparel | not_proven/actionable | pass_evidenced/actionable |
+| `roast-batch-size-is-not-a-net-weight` | coffee | not_proven/actionable | pass_evidenced/actionable |
+| `caffeine-per-cup-is-not-a-net-weight` | coffee | not_proven/actionable | pass_evidenced/actionable |
+
+### attribute:materials — 10
+
+| case | category | true-correct | engine today |
+|---|---|---|---|
+| `machined-from-aluminum-is-a-material` | electronics | pass_evidenced/actionable | not_proven/actionable |
+| `materials-recycled-content-is-not-a-composition` | furniture | not_proven/actionable | pass_evidenced/actionable |
+| `cosmetic-ingredients-are-not-a-material` | beauty | pass_evidenced/actionable | not_proven/actionable |
+| `inci-block-is-not-read-as-composition` | beauty | pass_evidenced/actionable | not_proven/actionable |
+| `made-with-organic-botanicals-defeats-the-love-guard` | beauty | not_proven/actionable | pass_evidenced/actionable |
+| `merino-composition-behind-a-dash-separator` | apparel | pass_evidenced/actionable | not_proven/actionable |
+| `bare-fibre-percentage-with-a-qualified-fibre-name` | apparel | pass_evidenced/actionable | not_proven/actionable |
+| `sleeves-and-body-composition-vetoed-as-packaging` | apparel | pass_evidenced/actionable | not_proven/actionable |
+| `subjectless-packaging-composition-credited-to-the-garment` | apparel | not_proven/actionable | pass_evidenced/actionable |
+| `arabica-composition-is-a-stated-material` | coffee | pass_evidenced/actionable | not_proven/actionable |
+
+### attribute:care — 4
+
+| case | category | true-correct | engine today |
+|---|---|---|---|
+| `usage-instructions-stated-as-apply-drops` | beauty | pass_evidenced/actionable | not_proven/actionable |
+| `washing-and-care-instructions-on-the-hangtag` | footwear | not_proven/actionable | pass_evidenced/actionable |
+| `care-stated-only-as-a-prohibition` | apparel | pass_evidenced/actionable | not_proven/actionable |
+| `washing-and-care-instructions-are-on-the-label` | apparel | not_proven/actionable | pass_evidenced/actionable |
+
+### no_subscription — 3
+
+| case | category | true-correct | engine today |
+|---|---|---|---|
+| `feature-gated-subscription-is-not-product-gated` | electronics | pass_no_blocking/actionable | not_proven/actionable |
+| `subscription-required-suppressed-by-cancel-anytime` | furniture | not_proven/actionable | pass_no_blocking/actionable |
+| `cancel-anytime-deletes-the-subscription-blocker` | beauty | not_proven/actionable | pass_no_blocking/actionable |
+
+### One of them has a one-line fix, and it was measured and then reverted
+
+`animal-free-read-as-contains-animal`. `contains animal` is a plain substring of
+`"contains animal-free microsuede"`, and `findViolation` discards an overlap only when a
+SUPPORTING term extends past the violating span. `animal-free` is not in `CLAIM_TERMS.vegan.support`,
+so the discard never fires and a shoe advertising an animal-free upper is read as stating the
+opposite of the claim. **It is the same shape as the `gluten-free` overlap v2.4 measured as its
+most damaging defect** — not a missed pass, but an assertion about the merchant that is the
+reverse of what they wrote.
+
+**The fix is to put `animal-free` and `animal free` in `support`.** That was done in the v2.8
+session, measured, and reverted. The measurement is kept because it is the expensive half:
+
+| G-14 cell (vegan) | before | after | |
+|---|---|---|---|
+| `violation` | 3/16 | **4/16** | the defect itself, closed |
+| `wrong_subject` | 22/48 (45.8%) | **44/76 (57.9%)** | better |
+| `tense_modality` | 16/36 (44.4%) | **32/54 (59.3%)** | better |
+| `merchant_controlled_string` | 10/24 (41.7%) | **20/36 (55.6%)** | better |
+| `orthography` | 13/30 (43.3%) | **23/45 (51.1%)** | better |
+| `denial` | 10/18 (55.6%) | **20/34 (58.8%)** | better |
+| `letter_not_spirit` | 10/10 | 20/20 | unchanged ratio |
+| `adjacent_vocabulary` | 13/23 (56.5%) | 13/25 (52.0%) | **worse** — two new attacks the matcher fails |
+
+The denominators grow because the attack templatizer generates per supporting term, which is
+also why this cannot be banked quietly: it moves eight cells of a frozen table and trips the
+suite-2.0 drift tripwire, so **`standards/acceptance/subject-tense/suite2.json` must be
+re-derived and `EXPECTED` in `g14.table.test.ts` re-measured, in the same commit**.
+
+It was not done in v2.8 because that session's subject was G-11, and **G-11 already stops this
+row being promoted**: `CLAIM_TERMS.vegan.counter` reaches it first, so what a merchant sees is
+correct and only the recorded REASON is wrong. Pinned as the suite's one `knownGap`
+(`EXPECTED_KNOWN_GAPS = 1` in `test/legitimacy.test.ts`), with a tombstone at the declaration.
+
+### The one G-11 EXTENSION these argue for, and why it was not built
+
+Four cases (`battery-option-on-mains-only-lamp`, `waterproofing-demanded-of-open-toe-sandal`,
+`womens-cut-demanded-of-a-mens-shirt`, `outdoor-rating-demanded-of-indoor-sofa`) want a
+`variant_option` row countered by PAGE EVIDENCE — the page says "plugs into any wall outlet", so
+asking for a battery option is asking the wrong question. Today a variant row can only be countered
+by another OPTION VALUE (`satisfied_by_option_values`), and claims can only be countered by
+evidence (`counter`). The two mechanisms exist and do not cross.
+
+Crossing them is a small change and it was deliberately not made, because **no published standard
+declares a counter vocabulary for a variant row**, so the machinery would ship inert. That is the
+`attr:warranty` shape: a mechanism that looks authoritative and matches nothing. Build it when a
+standard needs it, and let that standard's sidecar be the thing that proves it is needed.
+
+### Reproducing this
+
+The generated corpus and its executed verdicts are not committed (292 machine-authored cases whose
+expectations were verified once, by execution, at v2.8). The nine that mattered were promoted into
+`test/support/legitimacyCorpus.ts`, which IS committed and runs on every `npm test`. To regenerate,
+re-run the same method: construct products per category, execute `evaluate`, and compare against
+hand-authored expectations rather than against the engine's own output.
