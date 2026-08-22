@@ -43,22 +43,232 @@ import { judgeClaims, semanticSpendUsd, type SemanticDeps, type SemanticStats } 
 const LIMITS = { maxBytes: 1_500_000, timeoutMs: 8_000, maxRedirects: 3 };
 
 // ---- honest term dictionary (support = the positive claim; violating = contrary) ----
-interface ClaimTerms { support: string[]; violating: string[] }
+// ===========================================================================
+// G-11 — EXPECTATION. Whether the ABSENCE of this information is a defect at all.
+//
+// G-10 (standards/applicability.ts) asks "should this product be asked this
+// question?" and answers from the product's CATEGORY, before any evidence is read.
+// It cannot reach the failure this closes, which arrives one step later: the
+// question WAS applicable, it WAS asked, the answer was negative, and the negative
+// is still not a finding.
+//
+// MEASURED INSTANCE, from a packet that was actually drafted to a stranger
+// (Growth Agent/data/store.json, pkt_birdrockcoffee-c). "Miraflores Pink Bourbon",
+// a named Colombian lot, produced three outbound bullets: SOURCE-001 (no
+// single-origin claim), CERT-001 (no organic claim), FORMAT-002 (no "Ground"
+// variant). All three sentences are true of that page. None is a defect. The first
+// is countered by the product's own identity, the second asks a conventional coffee
+// to state a certification it does not hold, and the third asks for a grind the
+// page already sells under two other names. A merchant reading those has every
+// reason to disbelieve the seven rows that were right, which is the same collateral
+// the v2.7.0 single-format defect had and the reason that one was worth fixing.
+//
+// THE DISCRIMINATOR IS REMEDIABILITY, AND THE STANDARD ALREADY WRITES IT DOWN.
+// The coffee standard's own authored remediations split cleanly in two:
+//
+//   WEIGHT-001  "State the net quantity in a readable sentence on the product page"
+//   CERT-001    "IF a certifying agent certified the operation that packs this
+//                coffee, name that agent in product-page text"
+//
+// Every coffee has a net weight; only some are certified organic. One absence is a
+// publishing failure the merchant can fix truthfully this afternoon. The other is a
+// property of the product, and stating it without the property is a false claim. The
+// engine already words its OWN corrections the same way, at the two branches of
+// suggestedCorrections below: "State a weight ..." against "Confirm whether this
+// product is Organic. If it is, ...". The conditional was always there. Nothing ever
+// read it.
+//
+//   required     every product inside the envelope HAS this; only publication is in
+//                question, so a negative is always actionable.
+//   conditional  the property may simply not hold. A negative is actionable only when
+//                something makes it expected. Otherwise it is recorded and NOT
+//                promoted: internal diagnostics keep it, the finding list does not.
+//
+// ⚠️ THIS GATES PROMOTION, NEVER THE VERDICT. `status` is untouched and still means
+// exactly what it meant: what the evidence established. A conformance run still asks
+// every entry, still reports ten of ten, and `standard_hash` still covers the same
+// bytes. What changes is only whether a negative may be rendered as a deficiency.
+// The alternative considered and rejected was to stop GENERATING these entries: it
+// loses the pass when a page does state organic, changes the denominator of a
+// published conformance list, and would trip assertSidecarCoversStandard.
+// ===========================================================================
+export type Expectation = "required" | "conditional";
+
+/** Why a negative row must not be promoted as a deficiency (G-11). */
+export type NotActionableReason =
+  /** The claim is a voluntary disclosure and nothing makes it expected here. */
+  | "optional_unstated"
+  /** Evidence identifies the product as legitimately the other thing. */
+  | "contradicted_by_evidence"
+  /** The answer lives in the catalogue, not on this page. */
+  | "catalog_level_unknown";
+
+interface ClaimTerms {
+  support: string[];
+  violating: string[];
+  /** Defaults to `conditional`. A `claim` requirement is by construction a voluntary
+   *  product property, so the default is the one that does not accuse. */
+  expectation?: Expectation;
+  /** Evidence that the product is legitimately the OTHER thing, which makes the
+   *  absence of this claim explained rather than missing.
+   *
+   *  ⚠️ NOT `violating`, and the difference is the whole point. `violating` renders
+   *  "your public copy states the opposite of this requirement", which is an
+   *  accusation and the right one when a merchant's copy contradicts a claim they
+   *  made. `counter` accuses nobody: a blend is not a defective single-origin, it is
+   *  a different product. Matched through `findSupport`, so it inherits sentence
+   *  scoping, negation guarding, aboutness and chrome exclusion for free.
+   *
+   *  ⚠️ PHRASES, NOT BARE WORDS, AND STILL NOT ENOUGH ON THEIR OWN. Bare `blend` is a
+   *  verb in "The flavours blend beautifully", which is why these are phrases. An
+   *  adversarial pass then found the phrase form fails too: "Expect a blend of red
+   *  apple, brown sugar and jasmine in the cup" is the commonest tasting-note wording
+   *  in specialty coffee and it contains "a blend of" verbatim, so a named Colombian
+   *  lot was being suppressed by its own flavour notes. Hence `counterGuard`.
+   *
+   *  ⚠️ A FALSE COUNTER IS WORSE THAN A MISSED ONE. A missed counter leaves a row
+   *  reported as `optional_unstated`, which is still not promoted as a gap. A false one
+   *  DELETES A TRUE FINDING, silently, and nothing downstream can tell. Every addition
+   *  here is the expensive direction, so each term must be unambiguous about the
+   *  PRODUCT and each list should be guarded rather than lengthened. */
+  counter?: string[];
+  /** A sentence that matches a counter term and is NOT about the product's identity.
+   *  Same role and shape as `AttributeSpec.valueGuard`: return false to reject. */
+  counterGuard?: (sentence: string) => boolean;
+  /**
+   * Counter terms permitted on the IDENTITY surfaces only, matched whole-word.
+   *
+   * The merchant's own name for the product carries an authority prose does not, and this
+   * engine already relies on that: v2.7.0 proves a format from the title because a page
+   * titled "Classic Black Ground Coffee" has answered the buyer whether or not a dropdown
+   * exists. The same asymmetry works in reverse. A bare `blend` cannot be trusted in body
+   * copy, where it is a verb and a tasting note, but a product NAMED "Hometown Blend" is a
+   * blend, and measuring one live confirmed the phrase list alone misses the commonest
+   * naming convention in the category.
+   *
+   * Title and product type ONLY, for exactly the reason the v2.7.0 comment gives: the
+   * description is prose and routinely mentions other products.
+   */
+  counterIdentityTerms?: string[];
+}
+
+/** A whole-word, case-insensitive matcher for one literal term. Shared so the two places
+ *  that need it (the v2.7.0 format-from-title rule and the G-11 identity counter) cannot
+ *  drift apart, and so the escaping is written once. */
+function wholeWordRe(term: string): RegExp {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, (m) => `\\${m}`).replace(/\s+/g, "\\s+");
+  return new RegExp(`\\b${escaped}\\b`, "i");
+}
+
+/** Flavour-note context. In this category "a blend of red apple and jasmine" describes
+ *  the CUP, not the bag, and the two read identically to a term matcher. */
+const TASTING_NOTE = new RegExp(String.raw`\b(notes?|tasting|tastes?|cup|palate|finish|aroma|flavou?rs?|expect|hints?|undertones?)\b`, "i");
+
+/** Surfaces a COUNTER may be read from.
+ *
+ *  Narrower than the surfaces a positive claim may be proven from, deliberately and
+ *  asymmetrically. `meta_description` is the store's own page furniture and routinely
+ *  advertises the rest of the catalogue: "Shop our house blend subscriptions and
+ *  seasonal lots" on a page for a named Colombian lot was measured suppressing that
+ *  lot's single-origin row. `product_options` is a variant axis, not a description of
+ *  what this product IS. Suppression requires evidence about THIS product, which is the
+ *  same rule the claim branch already applies to `shipping_policy` one filter up. */
+const COUNTER_SURFACES: ReadonlySet<QuotableSurface> = new Set<QuotableSurface>([
+  "product_title", "product_description", "structured_data", "product_faq",
+]);
 const CLAIM_TERMS: Record<string, ClaimTerms> = {
   aluminum_free: { support: ["aluminum-free", "aluminum free", "aluminium-free", "aluminium free", "no aluminum", "without aluminum", "free of aluminum"], violating: ["contains aluminum", "with aluminum", "aluminum-based"] },
   baking_soda_free: { support: ["baking soda free", "baking-soda-free", "without baking soda", "no baking soda", "free of baking soda"], violating: ["contains baking soda"] },
   cruelty_free: { support: ["cruelty-free", "cruelty free", "not tested on animals", "leaping bunny"], violating: ["tested on animals"] },
-  vegan: { support: ["vegan", "100% vegan"], violating: ["contains animal", "non-vegan"] },
-  fragrance_free: { support: ["fragrance-free", "fragrance free", "unscented", "no added fragrance", "no fragrance"], violating: ["added fragrance"] },
+  // ⚠️ `animal-free` AND `animal free` BELONG IN `support` AND ARE DELIBERATELY NOT HERE.
+  // `contains animal` is a plain substring of "contains animal-free microsuede", and
+  // `findViolation` discards an overlap only when a SUPPORTING term extends past the
+  // violating span — so with the phrase missing from support, a shoe advertising an
+  // animal-free upper reads as stating the opposite. It is the same shape as the
+  // `gluten-free` overlap v2.4 measured as its most damaging defect, and the fix is one
+  // line: put the two phrases in `support`.
+  //
+  // It was tried in this session and REVERTED, with the measurement kept. Adding them
+  // moves the G-14 table (`standards/__tests__/g14.table.test.ts`) on all eight vegan
+  // cells and trips the suite-2.0 drift tripwire, because the attack templatizer
+  // generates per supporting term. Measured, the change is a net improvement — six of
+  // eight cells improve their ratio, `violation` goes 3/16 to 4/16 on this very defect,
+  // and `adjacent_vocabulary` goes 13/23 to 13/25 — but banking it means RE-DERIVING two
+  // published measurement artifacts, and this session's subject is G-11. G-11 already
+  // stops the row being promoted: the `counter` list below reaches it first, so the
+  // outcome a merchant sees is correct and only the recorded REASON is wrong.
+  //
+  // Filed with the fix and the numbers at ENGINE_GAPS P-30. Do it in a commit that
+  // re-derives suite2.json and EXPECTED together, and nothing else.
+  vegan: {
+    support: ["vegan", "100% vegan"],
+    violating: ["contains animal", "non-vegan"],
+    counter: ["full-grain leather", "full grain leather", "aniline leather", "genuine leather", "suede", "shearling", "merino wool", "beeswax", "lambskin", "calfskin"],
+  },
+  fragrance_free: {
+    support: ["fragrance-free", "fragrance free", "unscented", "no added fragrance", "no fragrance"],
+    violating: ["added fragrance"],
+    // A deliberately fragranced product is not a defective unscented one.
+    counter: ["scented with", "eau de parfum", "eau de toilette", "fragrance notes", "fragrance blend"],
+  },
   paraben_free: { support: ["paraben-free", "paraben free", "no parabens", "without parabens"], violating: ["contains parabens"] },
-  sulfate_free: { support: ["sulfate-free", "sulfate free", "no sulfates", "without sulfates"], violating: ["contains sulfates"] },
-  single_origin: { support: ["single origin", "single-origin", "single estate", "single-estate", "single farm"], violating: [] },
+  sulfate_free: {
+    support: ["sulfate-free", "sulfate free", "no sulfates", "without sulfates"],
+    violating: ["contains sulfates"],
+    counter: ["sodium laureth sulfate", "sodium lauryl sulfate", "ammonium laureth sulfate"],
+  },
+  single_origin: {
+    support: ["single origin", "single-origin", "single estate", "single-estate", "single farm"],
+    violating: [],
+    // A blend is not a failed single-origin. Phrases only, per the `counter` note:
+    // "blend" alone is a verb in "the flavours blend beautifully".
+    counter: ["blend of", "a blend", "our blend", "this blend", "house blend", "signature blend", "espresso blend", "seasonal blend", "holiday blend", "breakfast blend", "coffee blend", "blended coffee", "multi-origin", "multi origin"],
+    // ...and the phrases are still not enough. "Expect a blend of red apple, brown sugar
+    // and jasmine in the cup" is a TASTING NOTE on a single-farm lot, and it contains
+    // "a blend of" verbatim. Measured suppressing a real Colombian single-origin row.
+    counterGuard: (s) => !TASTING_NOTE.test(s),
+    // "Hometown Blend", "Sidecar Blend": the naming convention the phrase list misses.
+    counterIdentityTerms: ["blend"],
+  },
+  // No `counter`, deliberately: no merchant writes "this coffee is conventional".
+  // The absence therefore resolves to `optional_unstated`, which is the honest
+  // reading. 92 of 100 measured coffee stores state no organic claim
+  // (standard.json CERT-001 measured_discrimination), because most coffee is not
+  // certified organic, not because 92 stores have a page defect.
   organic: { support: ["organic", "usda organic", "certified organic"], violating: [] },
   fair_trade: { support: ["fair trade", "fair-trade", "fairtrade"], violating: [] },
   gluten_free: { support: ["gluten-free", "gluten free", "no gluten"], violating: ["contains gluten", "contains wheat"] },
   third_party_tested: { support: ["third-party tested", "third party tested", "independently tested", "lab tested", "certificate of analysis"], violating: [] },
   bpa_free: { support: ["bpa-free", "bpa free", "no bpa", "without bpa"], violating: ["contains bpa"] },
 };
+/**
+ * The expectation in force for one claim row (G-11).
+ *
+ * PRECEDENCE, and the order matters: a compiled standard's versioned sidecar beats
+ * the engine's own register, because the standard is the published document and the
+ * register is this build's reading of it. Absent both, `conditional` — a `claim`
+ * requirement is BY CONSTRUCTION a voluntary product property (that is what
+ * CLAIM_TERMS holds), so the default that does not accuse is also the accurate one.
+ */
+function claimExpectation(req: Requirement, fx: ClaimTerms): Expectation {
+  return req.expectation ?? fx.expectation ?? "conditional";
+}
+
+/**
+ * The expectation in force for ANY requirement (G-11).
+ *
+ * `claim` defaults to conditional because CLAIM_TERMS is, by construction, a register of
+ * voluntary product properties. Every other kind defaults to required: a weight, a
+ * delivery window, an identifier, a price and a stock state exist for every product in
+ * scope, so only their PUBLICATION is ever in question, which is the definition.
+ * `unsupported` is required only nominally, since it can never produce `not_proven`.
+ */
+export function requirementExpectation(req: Requirement): Expectation {
+  if (req.expectation) return req.expectation;
+  if (req.kind !== "claim") return "required";
+  return CLAIM_TERMS[req.claim ?? ""]?.expectation ?? "conditional";
+}
+
 const CLAIM_LABEL: Record<string, string> = {
   aluminum_free: "Aluminum-free", baking_soda_free: "Baking-soda-free", cruelty_free: "Cruelty-free",
   vegan: "Vegan", fragrance_free: "Fragrance-free / unscented", paraben_free: "Paraben-free",
@@ -560,7 +770,11 @@ const ATTRIBUTE_SPECS: Record<string, AttributeSpec> = {
     // the evidence-availability claim was true; the LABEL claimed more than its quote
     // supported. Same class as v2.2's "Ships within a week" passing on processing time.
     label: "Measurements are stated",
-    missingDetail: "no readable measurements: size, capacity, weight or fit",
+    // ⚠️ NO SECOND COLON. The row renders as `Checked {surfaces}: {missingDetail}.`, so a
+    // colon here produced "Checked structured data, product title and page description: no
+    // readable measurements: size, capacity, weight or fit." — two colons in one sentence,
+    // as the FIRST bullet of a real cold email. Seen on a live Sweet Bloom draft.
+    missingDetail: "no readable size, capacity, weight or fit",
     terms: [
       "dimensions", "capacity", "diameter", "inches", "inch", "cm", "mm", "millimeters", "centimeters",
       "liters", "litres", "ml", "oz", "fl oz", "fluid ounces", "ounces", "lbs", "pounds", "grams", "kg",
@@ -1591,6 +1805,22 @@ export interface Requirement {
   /** Why an `unsupported` row could not be re-asked. Rendered to the merchant, so it
    *  must describe OUR limitation and never imply anything about their store. */
   unsupportedReason?: string;
+  /** G-11 override, supplied by a compiled standard from its versioned sidecar.
+   *  Absent on the general path and on reconstructed contracts, where the default is
+   *  taken from the requirement's KIND: `claim` is conditional, everything else is
+   *  required. A pinned contract older than G-11 therefore keeps behaving exactly as
+   *  before for every kind except `claim`, which is the kind the defect lives in. */
+  expectation?: Expectation;
+  /** Option values that answer the SAME buyer question as `optionValue` (G-11).
+   *
+   *  Supplied by a standard's versioned sidecar, never inferred here. "Espresso" and
+   *  "Filter" are both ground coffee, so a page offering them has answered "can I buy
+   *  this already ground?" even though no option is literally named "Ground" — that is
+   *  the FORMAT-002 bullet from the Bird Rock packet. The engine cannot derive that
+   *  equivalence (it is category knowledge, and inventing it here is how "coffee
+   *  grinder" became a coffee product once already), so it is DECLARED next to the
+   *  standard that knows it. */
+  satisfiedByOptionValues?: string[];
 }
 
 // ---- label → requirement (v3.1 CP1) -----------------------------------------
@@ -1714,7 +1944,7 @@ export function requirementFromLabel(label: string, id: string): Requirement | n
  * stores have their stated price corrected downward to the one their own markup
  * publishes.
  */
-export const ENGINE_VERSION = "v2.7.0";
+export const ENGINE_VERSION = "v2.8.0";
 
 /** Identity of a published standard a run was executed against. Plain data by
  *  design: the engine must not import anything from `standards/`, or the dependency
@@ -1857,6 +2087,18 @@ export function taskSubject(p: PublicProduct): string {
   return "this product";
 }
 
+/** The NOUN each attribute row asks a merchant to publish.
+ *
+ *  Separate from `AttributeSpec.label`, which is a sentence a standard may override, and
+ *  from `missingDetail`, which describes what was not found. This is the object of an
+ *  imperative, and it is the only one of the three that can be dropped into "State the ___".
+ */
+const ATTRIBUTE_CORRECTION_NOUN: Record<string, string> = {
+  dimensions: "net quantity, size or weight",
+  materials: "material composition",
+  care: "care or use instructions",
+};
+
 /** Upper bound on rows in the table. v2.2 shipped 4–6; the measured consequence was
  *  a modal store with ONE genuine finding. The target (v2.3 CP2) is 8–12 tested with
  *  2–4 failing, and a failing SET that differs between stores.
@@ -1967,6 +2209,34 @@ export interface Assertion {
   evidenceSurface?: string;
   /** The surfaces actually checked for THIS requirement (§4.4 specificity). */
   surfacesChecked: string[];
+  /**
+   * G-11. Present ONLY on a negative row whose negative must not be promoted as a
+   * deficiency. Absent means "this negative is a finding", which is what every row
+   * meant before G-11, so every result already stored keeps its meaning exactly.
+   *
+   * ⚠️ A FIELD, NOT A FIFTH `AssertionStatus`, and the reason is not taste. Growth OS
+   * parses this payload from a separately deployed repository with
+   * `z.enum(["pass_evidenced","pass_no_blocking","not_proven","requires_store_access"])`
+   * (Growth Agent/src/evidence/provider.ts). A new enum member fails that parse and
+   * kills every packet until both repos ship together; an unknown FIELD is stripped
+   * silently, so the two can deploy in either order. Four exhaustive switches would
+   * also have to move in lockstep: RANK (authenticatedTest.ts), STATUS_LABEL and
+   * STATUS_MEANS (resultPage.ts), heroArtifact.ts and onePager.ts.
+   */
+  notActionable?: { reason: NotActionableReason; detail: string };
+  /**
+   * G-11. Which expectation this row was judged under. Stamped centrally in
+   * `runProductTest` rather than at each of the thirty-odd returns in `evaluate`.
+   *
+   * Carried on the wire because the CONSUMER thresholds differ and the engine is the
+   * only layer that knows which is which. A `required` negative cannot be argued with:
+   * the product has a weight, and the page does not state it. A `conditional` negative
+   * that survives the gate is still the weaker kind of sentence to lead a cold email
+   * with, and outbound is where a weak sentence costs the most (there is no second
+   * cold email to the same person). Growth OS reads this to be stricter than the
+   * report, which is stricter than the internal record.
+   */
+  expectation?: Expectation;
 }
 
 /** Distinct human labels of the product surfaces available on this snapshot. */
@@ -2008,7 +2278,49 @@ function unsupportedRow(p: PublicProduct, req: Requirement, reason: string): Ass
   };
 }
 
+/**
+ * G-11, the general arm.
+ *
+ * `case "claim"` does its own, richer reading: it can tell "the page says this product is
+ * legitimately the other thing" from "nothing here makes the claim expected", and the two
+ * read very differently in a report. No other branch has a vocabulary to do that with, so
+ * for them a declared `conditional` resolves to the plain answer.
+ *
+ * ⚠️ THIS EXISTS BECAUSE THE DECLARATION WAS OTHERWISE A SILENT NO-OP. An adversarial pass
+ * found that a standard could set `expectation: "conditional"` on an attribute or variant
+ * row and nothing would read it: `requirementExpectation` only STAMPED the value, and the
+ * one branch that gated on it was inside `case "claim"`. A sidecar field that looks
+ * authoritative and changes nothing is the `attr:warranty` silent-no-op failure, which the
+ * applicability module was built to end and which must not come back in through this door.
+ *
+ * The claim branch has already set `notActionable` on every conditional row it produces,
+ * so this never overwrites a more specific reading.
+ */
+function applyExpectation(a: Assertion, req: Requirement): Assertion {
+  // ⚠️ `kind === "claim"` IS EXCLUDED, AND THAT IS NOT AN OVERSIGHT. `case "claim"` makes
+  //    an EXPLICIT decision on every conditional row it produces, including the decision to
+  //    leave one unflagged: a page that STATES a claim and contradicts it in the same copy
+  //    is wrong about itself, which is a real defect the merchant can fix. Letting this
+  //    general arm stamp `optional_unstated` over that silence would swallow the sharpest
+  //    finding the engine produces, and it did — caught by `test/legitimacyPaths.test.ts`
+  //    before it shipped. A branch with its own vocabulary owns its own verdict.
+  if (req.kind === "claim") return a;
+  const expectation = requirementExpectation(req);
+  if (a.notActionable || a.status !== "not_proven" || expectation === "required") return a;
+  return {
+    ...a,
+    notActionable: {
+      reason: "optional_unstated",
+      detail: "The standard records this as information a product of this kind may or may not carry, so the absence is recorded and not reported as a gap.",
+    },
+  };
+}
+
 export function evaluate(p: PublicProduct, req: Requirement): Assertion {
+  return applyExpectation(evaluateRow(p, req), req);
+}
+
+function evaluateRow(p: PublicProduct, req: Requirement): Assertion {
   switch (req.kind) {
     // A row whose question could not be reconstructed. Reported, never silently
     // dropped: a contract that quietly loses a row the merchant already saw is the
@@ -2063,6 +2375,27 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
           label: req.label, status: "not_proven", surfacesChecked: checked,
           detail: `Your public copy states the opposite of this requirement.`,
           evidenceQuote: contra.quote ?? undefined, evidenceSurface: SURFACE_LABEL[contra.surface],
+          // G-11. The SENTENCE is unchanged and still true: the copy does state the
+          // opposite. What changes is only whether that may be promoted as a
+          // deficiency, and for a CONDITIONAL claim it usually may not: a page saying
+          // "contains wheat" has not FAILED to be gluten-free, it is not gluten-free,
+          // which is a fact about the product and not a fault in the page. Telling that
+          // merchant to fix it is telling them to change the recipe.
+          //
+          // ⚠️ UNLESS THE PAGE ALSO STATES THE CLAIM. Then the two sentences contradict
+          // EACH OTHER, and that is a real defect a merchant can and should fix — it is
+          // the page that is wrong, not the product. "Certified gluten-free" beside
+          // "contains wheat" is the clearest finding this engine can produce, and
+          // suppressing it would be the one case where G-11 costs a true finding rather
+          // than removing a false one. `findViolation` cannot see this on its own: its
+          // overlap rule only discards a violating span a SUPPORTING term extends past,
+          // which says nothing about a supporting term in a different sentence.
+          ...(claimExpectation(req, fx) === "conditional" && !findSupport(quotable, fx.support, { wholeWord: true })
+            ? { notActionable: {
+                reason: "contradicted_by_evidence" as const,
+                detail: `Your own ${SURFACE_LABEL[contra.surface]} reads the other way, so this row records something the page does not claim rather than something it has left out.`,
+              } }
+            : {}),
         };
       }
       // `wholeWord` matters here and was not set before v2.5: the claim dictionary
@@ -2103,11 +2436,95 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       // is right here in `req.claim`; there was never a reason not to use it.
       const subject = (req.claim ?? "").replace(/_/g, " ").trim();
       const article = /^[aeiou]/i.test(subject) ? "an" : "a";
-      return {
+      const Article = article === "an" ? "An" : "A";
+      const negative: Assertion = {
         label: req.label, status: "not_proven", surfacesChecked: checked,
         detail: subject
           ? `Checked ${listPhrase(checked)}, and none of them state ${article} ${subject} claim in wording an AI buyer could verify.`
           : `Checked ${listPhrase(checked)}, and none of them carry a statement an AI buyer could verify.`,
+      };
+
+      // ---- G-11 ------------------------------------------------------------
+      // The claim is absent, and the sentence above says so accurately. Whether that
+      // ABSENCE is a finding is a separate question, and until now nothing asked it.
+      if (claimExpectation(req, fx) === "required") return negative;
+
+      // (a) THE PAGE IDENTIFIES THE PRODUCT AS LEGITIMATELY THE OTHER THING. A blend is
+      //     not a failed single-origin. This is the SOURCE-001 bullet from the Bird Rock
+      //     packet, on a product whose own name is a Colombian lot.
+      //
+      //     Two sources, strongest first.
+
+      // (a1) THE PRODUCT'S OWN NAME. First, because it is the signal a merchant would
+      //      cite back at us, and because the phrase list below cannot carry a bare
+      //      `blend` — measured live on Sweet Bloom's "Hometown Blend", which the phrase
+      //      list missed entirely. Title and product type only, per v2.7.0's rule: the
+      //      description is prose and routinely mentions other products.
+      for (const term of fx.counterIdentityTerms ?? []) {
+        const re = wholeWordRe(term);
+        for (const [surface, text] of [["product title", p.title], ["product type", p.productType]] as const) {
+          if (!text || !re.test(text)) continue;
+          // ⚠️ LINT BEFORE QUOTING. `evidenceQuote` is folded into the BLOCKING claim
+          //    linter at the end of `runProductTest`, and a raw product title is the one
+          //    string on the page we do not control. This engine has already lost a whole
+          //    result to that once: "Lifetime Guarantee Leather Belt" trips `guarantee`,
+          //    which is why `taskSubject` lints the title before using it. Quoting an
+          //    unlinted title here would turn a store we read perfectly into
+          //    `errorKind: "unreachable"`. The row still counters; it just shows no quote,
+          //    exactly as the claim branch already does when no clean sentence can be cut.
+          const quotable_ = lintStrings([text]).ok ? text : undefined;
+          return {
+            ...negative,
+            evidenceQuote: quotable_, evidenceSurface: surface,
+            notActionable: {
+              reason: "contradicted_by_evidence",
+              detail: `Your own ${surface} names this product a ${term}, so ${article} ${subject} claim does not apply to it, and the absence is recorded rather than reported as a gap.`,
+            },
+          };
+        }
+      }
+
+      // (a2) THEN THE BODY COPY, under the phrase list and its guard.
+      //
+      //      `counterGuard` is passed as `findSupport`'s own `valueGuard` rather than
+      //      checked afterwards. The contract there is "a rejected sentence SKIPS TO THE
+      //      NEXT ONE rather than failing the row", which is what this needs: a page
+      //      carrying both a tasting note and a real blend statement must still counter
+      //      on the second sentence. Checking the returned quote instead would have let
+      //      the first sentence found decide the row, and `quote` is null whenever no
+      //      clean sentence can be cut, which the guard would read as empty and wave
+      //      through.
+      const counterPool = quotable.filter((e) => COUNTER_SURFACES.has(e.surface));
+      const counter = fx.counter?.length
+        ? findSupport(counterPool, fx.counter, { wholeWord: true, ...(fx.counterGuard ? { valueGuard: fx.counterGuard } : {}) })
+        : null;
+      if (counter) {
+        return {
+          ...negative,
+          evidenceQuote: counter.quote ?? undefined,
+          evidenceSurface: SURFACE_LABEL[counter.surface],
+          notActionable: {
+            reason: "contradicted_by_evidence",
+            detail: `Your own ${SURFACE_LABEL[counter.surface]} describes this product in terms that make ${article} ${subject} claim inapplicable to it, so the absence is recorded and not reported as a gap.`,
+          },
+        };
+      }
+
+      // (b) Nothing makes it expected. "Not evidenced" stays TRUE and stays recorded;
+      //     it simply stops being a deficiency. The test is remediability: a merchant
+      //     whose coffee holds no organic certification cannot state one, so a
+      //     correction line telling them to would be asking for a false claim, and a
+      //     correction that requires acquiring the property first is not a correction.
+      //     92 of 100 measured coffee stores state no organic claim, which is what
+      //     "most coffee is not certified organic" looks like from the outside.
+      return {
+        ...negative,
+        notActionable: {
+          reason: "optional_unstated",
+          detail: subject
+            ? `${Article} ${subject} claim is a voluntary disclosure rather than information every product of this kind carries, and nothing on this page indicates it applies here, so the absence is recorded and not reported as a gap.`
+            : `This claim is a voluntary disclosure rather than information every product of this kind carries, so the absence is recorded and not reported as a gap.`,
+        },
       };
     }
     case "price_under": {
@@ -2202,7 +2619,7 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
       //    the page, dropdown or no dropdown. Title and product type ONLY: the description
       //    is prose and routinely mentions other products ("try our ground version"), which
       //    would turn a cross-sell into a pass.
-      const wordRe = new RegExp(`\\b${want.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")}\\b`, "i");
+      const wordRe = wholeWordRe(want);
       for (const [surface, text] of [["product title", p.title], ["product type", p.productType]] as const) {
         if (text && wordRe.test(text)) {
           return {
@@ -2234,11 +2651,54 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
         return {
           label: req.label, status: "requires_store_access", surfacesChecked: checked,
           detail: accessDetail(p, `This product is sold in a single format with no options to choose from, so its public data cannot settle whether ${/^[aeiou]/i.test(want) ? "an" : "a"} "${want}" choice exists elsewhere in the catalogue.`),
+          // G-11. `requires_store_access` already counts as neither pass nor fail, so
+          // this changes no arithmetic. It is stated anyway because the REASON is the
+          // useful part downstream: a report can band it with the other catalogue-level
+          // unknowns instead of leaving the reader to infer why one access row is about
+          // throttling and another is about the shape of the catalogue.
+          notActionable: {
+            reason: "catalog_level_unknown",
+            detail: `Whether this format is sold elsewhere in the catalogue is not something a single product page can settle, so this row is reported as unchecked rather than as a gap.`,
+          },
         };
       }
 
-      // A real axis exists and this value is not on it. Only now is the absence about the product.
-      return { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `Checked the public variant list, and no "${want}" variant is offered on this product.` };
+      // A real axis exists and this value is not on it. Only now is the absence about
+      // the product — but "about the product" is still not the same as "a defect".
+      const missing: Assertion = { label: req.label, status: "not_proven", surfacesChecked: checked, detail: `Checked the public variant list, and no "${want}" variant is offered on this product.` };
+
+      // G-11. The question may already be answered under another name. The standard
+      // declares which values are equivalent; the engine only applies the declaration.
+      // The STATUS stays `not_proven` on purpose: the standard's accepted evidence for
+      // this entry is an option with this name, and a conformance verdict that quietly
+      // passed on a different one would misreport what was checked. What the equivalence
+      // settles is whether the shopper was left without an answer, and they were not.
+      //   ⚠️ EXACT VALUES ONLY, NOT `includes`. The primary lookup twenty lines up may use
+      //   a title SUBSTRING, because there a match only ever grants a pass the merchant has
+      //   actually earned. Here the same substring would SUPPRESS a true finding, and the
+      //   two errors are not the same size. An adversarial pass over this branch found both
+      //   halves of it: "30 ml" occurs inside "130 ml", so a serum sold only in 130 ml had
+      //   its genuinely missing travel size silently removed from the finding list; and
+      //   "Mini" occurs inside "Minimal Ingredient Edition", which is not a size at all.
+      //   Word bounding does not fix the first (the engine bounds on /[a-z]/ and "1" is a
+      //   digit), so the match is exact against discrete option VALUES, which is what they
+      //   are. Multi-axis variants carry titles like "Filter Grind / 12 oz", so the title is
+      //   split on its separator and each segment compared whole.
+      const titleValues = (t: string): string[] => t.split("/").map((s) => norm(s)).filter(Boolean);
+      for (const alt of req.satisfiedByOptionValues ?? []) {
+        const want2 = norm(alt);
+        const av = p.variants.find((x) => x.available && (x.options.some((o) => norm(o) === want2) || titleValues(x.title).includes(want2)));
+        if (!av) continue;
+        return {
+          ...missing,
+          evidenceSurface: "variant options",
+          notActionable: {
+            reason: "contradicted_by_evidence",
+            detail: `This product does offer ${/^[aeiou]/i.test(alt) ? "an" : "a"} "${alt}" option, which answers the same buyer question, so the absence of one named "${want}" is recorded and not reported as a gap.`,
+          },
+        };
+      }
+      return missing;
     }
     case "in_stock": {
       // Precedence (§3.1): JSON-LD Offer.availability → variants (incl. the `.js`
@@ -2519,7 +2979,11 @@ export function evaluate(p: PublicProduct, req: Requirement): Assertion {
 /** Apply the bounded semantic tier to claim requirements the lexical pass left
  *  unresolved. Grants require a verbatim quote; `about_other_subject` can withdraw
  *  a lexical match. Any failure leaves `assertions` untouched (fail closed+silent). */
-async function applySemanticTier(
+/** Exported for `test/legitimacyPaths.test.ts`, which drives it with a stub judge: this
+ *  function REWRITES rows after the G-11 gate has run, and both of its branches change a
+ *  status, so it is one of the three places a verdict can be lost between `evaluate` and
+ *  a merchant. Testing it through `runProductTest` would need a live fetch. */
+export async function applySemanticTier(
   p: PublicProduct,
   requirements: Requirement[],
   assertions: Assertion[],
@@ -2541,28 +3005,50 @@ async function applySemanticTier(
   const outcome = await judgeClaims(p.evidence, attributes, deps.semantic ?? {});
   if (!outcome.stats.called) return { assertions, stats: undefined };
 
+  // ⚠️ G-11 RUNS INSIDE `evaluate`, AND THIS FUNCTION REWRITES ITS OUTPUT AFTERWARDS.
+  // Both branches below change a row's STATUS, so both invalidate the `notActionable`
+  // the gate stamped, and in opposite directions:
+  //
+  //   GRANT   not_proven -> pass_evidenced. The old row carried
+  //           `optional_unstated`, and a spread would render a PASSING row beside "not a
+  //           gap: optional" and a paragraph explaining why its absence does not matter.
+  //   VETO    pass_evidenced -> not_proven. The old row carried NO `notActionable`,
+  //           because it passed. A spread therefore reopens the exact defect G-11 closes:
+  //           the row becomes a promoted "no organic claim" finding, with a correction
+  //           line, on a conditional claim.
+  //
+  // So every rewrite clears the flag and re-enters the gate. `applyExpectation` is the
+  // general arm and reaches the right answer for both: nothing for a pass, and
+  // `optional_unstated` for a vetoed conditional claim, which is accurate — the lexical
+  // match was about something else, so the page states nothing.
+  const regate = (a: Assertion, label: string): Assertion => {
+    const req = byLabel.get(label);
+    const cleared: Assertion = { ...a, notActionable: undefined };
+    return req ? applyExpectation(cleared, req) : cleared;
+  };
+
   const next = [...assertions];
   for (const g of outcome.grants) {
     const target = unresolved.find((x) => x.r!.claim === g.attribute);
     if (!target) continue; // grants only ever promote an UNRESOLVED claim
-    next[target.i] = {
+    next[target.i] = regate({
       ...target.a,
       status: "pass_evidenced",
       detail: `Stated in your ${g.surfaceLabel}.`,
       evidenceQuote: g.quote,
       evidenceSurface: g.surfaceLabel,
-    };
+    }, target.a.label);
   }
   for (const attr of outcome.vetoes) {
     const target = matched.find((x) => x.r!.claim === attr);
     if (!target) continue; // vetoes only ever withdraw a LEXICAL match
-    next[target.i] = {
+    next[target.i] = regate({
       ...target.a,
       status: "not_proven",
       detail: `Checked ${listPhrase(target.a.surfacesChecked)}, but the matching text is about something else, not this product.`,
       evidenceQuote: undefined,
       evidenceSurface: undefined,
-    };
+    }, target.a.label);
   }
   console.log(JSON.stringify({
     at: "semantic_tier", granted: outcome.stats.granted, vetoed: outcome.stats.vetoed,
@@ -2586,6 +3072,16 @@ export interface ProductTestResult {
   evidencedCount: number;
   noBlockingCount: number;
   notProvenCount: number;
+  /**
+   * G-11. `not_proven` rows whose negative is a DEFICIENCY, as opposed to a true
+   * observation about an optional or inapplicable property.
+   *
+   * Optional so a payload written before G-11 still parses; every producer in this
+   * build sets it. Callers that are about to tell somebody they have a problem want
+   * this number. Callers reporting what the evidence established want
+   * `notProvenCount`, which is unchanged and always the larger of the two.
+   */
+  actionableCount?: number;
   requiresAccessCount: number;
   total: number;
   surfacesChecked: string[];
@@ -2662,7 +3158,7 @@ export interface RunOptions extends FetchDeps {
 export async function runProductTest(url: string, deps: RunOptions = {}): Promise<ProductTestResult> {
   const base: ProductTestResult = {
     ok: false, productUrl: url, storeName: null, productName: null, task: "",
-    assertions: [], evidencedCount: 0, noBlockingCount: 0, notProvenCount: 0, requiresAccessCount: 0,
+    assertions: [], evidencedCount: 0, noBlockingCount: 0, notProvenCount: 0, actionableCount: 0, requiresAccessCount: 0,
     total: 0, surfacesChecked: [], notInspectable: [], suggestedCorrections: [], suggestedCorrection: null, deferred: [],
   };
 
@@ -2714,7 +3210,11 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     product = await attachShippingPolicy(fetched, ctx);
   }
 
-  let assertions = requirements.map((r) => evaluate(product, r));
+  // G-11 stamps the expectation centrally. Doing it here rather than at each return in
+  // `evaluate` keeps that switch a pure verdict function and makes it impossible for one
+  // branch to forget: a row without an expectation would read downstream as `required`,
+  // which is the strict default and the wrong one for a claim.
+  let assertions: Assertion[] = requirements.map((r) => ({ ...evaluate(product, r), expectation: requirementExpectation(r) }));
 
   // Semantic tier (§5): one batched model call for claim requirements the lexical
   // pass could not resolve. Grants require a verbatim quote; failures are silent.
@@ -2790,9 +3290,18 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     notInspectable.push("full shipping & returns policy");
   }
 
-  // ONE correction line per not_proven requirement (§2), phrased per requirement kind.
+  // ONE correction line per ACTIONABLE not_proven requirement (§2), phrased per kind.
+  //
+  // ⚠️ G-11 — `notActionable` rows are excluded here, and this is the single most
+  // load-bearing consumer change of the whole gate. Every downstream artifact reads
+  // this list: the one-pager, the merchant fix list and, through the result payload,
+  // the outbound composer. The line it used to emit for a conditional claim was
+  // "Confirm whether this product is Organic. If it is, state it..." — a correction
+  // whose own first clause admits the engine does not know whether the property holds.
+  // A remediation the merchant may be unable to perform truthfully is not a remediation,
+  // and putting it in a numbered list of corrections says otherwise.
   const suggestedCorrections = assertions
-    .filter((a) => a.status === "not_proven")
+    .filter((a) => a.status === "not_proven" && !a.notActionable)
     .map((a) => {
       switch (kindOf(a)) {
         case "claim":
@@ -2807,6 +3316,20 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
           return "State plainly that a one-time purchase is available, so an AI buyer doesn't have to infer it.";
         case "price_under":
           return `Your lowest readable price doesn't meet this buyer's cap. No evidence change needed; this is a pricing fact.`;
+        case "identifiers":
+          return "Publish a GTIN or MPN in your product structured data, so a machine buyer can match this product to a catalogue entry.";
+        case "attribute": {
+          // ⚠️ THE LABEL IS A SENTENCE, AND THE DEFAULT BRANCH TREATED IT AS A NOUN. A
+          // standard supplies its own label, and the coffee standard's are full clauses, so
+          // the generic line rendered "State a weight or measurement is stated in readable
+          // text in a form an AI buyer can verify." on a real live result. It is the first
+          // remediation a merchant reads, and it does not parse.
+          const k = requirements.find((r) => r.label === a.label)?.attribute;
+          const noun = ATTRIBUTE_CORRECTION_NOUN[k ?? ""];
+          return noun
+            ? `State the ${noun} in readable text on the product page, so an AI buyer can verify it.`
+            : `State this in readable text on the product page, so an AI buyer can verify it.`;
+        }
         default:
           return `State ${a.label.toLowerCase()} in a form an AI buyer can verify.`;
       }
@@ -2818,7 +3341,9 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
   // copy regression fails loudly here rather than shipping an overclaim.
   const lint = lintStrings([
     summary, ...suggestedCorrections,
-    ...[...assertions, ...deferred].flatMap((a) => [a.label, a.detail, a.evidenceQuote]),
+    // G-11 details are merchant-visible strings and go through the same blocking gate
+    // as every other one. A sentence nobody linted is a sentence that ships an overclaim.
+    ...[...assertions, ...deferred].flatMap((a) => [a.label, a.detail, a.evidenceQuote, a.notActionable?.detail]),
   ]);
   if (!lint.ok) {
     console.error(`[product-test] result BLOCKED by claim linter: ${lint.violations.map((v) => `${v.rule}: "${v.excerpt}"`).join(" | ")}`);
@@ -2836,6 +3361,13 @@ export async function runProductTest(url: string, deps: RunOptions = {}): Promis
     evidencedCount: count("pass_evidenced"),
     noBlockingCount: count("pass_no_blocking"),
     notProvenCount: count("not_proven"),
+    // G-11. `notProvenCount` is UNCHANGED and still means "rows the evidence did not
+    // establish", because it is a published contract and a stored result must keep
+    // meaning what it meant. `actionableCount` is the number a caller wants when it is
+    // about to tell somebody they have a problem, and separating the two is the whole
+    // point: an internal record can say "organic: not evidenced" while the finding list
+    // says nothing at all.
+    actionableCount: assertions.filter((a) => a.status === "not_proven" && !a.notActionable).length,
     requiresAccessCount: count("requires_store_access"),
     total: assertions.length,
     surfacesChecked: textSurfaces(product),

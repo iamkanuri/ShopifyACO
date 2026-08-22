@@ -1701,6 +1701,166 @@ because a grant landing on an already-passing row is counted and then dropped. T
 safe — the disclosure detector over-flags — but "4 affected results" is a **ceiling**, not a
 floor. Full record: `experiments/v4-4/`, `ENGINE_GAPS` **P-29**.
 
+## A TRUE sentence is not a finding (v4.7 — G-11 expectation gating)
+
+**v4.6 fixed a FALSE sentence. This fixes the class above it: sentences that are true, that
+the evidence supports, that every honesty gate passes, and that are still not defects.**
+
+The measured instance is a packet that was drafted to a stranger
+(`Growth Agent/data/store.json`, `pkt_birdrockcoffee-c`). Bird Rock's
+`Miraflores Pink Bourbon` is a named Colombian lot sold in three grinds. The email carried
+three bullets:
+
+* **no single-origin claim** — on a product named after a single Colombian farm
+* **no organic claim** — on a coffee that holds no certification and cannot say it does
+* **no "Ground" variant** — on a page that sells Espresso and Filter grinds
+
+Every sentence is true of that page. The claim linter passed all 17 rules. The Growth OS
+verifier returned `ok: true` with all nine checks `supported`. The profile's five forbidden
+claim families matched none of them. **Nothing anywhere in either system was asking whether a
+true statement is a legitimate finding**, because `not_proven` had exactly one meaning and
+four independent consumers read it as `defect`.
+
+### The discriminator is REMEDIABILITY, and the standard already wrote it down
+
+The coffee standard's own authored `merchant_remediation` splits cleanly in two:
+
+| entry | prose |
+|---|---|
+| `WEIGHT-001` | "**State** the net quantity in a readable sentence on the product page" |
+| `CERT-001` | "**If** a certifying agent certified the operation that packs this coffee, name that agent" |
+
+Every coffee has a net weight; only some are certified. One absence is a publishing failure a
+merchant can fix truthfully this afternoon. The other is a property of the product, and stating
+it without the property is a false claim. **The engine already worded its own corrections the
+same way** — `"State a weight..."` against `"Confirm whether this product is Organic. If it
+is..."` — and never read the difference. G-11 makes it executable:
+
+* **`required`** — every product in the envelope HAS this, so only publication is in question,
+  and a negative is always actionable.
+* **`conditional`** — the property may not hold, so a negative is `optional_unstated` unless
+  evidence *counters* it, in which case it is `contradicted_by_evidence`.
+
+Default by KIND (`claim` is conditional, everything else required), overridable per entry by a
+standard's versioned sidecar. `standard.json` is untouched and `standard_hash` is unchanged.
+
+### ONE additive field, and deliberately NOT a fifth status
+
+`Assertion.notActionable?: { reason, detail }` plus `Assertion.expectation`. `status` still
+means exactly what it meant, so **every result already stored keeps its meaning**. A fifth
+`AssertionStatus` was rejected on a hard constraint, not on taste: Growth OS parses this
+payload over HTTP from a separately deployed repository with a strict `z.enum` of the four,
+and an unknown member would kill every packet until both repos shipped together. `z.object`
+*strips* an unknown FIELD, so the two deploy in either order.
+
+### Three thresholds, and they are three different numbers
+
+| destination | rule |
+|---|---|
+| stored result | everything, including rows that are true and are not gaps |
+| customer report | `not_proven && !notActionable` |
+| outbound | that, **and** `expectation !== "conditional"` |
+
+The third is stricter because the costs are asymmetric: a nuanced observation in a report the
+reader asked for can be discussed, and the same sentence in a cold email is the only thing that
+reader will ever see from us.
+
+### Measured, on the two stores the defect was found on
+
+| | before (v2.7.0) | after (v2.8.0) |
+|---|---|---|
+| Bird Rock `miraflores-pink-bourbon` | 5 `not_proven`, 5 correction lines, **3 illegitimate bullets sent** | 5 `not_proven`, **1 actionable**, 1 correction line, **no email at all** (below the campaign floor) |
+| Sweet Bloom `nano-challa` | **10 of 10 `not_proven`**, 0 evidenced, 10 correction lines | 6 `not_proven`, **3 actionable**: net weight, identifier, delivery window |
+
+Sweet Bloom's regenerated email carries exactly those three, verifier 13/13. **Bird Rock now
+produces no email**, which is the correct outcome and the one the old system could not reach.
+
+### What an executing adversarial pass found in the gate itself
+
+292 constructed products across coffee, apparel, footwear, electronics, furniture and beauty,
+run against the real `evaluate`. Nine disagreements were about G-11 and all nine were fixed;
+**two were FALSE SUPPRESSIONS, which is the expensive direction**:
+
+* `"Expect a blend of red apple, brown sugar and jasmine in the cup"` is the commonest
+  tasting-note wording in specialty coffee and contains the counter phrase verbatim. It was
+  deleting the single-origin finding on a named Colombian lot. Closed by `counterGuard`,
+  passed as `findSupport`'s own `valueGuard` so a rejected sentence skips rather than deciding.
+* A store `meta_description` advertising `"our house blend subscriptions"` suppressed the
+  single-origin row of a product that is not a blend. Closed by `COUNTER_SURFACES` — the same
+  asymmetry the claim branch already applies to `shipping_policy`.
+* `"30 ml"` occurs inside `"130 ml"`. Word bounding does **not** close it (the engine bounds on
+  a letter class and `1` is a digit), so declared equivalences match exact option values, with
+  multi-axis titles split on their separator first.
+
+The other **61** are older matcher defects in `dimensions`, `materials`, `care`,
+`no_subscription` and claim aboutness. They are **recorded at `ENGINE_GAPS` P-30 and not
+fixed**, including one with a known one-line fix (`animal-free` into `vegan.support`) that was
+implemented, measured, and reverted because banking it means re-deriving the G-14 table and
+acceptance suite 2.0 — and G-11 already stops that row being promoted.
+
+### ⚠️ THE VERDICT IS NOT THE ARTIFACT — THREE PLACES BUILD A RESULT, AND THE FIRST DRAFT
+### GATED ONE OF THEM
+
+The sharpest thing the review found was not a wrong verdict. It was a right verdict that
+never reached the page. **`evaluate` is not the only thing that decides what a merchant
+reads**, and a gate added to the public assembler does not travel:
+
+| | what it is | what it did to G-11 |
+|---|---|---|
+| `runProductTest` | the public path | gated correctly |
+| `applySemanticTier` | **rewrites rows after `evaluate` returned** | both branches changed a row's STATUS and spread the stale flag |
+| `runAuthenticatedTest` | the merchant re-run, a **separate result builder** | never gated at all |
+
+The semantic tier broke in both directions at once. Its VETO turned a passing conditional
+claim into `not_proven` while carrying no `notActionable`, **reopening the exact defect
+G-11 closes** and re-emitting the correction line for it. Its GRANT turned a non-gap into
+`pass_evidenced` while carrying the old flag, so a PASSING row rendered beside "not a gap:
+optional" and a paragraph explaining why its absence did not matter.
+
+The authenticated path was worse in consequence if not in cleverness: it still emitted
+`Confirm whether this product meets "An organic claim is stated in readable text"` — to a
+merchant who has just connected their store and is the single person most likely to act on
+it. **A rewrite that changes `status` invalidates the gate's verdict**, so every rewrite now
+clears the flag and re-enters `applyExpectation`; and `authenticatedTest.ts` filters
+corrections, reports `actionableCount`, and lints the new strings like the public path.
+
+`unprovenClaimRows` on that path was deliberately **left ungated**, and the distinction is
+the whole point rather than an exception to it: a correction line is a REMEDIATION, and a
+confirm step is a QUESTION. Asking a merchant whether their coffee is organic is exactly
+right for a conditional claim — they know and we do not, and it is the one thing
+authentication buys that public data cannot.
+
+Two more, same shape, both found by execution: the `violating` branch was suppressing a page
+that **states a claim and contradicts it in the same copy** (that is the page being wrong,
+not the product, and it is the sharpest finding this engine produces); and the identity
+counter quoted a **raw, unlinted product title**, which on a store called
+"Lifetime Guarantee Blend" would have taken the entire result down as `unreachable`.
+
+### The suite
+
+`test/legitimacy.test.ts` + `test/support/legitimacyCorpus.ts` + `test/legitimacyPaths.test.ts`.
+**66 cases, 150 assertions**,
+six categories plus an `adversarial` group. Every case is scored on **two independent
+dimensions** — factual correctness and finding legitimacy — because a case can be right on the
+first and wrong on the second, and that combination is the whole subject. `EXPECTED_KNOWN_GAPS`
+is pinned in both directions, like `EXPECTED_OPEN_GAPS`.
+
+**`MIN_REGRESSION_SHARE` is enforced per group.** A suppression gate scores 100% against
+hostile cases alone while deleting the findings the business runs on, and this repo has measured
+that outcome once already (v2.6: 16/16 on its own set, independently measured as 7 false passes
+closed against 46 false FAILS opened). Adding hostile cases alone eventually fails the build.
+
+`test/legitimacyPaths.test.ts` is the second half and exists because of the section above:
+it drives the semantic tier with a **stub judge** and the authenticated path with a catalog
+fixture, so the two builders that silently bypassed the gate now fail loudly if they do it
+again.
+
+`ENGINE_VERSION` v2.7.0 → **v2.8.0**, matcher hash re-pinned in the same commit. 1255 tests,
+1179 pass, 0 fail, 76 DB-skipped. Growth OS 227 pass, 0 fail, 5 eval suites green. Cost
+unchanged: the gate is lexical, reuses evidence already gathered, and adds no model call.
+
+---
+
 ## A single-format product was told it was missing its own format (v4.6)
 
 **A false sentence reached a public result page, and outreach linked to it.** Copper Cow's

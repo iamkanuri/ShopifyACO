@@ -64,6 +64,48 @@ export const STATUS_MEANS: Record<string, string> = {
 
 const PASSING = new Set(["pass_evidenced", "pass_no_blocking"]);
 
+/**
+ * G-11. A row can be accurate and still not be a deficiency, and a public result that
+ * prints the accurate sentence WITHOUT saying so reads as an accusation the engine did
+ * not make. Both strings below are deliberately worded as statements about the
+ * QUESTION and never about the product: "optional" says nothing about whether this
+ * coffee is organic, which is the same line between evidence availability and product
+ * truth that the claim linter enforces one layer down.
+ */
+// These three are OUR words, not the merchant's, and are fixed literals rather than
+// interpolations — so they are covered by review rather than by the runtime linter, the
+// same footing as STATUS_LABEL and STATUS_MEANS above. The per-row REASON sentence is
+// merchant-visible and IS linted, at the point productTest.ts sets it.
+export const NOT_ACTIONABLE_LABEL: Record<string, string> = {
+  optional_unstated: "not a gap: optional",
+  contradicted_by_evidence: "not a gap: does not apply here",
+  catalog_level_unknown: "not a gap: catalogue-level",
+};
+/**
+ * ⚠️ A SIBLING OF THE STATUS PILL, NEVER A CHILD OF IT, AND STYLED HERE RATHER THAN IN THE
+ * VIEWER SHEET. The first version nested this span inside `<p class="bt-status">`, which
+ * `viewer/src/theme.css:1354-1359` renders as an uppercase letter-spaced pill coloured
+ * `var(--not-proven)` with a `✕ ` prefix on a not-proven row. So the badge saying THIS IS
+ * NOT A GAP was painted in the accusation colour, inside the accusation mark, which is the
+ * one presentation this whole change exists to stop. `test/palette.test.ts` could not catch
+ * it: it walks `viewer/src` and `ogCard.ts`, not this file.
+ *
+ * The colours are literal rather than `var(--...)` because this page must render standalone
+ * when the viewer bundle is absent, and a missing custom property would leave the badge
+ * inheriting whatever came before it.
+ */
+const NF_STYLE =
+  "display:inline-block;margin:0 0 2px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#5f6b7a;border:1px solid #d3d9e0;border-radius:3px;padding:1px 6px";
+const NF_WHY_STYLE = "font-size:12.5px;color:#5f6b7a;margin:2px 0 0";
+const notActionableBadge = (a: Assertion): string =>
+  a.notActionable
+    ? `<p class="bt-nf" style="${NF_STYLE}">${esc(NOT_ACTIONABLE_LABEL[a.notActionable.reason] ?? "not a gap")}</p>`
+    : "";
+const notActionableNote = (a: Assertion): string =>
+  a.notActionable
+    ? `<p class="bt-nf-why" style="${NF_WHY_STYLE}">${esc(a.notActionable.detail)}</p>`
+    : "";
+
 /** What the stored blob is, once `kind` has told us which shape it holds. */
 export interface ResolvedResult {
   test: ProductTestResult;
@@ -222,10 +264,12 @@ function rowHtml(a: Assertion, r: ResolvedResult, row: StoredResultRow): string 
 
   return `<section class="bt-row bt-${esc(a.status)}${grant?.verdict === "false_pass" ? " bt-row-withdrawn" : ""}">
   <p class="bt-status">${esc(STATUS_LABEL[a.status] ?? a.status)}</p>
+  ${notActionableBadge(a)}
   <h3>${esc(a.label)}</h3>
   ${cite}
   ${grantNote}
   ${p(a.detail)}
+  ${notActionableNote(a)}
   ${receipt.join("")}
   ${peerLine}
   <p class="bt-checked">Surfaces checked: ${esc((a.surfacesChecked ?? []).join(", ") || "none recorded")}</p>

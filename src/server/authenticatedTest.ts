@@ -338,8 +338,16 @@ export function runAuthenticatedTest(args: {
   });
   const count = (s: AssertionStatus) => assertions.filter((a) => a.status === s).length;
 
+  // ⚠️ v2.8 (G-11) — `!a.notActionable` IS LOAD-BEARING HERE, AND THIS PATH IS THE ONE
+  // THAT ALMOST MISSED IT. `runProductTest` is not the only result builder: this file is
+  // the merchant re-run after a store connects, it calls the same `evaluate` and then
+  // assembles its own result, so a gate added to the public assembler does not reach it.
+  // An adversarial review caught it by execution: a conventional coffee re-run here still
+  // emitted `Confirm whether this product meets "An organic claim is stated in readable
+  // text". If it does, ...` — the very sentence the public path now suppresses, sent to a
+  // merchant who has just connected their store and is most likely to act on it.
   const suggestedCorrections = assertions
-    .filter((a) => a.status === "not_proven")
+    .filter((a) => a.status === "not_proven" && !a.notActionable)
     .map((a) => `Confirm whether this product meets "${a.label}". If it does, state it in a product field an AI buyer can read.`);
 
   const surfaces = [...new Set(snapshot.evidence.map((e) => SURFACE_LABEL[e.surface]))];
@@ -356,6 +364,10 @@ export function runAuthenticatedTest(args: {
     evidencedCount: count("pass_evidenced"),
     noBlockingCount: count("pass_no_blocking"),
     notProvenCount: count("not_proven"),
+    // G-11, and the same contract as the public path: `notProvenCount` is unchanged and
+    // still counts what the evidence did not establish; `actionableCount` is what a caller
+    // wants when it is about to tell a merchant they have something to fix.
+    actionableCount: assertions.filter((a) => a.status === "not_proven" && !a.notActionable).length,
     requiresAccessCount: count("requires_store_access"),
     total: assertions.length,
     surfacesChecked: surfaces,
@@ -376,7 +388,9 @@ export function runAuthenticatedTest(args: {
   // evidence; it does not buy permission to make a claim we couldn't make for free.
   const lint = lintStrings([
     summary, ...suggestedCorrections,
-    ...assertions.flatMap((a) => [a.label, a.detail, a.evidenceQuote]),
+    // G-11 details are merchant-visible and go through the same blocking gate, exactly as
+    // they do on the public path. A string nobody lints is a string that ships an overclaim.
+    ...assertions.flatMap((a) => [a.label, a.detail, a.evidenceQuote, a.notActionable?.detail]),
   ]);
   if (!lint.ok) {
     console.error(`[buyer-test] authenticated result BLOCKED by claim linter: ${lint.violations.map((v) => `${v.rule}: "${v.excerpt}"`).join(" | ")}`);
@@ -388,7 +402,18 @@ export function runAuthenticatedTest(args: {
   return result;
 }
 
-/** Rows a merchant could still close by stating something. Drives the confirm step. */
+/**
+ * Rows a merchant could still close by stating something. Drives the confirm step.
+ *
+ * ⚠️ THIS DELIBERATELY DOES *NOT* FILTER ON `notActionable`, AND THE DISTINCTION IS THE
+ * WHOLE POINT OF G-11 RATHER THAN AN EXCEPTION TO IT. A `suggestedCorrections` line is a
+ * REMEDIATION — it tells a merchant they have something to fix, and telling a conventional
+ * roaster to state an organic claim they cannot make is why the gate exists. This list
+ * drives a QUESTION: the connected-store flow asks the merchant whether the product has the
+ * property. Asking is exactly the right move for a conditional claim, and it is the one
+ * thing authentication buys that public data cannot — the merchant knows the answer and we
+ * do not. Filtering here would delete the feature that resolves the uncertainty G-11 records.
+ */
 export function unprovenClaimRows(assertions: Assertion[], requirements: Requirement[]): Array<{ requirement: Requirement; assertion: Assertion }> {
   const byLabel = new Map(requirements.map((r) => [r.label, r]));
   return assertions

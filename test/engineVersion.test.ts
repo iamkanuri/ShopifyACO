@@ -124,8 +124,27 @@ function matcherHash(): string {
 //
 // ⚠️ THE SECOND HALF WAS REVERTED, so the hash below is NOT the one that first shipped.
 // `extract.ts` is byte-identical to `main` again — see the tombstone above `parseOffer`.
-const PINNED_ENGINE_VERSION = "v2.7.0";
-const PINNED_MATCHER_HASH = "f541ada62c14051e";
+// ⚠️ v2.8.0 (G-11) — BUMPED FIRST, THEN RE-PINNED, IN THIS COMMIT, which is the order this
+// file demands and the reason it exists. What moved in the matcher, and why a result recorded
+// under v2.7.0 is not comparable to one recorded under v2.8.0:
+//
+//   • `evaluate` is now `applyExpectation(evaluateRow(...))`. Statuses are UNCHANGED — every
+//     one of the four still means exactly what it meant, and no row changed which one it gets
+//     except through the two matcher changes below. What is new is an additive
+//     `notActionable` field saying whether a NEGATIVE is a deficiency at all.
+//   • `case "claim"` reads a new `counter` vocabulary, so a page identifying the product as
+//     legitimately the other thing (a blend, a leather chair, an SLS shampoo) no longer has
+//     that absence promoted as a gap.
+//   • `case "variant_option"` reads `satisfiedByOptionValues` when a standard declares it.
+//   • NO ROW CHANGES STATUS. The one dictionary change that would have (`animal-free` into
+//     vegan's support list) was measured, found to move the G-14 table, and reverted with the
+//     numbers kept — see the tombstone at CLAIM_TERMS.vegan and ENGINE_GAPS P-30.
+//   • `suggestedCorrections` no longer emits a line for a row that is not a deficiency.
+//
+// A before/after across this boundary would compare a run that could not tell an optional
+// absence from a gap with one that can, so the 409 in `buyerTests.ts` is the correct answer.
+const PINNED_ENGINE_VERSION = "v2.8.0";
+const PINNED_MATCHER_HASH = "a459e52f500fe31a";
 
 test("[engine-version] the matcher files have not changed without a version bump", () => {
   const actual = matcherHash();

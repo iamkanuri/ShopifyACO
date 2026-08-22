@@ -85,8 +85,16 @@ export interface MaterialRow {
  * the same data cannot disagree.
  */
 export function selectMaterial(r: ResolvedResult, limit = 3): MaterialRow[] {
+  // ⚠️ v2.8 (G-11) — `not_proven` ALONE NO LONGER EARNS RANK 0. This one-pager is the
+  // artifact an agency actually sends, so its top row is the sentence AisleLens is judged
+  // on. A row carrying `notActionable` is accurate and is NOT a deficiency, and ranking it
+  // first put "no organic claim appears" at the head of a page about a conventional coffee.
+  // It drops to the undecidable band, alongside the rows we could not read, because both
+  // mean the same thing for this purpose: nothing here obliges the merchant to act.
   const rank = (a: Assertion): number =>
-    FAILED.has(a.status) ? 0 : a.status === "requires_store_access" ? 1 : 2;
+    FAILED.has(a.status) && !a.notActionable ? 0
+    : a.status === "requires_store_access" || a.notActionable ? 1
+    : 2;
 
   const rows: MaterialRow[] = r.test.assertions.map((a) => {
     const peer = r.peers.find((x) => x.requirementLabel === a.label || x.label === a.label || x.entryId === a.label) ?? null;
@@ -132,7 +140,12 @@ export function renderOnePager(row: StoredResultRow, r: ResolvedResult, base: st
   // EVERY FIGURE DERIVED. `test/onePager.test.ts` renders this against an artifact whose
   // numbers it changed and requires the page to move with it, so a literal cannot survive.
   const met = t.evidencedCount + t.noBlockingCount;
-  const unmet = t.notProvenCount;
+  // ⚠️ v2.8 (G-11) — THE HEADLINE COUNTS DEFICIENCIES, NOT NEGATIVES. `notProvenCount`
+  // includes rows that are accurate and are not gaps, and this number is the first thing
+  // an agency reads on the artifact they forward. Printing "6 not stated" over a table
+  // whose findings section holds three would have been the same defect one layer up.
+  // `?? notProvenCount` keeps a result stored before v2.8 rendering as it always did.
+  const unmet = t.actionableCount ?? t.notProvenCount;
   const undecidable = t.requiresAccessCount;
 
   const published = row.standard_slug && row.standard_version
