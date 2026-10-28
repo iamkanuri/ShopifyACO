@@ -175,8 +175,8 @@ function EngineKeys() {
       <h2>Engine keys</h2>
       <div className="card formcard">
         <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Pings each provider to confirm its API key authenticates. A failing engine is otherwise
-          dropped silently from every scan. (Perplexity check costs ~$0.0001.)
+          Checks API access with the configured keys. This does not run or certify a full scan.
+          Perplexity makes one small billable request with search disabled.
         </p>
         <div className="scan-actions" style={{ marginTop: 0 }}>
           <button className="btn btn-primary" disabled={busy} onClick={run}>
@@ -188,7 +188,7 @@ function EngineKeys() {
           <div className="keystatus-list">
             {rows.map((r) => {
               const state = !r.configured ? "missing" : r.ok ? "ok" : "bad";
-              const label = state === "ok" ? "Valid" : state === "missing" ? "Not configured" : "Invalid";
+              const label = state === "ok" ? "Check passed" : state === "missing" ? "Not configured" : "Needs attention";
               const cls = state === "ok" ? "rec" : state === "missing" ? "low" : "abs";
               return (
                 <div className="keystatus-row" key={r.engine}>

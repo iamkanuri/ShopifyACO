@@ -20,10 +20,16 @@ interface Keys {
 
 const TIMEOUT_MS = 10_000;
 
-async function ping(req: () => Promise<Response>): Promise<{ ok: boolean; status?: number; detail?: string }> {
+async function ping(req: () => Promise<Response>, requireCompleted = false): Promise<{ ok: boolean; status?: number; detail?: string }> {
   try {
     const res = await req();
-    if (res.ok) return { ok: true, status: res.status };
+    if (res.ok) {
+      if (requireCompleted) {
+        const body = await res.json() as { status?: string };
+        if (body.status !== "completed") return { ok: false, status: res.status, detail: "Check incomplete: provider did not complete the response" };
+      }
+      return { ok: true, status: res.status };
+    }
     // A validation, rate-limit or server error is NOT proof that a key works.
     // Only a successful response counts. Never relay provider bodies or request
     // URLs, which can contain sensitive diagnostics or credentials.
@@ -68,17 +74,18 @@ export async function checkEngineKeys(keys: Keys): Promise<KeyStatus[]> {
     })(),
   );
 
-  // Perplexity — a minimal completion. Only a successful response verifies it.
+  // Perplexity's current Agent API; a bounded, tool-free access check. This does
+  // not certify the separate legacy Sonar scan adapter or search behavior.
   checks.push(
     (async (): Promise<KeyStatus> => {
       const base = { engine: "perplexity", label: "Perplexity" };
       if (!keys.perplexity) return { ...base, configured: false };
       const r = await ping(() =>
-        withTimeout("https://api.perplexity.ai/chat/completions", {
+        withTimeout("https://api.perplexity.ai/v1/agent", {
           method: "POST",
           headers: { authorization: `Bearer ${keys.perplexity}`, "content-type": "application/json" },
-          body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "ping" }], max_tokens: 1 }),
-        }),
+          body: JSON.stringify({ effort: "fast", input: "Reply only with OK.", max_output_tokens: 64, max_tool_calls: 0, store: false }),
+        }), true,
       );
       return { ...base, configured: true, ...r };
     })(),
