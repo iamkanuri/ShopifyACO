@@ -6,6 +6,7 @@ import process from "node:process";
 import pg from "pg";
 import { ENV } from "../server/env.js";
 import { pgSslConfig } from "./pg.js";
+import { ensureMigrationTable } from "./migrationTable.js";
 
 // Owns the schema lifecycle. Runs every migrations/*.sql not yet applied, in
 // order, each in a transaction, tracked in schema_migrations. Idempotent — safe
@@ -81,9 +82,7 @@ async function main(): Promise<void> {
   try {
     // Serialize concurrent migrate runs (web/worker/scheduler) before any DDL.
     await acquireMigrationLock(client);
-    await client.query(
-      "create table if not exists schema_migrations (filename text primary key, applied_at timestamptz not null default now())",
-    );
+    await ensureMigrationTable(client);
     const applied = new Set(
       (await client.query<{ filename: string }>("select filename from schema_migrations")).rows.map((r) => r.filename),
     );
