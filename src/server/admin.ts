@@ -42,6 +42,7 @@ export function makeToken(): string {
 
 export function verifyToken(tok: string | undefined): boolean {
   if (!ENV.adminPassword || !tok) return false;
+  if (!/^\d{13}\.[a-f0-9]{64}$/.test(tok)) return false;
   const [ts, sig] = tok.split(".");
   if (!ts || !sig) return false;
   const age = Date.now() - Number(ts);
@@ -54,13 +55,39 @@ function readCookie(req: Request, name: string): string | undefined {
   if (!raw) return undefined;
   for (const part of raw.split(";")) {
     const [k, ...v] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(v.join("="));
+    if (k === name) {
+      try { return decodeURIComponent(v.join("=")); }
+      catch { return undefined; }
+    }
   }
   return undefined;
 }
 
 export function isAdmin(req: Request): boolean {
   return verifyToken(readCookie(req, ADMIN_COOKIE));
+}
+
+export function sameAdminOrigin(origin: string | undefined, expected: string | undefined): boolean {
+  if (!origin || !expected || origin === "null") return false;
+  try {
+    const supplied = new URL(origin);
+    const target = new URL(expected);
+    return ["http:", "https:"].includes(target.protocol) && supplied.origin === target.origin
+      && !supplied.username && !supplied.password && supplied.pathname === "/"
+      && !supplied.search && !supplied.hash;
+  } catch { return false; }
+}
+
+/** Protect every admin mutation, including login/logout, from sibling-site CSRF. */
+export function adminWriteBoundary(req: Request, res: Response, next: NextFunction): void {
+  res.setHeader("Cache-Control", "no-store");
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) { next(); return; }
+  const expected = ENV.publicBaseUrl ?? (ENV.isProd ? undefined : `${req.protocol}://${req.get("host")}`);
+  if (!sameAdminOrigin(req.get("origin"), expected)) {
+    res.status(403).json({ error: "Admin actions require the application origin." });
+    return;
+  }
+  next();
 }
 
 /** Gate for /api/admin/* — 401 if not authenticated. No public caching. */

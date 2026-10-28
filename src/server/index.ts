@@ -60,7 +60,7 @@ import {
   type IndexEntry,
 } from "../db/supabase.js";
 import { handleStripeWebhook } from "./stripe.js";
-import { ADMIN_COOKIE, buildAdminData, checkPassword, isAdmin, makeToken, requireAdmin } from "./admin.js";
+import { ADMIN_COOKIE, adminWriteBoundary, buildAdminData, checkPassword, isAdmin, makeToken, requireAdmin } from "./admin.js";
 import {
   acquireLock,
   activeRun,
@@ -1385,6 +1385,7 @@ app.post(
 );
 
 // ============ ADMIN ========================================================
+app.use("/api/admin", adminWriteBoundary);
 app.post(
   "/api/admin/login",
   wrap(async (req, res) => {
@@ -1396,7 +1397,7 @@ app.post(
     if (!checkPassword(password)) return res.status(401).json({ error: "Wrong password." });
     res.cookie(ADMIN_COOKIE, makeToken(), {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "strict",
       secure: ENV.isProd,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
