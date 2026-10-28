@@ -1,0 +1,2 @@
+# Preserve the published CA file hash across Windows and Linux checkouts.
+certs/*.crt text eol=lf
