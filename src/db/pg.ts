@@ -1,4 +1,5 @@
 import pg from "pg";
+import { readFileSync } from "node:fs";
 import { ENV } from "../server/env.js";
 
 // Runtime raw-Postgres pool for the durable job queue (Phase 1). supabase-js cannot
@@ -14,25 +15,37 @@ export function hasPg(): boolean {
 }
 
 /**
- * SSL config for a Postgres connection. Supabase **cloud** requires SSL, but a **local**
- * dev Postgres (localhost — e.g. the Supabase CLI stack) speaks plaintext and rejects an
- * SSL handshake. Detect localhost / `sslmode=disable` and turn SSL off there.
- *
- * For cloud: when a CA cert is configured (DB_CA_CERT) we do STRICT verification
- * (`verify-full`: rejectUnauthorized + the CA), which defeats a MITM; without one we fall
- * back to encrypted-but-unverified (`rejectUnauthorized:false`) — the prior behavior — so a
- * deploy never breaks just because the CA isn't set yet. `caCert` is a param (defaulting to
- * ENV) so the branching is pure + unit-testable.
+ * Only exact loopback hosts may use plaintext for local development. Remote
+ * connections always verify both certificate and hostname. Supabase's public CA
+ * ships with the app; DB_CA_CERT can override it for a provider CA rollover.
+ * Reject URL SSL options: node-postgres can otherwise replace this strict config.
  */
 export function pgSslConfig(
   connectionString: string | undefined,
   caCert: string | undefined = ENV.dbCaCert,
 ): false | { rejectUnauthorized: boolean; ca?: string } {
-  const s = (connectionString ?? "").toLowerCase();
-  const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(s) || s.includes("sslmode=disable");
-  if (isLocal) return false;
+  if (!connectionString) return { rejectUnauthorized: true };
+  let url: URL;
+  try { url = new URL(connectionString); }
+  catch { throw new Error("DATABASE_URL must be a valid PostgreSQL URL"); }
+  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
+    throw new Error("DATABASE_URL must use the postgres or postgresql scheme");
+  }
+  const host = url.hostname.toLowerCase();
+  const connectionOverrides = ["host", "hostaddr", "port", "user", "password", "database"];
+  if ([...url.searchParams.keys()].some(key => connectionOverrides.includes(key.toLowerCase()))) {
+    throw new Error("DATABASE_URL query options must not override the connection destination or credentials");
+  }
+  if (["localhost", "127.0.0.1", "[::1]"].includes(host)) return false;
+  if ([...url.searchParams.keys()].some(key => key.toLowerCase().startsWith("ssl"))) {
+    throw new Error("Remove SSL query options from DATABASE_URL; remote TLS verification is managed by the application");
+  }
   if (caCert) return { ca: caCert, rejectUnauthorized: true };
-  return { rejectUnauthorized: false };
+  if (/^db\.[a-z0-9]+\.supabase\.co$/.test(host) || /^[a-z0-9-]+\.pooler\.supabase\.com$/.test(host)) {
+    const ca = readFileSync(new URL("../../certs/supabase-prod-ca-2021.crt", import.meta.url), "utf8");
+    return { ca, rejectUnauthorized: true };
+  }
+  return { rejectUnauthorized: true };
 }
 
 function getPool(): pg.Pool {

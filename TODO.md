@@ -3,6 +3,25 @@
 Single source of truth for deferred work. Reflects the live beta at
 `https://lens.thirdocular.com`. Update as items ship.
 
+## Current operational priorities (2026-10-28)
+
+The historical beta/distribution guidance below does not supersede these incidents.
+
+- [ ] Recover the read-only production database safely. Dashboard confirms 95% disk use;
+      a read-only inventory measured 1.648 GB database size, of which `jobs` consumes
+      1.541 GB. There are 328,717 completed Shopify webhook jobs; 319,439 are older than
+      30 days. Preserve paid jobs, audit records and idempotency protection. Prepare a
+      backup, capacity and retention plan before any destructive maintenance.
+- [ ] Finish the Railway credential incident closeout. Owner reports Supabase/database
+      and OpenAI rotations complete; old Gemini/Perplexity revocation, Shopify secrets,
+      encryption-key/token migration, Stripe and application secrets remain incomplete.
+      Do not replace the encryption key without preserving access to existing ciphertext.
+- [ ] Verify replacement provider keys through the deployed authenticated admin check.
+- Code hardening in this release: remote Postgres now requires certificate/hostname
+  verification with the official bundled Supabase CA; URL SSL overrides are rejected.
+  The engine-key check now requires HTTP success instead of treating server/validation
+  errors as valid credentials. Tests include failed trust/hostname cases and HTTP errors.
+
 > ⚠️ **Read this first:** the product is a credible beta. The bottleneck is
 > **distribution, not features** — get it in front of ~10 real merchants before
 > building anything below. Build a feature only when a paying-customer signal pulls

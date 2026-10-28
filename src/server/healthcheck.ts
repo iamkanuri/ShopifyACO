@@ -24,18 +24,16 @@ async function ping(req: () => Promise<Response>): Promise<{ ok: boolean; status
   try {
     const res = await req();
     if (res.ok) return { ok: true, status: res.status };
-    // 401/403 = bad key. Other 4xx (e.g. a validation 400) still proves the key
-    // authenticated, so treat only auth failures as "invalid".
+    // A validation, rate-limit or server error is NOT proof that a key works.
+    // Only a successful response counts. Never relay provider bodies or request
+    // URLs, which can contain sensitive diagnostics or credentials.
     const status = res.status;
-    const ok = status !== 401 && status !== 403;
-    let detail: string | undefined;
-    if (!ok) {
-      const body = await res.text().catch(() => "");
-      detail = `HTTP ${status}${body ? `: ${body.slice(0, 140)}` : ""}`;
-    }
-    return { ok, status, detail };
-  } catch (err) {
-    return { ok: false, detail: (err as Error).message };
+    const detail = status === 401 || status === 403
+      ? `Authentication or permission rejected (HTTP ${status})`
+      : `Check inconclusive: provider returned HTTP ${status}`;
+    return { ok: false, status, detail };
+  } catch {
+    return { ok: false, detail: "Check incomplete: request failed or timed out" };
   }
 }
 
@@ -70,8 +68,7 @@ export async function checkEngineKeys(keys: Keys): Promise<KeyStatus[]> {
     })(),
   );
 
-  // Perplexity — no free list endpoint, so a 1-token completion (~$0.0001). A 401
-  // means a bad key; a 400 validation error still proves the key authenticated.
+  // Perplexity — a minimal completion. Only a successful response verifies it.
   checks.push(
     (async (): Promise<KeyStatus> => {
       const base = { engine: "perplexity", label: "Perplexity" };

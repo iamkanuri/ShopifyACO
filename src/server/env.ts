@@ -53,10 +53,8 @@ export const ENV = {
   supabaseUrl: normalizeSupabaseUrl(process.env.SUPABASE_URL),
   supabaseServiceRoleKey: str(process.env.SUPABASE_SERVICE_ROLE_KEY),
   databaseUrl: str(process.env.DATABASE_URL),
-  // Optional CA (PEM or base64-PEM) for STRICT Postgres TLS (verify-full). When set, DB
-  // connections verify the server cert against it (rejectUnauthorized:true); unset keeps the
-  // encrypted-but-unverified default so a deploy never breaks if the CA isn't configured.
-  // Enable by downloading Supabase's CA (Dashboard → Database → SSL) into DB_CA_CERT.
+  // Optional CA override (PEM or base64-PEM). Supabase hosts use the bundled official
+  // CA by default; other remote hosts use system roots. All remote TLS is verified.
   dbCaCert: decodePem(process.env.DB_CA_CERT),
 
   // How many engine calls a benchmark issues at once. Web-grounded calls are slow, so a
